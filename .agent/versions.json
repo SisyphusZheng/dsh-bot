@@ -35,10 +35,10 @@
   "runtime": {
     "dsh": {
       "package": "@deepseek-ai/dsh",
-      "version": "0.2.1-rc.2",
-      "upstreamTag": "dsh-v0.2.1-rc.2",
+      "version": "0.2.1-rc.3",
+      "upstreamTag": "dsh-v0.2.1-rc.3",
       "upstreamLatestSeen": "dsh-v0.2.1-rc.3",
-      "upgradePolicy": "pinned; candidate requires isolated compat preview + human approval",
+      "upgradePolicy": "rc.3 candidate pending packaged real-provider and TCC qualification",
       "candidateReport": "docs/reports/UPSTREAM-RC3-COMPAT.md"
     },
     "hostIntegration": {
