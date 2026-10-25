@@ -1,0 +1,342 @@
+{
+  "suite": "W1/W6 Body Runtime cleanup + double-click",
+  "startedAt": "2026-10-23T05:28:21.387Z",
+  "electron": "$HOME/projects/dsh-bot-workspace/research/qwen-audio-agent/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron",
+  "steps": {
+    "electron-exit": {
+      "status": "PASS",
+      "ms": 0,
+      "detail": {
+        "generatedAt": "2026-10-23T05:28:27.243Z",
+        "bridgeOnly": true,
+        "gatewayOrigin": "http://127.0.0.1:59901",
+        "shellControlUrl": "http://127.0.0.1:59899",
+        "bridgeFile": "/tmp/nisse-body-runtime-smoke-1792733301386/dsh-home/bridge.json",
+        "bridgePollActive": true,
+        "settingsWindowPresent": false,
+        "windows": [
+          {
+            "title": "Nisse 头顶气泡",
+            "visible": true,
+            "destroyed": false,
+            "url": "file://$HOME/projects/dsh-bot-workspace/m3/pet/desktop/src/bubble.html"
+          },
+          {
+            "title": "Nisse 家灵",
+            "visible": true,
+            "destroyed": false,
+            "url": "http://127.0.0.1:59902/266cce015febbd4f24152543333ce9069d5f043da6097a12/?desktop=orb&orbSkin=whale-girl&autoHideSeconds=0&lang=zh-CN"
+          }
+        ],
+        "bubble": {
+          "visible": true,
+          "interactive": false,
+          "inputMode": false,
+          "kind": "action",
+          "text": "DSH 请求确认：write\nsmoke 验证",
+          "title": "",
+          "clickThrough": false
+        },
+        "experience": {
+          "onboarding": {
+            "active": false,
+            "busy": false,
+            "stepId": "",
+            "substate": "",
+            "completed": false,
+            "paused": false,
+            "approvalPersisted": false,
+            "answers": null
+          },
+          "voice": {
+            "settings": {
+              "mode": "hold",
+              "keyId": "alt",
+              "fallbackAccelerator": "Alt+Space",
+              "holdMaxMs": 15000,
+              "hintSeen": false
+            },
+            "talkKey": {
+              "mode": "hold",
+              "keyId": "alt",
+              "source": "global-option",
+              "displayKey": "Option/Alt",
+              "hint": "按住 Option/Alt 说话",
+              "global": true,
+              "accelerator": "Alt+Space",
+              "registered": true,
+              "globalOption": {
+                "available": true,
+                "frameworkPath": "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices",
+                "koffiPath": "$HOME/projects/dsh-bot/node_modules/.pnpm/koffi@3.1.1/node_modules/koffi",
+                "koffiVersion": "3.1.1",
+                "error": ""
+              },
+              "presetLabel": "Option / Alt（桌宠聚焦时按住）",
+              "hintText": "按住 Option/Alt 说话",
+              "dryRun": false,
+              "fallback": "Alt+Space"
+            },
+            "hint": {
+              "source": "global-option",
+              "keyId": "alt",
+              "mode": "hold",
+              "displayKey": "Option/Alt",
+              "global": true,
+              "text": "按住 Option/Alt 说话"
+            },
+            "lastReport": {
+              "enabled": false,
+              "waiting": false,
+              "mode": "hold",
+              "reports": 3,
+              "dryRun": false,
+              "hintSeen": false,
+              "hintVisible": true,
+              "hintShows": 1,
+              "clickCount": 0,
+              "enabledBy": ""
+            },
+            "globalOption": {
+              "available": true,
+              "frameworkPath": "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices",
+              "koffiPath": "$HOME/projects/dsh-bot/node_modules/.pnpm/koffi@3.1.1/node_modules/koffi",
+              "koffiVersion": "3.1.1",
+              "error": "",
+              "watcher": {
+                "running": true,
+                "pressed": false,
+                "polls": 88,
+                "errors": 0,
+                "downCount": 0,
+                "upCount": 0,
+                "lastChangeAt": 0,
+                "lastError": "",
+                "pollMs": 60,
+                "stablePolls": 2
+              },
+              "smokeOverride": null
+            }
+          },
+          "pause": {
+            "turnActive": true,
+            "turnStartedAt": 1792733301822,
+            "paused": 0,
+            "lastPause": null,
+            "lastError": "",
+            "monitor": {
+              "running": true,
+              "previousIdle": 10,
+              "pauses": 0,
+              "lastPause": null,
+              "thresholdSeconds": 1.5,
+              "graceMs": 2500,
+              "pollMs": 1000
+            }
+          },
+          "lastHeardText": ""
+        },
+        "shell": {
+          "lastToggle": {
+            "ok": true,
+            "result": "shown"
+          },
+          "lastApproval": {
+            "id": "smoke-approval-1",
+            "decision": "allow",
+            "ok": true,
+            "result": "forwarded"
+          }
+        },
+        "shots": [
+          "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/regression-round1/body-runtime-orb-bubble.png",
+          "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/regression-round1/body-runtime-orb.png"
+        ],
+        "dblclickDispatched": true,
+        "bubbleInteractiveAfterMouseMove": true,
+        "approvalClicked": true
+      }
+    },
+    "bridge-only-runtime": {
+      "status": "PASS",
+      "ms": 0
+    },
+    "no-settings-chat-onboarding-window": {
+      "status": "PASS",
+      "ms": 0
+    },
+    "double-click-opens-minimizes-dsh": {
+      "status": "PASS",
+      "ms": 1
+    },
+    "approval-bubble-interactive": {
+      "status": "PASS",
+      "ms": 0
+    },
+    "screenshots": {
+      "status": "PASS",
+      "ms": 0,
+      "detail": {
+        "orb": "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/regression-round1/body-runtime-orb.png",
+        "bubble": "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/regression-round1/body-runtime-orb-bubble.png"
+      }
+    }
+  },
+  "electronExit": {
+    "code": 0,
+    "signal": null
+  },
+  "stderrTail": "",
+  "petStatus": {
+    "generatedAt": "2026-10-23T05:28:27.243Z",
+    "bridgeOnly": true,
+    "gatewayOrigin": "http://127.0.0.1:59901",
+    "shellControlUrl": "http://127.0.0.1:59899",
+    "bridgeFile": "/tmp/nisse-body-runtime-smoke-1792733301386/dsh-home/bridge.json",
+    "bridgePollActive": true,
+    "settingsWindowPresent": false,
+    "windows": [
+      {
+        "title": "Nisse 头顶气泡",
+        "visible": true,
+        "destroyed": false,
+        "url": "file://$HOME/projects/dsh-bot-workspace/m3/pet/desktop/src/bubble.html"
+      },
+      {
+        "title": "Nisse 家灵",
+        "visible": true,
+        "destroyed": false,
+        "url": "http://127.0.0.1:59902/266cce015febbd4f24152543333ce9069d5f043da6097a12/?desktop=orb&orbSkin=whale-girl&autoHideSeconds=0&lang=zh-CN"
+      }
+    ],
+    "bubble": {
+      "visible": true,
+      "interactive": false,
+      "inputMode": false,
+      "kind": "action",
+      "text": "DSH 请求确认：write\nsmoke 验证",
+      "title": "",
+      "clickThrough": false
+    },
+    "experience": {
+      "onboarding": {
+        "active": false,
+        "busy": false,
+        "stepId": "",
+        "substate": "",
+        "completed": false,
+        "paused": false,
+        "approvalPersisted": false,
+        "answers": null
+      },
+      "voice": {
+        "settings": {
+          "mode": "hold",
+          "keyId": "alt",
+          "fallbackAccelerator": "Alt+Space",
+          "holdMaxMs": 15000,
+          "hintSeen": false
+        },
+        "talkKey": {
+          "mode": "hold",
+          "keyId": "alt",
+          "source": "global-option",
+          "displayKey": "Option/Alt",
+          "hint": "按住 Option/Alt 说话",
+          "global": true,
+          "accelerator": "Alt+Space",
+          "registered": true,
+          "globalOption": {
+            "available": true,
+            "frameworkPath": "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices",
+            "koffiPath": "$HOME/projects/dsh-bot/node_modules/.pnpm/koffi@3.1.1/node_modules/koffi",
+            "koffiVersion": "3.1.1",
+            "error": ""
+          },
+          "presetLabel": "Option / Alt（桌宠聚焦时按住）",
+          "hintText": "按住 Option/Alt 说话",
+          "dryRun": false,
+          "fallback": "Alt+Space"
+        },
+        "hint": {
+          "source": "global-option",
+          "keyId": "alt",
+          "mode": "hold",
+          "displayKey": "Option/Alt",
+          "global": true,
+          "text": "按住 Option/Alt 说话"
+        },
+        "lastReport": {
+          "enabled": false,
+          "waiting": false,
+          "mode": "hold",
+          "reports": 3,
+          "dryRun": false,
+          "hintSeen": false,
+          "hintVisible": true,
+          "hintShows": 1,
+          "clickCount": 0,
+          "enabledBy": ""
+        },
+        "globalOption": {
+          "available": true,
+          "frameworkPath": "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices",
+          "koffiPath": "$HOME/projects/dsh-bot/node_modules/.pnpm/koffi@3.1.1/node_modules/koffi",
+          "koffiVersion": "3.1.1",
+          "error": "",
+          "watcher": {
+            "running": true,
+            "pressed": false,
+            "polls": 88,
+            "errors": 0,
+            "downCount": 0,
+            "upCount": 0,
+            "lastChangeAt": 0,
+            "lastError": "",
+            "pollMs": 60,
+            "stablePolls": 2
+          },
+          "smokeOverride": null
+        }
+      },
+      "pause": {
+        "turnActive": true,
+        "turnStartedAt": 1792733301822,
+        "paused": 0,
+        "lastPause": null,
+        "lastError": "",
+        "monitor": {
+          "running": true,
+          "previousIdle": 10,
+          "pauses": 0,
+          "lastPause": null,
+          "thresholdSeconds": 1.5,
+          "graceMs": 2500,
+          "pollMs": 1000
+        }
+      },
+      "lastHeardText": ""
+    },
+    "shell": {
+      "lastToggle": {
+        "ok": true,
+        "result": "shown"
+      },
+      "lastApproval": {
+        "id": "smoke-approval-1",
+        "decision": "allow",
+        "ok": true,
+        "result": "forwarded"
+      }
+    },
+    "shots": [
+      "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/regression-round1/body-runtime-orb-bubble.png",
+      "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/regression-round1/body-runtime-orb.png"
+    ],
+    "dblclickDispatched": true,
+    "bubbleInteractiveAfterMouseMove": true,
+    "approvalClicked": true
+  },
+  "finishedAt": "2026-10-23T05:28:27.525Z",
+  "ok": true
+}

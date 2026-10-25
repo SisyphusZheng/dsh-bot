@@ -1,0 +1,174 @@
+{
+  "gate": "G1",
+  "status": "PASS (core ASR/TTS/loop stages) / PARTIAL (cancel-in-flight, provider failure matrix, real speaker audible check)",
+  "date": "2026-10-23",
+  "environment": {
+    "macOS": "26.5.1 (25F80)",
+    "electron": "43.6.0 (dev Electron; com.github.Electron; adhoc/linker-signed)",
+    "python": "3.12.13 (uv-managed)",
+    "pipecat": "1.13.0",
+    "transport": "SmallWebRTCTransport (loopback worker 127.0.0.1:8765)",
+    "renderer": "existing m3/pet orb window; test-mode injection only (WG_G0_VOICE_TEST=1)",
+    "audio_in": "real microphone (no fake device switches)",
+    "audio_out": "real output device, 69% system volume; Electron <audio> element playing"
+  },
+  "frozen_provider_contract": {
+    "doc": "m5/voice-spike/docs/G1-PROVIDER-CONTRACT.md",
+    "region": "DashScope Beijing (dashscope.aliyuncs.com), default business space; Workspace-specific domain not tested",
+    "asr_model": "qwen3-asr-flash-realtime",
+    "asr_endpoint": "wss://dashscope.aliyuncs.com/api-ws/v1/realtime?model=qwen3-asr-flash-realtime",
+    "asr_input": "pcm s16le mono 16000Hz; manual turn mode (turn_detection=null); Pipecat VAD owns turns",
+    "tts_model": "qwen3-tts-flash-realtime",
+    "tts_endpoint": "wss://dashscope.aliyuncs.com/api-ws/v1/realtime?model=qwen3-tts-flash-realtime",
+    "tts_output": "pcm s16le mono 24000Hz; voice Cherry (longanhuan_v3.1 rejected by provider)",
+    "auth": "Authorization: Bearer <DASHSCOPE_API_KEY>; key only in Worker process; never in renderer/logs"
+  },
+  "stages": {
+    "asr_alone": {
+      "status": "PASS",
+      "method": "G1_MODE=asr; real mic through Electron pet window; speech played through speakers (6.16s TTS-generated WAV)",
+      "evidence": {
+        "partials_observed": "80+",
+        "finals_observed": 16,
+        "first_partial_ms": "194.2-203.8",
+        "final_ms": "179.0-290.0",
+        "recognized_test_utterances": [
+          "你好，dsh-bot，这是第一阶段的语音识别测试。",
+          "把我说的话转成文字。"
+        ],
+        "note": "test environment also had unrelated background audio; ASR transcribed it too (correctly), so acoustic isolation was not achieved",
+        "log": "m5/voice-spike/logs/worker-g1-asr.log",
+        "stats_sample": "m5/voice-spike/logs/worker-g1-asr.log (asr metrics + transcripts in /stats)"
+      }
+    },
+    "tts_alone": {
+      "status": "PASS",
+      "method": "G1_MODE=tts; fixed text 20 Chinese chars; Pipecat TTSSpeakFrame -> DashScope -> SmallWebRTC -> Electron",
+      "evidence": {
+        "chunks": 12,
+        "audio_bytes": 176640,
+        "audio_duration_estimate_sec": 3.68,
+        "first_audio_chunk_ms": 316.4,
+        "response_done_ms": 848.9,
+        "client_playback": "audio element: paused=false, readyState=4, 1 audio track, currentTime advancing",
+        "screenshot": "m5/voice-spike/evidence/G1-TTS-ELECTRON.png",
+        "log": "m5/voice-spike/logs/worker-g1-tts.log"
+      }
+    },
+    "combined_loop": {
+      "status": "PASS",
+      "method": "G1_MODE=loop; real mic -> ASR -> fixed reply text -> TTS -> Electron playback; DSH intentionally NOT connected (G2)",
+      "evidence": {
+        "transcripts_count": 16,
+        "recognized_test_segments": [
+          "你好，dsh-bot，这是第一阶段的语音识别测试。",
+          "把我说的话转成文字。"
+        ],
+        "tts_chunks": 125,
+        "tts_audio_bytes": 1866240,
+        "tts_first_chunk_ms": 261.4,
+        "tts_done_ms": 690.4,
+        "client_playback": "audio element paused=false, readyState=4, currentTime advancing",
+        "log": "m5/voice-spike/logs/worker-g1-loop.log"
+      }
+    },
+    "error_path_bad_api_key": {
+      "status": "PASS",
+      "method": "G1_MODE=tts with invalid DASHSCOPE_API_KEY",
+      "evidence": {
+        "result": "WebSocket handshake rejected (HTTP 401) -> Pipecat service marked unusable -> client received error bubble; no fake success/audio",
+        "log": "m5/voice-spike/logs/worker-g1-error.log"
+      }
+    },
+    "disconnect_cleanup": {
+      "status": "PASS",
+      "method": "disconnect client during active loop session",
+      "evidence": {
+        "active_sessions": "1 -> 0",
+        "cleanup_ms": 2338
+      }
+    }
+  },
+  "adapter_implementation": {
+    "asr": "worker/dashscope_services.py::DashScopeASRService (subclass of pipecat.services.stt_service.WebsocketSTTService)",
+    "tts": "worker/dashscope_services.py::DashScopeTTSService (subclass of pipecat.services.tts_service.WebsocketTTSService)",
+    "worker_modes": "worker/server.py (G1_MODE=echo|tts|asr|loop); /health, /stats expose model/voice/metrics",
+    "cancellation_semantics": {
+      "asr": "socket close / session.finish; final partial/final frames only after commit",
+      "tts": "socket close / session.finish; TTSStoppedFrame emitted on response end"
+    }
+  },
+  "unverified": [
+    "TTS in-flight interruption (barge-in) while audio is actively being synthesized and played was not exercised; only disconnect cleanup was measured",
+    "ASR cancel mid-utterance (before commit) not measured",
+    "Provider failure matrix beyond bad API key (network drop, timeout, 5xx, rate limit) not measured",
+    "ASR 8000 Hz input, provider-side VAD mode, language switching not tested",
+    "TTS instruction/emotion control (qwen3-tts-instruct) and non-PCM formats not tested",
+    "real speaker audible quality not human-verified (element play confirmed only; same caveat as G0)",
+    "background audio contaminated ASR test; real-mic isolation (headphones/quiet room) not achieved",
+    "per-metric p50/p95 require more samples; values here are single-run samples",
+    "human listening check of the three evidence WAV files (pending user)"
+  ],
+  "next": "G2 — DSHBridgeProcessor: replace FixedReplyProcessor with real DSH sessionController.create/prompt, streaming reply text to TTS, turn/session IDs, cancel propagation, late-output isolation; keep approvals DSH-owned.",
+  "files": [
+    "m5/voice-spike/worker/dashscope_services.py",
+    "m5/voice-spike/worker/server.py",
+    "m5/voice-spike/docs/G1-PROVIDER-CONTRACT.md",
+    "m5/voice-spike/evidence/G1-TTS-ELECTRON.png",
+    "m5/voice-spike/logs/worker-g1-tts.log",
+    "m5/voice-spike/logs/worker-g1-asr.log",
+    "m5/voice-spike/logs/worker-g1-loop.log",
+    "m5/voice-spike/logs/worker-g1-error.log"
+  ],
+  "tts_data_consistency_check": {
+    "status": "PASS (data consistency) / PENDING (human listen)",
+    "doc": "m5/voice-spike/docs/G1-TTS-DATA-CHECK.md",
+    "runs": [
+      {
+        "text": "您好，我是dsh-bot，这是一次语音链路测试。",
+        "chars": 20,
+        "chunks": 13,
+        "bytes": 199680,
+        "audio_seconds": 4.16,
+        "wav_frames": 99840,
+        "wav_seconds": 4.16,
+        "first_chunk_ms": 229.7,
+        "done_ms": 889.9
+      },
+      {
+        "text": "您好，我是dsh-bot，这是一次语音链路测试。",
+        "chars": 20,
+        "chunks": 13,
+        "bytes": 195840,
+        "audio_seconds": 4.08,
+        "wav_frames": 97920,
+        "wav_seconds": 4.08,
+        "first_chunk_ms": 234.6,
+        "done_ms": 900.3
+      },
+      {
+        "text": "你好。",
+        "chars": 3,
+        "chunks": 2,
+        "bytes": 30720,
+        "audio_seconds": 0.64,
+        "wav_frames": 15360,
+        "wav_seconds": 0.64,
+        "first_chunk_ms": 197.7,
+        "done_ms": 253.7
+      }
+    ],
+    "loop_cumulative_explained": "1,866,240 bytes was the cumulative total of 16 replies (one per ASR final), ~38.88s of audio; per-reply records show each reply 2.3-3.8s. Old done_ms recorded only the first response; now last_done_ms + per-reply done_ms are recorded.",
+    "finding_for_g2": "TTS synthesis is faster than realtime: ~39s of audio generated during a ~12s test window, creating a playback backlog and stale replies in later turns. G2 must implement turn isolation: stop/discard stale TTS audio on a new user turn; stopping playback is not task cancellation.",
+    "human_listen_files": [
+      "m5/voice-spike/evidence/audio/G1-TTS-fixed-20chars.wav",
+      "m5/voice-spike/evidence/audio/G1-TTS-short-3chars.wav",
+      "m5/voice-spike/evidence/audio/G1-loop-first-reply.wav"
+    ],
+    "privacy_fix": {
+      "stats_access": "GET /stats now requires SPIKE_TOKEN; without token returns 401",
+      "transcripts_default": "transcripts_enabled=false; ASR transcript text and TTS reply text are not returned or logged by default",
+      "debug_flag": "full transcript text only when SPIKE_DEBUG_TRANSCRIPTS=1"
+    }
+  }
+}

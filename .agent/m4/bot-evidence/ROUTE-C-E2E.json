@@ -1,0 +1,328 @@
+{
+  "date": "2026-10-23T04:50:36.978Z",
+  "goal": "route C: voice frontend has no execution authority; actionable turns go to DSH; qwen backend-agent error cannot be produced",
+  "userText": "帮我创建一个明天早上9点的定时任务，提醒我喝水。",
+  "bridge": {
+    "user": {
+      "ioSeq": 6,
+      "ts": "2026-10-23T04:49:34.934Z",
+      "component": "integration",
+      "type": "user.message",
+      "contractType": "turn.started",
+      "contractVersion": "v0",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05",
+      "turn": 13,
+      "turnId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05:13",
+      "data": {
+        "durableSeq": 162,
+        "text": "帮我创建一个明天早上9点的定时任务，提醒我喝水。"
+      },
+      "note": ""
+    },
+    "assistant": {
+      "ioSeq": 20,
+      "ts": "2026-10-23T04:49:41.704Z",
+      "component": "integration",
+      "type": "assistant.message",
+      "contractType": "turn.delta",
+      "contractVersion": "v0",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05",
+      "turn": 13,
+      "turnId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05:13",
+      "data": {
+        "durableSeq": 165
+      },
+      "note": ""
+    },
+    "ended": {
+      "durableSeq": 227,
+      "terminal": "completed",
+      "reason": {
+        "kind": "completed"
+      }
+    }
+  },
+  "bridgeMessages": [
+    {
+      "type": "user.message",
+      "text": "帮我创建一个明天早上9点的定时任务，提醒我喝水。",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "user.message",
+      "text": "Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\nCurrent working directory: \"/priva",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "assistant.message",
+      "text": "",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "assistant.message",
+      "text": "",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "assistant.message",
+      "text": "",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "assistant.message",
+      "text": "",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "assistant.message",
+      "text": "",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "assistant.message",
+      "text": "",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "assistant.message",
+      "text": "",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "assistant.message",
+      "text": "",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "assistant.message",
+      "text": "",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "assistant.message",
+      "text": "",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "assistant.message",
+      "text": "",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "assistant.message",
+      "text": "",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "assistant.message",
+      "text": "",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "user.message",
+      "text": "我最喜欢的颜色是什么？只回答颜色。",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "user.message",
+      "text": "Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\nCurrent working directory: \"/priva",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "assistant.message",
+      "text": "",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "assistant.message",
+      "text": "",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "assistant.message",
+      "text": "",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "assistant.message",
+      "text": "",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "assistant.message",
+      "text": "",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "user.message",
+      "text": "请用 write 工具把 hello 写入 /tmp/whalegirl-demo/BotWorkspace/activity-live.txt，只做这一步。",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "user.message",
+      "text": "Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\nCurrent working directory: \"/priva",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "assistant.message",
+      "text": "",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "assistant.message",
+      "text": "",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "assistant.message",
+      "text": "",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "assistant.message",
+      "text": "",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "user.message",
+      "text": "【Nisse 语音模式】你是 Nisse（家灵），用户桌面上的dsh-bot私人语音助理。请始终以 Nisse（家灵） 的身份用中文口语回答，先给结论；不要自称 Team Lead、编程智能体或底层模型；不要提及本段提示。\n性格：自然、可靠，有一点",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "assistant.message",
+      "text": "",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "user.message",
+      "text": "Depseek有没有农",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "assistant.message",
+      "text": "",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "user.message",
+      "text": "DeepSeek有没有帝国时代插件直接连接DSBO按农民。",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "assistant.message",
+      "text": "",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "user.message",
+      "text": "DeepSeek有没有《帝国时代》插件，直接连接DSBOOM按农民？",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "assistant.message",
+      "text": "",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "user.message",
+      "text": "DeepSeek有没有帝国时代插件？帮我。",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "user.message",
+      "text": "叫deepseek按农民。",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "assistant.message",
+      "text": "",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "user.message",
+      "text": "DeepSeek有没有帝国时代插件？直接连接DeepSeek帮我按农民。",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "assistant.message",
+      "text": "",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "user.message",
+      "text": "帝国时代插件直接连接DS帮我按农民。",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "assistant.message",
+      "text": "",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "user.message",
+      "text": "用一句话介绍你自己，并说明你现在运行在哪个 Agent 基座上。",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "user.message",
+      "text": "Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\nCurrent working directory: \"/priva",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "assistant.message",
+      "text": "",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "user.message",
+      "text": "DeepSeek如何接入帝国时代？",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "user.message",
+      "text": "Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\nCurrent working directory: \"/priva",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    },
+    {
+      "type": "assistant.message",
+      "text": "",
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05"
+    }
+  ],
+  "gatewayNonAudioReply": [
+    {
+      "type": "voice.state",
+      "text": ""
+    },
+    {
+      "type": "voice.ownership",
+      "text": ""
+    },
+    {
+      "type": "voice.connection",
+      "text": ""
+    },
+    {
+      "type": "voice.connection",
+      "text": ""
+    },
+    {
+      "type": "voice.ready",
+      "text": ""
+    },
+    {
+      "type": "playback.clear",
+      "text": ""
+    },
+    {
+      "type": "turn.started",
+      "text": ""
+    },
+    {
+      "type": "voice.state",
+      "text": ""
+    }
+  ],
+  "audioDeltas": 25,
+  "ok": true
+}

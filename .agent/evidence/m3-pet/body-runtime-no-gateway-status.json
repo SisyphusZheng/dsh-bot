@@ -1,0 +1,26 @@
+{
+  "generatedAt": "2026-10-22T13:29:11.847Z",
+  "bridgeOnly": true,
+  "gatewayOrigin": "http://127.0.0.1:59999",
+  "shellControlUrl": "http://127.0.0.1:59998",
+  "bridgeFile": "/tmp/brs-dead/dsh/bridge.json",
+  "bridgePollActive": true,
+  "settingsWindowPresent": false,
+  "windows": [
+    {
+      "title": "Nisse 家灵",
+      "visible": true,
+      "destroyed": false,
+      "url": "http://127.0.0.1:54729/5ff1f30edf8b343f79a6ad43bf06bf0c0571f1c558fdffe7/?desktop=orb&orbSkin=whale-girl&autoHideSeconds=0&lang=zh-CN"
+    }
+  ],
+  "bubble": {
+    "visible": false,
+    "interactive": false
+  },
+  "shell": {
+    "lastToggle": null,
+    "lastApproval": null
+  },
+  "shots": []
+}

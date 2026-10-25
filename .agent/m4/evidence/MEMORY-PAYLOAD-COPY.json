@@ -1,0 +1,36 @@
+{
+  "suite": "memory packaging payload copy (B -> repo)",
+  "date": "2026-10-24T13:20Z",
+  "stagingRoot": "/tmp/wg-memory-staging",
+  "repoTarget": "product/memory",
+  "totalBytes": 597796821,
+  "files": 7795,
+  "symlinks": 32,
+  "verification": {
+    "method": "shasum -a 256 -c COPY-MANIFEST-FILES.sha256 from nisse root",
+    "okFiles": 7796,
+    "mismatches": 0
+  },
+  "evidenceCopied": "m4/evidence/MEMORY-PACKAGING-STAGING.json",
+  "bStreamVerdict": "PASS_WITH_CONDITIONS",
+  "condition": {
+    "id": "MEM-COND-1",
+    "summary": "HindsightAPI start occasionally makes one background TLS egress; HF/TRANSFORMERS/MCP/LiteLLM/OTel/FastMCP switches do not remove it; lldb only showed pg0 loopback; final round not reproduced",
+    "impact": "no functional impact; resolve SNI before public release (mitmproxy)",
+    "repro": "see m4/evidence/MEMORY-PACKAGING-STAGING.json conditions[0]"
+  },
+  "bStreamMeasurements": {
+    "freshHomeColdStartSeconds": 10.1,
+    "warmRestartSeconds": 5.3,
+    "steadyRssMb": 844,
+    "sidecarRssMb": 73,
+    "retainRecallP50Ms": 24,
+    "retainRecallP95Ms": 64,
+    "downloadsDuringVerify": 0
+  },
+  "packagingContract": "product/memory/INTEGRATION.md (Resources/memory layout + Contents/spike adapter)",
+  "notes": [
+    "Payload copied by Lead per COPY-MANIFEST; no staging file content modified.",
+    "Build input is product/memory via NISSE_MEMORY_DIR; the DMG bundles Resources/memory and Contents/spike/m1-c-hindsight."
+  ]
+}

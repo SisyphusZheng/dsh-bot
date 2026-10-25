@@ -1,0 +1,22 @@
+{
+  "suite": "voice call swallowed by self-barge-in (user: 现在又没有成功调用了)",
+  "date": "2026-10-23",
+  "symptom": "Press Option, speak, release -> pet says 「好，等这个任务完成。」 and nothing reaches DSH.",
+  "logEvidence_1353_attempt": {
+    "05:45:33.584": "global_option.down (enable)",
+    "05:45:35.170": "realtime.provider.speech_started turn=voice-...-2",
+    "05:45:35.171": "nisse.barge_in_pending (same turn marked as barge-in of the previous response slot)",
+    "05:45:36.519": "realtime.provider.speech_stopped",
+    "05:45:36.680": "realtime.response_slot_recovery",
+    "05:45:36.681": "nisse.barge_in_queued turn=voice-...-2 interruptedTurnId=voice-...-2 (SELF) -> spoke 「好，等这个任务完成。」",
+    "05:45:38.151": "response done; no bridge turn for the user's request"
+  },
+  "rootCause": "The qwen realtime runtime flagged the new utterance as a barge-in of the response slot it was itself replacing. Our barge-in queueing logic trusted that flag and queued the user's own request (instead of delegating it), so DSH never saw it.",
+  "fix": [
+    "bridge-turn: if pending barge-in turnId == current turnId -> clear flag, ignore (self-barge-in).",
+    "bridge-turn: if pending barge-in exists but no bridge turn is running (currentTurn === null) -> stale flag, clear and proceed.",
+    "queueing is now only used when a real DSH turn is running (protects tool calls from being aborted)."
+  ],
+  "verification": "m4/bot-evidence/VOICE-QUEUE-E2E.json (clean conversation): two utterances back-to-back -> two completed turns, 0 aborted bridge events, queue notices/flushes logged; gateway restarted with route C + guards.",
+  "also": "Option quick-tap now latches listening (tap to start, tap again to send) so short presses no longer produce a silent '好，先不听'; spoken-aware bubbly replies."
+}

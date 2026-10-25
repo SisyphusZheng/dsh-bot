@@ -1,0 +1,308 @@
+{
+  "started_at": "2026-10-24T11:31:16",
+  "command": "请先停一下",
+  "trials": [
+    {
+      "trial": 1,
+      "cue_ms": 1792812597744,
+      "confirmed": false,
+      "delta": {
+        "barge_candidates": 0,
+        "barge_confirmed": 0,
+        "barge_command_confirmed": 0,
+        "barge_rejected_echo": 0,
+        "duck_applied": 0
+      },
+      "confirm_epoch_ms": null,
+      "latency_cue_to_confirm_ms": null,
+      "cleanup": null,
+      "latency_cue_to_cleanup_ms": null,
+      "asr_last": null,
+      "ducklog": [],
+      "valid_attempt": false,
+      "invalid_reason": "human did not react in time / missed the first cue; no VAD candidate; not a product failure"
+    },
+    {
+      "trial": 2,
+      "cue_ms": 1792812623122,
+      "confirmed": true,
+      "delta": {
+        "barge_candidates": 1,
+        "barge_confirmed": 1,
+        "barge_command_confirmed": 1,
+        "barge_rejected_echo": 0,
+        "duck_applied": 1
+      },
+      "confirm_epoch_ms": 1792812624587,
+      "latency_cue_to_confirm_ms": 1465,
+      "cleanup": {
+        "seq": 2,
+        "at": 1792812624591,
+        "reason": "barge-in-confirmed",
+        "audioGeneration": 1,
+        "hadElement": true,
+        "pausedBefore": false,
+        "hasSrcObjectBefore": true,
+        "result": "cleared",
+        "pausedAfter": true,
+        "hasSrcObjectAfter": false
+      },
+      "latency_cue_to_cleanup_ms": 1469,
+      "asr_last": null,
+      "ducklog": [
+        {
+          "seq": 1,
+          "at": 1792812623868,
+          "stage": "duck-applied",
+          "candidateId": "voice-2-1792812623867",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 2,
+          "at": 1792812624591,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-2-1792812623867"
+        }
+      ],
+      "vad_candidate_epoch_ms": 1792812623867,
+      "cue_to_vad_ms": 745,
+      "vad_to_confirm_ms": 720,
+      "vad_to_cleanup_ms": 724,
+      "valid_attempt": true
+    },
+    {
+      "trial": 3,
+      "cue_ms": 1792812634476,
+      "confirmed": true,
+      "delta": {
+        "barge_candidates": 1,
+        "barge_confirmed": 1,
+        "barge_command_confirmed": 1,
+        "barge_rejected_echo": 0,
+        "duck_applied": 1
+      },
+      "confirm_epoch_ms": 1792812639928,
+      "latency_cue_to_confirm_ms": 5452,
+      "cleanup": {
+        "seq": 3,
+        "at": 1792812639929,
+        "reason": "barge-in-confirmed",
+        "audioGeneration": 2,
+        "hadElement": true,
+        "pausedBefore": false,
+        "hasSrcObjectBefore": true,
+        "result": "cleared",
+        "pausedAfter": true,
+        "hasSrcObjectAfter": false
+      },
+      "latency_cue_to_cleanup_ms": 5453,
+      "asr_last": null,
+      "ducklog": [
+        {
+          "seq": 1,
+          "at": 1792812623868,
+          "stage": "duck-applied",
+          "candidateId": "voice-2-1792812623867",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 2,
+          "at": 1792812624591,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-2-1792812623867"
+        },
+        {
+          "seq": 3,
+          "at": 1792812638887,
+          "stage": "duck-applied",
+          "candidateId": "voice-3-1792812638887",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 2
+        },
+        {
+          "seq": 4,
+          "at": 1792812639929,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-3-1792812638887"
+        }
+      ],
+      "vad_candidate_epoch_ms": 1792812638887,
+      "cue_to_vad_ms": 4411,
+      "vad_to_confirm_ms": 1041,
+      "vad_to_cleanup_ms": 1042,
+      "valid_attempt": true
+    },
+    {
+      "trial": 4,
+      "cue_ms": 1792812650236,
+      "confirmed": true,
+      "delta": {
+        "barge_candidates": 1,
+        "barge_confirmed": 1,
+        "barge_command_confirmed": 1,
+        "barge_rejected_echo": 0,
+        "duck_applied": 1
+      },
+      "confirm_epoch_ms": 1792812654866,
+      "latency_cue_to_confirm_ms": 4630,
+      "cleanup": {
+        "seq": 4,
+        "at": 1792812654867,
+        "reason": "barge-in-confirmed",
+        "audioGeneration": 3,
+        "hadElement": true,
+        "pausedBefore": false,
+        "hasSrcObjectBefore": true,
+        "result": "cleared",
+        "pausedAfter": true,
+        "hasSrcObjectAfter": false
+      },
+      "latency_cue_to_cleanup_ms": 4631,
+      "asr_last": null,
+      "ducklog": [
+        {
+          "seq": 3,
+          "at": 1792812638887,
+          "stage": "duck-applied",
+          "candidateId": "voice-3-1792812638887",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 2
+        },
+        {
+          "seq": 4,
+          "at": 1792812639929,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-3-1792812638887"
+        },
+        {
+          "seq": 5,
+          "at": 1792812653728,
+          "stage": "duck-applied",
+          "candidateId": "voice-4-1792812653728",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 3
+        },
+        {
+          "seq": 6,
+          "at": 1792812654867,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-4-1792812653728"
+        }
+      ],
+      "vad_candidate_epoch_ms": 1792812653728,
+      "cue_to_vad_ms": 3492,
+      "vad_to_confirm_ms": 1138,
+      "vad_to_cleanup_ms": 1139,
+      "valid_attempt": true
+    },
+    {
+      "trial": 5,
+      "cue_ms": 1792812662749,
+      "confirmed": true,
+      "delta": {
+        "barge_candidates": 1,
+        "barge_confirmed": 1,
+        "barge_command_confirmed": 1,
+        "barge_rejected_echo": 0,
+        "duck_applied": 1
+      },
+      "confirm_epoch_ms": 1792812673118,
+      "latency_cue_to_confirm_ms": 10369,
+      "cleanup": {
+        "seq": 5,
+        "at": 1792812673120,
+        "reason": "barge-in-confirmed",
+        "audioGeneration": 4,
+        "hadElement": true,
+        "pausedBefore": false,
+        "hasSrcObjectBefore": true,
+        "result": "cleared",
+        "pausedAfter": true,
+        "hasSrcObjectAfter": false
+      },
+      "latency_cue_to_cleanup_ms": 10371,
+      "asr_last": null,
+      "ducklog": [
+        {
+          "seq": 5,
+          "at": 1792812653728,
+          "stage": "duck-applied",
+          "candidateId": "voice-4-1792812653728",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 3
+        },
+        {
+          "seq": 6,
+          "at": 1792812654867,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-4-1792812653728"
+        },
+        {
+          "seq": 7,
+          "at": 1792812671947,
+          "stage": "duck-applied",
+          "candidateId": "voice-5-1792812671947",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 4
+        },
+        {
+          "seq": 8,
+          "at": 1792812673120,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-5-1792812671947"
+        }
+      ],
+      "vad_candidate_epoch_ms": 1792812671947,
+      "cue_to_vad_ms": 9198,
+      "vad_to_confirm_ms": 1171,
+      "vad_to_cleanup_ms": 1173,
+      "valid_attempt": true
+    }
+  ],
+  "environment": {
+    "volume": 55,
+    "background_media": "must be paused by human; Chrome audio present earlier",
+    "note": "latency is cue-to-confirm (cue is played at active playback, not exact speech onset)"
+  },
+  "analysis": {
+    "confirmed_trials": 4,
+    "trials": 5,
+    "missed_trial": 1,
+    "miss_note": "Trial 1 produced barge_candidates=0: no VAD detected. Likely missed cue/missed speech; cannot distinguish mic miss from VAD miss without asking the speaker. Not counted as a confirmed success.",
+    "vad_to_confirm_ms": [
+      720,
+      1041,
+      1138,
+      1171
+    ],
+    "vad_to_confirm_p50": 1089.5,
+    "vad_to_confirm_mean": 1017.5,
+    "cue_to_vad_ms": [
+      745,
+      4411,
+      3492,
+      9198
+    ],
+    "cleanup_latency_ms": [
+      4,
+      1,
+      1,
+      2
+    ],
+    "note": "cue is assistant playback start, not exact human speech onset. cue_to_vad includes human reaction time; vad_to_confirm is the system-side VAD->confirmed latency.",
+    "valid_attempts": 4,
+    "success_rate_valid_attempts": "4/4 = 100%",
+    "raw_confirmed_per_5_cues": "4/5 (trial 1 invalid: no human response)",
+    "classification": "Trial 1 is INVALID (no attempt), not a failure. Of valid human command attempts, 4/4 were confirmed. Do not report 5/5; if a clean 5/5 sample is required, run one more valid trial.",
+    "updated_at": "2026-10-24T11:33:55"
+  }
+}

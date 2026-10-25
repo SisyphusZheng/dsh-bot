@@ -1,0 +1,133 @@
+{
+  "suite": "W8 Bot settings providers (LLM + voice catalog, probes, config service)",
+  "startedAt": "2026-10-22T16:12:56.072Z",
+  "steps": {
+    "provider-catalog": {
+      "status": "PASS",
+      "ms": 0,
+      "detail": {
+        "llm": [
+          "opencode-go",
+          "deepseek",
+          "dashscope",
+          "openai",
+          "custom"
+        ],
+        "voice": [
+          "dashscope",
+          "stepfun",
+          "doubao-seeduplex",
+          "local"
+        ]
+      }
+    },
+    "llm-probe-success": {
+      "status": "PASS",
+      "ms": 1,
+      "detail": {
+        "origin": "https://api.deepseek.com/v1",
+        "detail": "连接成功，模型名 deepseek-chat，服务端列出 2 个模型"
+      }
+    },
+    "llm-probe-auth-error": {
+      "status": "PASS",
+      "ms": 1,
+      "detail": {
+        "hint": "鉴权失败（401）：API Key 无效、过期或与所选 provider 不匹配。"
+      }
+    },
+    "llm-probe-rate-limit-and-not-found": {
+      "status": "PASS",
+      "ms": 0,
+      "detail": {
+        "limited": "请求过多（429）：额度用尽或触发限流，请稍后再试。",
+        "missing": "接口不存在（404）：请检查服务地址（baseUrl）或模型名。"
+      }
+    },
+    "llm-probe-network-and-timeout": {
+      "status": "PASS",
+      "ms": 33,
+      "detail": {
+        "network": "域名解析失败：请检查服务地址是否写对、网络是否可用。",
+        "timeout": "连接超时（8 秒）：请检查服务地址、网络或代理设置。"
+      }
+    },
+    "llm-probe-missing-inputs": {
+      "status": "PASS",
+      "ms": 0,
+      "detail": {
+        "noKey": "请在 Bot 设置填入 API Key（将继承为 DEEPSEEK_API_KEY 传给 DSH）。",
+        "customNoBase": "自定义 OpenAI 兼容 provider 必须填写 baseUrl。",
+        "unknown": "请在 LLM 供应商下拉框里选择一个受支持的 provider。"
+      }
+    },
+    "voice-probe": {
+      "status": "PASS",
+      "ms": 0,
+      "detail": {
+        "reachable": "实时语音端点可达（HTTP 400），实际语音连接会在启动语音网关时建立",
+        "denied": "鉴权失败（401）：API Key 无效、过期或与所选 provider 不匹配。",
+        "local": "本地 ASR 在设备内识别，无需连接测试；首次使用会自动下载模型。"
+      }
+    },
+    "llm-defaults": {
+      "status": "PASS",
+      "ms": 0,
+      "detail": {
+        "baseUrl": "https://example.test/v1",
+        "model": "my-model",
+        "apiKeyEnv": "WHALEGIRL_LLM_API_KEY"
+      }
+    },
+    "legacy-config-migration": {
+      "status": "PASS",
+      "ms": 13,
+      "detail": {
+        "provider": "dashscope",
+        "apiKeySet": true
+      }
+    },
+    "config-roundtrip-and-secret-handling": {
+      "status": "PASS",
+      "ms": 7,
+      "detail": {
+        "mode": "600",
+        "workspace": "/tmp/bot-workspace-2"
+      }
+    },
+    "test-endpoints-with-mock-fetch": {
+      "status": "PASS",
+      "ms": 8,
+      "detail": {
+        "ok": "连接成功，模型名 deepseek-chat，服务端列出 1 个模型",
+        "denied": "鉴权失败（401）：API Key 无效、过期或与所选 provider 不匹配。",
+        "voice": "鉴权失败（401）：API Key 无效、过期或与所选 provider 不匹配。"
+      }
+    },
+    "workspace-pick-endpoint": {
+      "status": "PASS",
+      "ms": 2,
+      "detail": {
+        "ok": true,
+        "path": "/tmp/picked"
+      }
+    },
+    "missing-config-defaults": {
+      "status": "PASS",
+      "ms": 1,
+      "detail": {
+        "voice": "dashscope",
+        "llm": "opencode-go/deepseek-v4.1-flash"
+      }
+    },
+    "settings-page": {
+      "status": "PASS",
+      "ms": 1,
+      "detail": {
+        "bytes": 34123
+      }
+    }
+  },
+  "ok": true,
+  "finishedAt": "2026-10-22T16:12:56.143Z"
+}

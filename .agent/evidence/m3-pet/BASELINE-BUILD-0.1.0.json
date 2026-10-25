@@ -1,0 +1,38 @@
+{
+  "suite": "dsh-bot v0.1 baseline build (Phase 0)",
+  "date": "2026-10-24T12:00:00Z",
+  "productVersion": "0.1.0",
+  "bundledRuntimeVersion": "0.2.1-rc.2",
+  "buildCommand": "pnpm run package:desktop:mac:arm64:unsigned",
+  "buildCommit": "d7ae1b7b3e",
+  "baselineTag": "wg-v0.1-baseline.1",
+  "baselineCommit": "d521e6579d4baf348ba5a3b2ea33cb14bfa3e84e",
+  "artifact": {
+    "dmg": "whalegirlbot-0.1.0-mac-arm64-unsigned.dmg",
+    "dmgPath": "$HOME/projects/dsh-bot/apps/desktop/.desktop-build/targets/mac-arm64/unsigned-artifacts/whalegirlbot-0.1.0-mac-arm64-unsigned.dmg",
+    "sha256": "c082d6fb5b86ecc759839cb49f1e23553e6dafd1fad4692ea5268ad4a1c8dbd0"
+  },
+  "appBundle": {
+    "path": "$HOME/projects/dsh-bot/apps/desktop/.desktop-build/targets/mac-arm64/unsigned-artifacts/mac-arm64/dsh-bot.app",
+    "CFBundleIdentifier": "ai.nisse.app",
+    "CFBundleShortVersionString": "0.1.0",
+    "CFBundleVersion": "0.1.0",
+    "CFBundleDisplayName": "dsh-bot",
+    "codesign": "ad-hoc + hardened runtime; codesign --verify --deep --strict PASS"
+  },
+  "bundledResources": [
+    "runtime/primary-runtime",
+    "voice-worker (PyInstaller onedir)",
+    "voice-client",
+    "pet/NissePet.app",
+    "host-integration",
+    "whalegirl-g2-bridge"
+  ],
+  "sourceTreeUnchangedByBuild": true,
+  "buildBeforeStatus": ["M apps/desktop/scripts/electron-builder-config.mjs", "M apps/desktop/scripts/prepare-dsh.ts"],
+  "notes": [
+    "版本分离：产品 0.1.0 与 DSH runtime 0.2.1-rc.2 独立；runtime descriptor 记录 0.2.1-rc.2。",
+    "memory runtime 尚未进入本次 URL 资源（B 流 task-6 进行中）；本包不含 Hindsight。",
+    "unsigned 内部包；真实 TCC/DMG 安装验证待执行。"
+  ]
+}

@@ -1,0 +1,276 @@
+{
+  "suite": "Bot settings round 2 (memory admin / prompt editor / permissions)",
+  "startedAt": "2026-10-22T16:12:52.952Z",
+  "steps": {
+    "defaults-and-legacy-migration": {
+      "status": "PASS",
+      "ms": 0,
+      "detail": {
+        "approval": {
+          "mode": "ask-each",
+          "onceMinutes": 10
+        },
+        "behavior": {
+          "pauseOnInput": true,
+          "allowScreenView": false
+        }
+      }
+    },
+    "merge-partial-edit-preserves-stored-config": {
+      "status": "PASS",
+      "ms": 1,
+      "detail": {
+        "mode": "never-ask",
+        "minutes": 30,
+        "override": "覆盖内容"
+      }
+    },
+    "memory-list-normalization": {
+      "status": "PASS",
+      "ms": 0,
+      "detail": {
+        "array": {
+          "id": "a",
+          "text": "hello",
+          "kind": "fact",
+          "namespace": "global",
+          "date": "2026-01-01T00:00:00Z"
+        },
+        "sidecarTotal": 7,
+        "runtime": {
+          "id": "c",
+          "text": "runtime",
+          "kind": "fact",
+          "namespace": "global",
+          "date": ""
+        }
+      }
+    },
+    "memory-mutation-normalization": {
+      "status": "PASS",
+      "ms": 0,
+      "detail": {
+        "success": {
+          "ok": true,
+          "available": true,
+          "id": "old-1",
+          "documentId": "doc-1",
+          "raw": {
+            "ok": true,
+            "result": {
+              "documentId": "doc-1",
+              "itemsWritten": 1,
+              "previousId": "old-1"
+            }
+          }
+        },
+        "rejected": "拒绝"
+      }
+    },
+    "prompt-preview-normalization": {
+      "status": "PASS",
+      "ms": 0,
+      "detail": {
+        "variables": [
+          "{{name}}",
+          "{{addressUser}}"
+        ],
+        "source": "/tmp/nisse-voice-persona.mjs"
+      }
+    },
+    "local-memory-history-file": {
+      "status": "PASS",
+      "ms": 2,
+      "detail": {
+        "entries": 3,
+        "mode": "600"
+      }
+    },
+    "legacy-config-file-and-secret-redaction": {
+      "status": "PASS",
+      "ms": 9,
+      "detail": {
+        "approval": {
+          "mode": "ask-each",
+          "onceMinutes": 10
+        },
+        "behavior": {
+          "pauseOnInput": true,
+          "allowScreenView": false
+        }
+      }
+    },
+    "approval-and-behavior-roundtrip": {
+      "status": "PASS",
+      "ms": 9,
+      "detail": {
+        "onDisk": {
+          "mode": "ask-once",
+          "onceMinutes": 15
+        },
+        "clamp": {
+          "mode": "ask-each",
+          "onceMinutes": 240
+        }
+      }
+    },
+    "prompt-override-save-restore": {
+      "status": "PASS",
+      "ms": 6,
+      "detail": {
+        "saved": "你是自定义人格，保持简短。",
+        "restored": ""
+      }
+    },
+    "memory-list-endpoint": {
+      "status": "PASS",
+      "ms": 5,
+      "detail": {
+        "items": 2,
+        "query": {
+          "limit": 20,
+          "offset": 0
+        }
+      }
+    },
+    "memory-correct-endpoint-and-history": {
+      "status": "PASS",
+      "ms": 7,
+      "detail": {
+        "local": {
+          "at": "2026-10-22T16:12:52.991Z",
+          "action": "correct",
+          "id": "mem-1",
+          "ok": true,
+          "documentId": "doc-new",
+          "text": "用户喜欢非常简短的回答（纠正）",
+          "previousText": "用户喜欢简短回答",
+          "kind": "preference",
+          "namespace": "global",
+          "source": "local"
+        },
+        "remote": {
+          "at": "2026-02-03T10:00:00Z",
+          "action": "other",
+          "id": "",
+          "ok": true,
+          "text": "后端版本内容",
+          "source": "remote"
+        },
+        "counts": {
+          "local": 1,
+          "remote": 1
+        }
+      }
+    },
+    "memory-correct-failure-paths": {
+      "status": "PASS",
+      "ms": 8,
+      "detail": {
+        "failures": 2
+      }
+    },
+    "memory-delete-endpoint": {
+      "status": "PASS",
+      "ms": 6,
+      "detail": {
+        "deletions": 1
+      }
+    },
+    "prompt-preview-failure-paths": {
+      "status": "PASS",
+      "ms": 3,
+      "detail": {
+        "code": "PROMPT_PREVIEW_FAILED"
+      }
+    },
+    "legacy-hooks-still-work": {
+      "status": "PASS",
+      "ms": 3,
+      "detail": {
+        "search": 1
+      }
+    },
+    "settings-page-syntax-and-content": {
+      "status": "PASS",
+      "ms": 3,
+      "detail": {
+        "bytes": 34123,
+        "scripts": 1
+      }
+    },
+    "put-config-response-redaction": {
+      "status": "PASS",
+      "ms": 2,
+      "detail": {
+        "stored": true
+      }
+    }
+  },
+  "sidecarSuite": {
+    "status": "PASS",
+    "ms": 1472,
+    "evidence": "$HOME/projects/dsh-bot-workspace/m4/bot-evidence/BOT-SETTINGS-MEMORY-ADMIN.json",
+    "steps": {
+      "sidecar-start": "PASS",
+      "seed-write": "PASS",
+      "list-all": "PASS",
+      "list-query-filter": "PASS",
+      "list-paging": "PASS",
+      "correct-write-new-delete-old": "PASS",
+      "delete-by-id": "PASS",
+      "history": "PASS",
+      "validation-errors": "PASS",
+      "bearer-token-required": "PASS",
+      "memory-runtime-hook-recipe": "PASS"
+    }
+  },
+  "ok": true,
+  "deliverables": {
+    "changedFiles": [
+      "nisse-dsh/apps/desktop/src/bot-config-server.ts (rewritten: page module + memory/prompt endpoints + new optional hooks)",
+      "nisse-dsh/apps/desktop/src/bot-settings-model.ts (new: BotConfig schema/normalization, memory admin normalization, local history log, prompt-preview normalization)",
+      "nisse-dsh/apps/desktop/src/bot-settings-page.ts (new: self-contained settings page with 提示词/权限 tabs and extended 记忆 tab)",
+      "nisse/m4/memory/sidecar.mjs (new /list, /correct, /delete, /history; bearer token and zero extra deps kept)",
+      "nisse/m3/bot/test-bot-settings-round2.mjs (new: this suite)",
+      "nisse/m4/test-m4-memory-admin.mjs (new: real sidecar admin suite)",
+      "nisse/m3/bot/test-bot-providers.mjs (2 stale secret assertions fixed: GET/PUT must not contain an apiKey key at all)"
+    ],
+    "configSchemaAdded": {
+      "approval.mode": "ask-each | a[REDACTED_KEY] | ask-once | never-ask (default ask-each)",
+      "approval.onceMinutes": "1..240 (default 10)",
+      "behavior.pauseOnInput": "boolean (default true)",
+      "behavior.allowScreenView": "boolean (default false)",
+      "persona.promptOverride": "string (default empty = assembled default prompt)"
+    },
+    "newHooks": {
+      "onMemoryList": "async (query:{query?,limit,offset,kind?,namespace?}) => sidecar /list JSON or items array",
+      "onMemoryCorrect": "async ({id,text,kind,namespace}) => sidecar /correct JSON ({ok,result:{documentId,forget}})",
+      "onMemoryDelete": "async ({id}) => sidecar /delete JSON ({ok,result})",
+      "onMemoryHistory": "optional async ({id,documentId?,limit}) => sidecar /history JSON or items array",
+      "onPromptPreview": "async (config:BotConfigView) => {personaPrompt,dshPrompt?,voicePrefix?,variables?,sources?,note?}"
+    },
+    "newEndpoints": [
+      "GET /bot/prompt/preview",
+      "POST /bot/memory/list",
+      "POST /bot/memory/correct",
+      "POST /bot/memory/delete",
+      "POST /bot/memory/history"
+    ],
+    "localHistoryFile": "<DSH_HOME>/memory/admin-history.jsonl (mode 0600)",
+    "wiringChecklist": [
+      "main.ts startBotConfigServer hooks: add onMemoryList/onMemoryCorrect/onMemoryDelete/onMemoryHistory/onPromptPreview (see newHooks); each memory hook body is (await memoryRuntime.request(path, body)).json (response.json, or the whole {status,json} - both normalize).",
+      "onConfigSaved persona comparison: add promptOverride: config.persona.promptOverride, otherwise a stored non-empty override makes every save relaunch the Host.",
+      "onConfigSaved: approval/behavior changes need no Host relaunch; startDeskPet reads NISSE_APPROVAL_MODE/NISSE_PAUSE_ON_INPUT/NISSE_ALLOW_SCREEN_VIEW only at spawn, so apply them to the running pet (respawn or shell-control); botRuntime.applyConfig already restarts the voice gateway, which re-reads NISSE_BOT_PROMPT_OVERRIDE/persona.",
+      "behavior.allowScreenView config default is false; main.ts currently uses (allowScreenView ?? true) which never applies because the config always normalizes to a boolean. Set DEFAULT_BOT_CONFIG.behavior.allowScreenView = true if the product default should be ON.",
+      "Prompt preview recipe: GET host-integration bridge /persona/preview -> {dshPrompt, voicePersonaModule}; dynamic-import that module and call voicePersonaPrefix(config.persona); return {personaPrompt: dshPrompt, voicePrefix, sources:{hostIntegration, voicePersonaModule}}.",
+      "If a hook is missing the admin endpoints answer 200 with {ok:true,result:{available:false,note}} so the page shows a wiring hint (never 500)."
+    ],
+    "testCommands": [
+      "node m3/bot/test-bot-settings-round2.mjs",
+      "node m4/test-m4-memory-admin.mjs",
+      "node m3/bot/test-bot-providers.mjs"
+    ]
+  },
+  "finishedAt": "2026-10-22T16:12:54.495Z"
+}

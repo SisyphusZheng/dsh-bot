@@ -1,0 +1,15 @@
+{
+  "name": "dsh-bot",
+  "short_name": "dsh-bot",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "icons": [
+    {
+      "src": "whalegirl-logo.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

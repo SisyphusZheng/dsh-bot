@@ -1,0 +1,58 @@
+{
+  "suite": "M4-7/8 security+audit",
+  "startedAt": "2026-10-22T13:13:02.277Z",
+  "steps": {
+    "setup": {
+      "status": "PASS",
+      "ms": 1278,
+      "detail": {
+        "pid": 61693,
+        "httpStatus": 401
+      }
+    },
+    "always-allow-scope": {
+      "status": "PASS",
+      "ms": 31401,
+      "detail": {
+        "policyId": "dce17705-8e03-44af-82bc-615a86c32786",
+        "autoAllowed": true
+      }
+    },
+    "revocation": {
+      "status": "PASS",
+      "ms": 11697,
+      "detail": {
+        "revokedPolicyId": "252cf7e2-97fb-47fa-9694-f5511250b49d",
+        "approvalAsked": true,
+        "wrongIdRejected": true,
+        "fileExists": false
+      }
+    },
+    "ttl-expiry": {
+      "status": "PASS",
+      "ms": 9966,
+      "detail": {
+        "ttlMs": 800,
+        "expired": true,
+        "approvalAsked": true
+      }
+    },
+    "cancel-and-persona-audit": {
+      "status": "PASS",
+      "ms": 1223,
+      "detail": {
+        "events": 15
+      }
+    },
+    "secret-scan": {
+      "status": "PASS",
+      "ms": 1,
+      "detail": {
+        "scanned": 2,
+        "findings": 0
+      }
+    }
+  },
+  "ok": true,
+  "finishedAt": "2026-10-22T13:13:57.974Z"
+}

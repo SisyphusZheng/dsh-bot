@@ -1,0 +1,500 @@
+{
+  "task": "task-4",
+  "round": "PET-EXPERIENCE-ROUND1",
+  "generatedAt": "2026-10-22T16:41:01.360124+00:00",
+  "productPremise": "所有能力整合进同一个 dsh-bot：DSH 是唯一 Agent/会话/设置入口；桌宠只是 OS 级身体（透明置顶/动画/气泡/语音 I/O）。本 round 未新增独立设置窗口、独立会话或第二个 Agent。",
+  "scope": {
+    "changedOnlyUnder": "m3/pet/**",
+    "notChanged": [
+      "nisse-dsh/**（壳侧由 Lead / shell-settings 改）",
+      "research/qwen-audio-agent/**",
+      "m3/pet/web/dist/**（上游构建产物，只读复用）"
+    ]
+  },
+  "changedFiles": {
+    "new": [
+      "desktop/src/activity-bubble.mjs",
+      "desktop/src/onboarding.mjs",
+      "desktop/src/voice-input.mjs",
+      "desktop/src/pause-on-input.mjs",
+      "desktop/src/bubble-payload.mjs",
+      "desktop/src/experience-store.mjs",
+      "desktop/src/voice-controls-injected.js",
+      "desktop/test/activity-bubble.test.mjs",
+      "desktop/test/pet-onboarding.test.mjs",
+      "desktop/test/voice-input.test.mjs",
+      "desktop/test/pause-on-input.test.mjs",
+      "desktop/test/bubble-payload.test.mjs",
+      "desktop/test/body-runtime-shell.test.mjs",
+      "desktop/test/experience-store.test.mjs",
+      "desktop/smoke/pet-experience-smoke.cjs"
+    ],
+    "modified": [
+      "desktop/src/main.mjs（onboarding/语音输入/活动气泡/暂停/托盘/桥接事件/冒烟探针接线）",
+      "desktop/src/body-runtime.mjs（GET/PUT /bot/config、POST /bot/test/llm|voice、GET /bot/status、bridge POST /cancel）",
+      "desktop/src/bubble-window.mjs（输入态 setFocusable/focus、380x300、修复既有 2px 几何 bug）",
+      "desktop/src/bubble.html / bubble.css / bubble.js / bubble-preload.cjs（标题/图标/进度/输入行/2x2 选项/次要按钮/取消/错误/活动样式）",
+      "desktop/src/preload.cjs（onTalkKey/onVoiceCommand/reportVoiceState/checkVoiceReady 通道）",
+      "desktop/test/body-runtime.test.mjs（去掉对本机 59100 端口的真实 fetch 依赖）"
+    ]
+  },
+  "items": [
+    {
+      "id": "1",
+      "title": "Pet-led onboarding（W12）：气泡内引导，不打开任何设置窗口",
+      "status": "PASS",
+      "code": [
+        "desktop/src/onboarding.mjs",
+        "desktop/src/experience-store.mjs",
+        "desktop/src/main.mjs#startOnboarding/runOnboardingEffects",
+        "desktop/src/bubble.js"
+      ],
+      "what": [
+        "步骤：称呼 → 人格（温柔可靠/毒舌吐槽/元气活泼/安静省话 预设 + 自由输入）→ 模型与 Key（provider + Key → 壳 POST /bot/test/llm，成功/失败/重试/跳过）→ 语音（provider + Key + 唤醒词 → POST /bot/test/voice）→ 权限（每次/操作前/一次 N 分钟/从不）→ 完成（提示去 DSH 设置 → Bot）",
+        "全部通过气泡窗口完成：输入行（window.setFocusable 临时聚焦）、2×2 选项按钮、次要按钮（跳过/上一步/自己写）、审批是/否保留；不创建任何窗口/会话",
+        "断点续：进度写 pet userData/pet-experience.json（0600，不存 Key）；首启自动开始、未完成续上、已完成不打扰；托盘「重新引导（气泡内）」可重跑",
+        "写配置只走壳 HTTP：GET/PUT /bot/config（每次整段 merge persona/llm/voice，并 forward-compatible 携带 approval/behavior）；读不到壳时允许跳过继续",
+        "未决审批优先：引导不会覆盖审批气泡；审批答完自动回到引导"
+      ],
+      "evidence": {
+        "smokeAssertions": {
+          "onboardingAutoStarted": true,
+          "stepAddress": true,
+          "stepPersona": true,
+          "stepLlmProvider": true,
+          "llmAndVoiceTested": true,
+          "onboardingCompleted": true,
+          "onboardingProgressPersisted": true,
+          "onboardingApprovalPersisted": true,
+          "onboardingAnswers": {
+            "addressUser": "小智",
+            "persona": {
+              "presetId": "gentle",
+              "personality": "温柔、可靠、有耐心；像家人一样陪着用户，遇事先接住情绪再解决问题。",
+              "tone": "温和、清楚、不催促；必要时先给结论。",
+              "custom": ""
+            },
+            "llm": {
+              "provider": "opencode-go",
+              "baseUrl": "https://opencode.ai/zen/go/v1",
+              "model": "deepseek-v4.1-flash",
+              "apiKey": "[REDACTED_KEY]",
+              "apiKeySet": true,
+              "skipped": false
+            },
+            "voice": {
+              "provider": "dashscope",
+              "baseUrl": "wss://dashscope.aliyuncs.com/api-ws/v1/realtime",
+              "model": "qwen-audio-3.0-realtime-plus",
+              "voice": "longanxiaoxin",
+              "wakeWord": "小鲸小鲸",
+              "apiKey": "[REDACTED_KEY]",
+              "apiKeySet": true,
+              "skipped": false
+            },
+            "approval": {
+              "mode": "ask-each",
+              "onceMinutes": 30
+            },
+            "behavior": {
+              "pauseOnInput": true,
+              "allowScreenView": true
+            }
+          }
+        },
+        "shellConfigWritten": {
+          "persona.addressUser": "小智",
+          "persona.personality": "温柔、可靠、有耐心；像家人一样陪着用户，遇事先接住情绪再解决问题。",
+          "llm.provider": "opencode-go",
+          "llm.apiKeySet": true,
+          "voice.provider": "dashscope",
+          "voice.wakeWord": "小鲸小鲸",
+          "voice.apiKeySet": true,
+          "approval": {
+            "mode": "ask-each",
+            "onceMinutes": 30
+          },
+          "behavior": {
+            "pauseOnInput": true,
+            "allowScreenView": true
+          }
+        },
+        "shellCalls": {
+          "configPuts": 7,
+          "testLlm": 1,
+          "testVoice": 1
+        },
+        "screenshots": [
+          {
+            "path": "m3/pet/evidence/pet-onboarding-address.png",
+            "bytes": 39882,
+            "sha256": "afc74990ad855075fcf0b22b2c8cc809853ad037fecf2394a59fcf24844dd4f7"
+          },
+          {
+            "path": "m3/pet/evidence/pet-onboarding-llm-key.png",
+            "bytes": 41967,
+            "sha256": "d3c53ec839882bd2eae111c58d1dcc2ca7be30c08d7bb66d724549295a991202"
+          },
+          {
+            "path": "m3/pet/evidence/pet-onboarding-done.png",
+            "bytes": 44827,
+            "sha256": "4c0e7b679e04a66ecfe52be7fdec301ffcf6af303f536c7a49f32fac8c433648"
+          }
+        ]
+      },
+      "caveats": [
+        "approval/behavior 两节当前壳 bot-config-server normalize() 会丢弃（clone 只读确认）；桌宠已按未来字段 PUT，smoke 用「会回显这两节」的壳 stub 验证；壳侧字段落地后即持久化，见 shellNeeds。",
+        "provider 目录暂在 onboarding.mjs 镜像壳的 bot-providers.ts 常量；壳若改目录需同步，或壳新增 GET /bot/providers。"
+      ]
+    },
+    {
+      "id": "2",
+      "title": "语音输入补全：talk key + 模式 + 悬停麦克风 + 输入气泡 + 错误气泡",
+      "status": "PARTIAL",
+      "subitems": [
+        {
+          "name": "talk key 配置与三种模式（hold / toggle / always）",
+          "status": "PASS",
+          "evidence": "voice-input.mjs 纯函数单测（65/65 通过）+ 真机 smoke：globalShortcut Alt+Space 注册成功、onGlobalTalkTrigger → IPC → preload → 注入层 → 渲染层麦克风按钮链路 dry-run 验证（talkKeyEnabledListening/talkKeyStopped=true）；托盘可切换模式与说话键（Option/Alt、Alt+Space、Ctrl+Shift+Space、鼠标侧键 4/5）"
+        },
+        {
+          "name": "默认「按住 Option/Alt」",
+          "status": "PARTIAL",
+          "why": "Electron globalShortcut 不能注册单独修饰键、也没有全局 keyup；桌宠窗口聚焦时注入层监听真实 keydown/keyup（按住/松开语义完整）；未聚焦时用可配置全局组合键兜底（默认 Alt+Space：按一次开始、再按一次结束、15s 自动收麦）。真正全局「按住 Option」需原生事件 tap（Accessibility 权限），未伪造。"
+        },
+        {
+          "name": "麦克风悬停按钮 + 状态",
+          "status": "PASS",
+          "evidence": "复用渲染层 .desktop-orb-stage:hover .desktop-orb-controls 的麦克风按钮（CDP forcePseudoState 验证 opacity 1 + 截图 pet-orb-hover-controls.png）；注入层加「按住 Option/Alt 说话」状态徽章并随收听/等待变绿/变黄；点击即开/关收听，状态经 reportVoiceState 回到主进程"
+        },
+        {
+          "name": "输入气泡（识别中灰底 + 取消；发送后灰底）",
+          "status": "PASS",
+          "evidence": "渲染层 setOrbBubble({kind:'listening'}) → 主进程桥模式放行 → 灰色 input 气泡（截图 pet-voice-input-bubble.png）+「取消」→ 主进程发 voice disable；取消后显示「已取消，先不听」；smoke 断言 inputBubbleText/inputBubbleCancel/inputBubbleCancelled 全 true"
+        },
+        {
+          "name": "错误气泡（缺 Key / 网络 / 网关未启动 / 模型不可用 / 麦克风不可用）",
+          "status": "PASS",
+          "evidence": "说话前 ensureVoiceReady：GET /bot/config 无 Key → 「去 DSH 设置 → Bot 填语音 API Key」（截图 pet-voice-error-bubble.png，smoke 断言）；网关未启动/网络错误映射为中文可读气泡（voice-input.mjs 单测覆盖分类）"
+        },
+        {
+          "name": "真实麦克风采集 / TCC 授权 / 真实语音链路",
+          "status": "UNVERIFIED",
+          "why": "自动 smoke 用 dry-run（不申请真实麦克风，避免 TCC 弹窗阻塞）；需用户真机授权后人工验收"
+        }
+      ],
+      "code": [
+        "desktop/src/voice-input.mjs",
+        "desktop/src/voice-controls-injected.js",
+        "desktop/src/preload.cjs（新通道）",
+        "desktop/src/main.mjs#ensureVoiceReady/registerTalkKey/onGlobalTalkTrigger/showRecognizingBubble"
+      ],
+      "evidence": {
+        "smokeAssertions": {
+          "micHoverButton": true,
+          "micHoverCss": true,
+          "micHoverVisible": true,
+          "talkKey": {
+            "accelerator": "Alt+Space",
+            "registered": true,
+            "fallback": "Alt+Space",
+            "mode": "hold",
+            "keyId": "alt",
+            "presetLabel": "Option / Alt（桌宠聚焦时按住）",
+            "dryRun": true
+          },
+          "talkKeyEnabledListening": true,
+          "talkKeyApplied": true,
+          "talkKeyStopped": true,
+          "inputBubbleText": "帮我看下今天的安排",
+          "inputBubbleCancel": true,
+          "inputBubbleCancelled": true,
+          "voiceErrorBubble": true,
+          "injectedVoiceControls": {
+            "enabled": false,
+            "waiting": false,
+            "mode": "hold",
+            "reports": 3,
+            "applied": 0,
+            "actions": [],
+            "lastPhase": "",
+            "hasButton": true,
+            "badge": "按住 Option/Alt 说话"
+          }
+        },
+        "screenshots": [
+          {
+            "path": "m3/pet/evidence/pet-orb-hover-controls.png",
+            "bytes": 94755,
+            "sha256": "3c2ef0cbe618ab5990cc4e51e9bd2fd2af94f48fb7c1b4fe32edc2e7f3adc2a6"
+          },
+          {
+            "path": "m3/pet/evidence/pet-voice-input-bubble.png",
+            "bytes": 13237,
+            "sha256": "6bbc0a35ca8ab359876d461c54ee8b0813879a6fa8764974185cf480bc0be1bd"
+          },
+          {
+            "path": "m3/pet/evidence/pet-voice-error-bubble.png",
+            "bytes": 14602,
+            "sha256": "6c9b2e80401a353c2d4f6a5579585015cc8f9aadd85b90764cfb880abae2a10b"
+          }
+        ]
+      },
+      "caveats": [
+        "与壳 gateway 的 ws 协议未改动（仍由渲染层直接连 QWEN_AUDIO_AGENT_URL 的 realtime 端点），未新增会话。",
+        "输入气泡依赖上游渲染层 setOrbBubble({kind:'listening'}) 行为（已在该构建上实测注入同一 payload 验证）。"
+      ]
+    },
+    {
+      "id": "3",
+      "title": "活动气泡（P1）：DSH 事件 → 动作图标 + 文件名，点击穿透",
+      "status": "PASS",
+      "code": [
+        "desktop/src/activity-bubble.mjs",
+        "desktop/src/bubble.js/.css（activity 样式 + 图标动画）",
+        "desktop/src/main.mjs#bridge poller/showActivityBubble"
+      ],
+      "what": [
+        "bridge /events：turn.started→💭思考中；tool.call→按工具名映射 📖阅读/🔍搜索/✍️写文件/🖥️用电脑/⚙️用工具；tool.result→✅完成/⚠️出错，并短暂保留",
+        "写/读文件从 argumentsPreview 解析 file_path/path/target_file 等字段，气泡显示 basename（如「写文件 · report.md」）；解析失败时退回工具名",
+        "活动气泡 clickThrough=true：气泡窗口保持 setIgnoreMouseEvents(true,{forward:true})，不请求可交互（smoke 断言 activityNotInteractive=true），不挡下层操作；审批气泡仍可点「是/否」",
+        "turn settled / ended / agent.status idle / error 时收起活动气泡；DSH 回答 delta 用普通回答气泡覆盖活动气泡"
+      ],
+      "evidence": {
+        "smokeAssertions": {
+          "activityText": "✍️写文件 · report.md",
+          "activityHasFileName": true,
+          "activityClickThrough": true,
+          "activityNotInteractive": true,
+          "activityCleared": true
+        },
+        "screenshots": [
+          {
+            "path": "m3/pet/evidence/pet-activity-write-file.png",
+            "bytes": 27985,
+            "sha256": "8c6a239fd0aae81dc8da16d3473045aac30b0246621845c7efcecf91798cd983"
+          }
+        ]
+      },
+      "caveats": [
+        "文件名来自 tool.call 的 argumentsPreview（preview 截断时可能只能显示部分/退回工具名）；活动事件集合按 host-integration 现有 turn.started/tool.call/tool.result 实现。"
+      ]
+    },
+    {
+      "id": "4",
+      "title": "用户碰键鼠立即暂停（turn 运行中 → bridge POST /cancel → 「已暂停，等你」）",
+      "status": "PASS",
+      "code": [
+        "desktop/src/pause-on-input.mjs",
+        "desktop/src/main.mjs#startPauseMonitor/pauseCurrentTurn",
+        "desktop/src/body-runtime.mjs#requestBridgeCancel"
+      ],
+      "what": [
+        "powerMonitor.getSystemIdleTime() 轮询（默认 1s；smoke 250ms）；仅 turn 运行中生效；turn 开始后 2.5s grace 避免「刚点发送」误伤；idle 回落/持续低 idle 判定为新输入；behavior.pauseOnInput=false 时关闭",
+        "触发后：POST {bridge}/cancel（Bearer bridge token）取消 DSH 当前 turn，显示「已暂停，等你。想做别的直接说。」；失败显示可读错误；随后同一 turn 不再重复取消",
+        "不依赖任何注入的键鼠监听，桌宠自身动画/气泡不产生系统 idle 输入，不会误判"
+      ],
+      "evidence": {
+        "smokeAssertions": {
+          "pauseBubble": "已暂停，等你。想做别的直接说。",
+          "pauseStatus": {
+            "paused": 1,
+            "lastPause": {
+              "at": "2026-10-22T16:40:43.861Z",
+              "idleSeconds": 0.25,
+              "ok": true,
+              "cancelled": true,
+              "error": ""
+            },
+            "lastError": ""
+          },
+          "pauseTurnActiveAfter": false,
+          "bridgeCancel": {
+            "at": "2026-10-22T16:40:43.861Z",
+            "idleSeconds": 0.25,
+            "ok": true,
+            "cancelled": true,
+            "error": ""
+          }
+        },
+        "bridgeCancelCalls": [
+          {
+            "authorized": true,
+            "at": "2026-10-22T16:40:43.860Z"
+          }
+        ],
+        "screenshots": [
+          {
+            "path": "m3/pet/evidence/pet-paused-bubble.png",
+            "bytes": 18881,
+            "sha256": "b7fc1382142378b8773f19abd1d1d6e5ac7f1ea565bf4e06d1a8be0accd0fb63"
+          }
+        ]
+      },
+      "caveats": [
+        "自动 smoke 通过注入 idle 值（0.25s）驱动同一 powerMonitor 读数包装路径；真实物理键鼠输入未在自动化中人工验收（同一代码路径，生产用 powerMonitor.getSystemIdleTime）。"
+      ]
+    },
+    {
+      "id": "5",
+      "title": "验收：真实 Electron smoke + 截图 + node --test + 证据",
+      "status": "PASS",
+      "what": [
+        "真实 Electron 43.6.0（research/qwen-audio-agent 的 Electron.app）+ 壳形状 spawn（app 目录 m3/pet/desktop + --user-data-dir + HOME/XDG_* 隔离 + NISSE_BRIDGE_ONLY=1 + NISSE_BRIDGE_FILE + QWEN_AUDIO_AGENT_URL + NISSE_SHELL_CONTROL_URL）；壳/bridge/gateway 全 stub，驱动真实气泡 DOM",
+        "smoke 8/8 步 PASS（见下）；截图 9 张；node --test 新增/相关 65/65 PASS；全量套件 311/323，11 个失败均为改动前既有失败（基线证据 evidence/node-test-full.log：260/273，且 bubble-window 几何 FAIL 已在本轮修复）",
+        "回归：既有 W1/W6 body-runtime smoke（无设置窗/无会话/双击/审批）6/6 PASS"
+      ],
+      "evidence": {
+        "smokeResult": "m3/pet/evidence/PET-EXPERIENCE-SMOKE-RESULT.json",
+        "screenshots": [
+          {
+            "path": "m3/pet/evidence/pet-onboarding-address.png",
+            "bytes": 39882,
+            "sha256": "afc74990ad855075fcf0b22b2c8cc809853ad037fecf2394a59fcf24844dd4f7"
+          },
+          {
+            "path": "m3/pet/evidence/pet-onboarding-llm-key.png",
+            "bytes": 41967,
+            "sha256": "d3c53ec839882bd2eae111c58d1dcc2ca7be30c08d7bb66d724549295a991202"
+          },
+          {
+            "path": "m3/pet/evidence/pet-onboarding-done.png",
+            "bytes": 44827,
+            "sha256": "4c0e7b679e04a66ecfe52be7fdec301ffcf6af303f536c7a49f32fac8c433648"
+          },
+          {
+            "path": "m3/pet/evidence/pet-orb-hover-controls.png",
+            "bytes": 94755,
+            "sha256": "3c2ef0cbe618ab5990cc4e51e9bd2fd2af94f48fb7c1b4fe32edc2e7f3adc2a6"
+          },
+          {
+            "path": "m3/pet/evidence/pet-voice-input-bubble.png",
+            "bytes": 13237,
+            "sha256": "6bbc0a35ca8ab359876d461c54ee8b0813879a6fa8764974185cf480bc0be1bd"
+          },
+          {
+            "path": "m3/pet/evidence/pet-voice-error-bubble.png",
+            "bytes": 14602,
+            "sha256": "6c9b2e80401a353c2d4f6a5579585015cc8f9aadd85b90764cfb880abae2a10b"
+          },
+          {
+            "path": "m3/pet/evidence/pet-activity-write-file.png",
+            "bytes": 27985,
+            "sha256": "8c6a239fd0aae81dc8da16d3473045aac30b0246621845c7efcecf91798cd983"
+          },
+          {
+            "path": "m3/pet/evidence/pet-paused-bubble.png",
+            "bytes": 18881,
+            "sha256": "b7fc1382142378b8773f19abd1d1d6e5ac7f1ea565bf4e06d1a8be0accd0fb63"
+          },
+          {
+            "path": "m3/pet/evidence/pet-orb.png",
+            "bytes": 87767,
+            "sha256": "6f19d2554199cf14a050e6afcff4d5d992019a91bfc55c31954dd60c6c8da0e0"
+          }
+        ],
+        "nodeTests": {
+          "targetedLog": "m3/pet/evidence/node-test-pet-experience.log",
+          "fullLog": "m3/pet/evidence/node-test-full-after-pet-experience.log",
+          "regressionSmoke": "m3/pet/evidence/regression-round1/body-runtime-smoke.json"
+        }
+      }
+    }
+  ],
+  "smoke": {
+    "command": "node smoke/pet-experience-smoke.cjs --out m3/pet/evidence/PET-EXPERIENCE-SMOKE-RESULT.json --evidence-dir m3/pet/evidence",
+    "electron": "$HOME/projects/dsh-bot-workspace/research/qwen-audio-agent/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron",
+    "result": true,
+    "steps": {
+      "electron-exit-and-status": "PASS",
+      "onboarding-in-bubble-completes": "PASS",
+      "mic-hover-button-and-talk-key": "PASS",
+      "voice-input-and-error-bubbles": "PASS",
+      "activity-bubble-icon-file-clickthrough": "PASS",
+      "pause-on-user-input-cancels-turn": "PASS",
+      "no-independent-windows": "PASS",
+      "screenshots": "PASS"
+    },
+    "electronExit": {
+      "code": 0,
+      "signal": null
+    },
+    "stderrTail": "",
+    "spawnEnvShape": [
+      "NISSE_BRIDGE_ONLY=1",
+      "NISSE_BRIDGE_FILE=<dsh-home>/bridge.json",
+      "QWEN_AUDIO_AGENT_URL=<gateway stub>",
+      "NISSE_SHELL_CONTROL_URL=<shell stub>",
+      "HOME/XDG_CONFIG_HOME/XDG_DATA_HOME/XDG_STATE_HOME 隔离",
+      "--user-data-dir=<tmp>"
+    ]
+  },
+  "nodeTests": {
+    "targeted": {
+      "command": "node --test test/activity-bubble.test.mjs test/pause-on-input.test.mjs test/voice-input.test.mjs test/bubble-payload.test.mjs test/pet-onboarding.test.mjs test/body-runtime-shell.test.mjs test/experience-store.test.mjs test/body-runtime.test.mjs test/bubble-window.test.mjs",
+      "tests": 65,
+      "pass": 65,
+      "fail": 0
+    },
+    "full": {
+      "command": "node --test",
+      "tests": 323,
+      "pass": 311,
+      "fail": 11,
+      "failuresArePreexistingExceptFixedBubbleWindow": true,
+      "baseline": "m3/pet/evidence/node-test-full.log (改动前 273 tests / 260 pass / 12 fail；其中 bubble-window 几何 FAIL 本轮修复)"
+    },
+    "regression": {
+      "command": "node smoke/body-runtime-smoke.cjs --evidence-dir m3/pet/evidence/regression-round1",
+      "result": "PASS 6/6"
+    }
+  },
+  "shellNeeds": [
+    {
+      "priority": "P0",
+      "item": "BotConfig 顶层持久化 approval:{mode:'ask-each'|'a[REDACTED_KEY]'|'ask-once'|'never-ask', onceMinutes:number} 与 behavior:{pauseOnInput:boolean, allowScreenView:boolean}",
+      "why": "桌宠 onboarding 权限步骤与暂停策略写这两节；host-integration 已在读（nisse/packages/host-integration/lib/index.js approvalSettings/behaviorSettings），但 bot-config-server normalize() 当前会丢弃",
+      "how": "bot-config-server 的 BotConfig/normalize/mergeEdit 增加两节并保持旧配置迁移；GET /bot/config 回显"
+    },
+    {
+      "priority": "P0",
+      "item": "persona 字段 PUT 后保留完整（name/personality/tone/background/quirks/addressUser/boundaries/instructions）",
+      "why": "桌宠 onboarding 写 addressUser/personality/tone，壳现有 mergeEdit 整段替换 persona 会丢其它字段；桌宠已发送完整 persona（从 GET 读回），壳若再 merge 更稳"
+    },
+    {
+      "priority": "P0",
+      "item": "保持 GET /bot/status → {ok:true,status:{gateway:boolean,error:string}}",
+      "why": "桌宠据此在「语音未启动」时显示可读错误气泡，而不是静默失败"
+    },
+    {
+      "priority": "P1",
+      "item": "保持 POST /bot/test/llm|voice → {ok:true,result:{ok,detail,hint?,latencyMs,provider,origin}} 与 GET/PUT /bot/config 现有语义（空 apiKey=保留旧值、返回 apiKeySet 不回显 Key）",
+      "why": "onboarding 测试连接与保存已对接；不改即可"
+    },
+    {
+      "priority": "P1",
+      "item": "可选：GET /bot/providers 暴露 provider 目录（id/label/baseUrl/models/voices/kind）",
+      "why": "桌宠目前镜像 bot-providers.ts 常量（onboarding.mjs），壳更新目录时需要同步"
+    },
+    {
+      "priority": "P2",
+      "item": "若产品要「未聚焦时全局按住 Option/Alt」严格语义：需要壳侧提供原生全局键监听（Accessibility/TCC）或接受当前降级方案（聚焦时按住 + 全局组合键 toggle）",
+      "why": "Electron globalShortcut 不支持纯修饰键/keyup；桌宠侧无法无权限实现"
+    }
+  ],
+  "knownLimitations": [
+    "真实麦克风采集与 TCC 授权按任务要求标 UNVERIFIED（smoke dry-run 只验证主进程→preload→注入层→麦克风按钮链路）。",
+    "全局「按住 Option/Alt」：Electron 无纯修饰键全局监听、无全局 keyup；已实现「桌宠聚焦时真实按住/松开」+ 全局组合键兜底（按一次开始/再按一次结束/15s 自动收麦）；鼠标侧键仅悬停桌宠时可用。",
+    "碰键鼠暂停的真实物理输入未人工验收；smoke 注入 idle 值走同一读取路径，生产用 powerMonitor.getSystemIdleTime()。",
+    "活动气泡文件名解析基于 tool.call 的 argumentsPreview（有截断）；解析不到时只显示工具类别。",
+    "onboarding 的 provider 目录为壳 bot-providers.ts 的镜像，需与壳保持同步（或等 GET /bot/providers）。",
+    "onboarding 期间输入态气泡窗口会临时 setFocusable+focus（否则无法输入），完成后恢复非聚焦点击穿透；极端小屏/气泡贴边场景未专门验证。"
+  ],
+  "unverified": [
+    "真实麦克风录音/TCC（需用户真机授权）",
+    "真实语音识别文字端到端（dry-run 只验证气泡通路）",
+    "全局纯修饰键按住（需要 Accessibility 原生事件 tap）",
+    "真实物理键鼠输入触发暂停（代码路径与注入 idle 相同，未人工操作验收）",
+    "真实壳 bot-config-server 对 approval/behavior 字段的持久化（当前壳源码会丢弃，待 task-5）"
+  ]
+}

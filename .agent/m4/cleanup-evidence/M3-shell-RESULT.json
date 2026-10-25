@@ -1,0 +1,31 @@
+{
+  "suite": "M3 Shell",
+  "startedAt": "2026-10-21T17:43:42.004Z",
+  "steps": {
+    "smoke-app": {
+      "status": "PASS",
+      "ms": 4383,
+      "detail": {
+        "exitCode": 0,
+        "rendererLogged": true
+      }
+    },
+    "single-instance": {
+      "status": "PASS",
+      "ms": 9666,
+      "detail": {
+        "secondRejected": true,
+        "firstExit": 0
+      }
+    },
+    "no-orphans": {
+      "status": "PASS",
+      "ms": 839,
+      "detail": {
+        "orphans": 0
+      }
+    }
+  },
+  "ok": true,
+  "finishedAt": "2026-10-21T17:43:56.893Z"
+}

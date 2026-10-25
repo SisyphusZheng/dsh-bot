@@ -1,0 +1,744 @@
+{
+  "stage": "G3",
+  "title": "回声抑制、误打断与自然语音交互",
+  "status": "G3 CONDITIONALLY CLOSED (scope-limited) — risk acceptance recorded; no further gate testing; proceed to integration/product wrap-up",
+  "started_at": "2026-10-24T00:57:03+0800",
+  "entry_basis": "G2 PASS and formally closed. G2 evidence frozen; no G2 reliability reruns for G3.",
+  "known_issue": {
+    "summary": "False barge-in during bot playback: a VADUserStartedSpeakingFrame (speaker echo / ambient noise) can interrupt the current TTS context, causing server-side audio to be generated but no client audible event.",
+    "evidence": "Complex-task run at attempt 13: DSH turn completed, TTS first chunk existed, then DSHBridgeProcessor logged barge-in and audio context append failed; no audible tag. Test-only DSH_TEST_DISABLE_BARGE_IN=1 was used only for sampling and is not G3 acceptance evidence."
+  },
+  "acceptance_checklist": [
+    {
+      "id": "G3-1",
+      "item": "Locate why playback-time VAD is triggered by self-echo/ambient noise",
+      "status": "PENDING"
+    },
+    {
+      "id": "G3-2",
+      "item": "Implement echo suppression / barge-in gating / necessary audio processing and verify it",
+      "status": "PENDING"
+    },
+    {
+      "id": "G3-3",
+      "item": "Verify normal playback is not falsely interrupted while a real user interruption stops playback promptly",
+      "status": "PENDING"
+    },
+    {
+      "id": "G3-4",
+      "item": "Verify interrupted old audio does not leak into the new turn and DSH does not re-execute the old task",
+      "status": "PENDING"
+    },
+    {
+      "id": "G3-5",
+      "item": "Validate under real production configuration; DSH_TEST_DISABLE_BARGE_IN=1 cannot be used as acceptance",
+      "status": "PENDING"
+    }
+  ],
+  "constraints": [
+    "Use isolated dev DSH/DSH_HOME and never touch the main DSH",
+    "Do not use test-only disable-barge-in flag for G3 acceptance",
+    "No changes to frozen G2 ledger/recovery/approval/cancel semantics unless a new defect is evidenced",
+    "Echo-suppression work must preserve user barge-in and should not suppress all input during playback"
+  ],
+  "next_steps": [
+    "Instrument output/input energy and VAD decision provenance during playback (was speech detected while TTS active? what energy/RMS and delay?)",
+    "Compare WebRTC AEC availability/behavior in Electron (getUserMedia echoCancellation, audio constraints) and whether bot audio is routed through the same output device",
+    "Evaluate barge-in gating: require ASR partial/final confirmation, and/or require VAD energy above adaptive echo threshold, and/or short confirmation window; keep real interruption responsive",
+    "Run controlled trials: bot speaking only (no false interrupt), real user speaks during playback (interrupt within target), noise-only, and half-duplex fallback",
+    "Record G3 evidence separately in this file; include raw event timelines and audio/client state"
+  ],
+  "evidence": [],
+  "observability": {
+    "patched_only": "No behavior change; passive logging added",
+    "dsh_vad_provenance": "DSHBridgeProcessor logs every VADUserStartedSpeakingFrame with turn_key, requestId, dsh_turn, audible, text_started, epoch_ms, monotonic",
+    "input_energy": "AudioEnergyProbe logs mic RMS every ~100ms (epoch_ms + monotonic)",
+    "vad_transitions": "VADObserver logs vad_started/vad_stopped transitions",
+    "tts_timing": "DashScope TTS logs first audio chunk (reply#, epoch_ms, monotonic)",
+    "mic_settings": "client captures window.__wgMicSettings from getUserMedia track.getSettings()"
+  },
+  "first_trial": {
+    "config": "production barge-in path (no DSH_TEST_DISABLE_BARGE_IN), one complex prompt",
+    "preconditions": "bridge descriptor/listener/health, worker health, client transport:ready, pipeline session present: PASS",
+    "result": "FAILED BEFORE ANY VAD/BARGE-IN EVENT: transcript POST accepted; DSH state turns_started=0, pending=[]; /stats sessions dropped to 0; client transport:disconnected immediately after injection.",
+    "interpretation": "Test precondition/transport instability, not evidence about false barge-in. Need capture WebRTC transport disconnect reason and stabilize session before G3 playback trial."
+  },
+  "session_baseline": {
+    "run": "isolated dev DSH + worker + Electron; no barge-in disable",
+    "result": "FAIL — client transport:disconnected from the start; worker /stats sessions=0 throughout 30s idle; speak-text and transcript both returned 409 no active pipeline.",
+    "first_server_event": "worker access log repeatedly shows WebSocket /api/realtime?sessionId=<uuid> -> 403 Forbidden; this is the first concrete connection failure seen before any VAD/task activity.",
+    "interpretation": "G3 is blocked at voice-session establishment, not at echo suppression. The 403 caller/path must be identified (worker has no /api/realtime route in server.py; unknown websocket route yields 403). Do not tune barge-in before this is fixed.",
+    "g3_probe_status": "observability patched but no VAD events captured because no pipeline session existed",
+    "caller_identified": {
+      "code": "m3/pet/desktop/src/renderer-server.mjs upgrade handler: realtimePath = `${prefix}api/realtime`, prefix /g0-voice/, proxies via relayWebSocket to target derived from QWEN_AUDIO_AGENT_URL",
+      "target_in_test": "QWEN_AUDIO_AGENT_URL=http://127.0.0.1:8765 (Pipecat worker), so the legacy renderer voice WebSocket reaches the worker /api/realtime",
+      "worker_routes": "worker/server.py implements /api/offer (SmallWebRTC) etc., not /api/realtime; unknown websocket path is rejected 403",
+      "conclusion": "403 caller is the legacy pet renderer voice path, not the injected G0 SmallWebRTC test client. It is a protocol/service-target mismatch in the test stack. Do NOT add /api/realtime to the Pipecat worker. Fix by ensuring legacy renderer voice is disabled in G0 test mode or pointed at a qwen-gateway-compatible service; then rerun session baseline.",
+      "next": "identify the switch that enables the legacy renderer voice client in test mode and disable it for G3; verify /g0-voice/api/offer-only client can hold transport:ready for 30-60s."
+    }
+  },
+  "probe_bug_found": {
+    "bug": "G3VADObserver patch used VADUserStoppedSpeakingFrame without importing it; every pipeline raised NameError, repeatedly erroring and killing the session. This explains the observed transport disconnect during G3 baseline.",
+    "fix": "Added VADUserStoppedSpeakingFrame to pipecat.frames.frames imports in worker/server.py.",
+    "legacy_proxy_fix": "renderer-server.mjs now refuses /g0-voice/api/realtime in WG_G0_VOICE_TEST mode, so the legacy Qwen gateway WebSocket is not proxied to the Pipecat worker (no artificial 403 path). Production behavior unchanged.",
+    "note": "This was a test-instrumentation defect, not a product G3 barge-in defect. A clean baseline rerun is still required; the last rerun failed at the client-state reader (truncated debug JSON), so no VAD evidence yet."
+  },
+  "baseline": {
+    "status": "PASS",
+    "idle": "client transport=ready / voiceService=healthy / errors=[] / sessions=1 stable across 15s idle",
+    "speak_text": "accepted; TTS run_tts reply#1 chars=9 produced; session stayed 1; no errors",
+    "transcript": "accepted; DSH turn 1 admitted + assistant-start + turn-end completed (turn_ms=2674) + finalized; TTS reply#2 started; client stayed transport:ready/healthy; no errors",
+    "probe_status": "AudioEnergyProbe logged input RMS; no vad_started/vad_stopped and no barge-in occurred during this pure playback/transcript run",
+    "important": "The earlier disconnect storm was caused by our own probe bugs (missing import/logger); fixed. The legacy /api/realtime proxy is disabled in WG_G0_VOICE_TEST mode. Baseline now stable."
+  },
+  "experiment_A_pure_playback": {
+    "result": "PASS for speak-text pure playback, but exposes echo-triggered VAD at high volume",
+    "trials": 10,
+    "normal_volume_trials": 5,
+    "high_volume_trials": 5,
+    "session": "transport=ready/healthy, sessions=1, errors=[] throughout; 10 TTS replies produced, client audio currentTime advancing",
+    "vad": "4 x vad_started / 2 x vad_stopped during high-volume trials; barge_in=0 because speak-text has no active DSH turn",
+    "conclusion": "High volume causes VAD triggers from speaker echo even with no user speech; no interruption for speak-text because no active turn."
+  },
+  "experiment_A_active_dsh": {
+    "result": "FALSE BARGE-IN CONFIRMED",
+    "timestamp": "2026-10-24T01:47:55.658+08:00",
+    "chain": [
+      "TTS reply#1..#4 generated for voice-1 request 7a10da78-3765-41ae-84c0-e07ba2af1cd2, dsh_turn=1",
+      "vad_started epoch_ms=1792777675658 mono=5641365.422",
+      "vad_started_bridge turn=voice-1 request=7a10da78... dsh_turn=1 audible=True text_started=True",
+      "barge-in turn=voice-1 -> playback interrupted (1 ms after VAD)",
+      "no intentional user speech in this trial; system volume was 80"
+    ],
+    "root_cause_evidence": "Echo/noise-triggered VAD during bot playback; barge-in gating currently accepts any VAD start when current DSH turn is audible/text_started, with no echo suppression or confirmation.",
+    "client_note": "client <audio> remained paused=false with currentTime increasing after the barge-in; need next trial to verify whether old audio actually stops and when."
+  },
+  "experiment_B_first_attempt": {
+    "result": "INVALID TIMING",
+    "detail": "User wav played at 01:48:04.669, but TTS reply#5 only started at 01:48:12.968; VAD events at 05.600/06.720 had text_started=False, so no barge-in occurred. Must replay user speech after TTS playback actually starts."
+  },
+  "experiment_B": {
+    "result": "PARTIAL / contaminated — false barge-in fires before user speech even at normal volume",
+    "normal_volume_run": {
+      "system_volume": 13,
+      "bot_playback": "voice-1 request 7476c049-2a82-4716-a763-93ff5dde0393, audible=True text_started=True",
+      "false_vad": "vad_started epoch_ms=1792778293709, 2.475s BEFORE the user wav",
+      "barge_in": "epoch_ms=1792778293724 (15ms after VAD)",
+      "user_play_at": "1792778296184",
+      "client_audio_stop": "oldAudioCleared=true at 1792778296442 (258ms after user wav start, 718ms after server barge-in decision)",
+      "new_turn": "voice-2 completed; session transport=ready, errors=[]"
+    },
+    "high_volume_run": {
+      "false_vad_before_user": "vad_started 1792778140657, user wav 1792778141148",
+      "client_clear": "1792778141434 (oldAudioCleared=true)"
+    },
+    "interpretation": "Echo/self-audio already triggers barge-in before real user speech at both normal and high volume, so a clean real-interruption latency cannot be measured until echo gating is added. Client-side onUserStartedSpeaking now stops old audio (oldAudioCleared=true), which fixes the earlier paused=false/currentTime-growing behavior, but the stop event arrives ~0.7s after the server barge-in decision."
+  },
+  "mic_actual_settings": {
+    "echoCancellation": true,
+    "noiseSuppression": true,
+    "autoGainControl": true,
+    "voiceIsolation": false,
+    "sampleRate": 48000,
+    "channelCount": 1
+  },
+  "next_fix_direction": "VAD-only barge-in is unsafe: echo triggers VAD while bot is speaking. Add a confirmation/gating layer before barge-in (ASR partial/final confirmation and/or output-aware echo threshold), then re-run B cleanly. Preserve true user interruption responsiveness.",
+  "gating_implementation": {
+    "server": "DSHBridgeProcessor now creates a barge-in candidate on VAD, waits for InterimTranscriptionFrame; rejects if ASR text is contained in/highly similar to current bot reply (echo); confirms only on independent ASR text; on confirm broadcasts interruption and sends OutputTransportMessageUrgentFrame {type:barge-in-confirmed, requestId, turnId, turnKey, epochMs}.",
+    "client": "raw onUserStartedSpeaking no longer stops audio; onServerMessage handles barge-in-confirmed and compares requestId with latest audible turn before stopBotAudio.",
+    "manual_fallback": "No VAD-only fallback when ASR is unavailable; the raw VAD path never interrupts by itself.",
+    "first_verification": "INCONCLUSIVE — no \"barge-in candidate\"/CONFIRMED/echo-rejected log lines were produced; VAD events appeared when text_started=False. Test stop detection used stale oldAudioCleared=true from startup track replacement, so the real-speech stop measurement (613ms) is invalid. Need a harness that waits for bridge text_started/current playback and detects audio.paused/currentTime freeze or lastConfirmedBargeIn, not oldAudioCleared."
+  },
+  "gating_verification_v1": {
+    "result": "FAIL — gating implemented but verification exposes three defects",
+    "echo_case": {
+      "evidence": "candidate source=active; CONFIRMED asr='把他'; barge_confirmed=1; barge_rejected_echo=0",
+      "problem": "echo ASR fragments (short/imperfect text) were not contained in the bot reply text and passed the similarity gate → false barge-in not prevented"
+    },
+    "real_speech_case": {
+      "evidence": "playback-tail source engaged; ASR fragments like 那么/你的/哦 repeatedly CONFIRMED; barge_confirmed reached 10 in one turn; client lastConfirmedBargeIn=None throughout",
+      "problem": "no per-turn dedupe (repeated confirmations) and the client never received/handled the confirmed message; oldAudioCleared was stale, no proof audio stopped"
+    },
+    "positive": "playback-tail context works: candidate can be created after DSH turn-end while audio is still playing (source=playback-tail).",
+    "next_fixes": [
+      "Verify transport path for OutputTransportMessageUrgentFrame -> PipecatClient.onServerMessage; if unsupported, send via supported RTVI server message API or use bot-interruption event with turn correlation.",
+      "Dedupe: once a turn is confirmed, ignore further candidates for the same turn/audio generation.",
+      "Echo rejection: require longer/normalized ASR evidence and compare against the spoken prefix/recent window, not only full reply containment; tune without weakening true interruptions.",
+      "Re-run 3 small samples only after the client receives confirmed event and reflects actual paused/currentTime stop."
+    ],
+    "status": "superseded by p0_event_transport PASS; full VAD gating tests still pending"
+  },
+  "p0_event_transport": {
+    "status": "PASS (transport + client handler verified independently of VAD)",
+    "fix": "Server message now uses RTVI envelope: {label:\"rtvi-ai\", type:\"server-message\", data:{type:\"barge-in-confirmed\", requestId, turnId, turnKey, epochMs}}. Client transport only bubbles messages with label rtvi-ai; previous raw message was dropped.",
+    "verification_generic": "debug /debug/server-message with {type:test-message} reached client: serverMessages recorded raw+parsed.",
+    "verification_barge": "debug barge-in-confirmed message (requestId=debug-request) reached client; client handler stopped bot audio: audio=null, serverMessages recorded; no VAD/DSH involved.",
+    "note": "oldAudioCleared remains true from prior lifecycle and is not used as proof; audio element becoming null is the direct evidence here."
+  },
+  "p0_dedupe": {
+    "status": "IMPLEMENTED, NOT YET VERIFIED",
+    "fix": "per-turn barge_confirmed_keys set; duplicate confirmation ignored and counted as barge_duplicates_ignored; candidate creation skipped for already-confirmed turn."
+  },
+  "p1_echo": {
+    "status": "PENDING",
+    "fix": "short ASR echo fragments still pass; needs recent-window text/evidence strategy after P0 smoke tests."
+  },
+  "p0_regression_v1": {
+    "p0_1_matching_confirmation": "NOT COVERED — wait_playing returned only after the DSH turn had already ended (current=None); no matching barge-in-confirmed was sent during active playback. Client audio was already null, so no clean stop evidence.",
+    "p0_2_stale_confirmation": "INCONCLUSIVE — stale message sent while client audio already null; cannot prove it was ignored versus already stopped.",
+    "p0_3_dedupe": "PARTIAL PASS — 10 simulated candidates in an already-confirmed turn produced 0 new confirmations; logs show repeated \"duplicate barge-in candidate ignored\". A clean single-confirmation-from-10-candidates run is still needed.",
+    "echo_status": "P1 still failing: real playback produced automatic ASR confirmations from echo fragments (赔/这个/不知道), so false barge-ins persist.",
+    "root_harness_issue": "wait_playing was satisfied only after turn completion; must detect playing via client audio currentTime + dsh text_started while current active; stale/oldAudioCleared cannot be used."
+  },
+  "p0_regression_v2": {
+    "p0_1_matching": "INCONCLUSIVE — active-turn precondition met (current=voice-1, text_started=true, audio currentTime 28.232); matching barge-in-confirmed sent with requestId 76de1200...; after 0.8s client audio=None, but client lastConfirmedBargeIn=None and cleanupEvents=None, so causality is not proven (audio may have ended/replaced independently).",
+    "p0_2_stale": "NOT RUN — wait_playing returned None and the test script crashed before stale-message test.",
+    "p0_3_dedupe": "NOT RUN in clean turn; earlier/this run logs show duplicate candidate ignored working, but no clean 0→1 proof.",
+    "p1_echo": "STILL FAILING — echo ASR fragments continue to be CONFIRMED during playback (e.g. long ASR text/啊); duplicate suppression works only after the first false confirmation.",
+    "next": "Do not combine tests. First verify client serverMessages receipt and lastConfirmedBargeIn with the matching message; add cleanup-generation correlation to g3-state; then run stale and clean dedupe separately with robust wait/precondition failure reporting."
+  },
+  "p0_1_isolated": {
+    "result": "FAIL/INCONCLUSIVE — message reached client, but client confirmation handler did not record a decision",
+    "evidence": {
+      "precondition": "dsh current=voice-1 requestId=397b2b13... text_started=False; client audio paused=false currentTime=43.602",
+      "sent": "matching barge-in-confirmed requestId=397b2b13..., turnId=1, turnKey=voice-1",
+      "received": "client serverMessages recorded raw+parsed at epoch 1792780704845",
+      "after": "audio=None; lastConfirmedBargeIn=None; cleanupEvents=[]"
+    },
+    "boundary": "Message delivery works; the client onServerMessage handler did not call stopBotAudio/set lastConfirmedBargeIn. Most likely an early-return in the requestId-vs-latest-audible guard, or an exception before state update; audio=None is not attributable and may be natural track/end behavior.",
+    "next": "Add explicit bargeDecisionLog entries (received/matched/stale/stop/cleanup) to client state, surface it in g3-state, and send the confirmation using the latest audibleTurns requestId (not just dsh current) to validate matching; then rerun P0-1."
+  },
+  "p0_1_v3": {
+    "implemented": "client bargeDecisionLog stages received/unmatched/stale/matched/confirmed/stop; strict requestId+turn matching against latest audibleTurns; g3-state exposes decision log.",
+    "run": "FAILED PRECONDITION — client audio was playing (currentTime 48.812) but audibleTurns empty; dsh already had barge_confirmed=1 and current=None (echo-triggered), so no clean matching message could be sent.",
+    "boundary": "Need a test that does not depend on audibleTurns tagging for matching: use current client audioGeneration + known requestId from the active turn, or mute echo/gating during P0 mechanism tests. P0-1 causality remains unproven."
+  },
+  "p0_1_v4": {
+    "implemented": "server pushes playback-identity RTVI message at first text delta {requestId,turnId,turnKey}; client binds playbackIdentity{audioGeneration,at}; barge-in-confirmed matches against playbackIdentity instead of audibleTurns; stop clears identity.",
+    "run": "FAILED PRECONDITION — playbackIdentity=None, bargeDecisionLog=None, dsh current=None (turn completed) while client audio still playing at currentTime=48.942. No matching message could be sent.",
+    "boundary": "Playback identity message was not observed by the client in this run. Next step is to verify the identity message delivery itself (serverMessages), not to adjust gating or echo logic."
+  },
+  "p0_1_final": {
+    "result": "PASS (client mechanism test with DSH_TEST_DISABLE_BARGE_IN=1; not production echo acceptance)",
+    "server_send": "02:51:35.126 playback-identity SEND request=534d6025-458a-4469-8447-ebb0abb33663 turn=1 key=voice-1 epoch_ms=1792781495127",
+    "client_receive": "serverMessages recorded playback-identity; playbackIdentity bound requestId 534d6025..., turn 1, audioGeneration 1, hasAudio=true",
+    "confirmation": "matching barge-in-confirmed sent; bargeDecisionLog: received -> matched (requestId/turn/gen match) -> confirmed -> stop",
+    "cleanup": "audioCleanupEvents seq2 reason=barge-in-confirmed at 1792781495319, hadElement=true, pausedBefore=false, hasSrcObjectBefore=true, result=cleared, pausedAfter=true, hasSrcObjectAfter=false; audio=None",
+    "ordering": "message received at 1792781495319 > identity at ...5127; cleanup at same receive millisecond, element cleared",
+    "notes": "VAD auto-confirmation disabled only for this P0 mechanism test. Production echo gating (P1) remains unfixed and must be validated separately."
+  },
+  "p0_2": {
+    "result": "PASS",
+    "precondition": "active playback requestId=25db3a87-... playbackIdentity turn=1 audioGeneration=1; audio paused=false currentTime=30.16",
+    "stale_message": "barge-in-confirmed requestId=stale-request-id turnId=999 turnKey=stale",
+    "decision_log": "received -> stale reason=turn-mismatch messageTurn=999 playbackTurn=1",
+    "audio_after": "audio stayed present, paused=false; currentTime 30.66 -> 31.148 -> 31.638 -> 32.118 -> 32.598 -> 33.088 over ~2.4s",
+    "lastConfirmedBargeIn": "None"
+  },
+  "p0_3": {
+    "result": "PARTIAL PASS",
+    "before": {
+      "barge_candidates": 0,
+      "barge_rejected_echo": 0,
+      "barge_confirmed": 0,
+      "barge_ins": 0
+    },
+    "after": {
+      "barge_candidates": 1,
+      "barge_rejected_echo": 0,
+      "barge_confirmed": 1,
+      "barge_ins": 1
+    },
+    "evidence": "10 simulated candidates; first confirmed (ASR 请听我说); confirmation count 0->1. Subsequent 9 produced no additional confirmations (current audible=false after first stop, so they were suppressed before candidate creation; duplicate counter path not exercised).",
+    "client_chain": "received -> matched -> confirmed -> stop -> cleanup; audio=null; cleanup event hadElement=true, pausedBefore=false, result=cleared, pausedAfter=true, hasSrcObjectAfter=false",
+    "missing": "new audioGeneration reset not explicitly tested; duplicate-confirmation counter was not exercised because playback was already interrupted."
+  },
+  "p0_status": "PASS for mechanism: P0-1, P0-2, P0-3A (dedupe), P0-3B (rebind/new turn)",
+  "p0_3_v2": {
+    "turn1": "first candidate CONFIRMED (0->1); subsequent duplicate candidates hit \"duplicate barge-in candidate ignored turn=voice-1\" (4 observed before turn ended); audio cleanup once (pausedAfter=true/srcObject cleared). barge_candidates=1,barge_confirmed=1.",
+    "turn1_gap": "expected 9 duplicate hits; only 4 observed before the turn/iteration window ended; remaining posts had no active turn. Requirement not fully met.",
+    "turn2": "new playback-identity arrived requestId=8fa260ba... turn=2 turnKey=voice-2 but hasAudio=False; client kept it pending (no audio element to bind), so the next barge message was received but UNMATCHED: no-audible-turn. No new generation/audio confirmation could be verified.",
+    "turn2_implication": "After a confirmed barge stopped and cleared the audio element, the next turn did not re-create/rebind an audio element for playback identity; this may be a real post-barge audio reattachment defect and blocks the generation-reset acceptance."
+  },
+  "p0_3_v3": {
+    "implemented": "client keeps botAudioStream; playback-identity rebinds/creates an audio element and increments generation; duplicate counter now covers active and playback-tail confirmed turns; state exposes barge_duplicates_ignored.",
+    "run": "FAILED PRECONDITION — playbackIdentity=None and audio=None after transcript injection; worker log shows input RMS/probes but no DSH turn/identity. The transcript did not produce a turn in this run, so rebind/duplicate-reset tests could not execute.",
+    "not_changed": "P0-1 and P0-2 evidence remains valid; P0-3 remains PARTIAL (previous run: 0→1 confirmation, only 4 duplicate hits, reboot-generation state unverified)."
+  },
+  "p0_3_v4_smoke": {
+    "result": "PRECONDITION_FAILED — dev DSH bridge unavailable at turn time",
+    "evidence": "worker health OK, stats sessions=1, client transport ready, /debug/transcript accepted; DSH turn voice-1 started then failed: Cannot connect to host 127.0.0.1:57563. dsh turns_started=1, errors=1, no playback-identity/audio.",
+    "root": "Descriptor port had no listener when the turn ran (bridge/dev DSH lifecycle issue similar to earlier stale descriptor). Not a product gate failure; no P0-3 code path exercised.",
+    "next": "Harness must verify bridge port listener + /health immediately before transcript and after DSH turn starts; if the dev app exits, capture its log and restart cleanly before testing."
+  },
+  "harness_lifecycle_fix": {
+    "root": "Dev DSH desktop failed boot with \"desktop welcome: Web authentication failed\" and disposed plugins; stale isolated DSH_DESKTOP_USER_DATA_DIR. Descriptor remained but bridge died.",
+    "fix": "Archived /tmp/wg-dev/userdata and created a fresh isolated userData, then verified: new descriptor pid alive, port listener, /health ok, no disposed after 5s.",
+    "gate": "Startup gate now waits bridge listing, verifies descriptor pid/listener/token/health and aborts on Web authentication failed/disposed."
+  },
+  "p0_3A_dedupe": {
+    "result": "PARTIAL — first candidate confirmed; duplicate count only 1 in concurrent 10-candidate run (prior sequential run: 4), not 9.",
+    "evidence": "barge_metrics before {candidates:1,confirmed:0,dup:0} -> after {candidates:11,confirmed:1,dup:1}; logs: 1 CONFIRMED + 1 duplicate ignored; concurrent debug injection races created candidates before dedupe outcome.",
+    "next": "Use deterministic sequential entry that calls production dedupe after the first confirmation (or gate debug candidates behind a single-thread queue), and assert confirmed=1/duplicates=9."
+  },
+  "p0_3B_rebind": {
+    "result": "PASS",
+    "evidence": "voice-2 playback-identity requestId=e6de43c9... turn=2 turnKey=voice-2 audioGeneration=2; audio element present paused=false currentTime=37.7; confirmation matched turn/gen2; cleanup event generation=2, hadElement=true, pausedBefore=false, result=cleared; independent confirm succeeded."
+  },
+  "p0_3A_final": {
+    "result": "PASS",
+    "baseline": {
+      "barge_candidates": 0,
+      "barge_rejected_echo": 0,
+      "barge_confirmed": 0,
+      "barge_ins": 0,
+      "barge_duplicates_ignored": 0
+    },
+    "first_candidate": "confirmed 0->1 (requestId cbefba66-... turn=1 audioGeneration=1)",
+    "after_9_sequential_duplicates": {
+      "barge_candidates": 1,
+      "barge_confirmed": 1,
+      "barge_ins": 1,
+      "barge_duplicates_ignored": 12
+    },
+    "notes": "12 duplicate hits (9 deterministic + ambient VAD duplicates); confirmed stayed 1; client confirmation/stop/cleanup happened once; audio cleanup generation=1 hadElement=true pausedBefore=false result=cleared.",
+    "acceptance": "initial 0 -> confirm 1; duplicates >=9; total confirm 1; audio stop once => PASS"
+  },
+  "p0_3B_final": {
+    "result": "PASS",
+    "evidence": "voice-2 playback-identity requestId=e6de43c9... turn=2 turnKey=voice-2 audioGeneration=2; audio element present paused=false currentTime=37.7; confirmation matched turn/gen2; cleanup event generation=2, hadElement=true, pausedBefore=false, result=cleared; independent confirm succeeded."
+  },
+  "boundary": "P0 mechanism tests used DSH_TEST_DISABLE_BARGE_IN for P0-1 and deterministic debug candidates for P0-3; this does not validate production echo rejection or real-user barge-in (P1).",
+  "p1_progress": {
+    "A_pure_playback_echo": "PASS (minimal) — echo candidate rejected (asr=任务), no confirmation, audio continued.",
+    "B_real_user_interruption": "PASS (minimal, controlled wav through speaker at volume 55)",
+    "B_evidence": {
+      "signal": "max mic RMS during trial 11693.4 (user wav audible in input path)",
+      "candidates": 2,
+      "echo_rejected": 1,
+      "confirmed": 1,
+      "pending_updates": "嗯 / 嗯。 -> combined 嗯嗯行 at age 1.25s; sustained short-ASR fallback accepted",
+      "client_chain": "received -> matched -> confirmed -> stop; cleanup reason=barge-in-confirmed generation=1 hadElement=true pausedBefore=false result=cleared",
+      "latency": {
+        "user_wav_start_epoch_ms": 1792805860639,
+        "server_confirmed_epoch_ms": 1792805863465,
+        "client_cleanup_epoch_ms": 1792805863467,
+        "user_to_confirm_ms": 2826,
+        "user_to_cleanup_ms": 2828
+      },
+      "after": "new independent turn completed (turns=2), client transport ready, no errors"
+    },
+    "C_noise_echo": "NOT RUN",
+    "notes": "Controlled wav is not equivalent to a human naturally speaking during playback; latency ~2.8s is currently slow and should be optimized after C.",
+    "C_matrix": "EXPLORATORY PASS under command gate: no false confirmations in pure/noise/ordinary; 4/5 command confirms; need 10x and fix command metric + one miss."
+  },
+  "p1_C_matrix": {
+    "result": "FAIL — false confirmations during pure playback at all tested volumes; echo_rejected=0 across matrix",
+    "runs": 6,
+    "trials": 30,
+    "trial_design": "5 trials per C1-C6; each trial injected a complex prompt and waited ~3-5s",
+    "by_scenario": {
+      "C1_low13_confirmed_delta": 4,
+      "C1_candidates_delta": 4,
+      "C2_mid55_confirmed_delta": 2,
+      "C2_candidates_delta": 3,
+      "C3_high80_confirmed_delta": 4,
+      "C3_candidates_delta": 5,
+      "C4_noise55_confirmed_delta": 1,
+      "C4_candidates_delta": 1,
+      "C5_noise80_confirmed_delta": 4,
+      "C5_candidates_delta": 3,
+      "C6_user55_confirmed_delta": 4,
+      "C6_candidates_delta": 7
+    },
+    "aggregate": "total C1-C6 confirmations 22, echo_rejected 0, pending_short 54; several pure-playback trials ended with audio=null (playback stopped by false barge-in).",
+    "root_cause_direction": "The sustained short-ASR fallback (age>=0.8s + >=2 updates + combined>=3 chars) is satisfied by echo-derived short ASR fragments that do not match the recent text window (ASR errors), so pure playback still confirms. Recent-window echo rejection is insufficient for short/noisy echo ASR.",
+    "methodology_caveat": "Trials were pipelined without waiting for each DSH turn to fully finish; prior-turn playback tails can overlap next trial. However pure C1-C3 false confirmations with audio stopped are a real observed risk, not only cross-trial contamination. Next round must isolate one turn per trial and capture per-candidate ASR/window data."
+  },
+  "p1_root_cause_isolated": {
+    "setup": "single DSH turn, pure playback, system volume 80, no user speech",
+    "timeline": [
+      "playback-identity requestId=ab82128d-... turn=1 audioGeneration=1 hasAudio=true",
+      "audio playing currentTime 29.4",
+      "VAD candidate; ASR updates: 对 / 对。 / 嗯",
+      "fallback accepted: updates=['对','对','嗯'] combined='对对嗯' age=1.07 window_chars=305 window_tail='...taskid...'",
+      "CONFIRMED turn=voice-1 -> client received/matched/stop/cleanup; audio=null"
+    ],
+    "conclusion": "P1 false barge-in is caused by the sustained short-ASR fallback accepting echo-derived gibberish (short words not present in the recent window). Echo rejection never triggered (barge_rejected_echo=0). The C matrix confirmations are consistent with this path.",
+    "fix_direction": "Do not tune thresholds blindly. Options: (1) remove short fallback and require stronger independent evidence (>=4 normalized chars or stable final ASR); (2) MVP half-duplex/command-based barge-in: while TTS is active, only explicit interrupt commands (停/取消/等一下/别说了) can stop playback; (3) route bot audio through AEC-capable output path instead of a raw <audio> element, then re-test. Any choice needs isolated pure-playback and real-command tests before C matrix rerun."
+  },
+  "p1_mvp_command_contract": {
+    "decision": "MVP half-duplex/command-gated barge-in selected. Generic >=4-char rule and short-ASR fallback removed. Only explicit interrupt commands can stop playback.",
+    "commands": [
+      "停",
+      "暂停",
+      "取消",
+      "等一下",
+      "别说了",
+      "别播",
+      "打断",
+      "先停"
+    ],
+    "rules": [
+      "non-command ASR stays pending and never confirms",
+      "command requires age>=0.4s and passes recent-window echo rejection",
+      "no short-ASR fallback",
+      "cancel-safe P0 path unchanged"
+    ]
+  },
+  "p1_mvp_AB": {
+    "pure_playback_isolated": {
+      "volumes": [
+        13,
+        55,
+        80
+      ],
+      "result": "PASS: 0 confirmations at all volumes; audio stayed paused=false and currentTime advanced; one non-command candidate at volume55 stayed pending (no stop)."
+    },
+    "command_interrupt": {
+      "result": "PASS (minimal)",
+      "audio": "system volume 55; command wav /tmp/cmd.wav \"请先停一下\"",
+      "asr_sequence": [
+        "请",
+        "请先",
+        "请先。",
+        "请先停 (COMMAND accepted, age=1.45s)"
+      ],
+      "server_confirm": "turn=voice-4 request=ff943af4...",
+      "client_chain": "received -> matched -> confirmed -> stop -> cleanup; audio cleared, pausedBefore=false",
+      "latency": {
+        "user_wav_start_ms": 1792807375923,
+        "server_confirm_ms": 1792807377995,
+        "user_to_confirm_ms": 2072,
+        "user_to_cleanup_ms": 2074
+      }
+    }
+  },
+  "p1_C_matrix_exploratory_v2": {
+    "contract": "MVP command-gated barge-in (short-ASR fallback removed)",
+    "trials_per_scenario": 5,
+    "results": {
+      "P13_pure": {
+        "confirmations": 0,
+        "audio_stays_playing": true
+      },
+      "P55_pure": {
+        "confirmations": 0,
+        "audio_stays_playing": true,
+        "candidates": 2
+      },
+      "P80_pure": {
+        "confirmations": 0,
+        "audio_stays_playing": true
+      },
+      "NOISE55": {
+        "confirmations": 0,
+        "audio_stays_playing": true
+      },
+      "NOISE80": {
+        "confirmations": 0,
+        "audio_stays_playing": true
+      },
+      "ORD55_ordinary_speech": {
+        "new_confirmations": 0,
+        "audio_stays_playing": true,
+        "candidates": 7
+      },
+      "CMD55_command": {
+        "trials": 5,
+        "confirmed": 4,
+        "missed": 1,
+        "audio_stop_trials": 5
+      }
+    },
+    "aggregate": "0 false confirmations in 15 pure-playback + 10 noise + 5 ordinary-speech trials. 4/5 explicit command wavs confirmed and stopped audio; 1 command miss to investigate.",
+    "instrumentation_gap": "barge_command_confirmed is not exposed in dsh-state barge_metrics; summary reported cmd=0 while logs show 4 COMMAND accepted/CONFIRMED.",
+    "environment_risk": "At end of long run, DashScope TTS returned CLIENT_ERROR request timeout after 300 seconds; client status=error. Treat as provider/session robustness issue to recheck."
+  },
+  "p1_metrics_fix": "dsh-state barge_metrics now exposes barge_command_confirmed, barge_noncommand_pending, barge_pending_short, barge_rejected_short, candidates/rejected/confirmed/ins/duplicates.",
+  "p1_command_miss_localization": {
+    "result": "PRECONDITION_FAILED — dev DSH bridge disappeared mid-attempt",
+    "evidence": "worker log: voice-1 failed TransferEncodingError (response payload truncated), subsequent voice-2..5 failed \"Cannot connect to host 127.0.0.1:59523\"; dev desktop log ends with \"desktop development: exited with SIGKILL\"; no playback identity/audio produced.",
+    "classification": "HARNESS_FAILURE/dev DSH lifecycle, not command-gating failure. The earlier CMD55 4/5 result remains exploratory only; the missed command root cause is still unknown.",
+    "metrics_fix": "dsh-state now exposes barge_command_confirmed, barge_noncommand_pending, pending/rejected counts."
+  },
+  "playback_gate": {
+    "implemented": "wait_for_active_playback conditions verified manually in one trial: fresh playbackIdentity requestId differs from previous, matches DSH current request_id; text_started=true; audio present/unpaused; client currentTime advanced >=0.4s; Worker session existed.",
+    "result": "PASS — gate allowed command injection only after active playback."
+  },
+  "command_miss_localization": {
+    "result": "ROOT LOCALIZED: command wav was not recognized as a command by ASR",
+    "gate": "PASS (active playback confirmed: dsh voice-1 request 18866b94..., identity match, currentTime 31.06)",
+    "injected": "/tmp/cmd.wav \"请先停一下\" at volume 55",
+    "observed": "VAD candidate created; ASR updates were '你必须说。' and '啊/啊。'; noncommand_pending=3; barge_command_confirmed=0; no CONFIRMED; audio continued playing.",
+    "classification": "ASR/command-recognition failure (VAD and gate path worked; no echo rejection, no command match). Not a client/base-path failure.",
+    "next": "Improve command-recognition robustness without weakening false-positive protection: command variants/fuzzy matching on stable text, or test with a clearer real/human command; keep non-command pending behavior."
+  },
+  "asr_three_layer_diagnosis": {
+    "layer1_isolated_asr": "PASS — same cmd.wav played with no TTS playback was recognized: final \"请先停一下，你们八大长老。\"; finals observed 178-308ms; ASR core capability works for the command. (Extra trailing words suggest other ambient/media audio also entering mic.)",
+    "layer2_real_mic_no_tts": "NOT RUN — requires a human speaking naturally into the mic; cannot be replaced by wav.",
+    "layer3_tts_playback": "KNOWN FAIL — during TTS playback the same command wav produced ASR \"你必须说。\"/\"啊\", no command match, no confirmation; VAD candidate existed and audio continued (safe).",
+    "conclusion": "The command miss is not an ASR-model inability or command-matcher problem alone; isolated ASR recognizes the command. During TTS playback the acoustic input (speaker echo + mixed audio + AEC limits) degrades ASR to non-command text. Root cause class: playback-time acoustic interference / input separation."
+  },
+  "p1_volume_separation": {
+    "result": "DECISIVE: lowering the assistant audio element volume restores command ASR; same system volume (55), same command wav",
+    "bot_volume_1_0": {
+      "confirmed": false,
+      "metrics": {
+        "barge_candidates": 2,
+        "barge_confirmed": 0,
+        "barge_command_confirmed": 0,
+        "barge_noncommand_pending": 13
+      },
+      "asr": "non-command/echo-like fragments",
+      "audio": "continued playing"
+    },
+    "bot_volume_0_3": {
+      "confirmed": true,
+      "metrics": {
+        "barge_candidates": 6,
+        "barge_confirmed": 1,
+        "barge_command_confirmed": 1,
+        "barge_noncommand_pending": 30
+      },
+      "asr_sequence": [
+        "请",
+        "请先",
+        "请先。",
+        "请先停 (COMMAND accepted age=1.44s)"
+      ],
+      "audio": "stopped/cleared"
+    },
+    "conclusion": "The command miss is dominated by playback-time acoustic interference (TTS output leaking into mic / AEC limits), not ASR model capability or command matching alone. Reducing assistant output volume restores command recognition and interruption."
+  },
+  "ducking_implementation": {
+    "server": "candidate creation sends duck-playback {candidateId,requestId,turnKey,factor:0.3}; echo reject/expiry/timeout sends restore-playback for that candidate; confirm cancels timeout and does not restore.",
+    "client": "duck saves originalVolume/bound generation; restore only if candidateId matches active duck; restore sets original volume; confirm clears duck without restoring; new audio elements use saved preference; duckDecisionLog records duck-applied/volume-restored/duck-cleared-on-confirm.",
+    "timeout": "3s timeout restores volume if candidate never confirms."
+  },
+  "ducking_A_pure": {
+    "result": "SAFE but UX ISSUE: no false confirmation; duck applied and restored by timeout; however repeated echo candidates caused repeated duck/restore cycles during one playback (volume oscillated), so a cooldown/one-duck-per-turn policy is needed before acceptance."
+  },
+  "ducking_B_command": {
+    "result": "PASS (fresh trial)",
+    "setup": "assistant element volume initially 1.0, system volume 55; command wav /tmp/cmd.wav",
+    "sequence": "duck-applied at candidate -> ASR recognized 嘿...请先停 -> COMMAND accepted -> CONFIRMED -> client received/matched/stop/cleanup -> duck cleared on confirm (no restore)",
+    "metrics": "barge_candidates=1, barge_confirmed=1, barge_command_confirmed=1, audio cleared; client transport ready"
+  },
+  "p1_duck_policy_v2": {
+    "policy": "max 2 duck applications per turn, 2s cooldown after each restore; duplicate VAD during an active candidate is merged (no new candidate, no re-duck, no timeout reset); candidate timeout 3s restores original volume; confirmation clears duck and never restores stopped audio; all restores bound to candidateId/turn and client generation.",
+    "command_matcher": "explicit phrases only: 停一下/停下/停止/暂停/取消/等一下/别说了/别播/打断/先停, plus exact 停/停啊/停吧. Bare 停 inside another word (e.g. 停留) is rejected.",
+    "why_changed": "once-per-turn wasted duck on an early echo candidate and later real commands failed; bare-停 substring caused a pure-playback false confirmation at volume 80 (ASR: 不在这里做永久停留)."
+  },
+  "p1_four_small_tests": {
+    "pure_playback": {
+      "volumes": [
+        13,
+        55,
+        80
+      ],
+      "result": "PASS",
+      "evidence": "0 confirmations at all volumes; at most 2 duck applications per turn; all ducks restored to original volume=1.0; no false command at volume80 after matcher fix."
+    },
+    "command_fresh": {
+      "result": "PASS (controlled loud command wav)",
+      "evidence": "duck-applied -> ASR 先停 -> COMMAND accepted -> CONFIRMED -> client received/matched/stop/cleanup -> duck cleared on confirm; audio=None."
+    },
+    "duplicate_candidates": {
+      "result": "PASS",
+      "evidence": "4 debug VADs produced barge_candidates delta=1, duck_applied=1; logs show 3x \"duplicate VAD merged ... no re-duck/no timer reset\"; timeout fired ~3.0s after first; volume restored; no confirmation."
+    },
+    "boundary_echo_then_command": {
+      "result": "PASS (controlled loud command)",
+      "evidence": "echo candidate consumed duck1 and was rejected (barge_rejected_echo=1); after 2s cooldown, real command candidate got duck2; ASR 请先停 -> CONFIRMED; client audio cleared."
+    }
+  },
+  "p1_environment_caveat": {
+    "finding": "A background media source is audible on this Mac (Chrome audio helpers, remote ASR logs contain unrelated drama content). It can dominate ASR during tests.",
+    "mitigation_used": "command wav normalized and played at afplay volume 4; real-human acceptance must be performed in a quiet environment or with a much louder/clearer voice.",
+    "not_a_product_failure": "ambient media is a test-environment confounder, not proof the command gate works for a normal human voice."
+  },
+  "updated_at": "2026-10-24T12:07:04",
+  "p1_real_human_command": {
+    "result": "4/4 valid human command attempts confirmed; trial1 invalid/no-attempt. All confirmations cleaned audio.",
+    "command": "请先停一下",
+    "trials": 5,
+    "asr_accepted": [
+      "先停",
+      "请先停",
+      "你先停",
+      "请先停"
+    ],
+    "vad_to_confirm_ms": [
+      720,
+      1041,
+      1138,
+      1171
+    ],
+    "vad_to_confirm_p50_ms": 1089.5,
+    "vad_to_confirm_mean_ms": 1017.5,
+    "cleanup_after_confirm_ms": [
+      4,
+      1,
+      1,
+      2
+    ],
+    "cue_to_vad_ms": [
+      745,
+      4411,
+      3492,
+      9198
+    ],
+    "missed_trial_1": "no VAD candidate; likely missed cue or speech not detected. Needs speaker confirmation; not counted as success or product failure.",
+    "caveats": [
+      "cue is playback start, not exact speech onset; latency includes human reaction time",
+      "single 5-trial session; not a reliability distribution",
+      "background media must remain paused for valid human tests",
+      "Do not present this as 5/5; trial1 is excluded as invalid, not a success. A clean 5/5 needs one more valid human trial."
+    ],
+    "trial_1_classification": "INVALID / no attempt: human confirms they did not react to the first cue; no VAD. Not a product failure.",
+    "valid_attempts": 4,
+    "success_valid_attempts": "4/4 = 100%",
+    "raw_per_5_cues": "4/5 (one invalid non-attempt)"
+  },
+  "p1_controlled_matrix_10x": {
+    "controlled_wav": true,
+    "trials_total": 50,
+    "pure_playback": {
+      "n": 10,
+      "false_confirmed": 0,
+      "volumes": "13x3,55x4,80x3"
+    },
+    "noise": {
+      "n": 10,
+      "false_confirmed": 0
+    },
+    "ordinary_speech": {
+      "n": 10,
+      "false_confirmed": 0
+    },
+    "explicit_command": {
+      "n": 10,
+      "confirmed": 10,
+      "missed": 0
+    },
+    "boundary_echo_then_command": {
+      "attempts": 10,
+      "valid": 9,
+      "confirmed": 9,
+      "invalid": 1,
+      "invalid_reason": "no active playback precondition; DSH turn admitted but no playback identity; pet media stream error; classified HARNESS_FAILURE, not product failure"
+    },
+    "command_play_to_confirm_ms": [
+      2032,
+      2049,
+      2023,
+      2072,
+      2015,
+      2060,
+      2042,
+      1786,
+      2039,
+      2037
+    ],
+    "command_p50_ms": 2038.0,
+    "boundary_play_to_confirm_ms": [
+      1675,
+      1316,
+      2045,
+      1687,
+      1461,
+      1579,
+      1763,
+      2119,
+      1758
+    ],
+    "boundary_p50_ms": 1687,
+    "all_confirmations_had_cleanup": true,
+    "note": "Command/boundary inputs are controlled loud wav; negative scenarios use real playback/noise/ordinary wav. Not a substitute for human variation."
+  },
+  "p1_boundary_retry": {
+    "result": "INVALID (no active playback)",
+    "reason": "pet media stream error at startup cleared the audio track; DSH turn text/playback-identity existed but client had no audio element. Classified harness/pet lifecycle, not gate failure.",
+    "effect": "boundary remains 9 valid/9 confirmed; no retry loop per review instructions"
+  },
+  "p1_tts_recovery": {
+    "test": "injected TTS provider error on first audio delta (WG_TEST_TTS_PROVIDER_ERROR_ONCE=1); dev DSH, production gate code otherwise unchanged",
+    "first_turn": {
+      "audio": null,
+      "client_status": "error",
+      "error": "TTS context ... completed with no audio (fatal:false)"
+    },
+    "reconnect": {
+      "attempt": 1,
+      "result": "success",
+      "session_updated": true
+    },
+    "next_turn": {
+      "audio_present": true,
+      "paused": false,
+      "currentTime_seen": 30.602,
+      "playback_identity": {
+        "requestId": "9dd089cf-53d9-44d9-9c50-eb8e4e691f81",
+        "turn": 2,
+        "turnKey": "voice-2",
+        "audioGeneration": 2
+      }
+    },
+    "residual": [
+      "First turn loses its audio for the injected error (expected).",
+      "Client status remains \"error\" with the old nonfatal error after the next turn succeeds; no error-reset event was observed.",
+      "Original DashScope 300s timeout not reproduced in this run; injected error validates reconnect mechanics, not the 300s root cause."
+    ],
+    "timestamp": "2026-10-24T12:01:46"
+  },
+  "p1_review_status": "READY FOR FORMAL REVIEW — controlled matrix 30/30 negatives zero false, command 10/10, boundary 9/9 valid, human 4/4 valid, TTS recovery injection passes reconnect but original 300s root cause not reproduced",
+  "p1_client_status_recovery": {
+    "test": "injected TTS provider error then next turn recovery; targeted regression only",
+    "after_error": {
+      "status": "degraded",
+      "lastError_present": true,
+      "errors_history_present": true,
+      "audio": null
+    },
+    "after_recovery": {
+      "status": "connected",
+      "lastError_present": true,
+      "lastRecoveryAt_updated": true,
+      "audio_present": true,
+      "paused": false,
+      "currentTime_seen": 34.0
+    },
+    "result": "PASS targeted regression: current health status resets after successful playback while error history is retained.",
+    "timestamp": "2026-10-24T12:07:04"
+  },
+  "p1_known_issue_dashscope_300s": {
+    "status": "OPEN — root cause unconfirmed; NOT fixed",
+    "evidence": "One historical event during long matrix: \"DashScope TTS error: CLIENT_ERROR request timeout after 300 seconds\". Not reproduced in 50-trial ~10-minute matrix.",
+    "mitigation": "TTS provider error/timeout path now unblocks run_tts, closes socket, uses base reconnect with backoff, and gates next synthesis on socket readiness. Injected provider error: reconnect succeeded, next turn audio played.",
+    "residual": "First affected reply loses audio; original 300s trigger unknown; client status was stale after recovery until targeted fix; provider timeout behavior not reproduced.",
+    "decision": "Track separately as known risk. Do not claim fixed; do not block G3 P1 gate freeze on it, but G3 overall remains not closed until formally accepted/deferred."
+  },
+  "g3_overall_status": "CONDITIONALLY CLOSED — MVP command-gated scope; G2 PASS frozen; P0 PASS closed; P1 PASS WITH CONDITIONS; DashScope 300s risk accepted/deferred, not fixed; G3 is NOT an unconditional PASS and does not cover free-form barge-in or long-run production reliability.",
+  "risk_acceptance_dashscope_300s": {
+    "decision": "ACCEPT RISK & DEFER",
+    "approved_by": "reviewer (direct human)",
+    "date": "2026-10-24T12:11:28",
+    "scope": "MVP command-gated barge-in integration and product wrap-up",
+    "not_fixed": true,
+    "root_cause": "unconfirmed; historical event occurred once; not reproduced in 50-trial ~10-minute matrix",
+    "mitigation": "TTS provider error/timeout unblocks run_tts, closes socket, reconnects with backoff, gates next synthesis on socket readiness; injected-error recovery verified next-turn audio",
+    "client_state": "degraded on error -> connected after successful recovery; historical errors retained",
+    "constraints": [
+      "Do not rewrite history: original 300s timeout remains unfixed and root cause unconfirmed.",
+      "Keep recovery protection: degraded on provider error, only return to connected after next-turn playback is verified; never erase error history.",
+      "Limit release claims: this supports MVP/integration, not proof of long-running production reliability."
+    ],
+    "reopen_triggers": [
+      "timeout recurs",
+      "reconnect fails",
+      "recovery does not restore playback"
+    ]
+  },
+  "closed_at": "2026-10-24T12:11:28"
+}

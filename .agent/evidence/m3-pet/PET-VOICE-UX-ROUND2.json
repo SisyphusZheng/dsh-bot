@@ -1,0 +1,352 @@
+{
+  "task": "task-6",
+  "round": "PET-VOICE-UX-ROUND2",
+  "generatedAt": "2026-10-23T05:29:06.148435+00:00",
+  "productPremise": "桌宠只是身体/语音 I/O；设置仍归 DSH。本轮不改壳、不新增窗口/会话/Agent。",
+  "scope": {
+    "changedOnlyUnder": "m3/pet/**",
+    "notChanged": [
+      "nisse-dsh/**",
+      "research/qwen-audio-agent/**",
+      "m3/pet/web/dist/**"
+    ]
+  },
+  "changedFiles": {
+    "new": [
+      "desktop/src/global-option.mjs",
+      "desktop/test/global-option.test.mjs",
+      "desktop/smoke/pet-voice-ux-smoke.cjs"
+    ],
+    "modified": [
+      "desktop/src/voice-controls-injected.js（提示显隐/hover/首启一次、点击 toggle 语义、mouseup 不取消、调试日志）",
+      "desktop/src/voice-input.mjs（effectiveTalkKey/talkKeyHint/talkKeyStatusPayload、hintSeen 持久化字段）",
+      "desktop/src/main.mjs（koffi Option watcher、提示文案统一、hintSeen 持久化、round2 smoke probe）",
+      "desktop/test/voice-input.test.mjs（新增提示文案/降级/talkKeyStatus 测试）"
+    ]
+  },
+  "items": [
+    {
+      "id": "1",
+      "title": "底部提示不再常驻：只在首启一次 / hover 时短暂显示，开始说话自动隐藏",
+      "status": "PASS",
+      "what": [
+        "徽章默认 display:none；首次使用前显示一次（默认 5s 自动隐藏）；用户第一次开始说话（点击麦克风或按住 Option）立即隐藏并持久化 voiceInput.hintSeen=true",
+        "之后只在 hover 桌宠/麦克风按钮时显示（默认 3s 自动隐藏），移出后 400ms 收起；不再永远占屏",
+        "第二次启动 smoke 实测：hintConsumed=true 且不自动显示",
+        "提示文案由主进程统一计算（talkKeyHint），hover 徽章 / 托盘 / 状态文件共用同一份，和实际生效按键一致"
+      ],
+      "evidence": {
+        "smokeAssertions": {
+          "firstRunHintVisible": true,
+          "firstRunHintAutoHides": true,
+          "firstRunHintText": "按住 Option/Alt 说话",
+          "hoverHintVisible": true,
+          "hoverHintHides": true,
+          "hintMatchesEffectiveKey": true,
+          "hintHiddenWhenListening": true,
+          "hintStaysHiddenAfterUse": true,
+          "hintConsumed": true,
+          "hintSeenPersistedFile": true
+        },
+        "secondLaunch": {
+          "hintConsumedOnSecondLaunch": true,
+          "hintHiddenOnSecondLaunch": true,
+          "hintText": "按住 Option/Alt 说话"
+        },
+        "persistedFile": "<userData>/pet-experience.json voiceInput.hintSeen=true（smoke 实测读取）",
+        "screenshots": [
+          {
+            "path": "m3/pet/evidence/pet-hint-first-run.png",
+            "bytes": 87571,
+            "sha256": "fcb6e49a461c2c6ad8f2753f003306255fba84c2c040fc2226f67d25b9fff8f7"
+          },
+          {
+            "path": "m3/pet/evidence/pet-hint-hover.png",
+            "bytes": 87392,
+            "sha256": "12d49726851672394f884cd3387c745c634900a3d1b5703537f85fb93dfec3bb"
+          }
+        ]
+      },
+      "caveats": [
+        "徽章宽度受 orb 窗口（172 CSS px）限制，文案做短；“全局”信息在托盘行展示。"
+      ]
+    },
+    {
+      "id": "2",
+      "title": "koffi FFI + CGEventSourceKeyState 实现真正的全局按住 Option/Alt",
+      "status": "PASS",
+      "what": [
+        "新增 global-option.mjs：koffi（NAPI）加载 /System/Library/Frameworks/ApplicationServices.framework（回退 CoreGraphics），调用 bool CGEventSourceKeyState(0/*kCGEventSourceStateCombinedSessionState*/, keycode)，左 Option=58/右=61",
+        "60ms（smoke 40ms）轮询 + 2 次稳定采样去抖；按下→ensureVoiceReady→开始聆听，松开→结束；real 键按下/松开不需桌宠聚焦",
+        "koffi 不可用/框架加载失败时自动回退 globalShortcut Alt+Space，提示文案改成“按 Alt+Space 开始/结束收听（全局）”，绝不显示 Option（有单测）",
+        "koffi 路径：NISSE_KOFFI_PATH > m3/pet/desktop/node_modules/koffi（打包内置位） > nisse-dsh pnpm store（dev 实际命中 $HOME/projects/dsh-bot/node_modules/.pnpm/koffi@3.1.1/node_modules/koffi） > research 路径"
+      ],
+      "evidence": {
+        "electronRuntime": {
+          "available": true,
+          "koffiVersion": "3.1.1",
+          "koffiPath": "$HOME/projects/dsh-bot/node_modules/.pnpm/koffi@3.1.1/node_modules/koffi",
+          "frameworkPath": "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices",
+          "probe": true
+        },
+        "smokeAssertions": {
+          "globalOptionAvailable": true,
+          "optionPressStartsListening": true,
+          "optionPressEnabledBy": "global-option",
+          "optionReleaseStopsListening": true,
+          "hintSeenPersisted": true,
+          "optionWatcherAfter": {
+            "running": true,
+            "pressed": false,
+            "polls": 186,
+            "errors": 0,
+            "downCount": 1,
+            "upCount": 1,
+            "lastChangeAt": 1792733270149,
+            "lastError": "",
+            "pollMs": 40,
+            "stablePolls": 2
+          },
+          "hintMatchesEffectiveKey": true
+        },
+        "fallbackUnitTested": "global-option.test.mjs：koffi 缺失/非 darwin/CGEventSourceKeyState 调用失败均返回 available:false；voice-input.test.mjs：降级提示显示 Alt+Space 且不含 Option",
+        "screenshots": [
+          {
+            "path": "m3/pet/evidence/pet-global-option-listening.png",
+            "bytes": 81202,
+            "sha256": "a429610fae01941454cdea28afdf440c8d5738b30f35aae14874dac9faba785e"
+          }
+        ]
+      },
+      "caveats": [
+        "真实物理按下 Option 无法在自动化中模拟：smoke 通过注入读值（smokeOptionPressedOverride）驱动与生产完全相同的 watcher/回调路径；真实键按下属用户真机验收 → UNVERIFIED。",
+        "koffi 是原生 NAPI 模块，dev 用绝对路径 require；打包前必须把 koffi（darwin arm64/x64 二进制）内置到 m3/pet/desktop/node_modules 或壳资源里（已写入 shellNeeds）。",
+        "koffi 从 nisse-dsh 的 pnpm store 读取（只读）；若后续清理该目录，需改为内置副本。"
+      ],
+      "unverified": [
+        "真实按下/松开 Option 的物理键值检测（需要人手按键；函数在 Electron 内已成功加载并调用）",
+        "Accessibility/TCC 对 CGEventSourceKeyState 的影响（本机 probe 未要权限，已返回 false；真实按键检测需用户验收）"
+      ]
+    },
+    {
+      "id": "3",
+      "title": "麦克风点击 = 明确 toggle；mouseup 绝不取消/停止，不给 bridge 发 /cancel",
+      "status": "PASS",
+      "what": [
+        "渲染层麦克风按钮本身是 onClick toggle（第一次开、第二次关并发送）；注入层移除/收敛所有 mouseup→disable 路径：未配置的鼠标键完全忽略，只有用户配置的鼠标侧键按住才在松开时结束",
+        "注入层记录点击意图：点击后 1.2s 内的 keyup/pointerup 一律不停止；按下来源标记 enabledBy=click（提示显示“再点一下麦克风结束”）",
+        "取消/停止只有三条明确路径：气泡「取消」、语音“取消”、第二次点击麦克风；普通语音/点击不会调用 bridge /cancel",
+        "pause-on-input 保持原逻辑（仅用户真实键鼠输入且 turn 运行中才 POST /cancel），与本轮点击无关"
+      ],
+      "evidence": {
+        "smokeAssertions": {
+          "toggleFirstClickEnables": true,
+          "mouseupKeepsListening": true,
+          "mouseupSendsNoDisable": true,
+          "toggleSecondClickStops": true,
+          "noBridgeCancelDuringToggle": true,
+          "toggleClicksApplied": 2
+        },
+        "bridgeCancelCallsInSmoke": [],
+        "debugTraceSample": [
+          {
+            "at": 1792733270450,
+            "enabled": true,
+            "enabledBy": "click",
+            "actions": [
+              {
+                "action": "enable",
+                "source": "global-option",
+                "at": 1792733270008
+              },
+              {
+                "action": "disable",
+                "source": "global-option",
+                "at": 1792733270149
+              },
+              {
+                "action": "enable",
+                "source": "click",
+                "at": 1792733270206
+              }
+            ],
+            "log": [
+              "62661:report:d=1:en=0",
+              "62661:show:first-run:2500",
+              "62672:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+              "62672:report:d=1:en=0",
+              "62911:report:d=1:en=0",
+              "65173:hide:0:en=0",
+              "65410:window-blur",
+              "68614:hover-in:first=0:consumed=0:en=0",
+              "68614:show:hover:2500",
+              "69010:hover-out:first=0",
+              "69010:hide:400:en=0",
+              "70008:apply:enable:global-option",
+              "70013:hide:0:en=1",
+              "70064:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+              "70064:report:d=1:en=1",
+              "70149:apply:disable:global-option",
+              "70149:report:d=1:en=0",
+              "70206:config:{\"dryRun\":true}",
+              "70206:report:d=1:en=0",
+              "70206:apply:enable:click",
+              "70328:phase:up",
+              "70328:phase:up"
+            ]
+          },
+          {
+            "at": 1792733270572,
+            "enabled": true,
+            "enabledBy": "click",
+            "actions": [
+              {
+                "action": "enable",
+                "source": "global-option",
+                "at": 1792733270008
+              },
+              {
+                "action": "disable",
+                "source": "global-option",
+                "at": 1792733270149
+              },
+              {
+                "action": "enable",
+                "source": "click",
+                "at": 1792733270206
+              }
+            ],
+            "log": [
+              "62661:report:d=1:en=0",
+              "62661:show:first-run:2500",
+              "62672:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+              "62672:report:d=1:en=0",
+              "62911:report:d=1:en=0",
+              "65173:hide:0:en=0",
+              "65410:window-blur",
+              "68614:hover-in:first=0:consumed=0:en=0",
+              "68614:show:hover:2500",
+              "69010:hover-out:first=0",
+              "69010:hide:400:en=0",
+              "70008:apply:enable:global-option",
+              "70013:hide:0:en=1",
+              "70064:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+              "70064:report:d=1:en=1",
+              "70149:apply:disable:global-option",
+              "70149:report:d=1:en=0",
+              "70206:config:{\"dryRun\":true}",
+              "70206:report:d=1:en=0",
+              "70206:apply:enable:click",
+              "70328:phase:up",
+              "70328:phase:up"
+            ]
+          }
+        ],
+        "screenshots": [
+          {
+            "path": "m3/pet/evidence/pet-hint-hover.png",
+            "bytes": 87392,
+            "sha256": "12d49726851672394f884cd3387c745c634900a3d1b5703537f85fb93dfec3bb"
+          }
+        ]
+      },
+      "caveats": [
+        "smoke 的 toggle 行为在注入层 dry-run 状态机上验证（不申请真实麦克风，避免 TCC 弹窗）；渲染层真实 onClick 打开真实麦克风的完整链路属 TCC 用户验收 → UNVERIFIED。",
+        "“第二次点击结束并发送”由渲染层自身 voice 状态机完成（上游构建产物），本轮保证桌宠注入层不再在 mouseup 时打断它。"
+      ],
+      "unverified": [
+        "真实麦克风点击开/关与“结束并发送”端到端（TCC）"
+      ]
+    },
+    {
+      "id": "4",
+      "title": "自动化验收：node 测试 + electron dry-run smoke + 截图 + 证据",
+      "status": "PASS",
+      "evidence": {
+        "smokeCommand": "node smoke/pet-voice-ux-smoke.cjs --out m3/pet/evidence/PET-VOICE-UX-SMOKE-RESULT.json --evidence-dir m3/pet/evidence",
+        "smokeSteps": {
+          "phase1-electron-exit-and-status": "PASS",
+          "hint-not-persistent": "PASS",
+          "global-option-hold-to-talk": "PASS",
+          "click-toggle-mouseup-does-not-cancel": "PASS",
+          "screenshots": "PASS",
+          "hint-seen-persisted-to-disk": "PASS",
+          "second-launch-no-persistent-hint": "PASS"
+        },
+        "smokeOk": true,
+        "smokePhases": "phase1 = 提示/koffi/toggle；phase2 = 同一 userData 重启验证提示不再自动出现",
+        "nodeTests": {
+          "targetedCommand": "node --test test/global-option.test.mjs test/voice-input.test.mjs",
+          "targeted": {
+            "tests": 20,
+            "pass": 20,
+            "fail": 0
+          },
+          "full": {
+            "command": "node --test",
+            "tests": 335,
+            "pass": 323,
+            "fail": 11,
+            "note": "11 个失败与 round1 基线完全相同（settings-config/settings-store/release 等既有失败），无新增失败",
+            "log": "m3/pet/evidence/node-test-full-after-voice-ux.log"
+          }
+        },
+        "regression": {
+          "round1ExperienceSmoke": "PASS 8/8（m3/pet/evidence/PET-EXPERIENCE-SMOKE-RESULT.json）",
+          "w1w6Smoke": "PASS 6/6（m3/pet/evidence/regression-round1/body-runtime-smoke.json）"
+        },
+        "screenshots": [
+          {
+            "path": "m3/pet/evidence/pet-hint-first-run.png",
+            "bytes": 87571,
+            "sha256": "fcb6e49a461c2c6ad8f2753f003306255fba84c2c040fc2226f67d25b9fff8f7"
+          },
+          {
+            "path": "m3/pet/evidence/pet-hint-hover.png",
+            "bytes": 87392,
+            "sha256": "12d49726851672394f884cd3387c745c634900a3d1b5703537f85fb93dfec3bb"
+          },
+          {
+            "path": "m3/pet/evidence/pet-global-option-listening.png",
+            "bytes": 81202,
+            "sha256": "a429610fae01941454cdea28afdf440c8d5738b30f35aae14874dac9faba785e"
+          },
+          {
+            "path": "m3/pet/evidence/pet-orb-voice-ux.png",
+            "bytes": 81047,
+            "sha256": "9eb1efe87f60fd5608e5924fccecb56783a56e7e6ec1ad1581c4e6cbb00ddb9a"
+          }
+        ]
+      }
+    }
+  ],
+  "shellNeeds": [
+    {
+      "priority": "P0",
+      "item": "打包前内置 koffi（NAPI 原生模块，darwin arm64/x64）到桌宠应用资源或 m3/pet/desktop/node_modules",
+      "why": "本轮 dev 从 nisse-dsh pnpm store 绝对路径 require；reshard/清理该目录会降级为 Alt+Space",
+      "how": "拷贝 koffi 包（含 build/koffi/<platform>/koffi.node）到 m3/pet/desktop/node_modules/koffi；electron-builder 打包时随 app 一起带；或壳设置 NISSE_KOFFI_PATH 指向内置处"
+    },
+    {
+      "priority": "P1",
+      "item": "可选：壳侧 Bot 设置“语音输入”区显示实际生效按键（从桌宠状态/托盘或 config 读取）",
+      "why": "桌宠托盘已显示；DSH 设置页保持一致更完整，但不阻塞本轮"
+    },
+    {
+      "priority": "P2",
+      "item": "确认 gateway 新行为（新语音排队不 abort）已在真实链路生效；桌宠普通语音/点击不再发 /cancel 已按此实现",
+      "why": "本轮 smoke 断言点击流程 0 次 bridge /cancel；pause-on-input 仍按用户键鼠输入发 /cancel"
+    }
+  ],
+  "knownLimitations": [
+    "真实物理 Option 按键与真实麦克风/TCC 未人工验收（自动 smoke 用注入读值 + dry-run 状态机，走同一生产代码路径）。",
+    "koffi 当前是 dev 绝对路径；打包前需内置（见 shellNeeds P0）。",
+    "全局 Option 轮询 60ms + 2 次稳定采样（约 120ms 起/停延迟），可经 NISSE_OPTION_POLL_MS/NISSE_OPTION_STABLE_POLLS 调整。",
+    "提示徽章宽度受 172 CSS px orb 窗口限制，文案保持一行短句；“全局”由托盘行承载。"
+  ],
+  "unverified": [
+    "真实按下/松开 Option 的物理检测（CGEventSourceKeyState 在 Electron 内已加载并调用，probe=false 表示当前未按）",
+    "真实麦克风点击开/关与结束发送（TCC 授权）",
+    "koffi 打包内置后的运行时路径（本轮 dev 绝对路径）"
+  ]
+}

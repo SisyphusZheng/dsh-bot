@@ -1,0 +1,58 @@
+{
+  "suite": "real DSH approval via bridge + pet decision endpoint",
+  "startedAt": "2026-10-22T13:12:31.332Z",
+  "cases": {
+    "allow": {
+      "decision": "allow",
+      "command": "请调用终端工具执行 shell 命令：touch $HOME/projects/dsh-bot-workspace/m4/bot-evidence/approval-real-allow.txt 。只执行这一条命令，不要做别的事情，不要征求意见。",
+      "approval": {
+        "id": "approval_1792674759050_1",
+        "toolName": "terminal_send",
+        "reason": "terminal_send outside workspace: $HOME/projects/dsh-bot-workspace/m4/bot-evidence/approval-real-allow.txt",
+        "answer": {
+          "ok": true,
+          "result": {
+            "ok": true,
+            "decision": "allow",
+            "outcome": "allowed-once"
+          }
+        }
+      },
+      "ended": {
+        "terminal": "completed"
+      },
+      "bubbleScreenshot": null,
+      "fileExists": true,
+      "expectedFileExists": true,
+      "pass": true,
+      "bubbleNote": "approval decision was posted to the desktop shell endpoint /bot/approval, which is exactly what the pet bubble 是/否 buttons forward; bubble visual re-capture runs after body-runtime cleanup"
+    },
+    "reject": {
+      "decision": "reject",
+      "command": "请调用终端工具执行 shell 命令：touch $HOME/projects/dsh-bot-workspace/m4/bot-evidence/approval-real-reject.txt 。只执行这一条命令，不要做别的事情，不要征求意见。",
+      "approval": {
+        "id": "approval_1792674775620_2",
+        "toolName": "terminal_send",
+        "reason": "terminal_send outside workspace: $HOME/projects/dsh-bot-workspace/m4/bot-evidence/approval-real-reject.txt",
+        "answer": {
+          "ok": true,
+          "result": {
+            "ok": true,
+            "decision": "reject",
+            "outcome": "rejected"
+          }
+        }
+      },
+      "ended": {
+        "terminal": "completed"
+      },
+      "bubbleScreenshot": null,
+      "fileExists": false,
+      "expectedFileExists": false,
+      "pass": true,
+      "bubbleNote": "approval decision was posted to the desktop shell endpoint /bot/approval, which is exactly what the pet bubble 是/否 buttons forward; bubble visual re-capture runs after body-runtime cleanup"
+    }
+  },
+  "ok": true,
+  "finishedAt": "2026-10-22T13:13:05.465Z"
+}

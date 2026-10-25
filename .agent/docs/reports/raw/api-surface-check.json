@@ -1,0 +1,70 @@
+{
+  "schema": "whalegirl.api-surface-check/1",
+  "plugin": "nisse-host-integration 0.1.0",
+  "surfaces": [
+    {
+      "surface": "ctx.agents.create()",
+      "contract": "agent session creation",
+      "rc3Changed": false,
+      "evidence": "no packages/host|session source change; only package.json version bumps"
+    },
+    {
+      "surface": "ctx.agents.resume()",
+      "contract": "resume on already-exists path",
+      "rc3Changed": false
+    },
+    {
+      "surface": "agent.followup(message)",
+      "contract": "turn submission",
+      "rc3Changed": false
+    },
+    {
+      "surface": "agent.cancel({ kind: \"user\" })",
+      "contract": "turn cancellation",
+      "rc3Changed": false
+    },
+    {
+      "surface": "ctx.permissionPresets / ctx.get(\"permissionPresets\")",
+      "contract": "preset table (bot-outside-write)",
+      "rc3Changed": false
+    },
+    {
+      "surface": "ctx.approval (inject)",
+      "contract": "approval waterfall",
+      "rc3Changed": false
+    },
+    {
+      "surface": "ctx.get(\"workspaceRegistry\")",
+      "contract": "workspace registration",
+      "rc3Changed": false
+    },
+    {
+      "surface": "createUserMessage() from packages/llm/llm/lib/index.js",
+      "contract": "official message constructor",
+      "rc3Changed": "only package.json",
+      "evidence": "packages/llm/llm changed files: packages/llm/llm/package.json"
+    },
+    {
+      "surface": "session/event + agent/assistant-stream events",
+      "contract": "turn.delta / turn.settled / tool events",
+      "rc3Changed": false
+    }
+  ],
+  "llmProviderInternals": {
+    "note": "Real upstream code change is the DeepSeek model-listing refactor in packages/llm/llm-deepseek*; it does not touch the official message constructor used by host-integration, but it changes the api-key route config surface (models -> modelOverrides, listing cache moved to the shared transport).",
+    "files": [
+      "packages/llm/llm-deepseek-account/src/config.ts",
+      "packages/llm/llm-deepseek-account/src/index.ts",
+      "packages/llm/llm-deepseek-api-key/src/config.ts",
+      "packages/llm/llm-deepseek-api-key/src/index.ts",
+      "packages/llm/llm-deepseek/src/config.ts",
+      "packages/llm/llm-deepseek/src/index.ts",
+      "packages/llm/llm-deepseek/src/listed-catalog.ts",
+      "packages/llm/llm-deepseek/src/listing-cache.ts",
+      "packages/llm/llm-deepseek/src/listing-config.ts",
+      "packages/llm/llm-deepseek/src/listing.ts",
+      "packages/llm/llm-deepseek/src/models.ts"
+    ]
+  },
+  "conclusion": "No host-integration dependency surface changed in rc.3; risk is confined to client/UI and LLM provider listing internals."
+}

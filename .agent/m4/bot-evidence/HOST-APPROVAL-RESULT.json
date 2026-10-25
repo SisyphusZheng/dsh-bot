@@ -1,0 +1,55 @@
+{
+  "suite": "DSH agent-scoped approval allow/reject (real host, write tool)",
+  "startedAt": "2026-10-22T13:08:21.497Z",
+  "cases": {
+    "allow": {
+      "decision": "allow",
+      "approval": {
+        "id": "approval_1792674505314_1",
+        "toolName": "write",
+        "reason": "write outside workspace: $HOME/projects/dsh-bot-workspace/m4/bot-evidence/host-approval-allow.txt",
+        "answer": {
+          "ok": true,
+          "decision": "allow",
+          "outcome": "allowed-once"
+        }
+      },
+      "ended": {
+        "durableSeq": 27,
+        "terminal": "completed",
+        "reason": {
+          "kind": "completed"
+        }
+      },
+      "fileExists": true,
+      "expectedFileExists": true,
+      "pass": true
+    },
+    "reject": {
+      "decision": "reject",
+      "approval": {
+        "id": "approval_1792674511255_2",
+        "toolName": "write",
+        "reason": "write outside workspace: $HOME/projects/dsh-bot-workspace/m4/bot-evidence/host-approval-reject.txt",
+        "answer": {
+          "ok": true,
+          "decision": "reject",
+          "outcome": "rejected"
+        }
+      },
+      "ended": {
+        "durableSeq": 42,
+        "terminal": "completed",
+        "reason": {
+          "kind": "completed"
+        }
+      },
+      "fileExists": false,
+      "expectedFileExists": false,
+      "pass": true
+    }
+  },
+  "sessionId": "33380e1e-2cba-4b7e-abbf-7b1bd36cbba7",
+  "ok": true,
+  "finishedAt": "2026-10-22T13:08:35.223Z"
+}

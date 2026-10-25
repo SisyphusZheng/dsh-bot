@@ -1,0 +1,244 @@
+{
+  "suite": "voice worker Electron lifecycle smoke",
+  "cases": [
+    {
+      "mode": "enabled",
+      "exit": 0,
+      "status": {
+        "worker": {
+          "enabled": true,
+          "state": "running",
+          "pid": 87859,
+          "healthUrl": "http://127.0.0.1:50679/health",
+          "port": 50679,
+          "mode": "dsh",
+          "restarts": 0,
+          "lastExit": null,
+          "lastError": null,
+          "startedAt": "2026-10-24T04:33:34.403Z"
+        },
+        "bridge": {
+          "ok": true,
+          "pid": 87832,
+          "port": 50678,
+          "pidAlive": true,
+          "health": {
+            "ok": true,
+            "plugin": "test-bridge"
+          }
+        },
+        "client": {
+          "config": {
+            "offerUrl": "http://127.0.0.1:50683/805ebc8f5d6d455a94dde8d9122d6b0383be534179d78c91/g0-voice/api/offer?token=dev-token",
+            "autoConnect": true
+          },
+          "status": {
+            "build": "audio-cleanup-events-v1",
+            "serverMessages": [],
+            "bargeDecisionLog": [],
+            "playbackIdentity": null,
+            "botAudioStream": null,
+            "botVolumePreference": 1,
+            "duck": null,
+            "duckDecisionLog": [],
+            "audioCleanupEvents": [],
+            "status": "transport:connecting",
+            "transport": "connecting",
+            "voiceService": "unknown",
+            "connected": false,
+            "errors": [],
+            "lastError": null,
+            "lastErrorAt": null,
+            "lastRecoveryAt": null,
+            "log": [
+              "04:33:34.588 client constructed",
+              "04:33:34.589 initDevices start",
+              "04:33:34.589 transport initializing",
+              "04:33:35.162 transport initialized",
+              "04:33:35.162 initDevices done",
+              "04:33:35.162 connect start",
+              "04:33:35.162 transport initializing",
+              "04:33:35.162 transport initialized",
+              "04:33:35.163 transport connecting"
+            ],
+            "lastEventAt": 1792816415163,
+            "healthFailures": 0,
+            "audioGeneration": 0,
+            "lastAudioStartAt": 0,
+            "audioStarts": [],
+            "audibleEvents": [],
+            "audibleTurns": [],
+            "oldAudioCleared": null
+          }
+        }
+      },
+      "worker_pid_alive_after_exit": false,
+      "stdout_tail": "ductMode\":true,\"testMode\":false}\n2026-10-24T04:33:34.854Z INFO desktop voice.state_report {\"enabled\":false,\"waiting\":false,\"mode\":\"hold\",\"reports\":3,\"dryRun\":false,\"hintSeen\":false,\"hintVisible\":true,\"hintShows\":1,\"clickCount\":0,\"enabledBy\":\"\"}\n2026-10-24T04:33:35.304Z INFO desktop desktop.stopping\n"
+    },
+    {
+      "mode": "disabled",
+      "exit": 0,
+      "status": {
+        "worker": {
+          "enabled": false,
+          "state": "disabled",
+          "pid": null,
+          "healthUrl": "http://127.0.0.1:50696/health",
+          "port": 50696,
+          "mode": "dsh",
+          "restarts": 0,
+          "lastExit": null,
+          "lastError": null,
+          "startedAt": null
+        },
+        "bridge": {
+          "ok": true,
+          "pid": 87832,
+          "port": 50695,
+          "pidAlive": true,
+          "health": {
+            "ok": true,
+            "plugin": "test-bridge"
+          }
+        },
+        "client": {
+          "config": null,
+          "status": null
+        }
+      },
+      "worker_pid_alive_after_exit": null,
+      "stdout_tail": "1,\"clickCount\":0,\"enabledBy\":\"\"}\n2026-10-24T04:33:36.966Z INFO desktop voice.state_report {\"enabled\":false,\"waiting\":false,\"mode\":\"hold\",\"reports\":3,\"dryRun\":false,\"hintSeen\":false,\"hintVisible\":true,\"hintShows\":1,\"clickCount\":0,\"enabledBy\":\"\"}\n2026-10-24T04:33:37.706Z INFO desktop desktop.stopping\n"
+    },
+    {
+      "mode": "crash",
+      "exit": 0,
+      "status": {
+        "worker": {
+          "enabled": true,
+          "state": "running",
+          "pid": 87898,
+          "healthUrl": "http://127.0.0.1:50712/health",
+          "port": 50712,
+          "mode": "dsh",
+          "restarts": 1,
+          "lastExit": {
+            "code": 7,
+            "signal": null,
+            "at": "2026-10-24T04:33:39.564Z",
+            "expected": false
+          },
+          "lastError": null,
+          "startedAt": "2026-10-24T04:33:39.265Z"
+        },
+        "bridge": {
+          "ok": true,
+          "pid": 87832,
+          "port": 50711,
+          "pidAlive": true,
+          "health": {
+            "ok": true,
+            "plugin": "test-bridge"
+          }
+        },
+        "client": {
+          "config": {
+            "offerUrl": "http://127.0.0.1:50718/8ab88bae5dabe8fabc95caf8ba0de38367ce6e63985157d3/g0-voice/api/offer?token=dev-token",
+            "autoConnect": true
+          },
+          "status": {
+            "build": "audio-cleanup-events-v1",
+            "serverMessages": [],
+            "bargeDecisionLog": [],
+            "playbackIdentity": null,
+            "botAudioStream": null,
+            "botVolumePreference": 1,
+            "duck": null,
+            "duckDecisionLog": [],
+            "audioCleanupEvents": [
+              {
+                "seq": 1,
+                "at": 1792816421859,
+                "reason": "transport-disconnected",
+                "audioGeneration": 0,
+                "hadElement": false,
+                "pausedBefore": null,
+                "hasSrcObjectBefore": null,
+                "result": "no-element"
+              }
+            ],
+            "status": "error",
+            "transport": "disconnected",
+            "voiceService": "unknown",
+            "connected": false,
+            "errors": [
+              "WebRTC offer rejected with status 404",
+              "Error: WebRTC offer rejected with status 404"
+            ],
+            "lastError": null,
+            "lastErrorAt": null,
+            "lastRecoveryAt": null,
+            "log": [
+              "04:33:39.288 client constructed",
+              "04:33:39.289 initDevices start",
+              "04:33:39.289 transport initializing",
+              "04:33:39.753 transport initialized",
+              "04:33:39.753 initDevices done",
+              "04:33:39.753 connect start",
+              "04:33:39.754 transport initializing",
+              "04:33:39.754 transport initialized",
+              "04:33:39.754 transport connecting",
+              "04:33:41.857 transport error",
+              "04:33:41.859 bubble: G0 已断开",
+              "04:33:41.859 transport disconnecting",
+              "04:33:41.859 transport disconnected",
+              "04:33:41.859 old bot audio cleanup: no active element (transport-disconnected)",
+              "04:33:41.860 bubble: G0 语音连接失败：WebRTC offer rejected with status 404",
+              "04:33:41.860 bubble: G0 自动连接失败：Error: WebRTC offer rejected with status 404"
+            ],
+            "lastEventAt": 1792816421860,
+            "healthFailures": 0,
+            "audioGeneration": 0,
+            "lastAudioStartAt": 0,
+            "audioStarts": [],
+            "audibleEvents": [],
+            "audibleTurns": [],
+            "oldAudioCleared": true,
+            "audioCleanupReason": "transport-disconnected",
+            "audioCleanupHadElement": false,
+            "audioCleanupAt": 1792816421859
+          }
+        }
+      },
+      "worker_pid_alive_after_exit": false,
+      "stdout_tail": "ate\":\"active\"}\n2026-10-24T04:33:40.670Z INFO desktop bubble.show {\"source\":\"onboarding\",\"kind\":\"onboarding\",\"clickThrough\":false}\n2026-10-24T04:33:40.686Z INFO desktop bubble.show {\"source\":\"onboarding\",\"kind\":\"onboarding\",\"clickThrough\":false}\n2026-10-24T04:33:43.944Z INFO desktop desktop.stopping\n"
+    },
+    {
+      "mode": "invalid",
+      "exit": 0,
+      "status": {
+        "worker": {
+          "enabled": true,
+          "state": "failed",
+          "pid": null,
+          "healthUrl": "http://127.0.0.1:50752/health",
+          "port": 50752,
+          "mode": "dsh",
+          "restarts": 0,
+          "lastExit": null,
+          "lastError": "DSH bridge descriptor not found: /var/folders/x4/77mrbs3d6h5c4969mtg8rk800000gn/T/nis-pet-smoke-j14g4gr9/missing-descriptor.json",
+          "startedAt": null
+        },
+        "bridge": {
+          "ok": false,
+          "error": "ENOENT: no such file or directory, open '/var/folders/x4/77mrbs3d6h5c4969mtg8rk800000gn/T/nis-pet-smoke-j14g4gr9/missing-descriptor.json'"
+        },
+        "client": {
+          "config": null,
+          "status": null
+        }
+      },
+      "worker_pid_alive_after_exit": null,
+      "stdout_tail": "1,\"clickCount\":0,\"enabledBy\":\"\"}\n2026-10-24T04:33:45.646Z INFO desktop voice.state_report {\"enabled\":false,\"waiting\":false,\"mode\":\"hold\",\"reports\":3,\"dryRun\":false,\"hintSeen\":false,\"hintVisible\":true,\"hintShows\":1,\"clickCount\":0,\"enabledBy\":\"\"}\n2026-10-24T04:33:46.376Z INFO desktop desktop.stopping\n"
+    }
+  ]
+}

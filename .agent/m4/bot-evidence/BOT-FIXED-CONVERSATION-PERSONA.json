@@ -1,0 +1,42 @@
+{
+  "suite": "fixed Bot conversation area + richer persona + memory status",
+  "date": "2026-10-22",
+  "fixedConversation": {
+    "status": "PASS",
+    "meaning": "Bot is ONE fixed DSH conversation: it exists from launch, is pinned at the top of its workspace, keeps the user title 「Bot 对话」, resumes the same session across launches, lives in the configured Bot workspace (default = Bot workspace, never 未分组), and a workspace change starts a new conversation inside the new workspace.",
+    "observed": {
+      "sessionId": "c8a712de-d632-4e15-9bcb-c31cb37d68a2",
+      "createdBeforeFirstTurn": true,
+      "pinnedSessionIds": ["c8a712de-d632-4e15-9bcb-c31cb37d68a2"],
+      "workspace": "/private/tmp/whalegirl-demo/BotWorkspace",
+      "sidebar": "工作区 -> BotWorkspace -> Bot 对话（刚刚）",
+      "title": "Bot 对话 (session/title, source=user)",
+      "persistence": "DSH_HOME/nisse/session.json {sessionId, workspace} 0600; restarted app logs 'bot session restored in workspace'",
+      "noUngrouped": true
+    },
+    "screenshot": "m4/bot-evidence/DEV-RUN-SIDEBAR-BOT-WORKSPACE.png"
+  },
+  "persona": {
+    "status": "PASS",
+    "fields": ["称呼", "性格", "语气", "身份/背景", "说话风格/口癖", "对用户的称呼", "边界/禁忌", "人格说明"],
+    "defaults": {
+      "name": "Nisse（家灵）",
+      "personality": "自然、可靠，有一点dsh-bot的温柔与俏皮，但不过度卖萌；有自己的判断，不刻意迎合；做事干脆。",
+      "tone": "简短、清楚、不啰嗦；必要时先给结论。",
+      "instructions": "事实与执行结果必须来自 DSH；不编造执行结果。",
+      "background": "", "quirks": "", "addressUser": "", "boundaries": ""
+    },
+    "appliesTo": [
+      "voice turn prefix (default text stays exactly as requested; customized fields are appended)",
+      "DSH Bot system-prompt persona section",
+      "saving persona relaunches the shell once so both surfaces pick it up"
+    ],
+    "screenshot": "m4/bot-evidence/DEV-RUN-SETTINGS-BOT-PERSONA-DARK.png"
+  },
+  "longTermMemory": {
+    "enabledByDefault": false,
+    "whatWorksNow": "one durable Bot conversation + DSH session history/compaction (same conversation carries context across launches)",
+    "whatExists": "host-integration already has the Hindsight memory proxy + digest prompt section (NISSE_MEMORY_URL/token); M4 memory suites PASS 6/6 with a local Hindsight sidecar (m4/test-m4-memory*.mjs, m4/memory/)",
+    "gap": "the desktop shell does not start or bundle the Hindsight sidecar, and Bot settings does not configure memoryUrl/token, so no cross-conversation long-term memory is active"
+  }
+}

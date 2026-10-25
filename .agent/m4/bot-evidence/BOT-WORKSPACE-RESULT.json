@@ -1,0 +1,38 @@
+{
+  "suite": "W7 default Bot workspace: DSH top workspace selector follows Bot settings",
+  "date": "2026-10-22",
+  "implementation": [
+    "nisse/packages/host-integration/lib/index.js: reads DSH_HOME/bot/config.json -> agent.workspace on every Bot session; registers that directory through the official ctx.workspaceRegistry.create (idempotent, prepended) so DSH shows it in 工作区; bridge workspaceDir/agent cwd/preflight root all use the same value.",
+    "apps/desktop/src/bot-runtime.ts: managed profile layer carries workspaceDir + LLM provider/model + permission preset + host-integration entry; regenerated on every start and Bot settings save (user-authored patch lines preserved).",
+    "apps/desktop/src/main.ts: Bot settings save -> botRuntime.applyConfig(config) (profile layer + voice gateway restart)."
+  ],
+  "evidence": {
+    "freshInstall": {
+      "dshHome": "/tmp/whalegirl-fresh (new DSH_HOME, empty workspace/session store; desktop profile copied from the installed DSH profile so providers exist)",
+      "botConfigAgentWorkspace": "/tmp/whalegirl-fresh/MyBotWorkspace",
+      "hostIntegrationLog": "bot workspace ready { path: '/tmp/whalegirl-fresh/MyBotWorkspace', id: '6025864d-72f9-475f-94b4-d81250ce575b' }",
+      "composerWorkspaceChip": "MyBotWorkspace",
+      "newSessionEntered": "storages/workspace.json -> tables.workspaces[id].sessionIds = ['session-c53be317-3d4d-4dd6-b5bd-bbf213edc60a']",
+      "screenshot": "DSH-DEFAULT-BOT-WORKSPACE.png"
+    },
+    "changedInBotSettings": {
+      "botConfigAgentWorkspace": "/tmp/whalegirl-fresh/AnotherBotWS",
+      "hostIntegrationLog": "workspaceDir: '/tmp/whalegirl-fresh/AnotherBotWS'; bot workspace ready id 'cfb55d05-ac4e-4143-8baa-3ffe4212052f'",
+      "composerWorkspaceChip": "AnotherBotWS",
+      "sidebarWorkspaces": ["工作区“AnotherBotWS”的操作", "工作区“MyBotWorkspace”的操作"],
+      "newSessionEntered": "storages/workspace.json -> AnotherBotWS.sessionIds = 1",
+      "screenshot": "DSH-BOT-WORKSPACE-CHANGED.png"
+    },
+    "existingProfile": {
+      "note": "On an existing DSH home with prior sessions, DSH restores the saved session selection; the Bot workspace is registered and visible in 工作区, and the Bot bridge session runs in it. The fresh-install path above is the acceptance case for '新会话进入该 workspace'.",
+      "observed": "test profile with prior default workspace showed MyBotWorkspace in the sidebar while the old saved session stayed selected"
+    }
+  },
+  "reproduce": [
+    "1. DSH_HOME=/tmp/<fresh>; copy an installed profiles/desktop and .credentials.yaml",
+    "2. write DSH_HOME/bot/config.json with agent.workspace=<dir> (0600)",
+    "3. install the first-party host-integration bundle into the desktop profile (apps/desktop bot-runtime prepare does this in the packaged shell)",
+    "4. launch the desktop shell; host log prints 'bot workspace ready'; the DSH composer workspace chip shows <dir> and the new session is created inside it",
+    "5. change agent.workspace, relaunch: the chip shows the new directory"
+  ]
+}

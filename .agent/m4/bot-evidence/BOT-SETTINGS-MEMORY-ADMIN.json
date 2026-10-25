@@ -1,0 +1,166 @@
+{
+  "suite": "Bot settings memory admin (sidecar /list /correct /delete /history)",
+  "startedAt": "2026-10-22T16:12:54.547Z",
+  "bank": "nisse:m4:admin-test-1792685574547",
+  "steps": {
+    "sidecar-start": {
+      "status": "PASS",
+      "ms": 227,
+      "detail": {
+        "port": 54740,
+        "bank": "nisse:m4:admin-test-1792685574547"
+      }
+    },
+    "seed-write": {
+      "status": "PASS",
+      "ms": 64,
+      "detail": {
+        "ok": true,
+        "bankId": "nisse:m4:admin-test-1792685574547",
+        "documentId": "nisse_7010cbf3-8112-49ba-ad01-80cd59f87b77",
+        "itemsWritten": 3,
+        "async": false,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "total_tokens": 0,
+          "cached_tokens": 0,
+          "thoughts_tokens": 0
+        }
+      }
+    },
+    "list-all": {
+      "status": "PASS",
+      "ms": 8,
+      "detail": {
+        "count": 3,
+        "total": 3,
+        "sample": {
+          "id": "69d541fb-664a-467f-bcc8-72ae78282ede",
+          "text": "The design team is located in Shanghai.",
+          "kind": "fact",
+          "namespace": "global",
+          "date": "2026-10-22T16:12:54.827000+00:00",
+          "documentId": "nisse_7010cbf3-8112-49ba-ad01-80cd59f87b77",
+          "state": "valid"
+        }
+      }
+    },
+    "list-query-filter": {
+      "status": "PASS",
+      "ms": 7,
+      "detail": {
+        "count": 1,
+        "text": "Project Nimbus is the release codename."
+      }
+    },
+    "list-paging": {
+      "status": "PASS",
+      "ms": 11,
+      "detail": {
+        "total": 3,
+        "firstId": "69d541fb-664a-467f-bcc8-72ae78282ede",
+        "secondId": "906f855c-3cb8-4d05-a1ff-ab231753f155"
+      }
+    },
+    "correct-write-new-delete-old": {
+      "status": "PASS",
+      "ms": 62,
+      "detail": {
+        "previousId": "2222d4e6-64ab-4b9a-81e0-d5844c0886b6",
+        "documentId": "nisse_bcaa0a96-af15-4346-a63c-9c7c31c2d47c",
+        "forget": {
+          "deleted": 1,
+          "invalidated": 1,
+          "deletedDocuments": 0,
+          "notFound": [],
+          "verified": true,
+          "remaining": 0
+        }
+      }
+    },
+    "delete-by-id": {
+      "status": "PASS",
+      "ms": 27,
+      "detail": {
+        "deleted": 1,
+        "invalidated": 1,
+        "deletedDocuments": 0,
+        "notFound": [],
+        "verified": true,
+        "remaining": 0
+      }
+    },
+    "history": {
+      "status": "PASS",
+      "ms": 4,
+      "detail": {
+        "id": "ace4a5a8-90b6-4856-aab3-b3997fdcb6a2",
+        "count": 0,
+        "note": ""
+      }
+    },
+    "validation-errors": {
+      "status": "PASS",
+      "ms": 12,
+      "detail": {
+        "noText": "INVALID_REQUEST",
+        "noId": "INVALID_REQUEST",
+        "missing": "NOT_FOUND"
+      }
+    },
+    "bearer-token-required": {
+      "status": "PASS",
+      "ms": 4,
+      "detail": {
+        "status": 401
+      }
+    },
+    "memory-runtime-hook-recipe": {
+      "status": "PASS",
+      "ms": 426,
+      "detail": {
+        "ok": true,
+        "list": 0,
+        "correct": {
+          "ok": true,
+          "result": {
+            "previousId": "d2dc8648-8c3c-4fb2-b3d6-20fe074e1fe8",
+            "documentId": "nisse_2b56d436-f794-43ca-b4d1-bbf8af5bb920",
+            "itemsWritten": 1,
+            "forget": {
+              "deleted": 1,
+              "invalidated": 1,
+              "deletedDocuments": 0,
+              "notFound": [],
+              "verified": true,
+              "remaining": 0
+            },
+            "verified": true
+          }
+        },
+        "deleted": {
+          "ok": true,
+          "result": {
+            "deleted": 1,
+            "invalidated": 1,
+            "deletedDocuments": 0,
+            "notFound": [],
+            "verified": true,
+            "remaining": 0
+          }
+        },
+        "historyOk": true
+      }
+    }
+  },
+  "ok": true,
+  "endpointsAdded": [
+    "POST /list",
+    "POST /correct (write-new-then-delete-old with rollback)",
+    "POST /delete",
+    "POST /history (native Hindsight revision history)"
+  ],
+  "auth": "bearer token required on every endpoint (401 otherwise); zero extra dependencies",
+  "finishedAt": "2026-10-22T16:12:55.978Z"
+}

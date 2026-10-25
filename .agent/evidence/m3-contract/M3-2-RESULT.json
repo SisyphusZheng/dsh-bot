@@ -1,0 +1,81 @@
+{
+  "contract": {
+    "id": "https://nisse.local/contract/product-contract.v0.json",
+    "statuses": 7,
+    "commands": 20,
+    "events": 16,
+    "errors": 12
+  },
+  "passed": 8,
+  "total": 8,
+  "ok": true,
+  "results": [
+    {
+      "name": "valid event",
+      "expectedOk": true,
+      "actualOk": true,
+      "errors": [],
+      "pass": true
+    },
+    {
+      "name": "unknown event rejected",
+      "expectedOk": false,
+      "actualOk": false,
+      "errors": [
+        "event: unknown type nope"
+      ],
+      "pass": true
+    },
+    {
+      "name": "missing eventId rejected",
+      "expectedOk": false,
+      "actualOk": false,
+      "errors": [
+        "event: invalid/missing eventId"
+      ],
+      "pass": true
+    },
+    {
+      "name": "bad source rejected",
+      "expectedOk": false,
+      "actualOk": false,
+      "errors": [
+        "event: invalid source"
+      ],
+      "pass": true
+    },
+    {
+      "name": "valid command",
+      "expectedOk": true,
+      "actualOk": true,
+      "errors": [],
+      "pass": true
+    },
+    {
+      "name": "unknown command rejected",
+      "expectedOk": false,
+      "actualOk": false,
+      "errors": [
+        "command: unknown type shell.exec"
+      ],
+      "pass": true
+    },
+    {
+      "name": "valid status",
+      "expectedOk": true,
+      "actualOk": true,
+      "errors": [],
+      "pass": true
+    },
+    {
+      "name": "unknown status rejected",
+      "expectedOk": false,
+      "actualOk": false,
+      "errors": [
+        "status: unknown state sleeping"
+      ],
+      "pass": true
+    }
+  ],
+  "generatedAt": "2026-10-22T05:47:29.938Z"
+}

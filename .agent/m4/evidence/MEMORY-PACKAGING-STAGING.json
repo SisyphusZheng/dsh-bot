@@ -1,0 +1,1066 @@
+{
+  "schema": "whalegirl.memory-packaging-staging/v1",
+  "generatedAt": "2026-10-24T13:10:19.703Z",
+  "task": "task-6 / B-stream: packaged long-term memory staging + fresh-HOME offline validation",
+  "verdict": "PASS_WITH_CONDITIONS",
+  "checks": {
+    "stagingComplete": true,
+    "coldHealthy": true,
+    "onnxEmbeddingsInitialized": true,
+    "offlineNoHubDownloads": true,
+    "pg0Preseeded": true,
+    "isolatedHome": true,
+    "hfHubOfflineFlag": true,
+    "bundledModelPathUsed": true,
+    "cfHomeOverride": true,
+    "tmpDirOverride": true,
+    "zeroExternalTcp": true,
+    "noUserDataOpenFiles": true,
+    "sidecarDescriptor": true,
+    "sidecarHealthy": true,
+    "retainWritten": true,
+    "recallCorrect": true,
+    "softInvalidatedNotRecallable": true,
+    "softInvalidatedNotListed": true,
+    "forgottenTextsNotRecallable": true,
+    "listEmptyAfterDelete": true,
+    "warmRestartHealthy": true,
+    "privateDirUntouched": true,
+    "freshHomeUsed": true,
+    "noResidualProcesses": true
+  },
+  "meta": {
+    "hostname": "workstation.local",
+    "platform": "darwin",
+    "arch": "arm64",
+    "macos": "26.5.1",
+    "node": "v24.18.0",
+    "harnessScript": "/private/tmp/wg-memory-staging/scripts/validate-offline.mjs",
+    "harnessScriptSha256": "5b5faac9da0d448fe1511f96fb550c67658bc174a9639d52e6b667da9203f73a",
+    "dshRepoHead": null,
+    "stagingRoot": "/tmp/wg-memory-staging",
+    "workRoot": "/tmp/wg-memory-offline-verify"
+  },
+  "staging": {
+    "components": {
+      "runtime/hindsight": {
+        "bytes": 423400273,
+        "files": 6421
+      },
+      "runtime/models": {
+        "bytes": 140207642,
+        "files": 6
+      },
+      "runtime/pg0": {
+        "bytes": 33950481,
+        "files": 1385
+      },
+      "adapter": {
+        "files": 8,
+        "bytes": 153068
+      },
+      "sidecar.mjs": {
+        "bytes": 12696,
+        "sha256": "ef747d5f932cf5c16c57d1dc6d5df07824231953887003803ee71e012d5d8764"
+      }
+    },
+    "hashes": {
+      "modelInt8": "4d24e2bc01a447951524466ef533e52944bf48509e6552810bcee1a2711cb02c",
+      "tokenizerJson": "0b44a9d7b51c3c62626640cda0e2c2f70fdacdc25bbbd68038369d14ebdf4c39",
+      "sidecar": "ef747d5f932cf5c16c57d1dc6d5df07824231953887003803ee71e012d5d8764",
+      "adapterIndex": "341be35c5d4b913c2c42c12b9868619a2b5c108d90f5db5f95232fd0b63f38af",
+      "runServer": "1949753bdad6166fb7a8190172c6f0c4b8fd943d79d83a6c5d8b518c4cc8386e"
+    },
+    "hindsightBinary": "/tmp/wg-memory-staging/runtime/hindsight/HindsightAPI: Mach-O 64-bit executable arm64",
+    "modelBytes": 118054593,
+    "totals": {
+      "stagedBytes": 617310084,
+      "stagedFiles": 7821
+    }
+  },
+  "isolation": {
+    "freshWorkRoot": "/tmp/wg-memory-offline-verify",
+    "freshHome": "/tmp/wg-memory-offline-verify/runtime/home",
+    "freshHomeExistedBefore": false,
+    "privateDirPath": "$HOME/.dsh",
+    "privateDirBefore": {
+      "exists": true,
+      "mtimeMs": 1792834691117.9592,
+      "size": 384
+    },
+    "dshHomeExcludedFromChildEnv": true,
+    "pg0SeedSource": "/tmp/wg-memory-staging/runtime/pg0/installation",
+    "pg0SeededIntoFreshHome": true,
+    "serverEnv": {
+      "HOME": "/tmp/wg-memory-offline-verify/runtime/home",
+      "HF_HUB_OFFLINE": "1",
+      "HF_HOME": "/tmp/wg-memory-offline-verify/runtime/home/.cache/huggingface",
+      "HINDSIGHT_API_EMBEDDINGS_PROVIDER": "onnx",
+      "HINDSIGHT_API_EMBEDDINGS_ONNX_MODEL_PATH": "/tmp/wg-memory-staging/runtime/models/Xenova/multilingual-e5-small/onnx/model_int8.onnx",
+      "HINDSIGHT_API_EMBEDDINGS_ONNX_TOKENIZER_NAME_OR_PATH": "/tmp/wg-memory-staging/runtime/models/Xenova/multilingual-e5-small",
+      "HINDSIGHT_API_RERANKER_PROVIDER": "rrf",
+      "HINDSIGHT_API_DATABASE_URL": "pg0",
+      "HINDSIGHT_API_LLM_PROVIDER": "mock",
+      "HINDSIGHT_API_PORT": "61703",
+      "DSH_HOME": null,
+      "CFFIXED_USER_HOME": "/tmp/wg-memory-offline-verify/runtime/home",
+      "TMPDIR": "/tmp/wg-memory-offline-verify/runtime/tmp",
+      "XDG_CACHE_HOME": "/tmp/wg-memory-offline-verify/runtime/home/.cache",
+      "envVisible": true
+    },
+    "tcp": {
+      "observedAt": "2026-10-24T13:10:30.903Z",
+      "processCount": 1,
+      "externalConnections": [],
+      "loopbackConnections": [
+        "127.0.0.1:61773->127.0.0.1:5433",
+        "127.0.0.1:61774->127.0.0.1:5433",
+        "127.0.0.1:61775->127.0.0.1:5433",
+        "127.0.0.1:61776->127.0.0.1:5433",
+        "127.0.0.1:61777->127.0.0.1:5433",
+        "127.0.0.1:61703",
+        "127.0.0.1:61703->127.0.0.1:61778",
+        "127.0.0.1:61703->127.0.0.1:61779"
+      ]
+    },
+    "unexpectedOpenFiles": [],
+    "privateDirAfter": {
+      "exists": true,
+      "mtimeMs": 1792834691117.9592,
+      "size": 384
+    },
+    "privateDirMtimeChanged": false,
+    "freshHomeCreated": true,
+    "residualProcesses": []
+  },
+  "startup": {
+    "cold": {
+      "port": 61703,
+      "baseUrl": "http://127.0.0.1:61703",
+      "waitMs": 10135,
+      "wallMsFromSpawn": 10137,
+      "healthy": true,
+      "wrapperExitCode": null,
+      "wrapperStdoutTail": "starting packaged hindsight-api: /tmp/wg-memory-staging/runtime/hindsight/HindsightAPI --host 127.0.0.1 --port 61703\n  HOME=/tmp/wg-memory-offline-verify/runtime/home pg0=/tmp/wg-memory-offline-verify/runtime/home/.pg0 model=/tmp/wg-memory-staging/runtime/models/Xenova/multilingual-e5-small offline=1 provider=mock\nwaiting for /health ",
+      "wrapperStderrTail": "",
+      "health": {
+        "status": "healthy",
+        "database": "connected",
+        "db_acquire_ms": 0.7,
+        "db_pool_waiting": 0,
+        "db_pool_in_use": 0,
+        "db_pool_max": 100,
+        "db_pool_idle": 5
+      },
+      "scriptStartupJson": null
+    },
+    "version": {
+      "api_version": "1.0.0",
+      "features": {
+        "observations": false,
+        "mcp": true,
+        "worker": true,
+        "bank_config_api": true,
+        "bank_llm_health": false,
+        "file_upload_api": true,
+        "document_export_api": true,
+        "document_import_api": true,
+        "audit_log": false,
+        "llm_trace": true,
+        "store_document_text": true
+      }
+    },
+    "coldPhases": {
+      "markers": {
+        "onnxModel": {
+          "at": "2026-10-24 21:10:24,541",
+          "fromFirstMs": 1440,
+          "line": "2026-10-24 21:10:24,541 - INFO - hindsight_api.engine.embeddings - Embeddings: initializing ONNX provider with model Xenova/multilingual-e5-small (/tmp/wg-memory-staging/runtime/models/Xenova/multilingual-e5-small/onnx/m"
+        },
+        "onnxReady": {
+          "at": "2026-10-24 21:10:25,770",
+          "fromFirstMs": 2669,
+          "line": "2026-10-24 21:10:25,770 - INFO - hindsight_api.engine.embeddings - Embeddings: ONNX provider initialized (dim: 384, device: cpu, cuda_device_id: None, providers: ['CPUExecutionProvider'])"
+        },
+        "pg0Starting": {
+          "at": "2026-10-24 21:10:25,823",
+          "fromFirstMs": 2722,
+          "line": "2026-10-24 21:10:25,823 - INFO - hindsight_api.pg0 - Starting embedded PostgreSQL (name=hindsight, port=auto)..."
+        },
+        "pg0Started": {
+          "at": "2026-10-24 21:10:29,562",
+          "fromFirstMs": 6461,
+          "line": "2026-10-24 21:10:29,562 - INFO - hindsight_api.pg0 - PostgreSQL started: postgresql://hindsight:hindsight@127.0.0.1:5433/hindsight"
+        },
+        "migrations": {
+          "at": "2026-10-24 21:10:29,909",
+          "fromFirstMs": 6808,
+          "line": "2026-10-24 21:10:29,909 - INFO - hindsight_api.migrations - Running database migrations to head for schema 'public'..."
+        }
+      },
+      "stats": {
+        "fetchLines": 0,
+        "hfAuthWarnings": 0,
+        "downloadLines": 0,
+        "errorLines": 0
+      }
+    },
+    "sidecar": {
+      "nodeBinary": "$HOME/.local/share/fnm/node-versions/v24.18.0/installation/bin/node",
+      "sidecarPath": "/tmp/wg-memory-offline-verify/dsh-bot.app/Contents/Resources/memory/sidecar.mjs",
+      "adapterRoot": "/tmp/wg-memory-offline-verify/dsh-bot.app/Contents/spike/m1-c-hindsight",
+      "electronRunAsNode": true,
+      "waitMs": 151,
+      "descriptorPublished": true,
+      "stdoutTail": "MEMORY_SIDECAR_READY {\"port\":61780}\n",
+      "stderrTail": "",
+      "descriptor": {
+        "pid": 35579,
+        "port": 61780,
+        "token": "wg-verify-4dqehk7q96",
+        "bank": "whalegirl:bot"
+      },
+      "health": {
+        "ok": true,
+        "version": "1.0.0",
+        "latencyMs": 17,
+        "bankId": "whalegirl:bot",
+        "writerHeld": false
+      }
+    },
+    "coldStop": {
+      "stopped": true,
+      "waitMs": 995,
+      "forced": false,
+      "portClosed": true
+    },
+    "warm": {
+      "waitMs": 5287,
+      "wallMsFromSpawn": 5288,
+      "healthy": true,
+      "homePreserved": true,
+      "wrapperStdoutTail": "starting packaged hindsight-api: /tmp/wg-memory-staging/runtime/hindsight/HindsightAPI --host 127.0.0.1 --port 61703\n  HOME=/tmp/wg-memory-offline-verify/runtime/home pg0=/tmp/wg-memory-offline-verify/runtime/home/.pg0 model=/tmp/wg-memory-staging/runtime/models/Xenova/multilingual-e5-small offline=1 provider=mock\nwaiting for /health ",
+      "health": {
+        "status": "healthy",
+        "database": "connected",
+        "db_acquire_ms": 0.3,
+        "db_pool_waiting": 0,
+        "db_pool_in_use": 0,
+        "db_pool_max": 100,
+        "db_pool_idle": 5
+      }
+    },
+    "warmLogTail": ".migrations - Database URL: postgresql://***:***@127.0.0.1:5433/hindsight\n2026-10-24 21:10:43,320 - INFO - hindsight_api.migrations - Script location: /private/tmp/wg-memory-staging/runtime/hindsight/_internal/hindsight_api/alembic\n2026-10-24 21:10:43,328 - INFO - alembic.runtime.migration - Context impl PostgresqlImpl.\n2026-10-24 21:10:43,329 - INFO - alembic.runtime.migration - Will assume transactional DDL.\n2026-10-24 21:10:43,379 - INFO - hindsight_api.migrations - Database migrations completed successfully for schema 'public'\n2026-10-24 21:10:43,389 - INFO - hindsight_api.migrations - Using vector extension: pgvector\n2026-10-24 21:10:43,399 - INFO - hindsight_api.migrations - Target vector extension: pgvector\n2026-10-24 21:10:43,422 - INFO - hindsight_api.engine.memory_engine - Schema migrations completed\n2026-10-24 21:10:43,422 - INFO - hindsight_api.engine.memory_engine - Connecting to database at postgresql://***:***@127.0.0.1:5433/hindsight\n2026-10-24 21:10:43,435 - INFO - hindsight_api.engine.db.postgresql - PostgreSQL pool created (min=5, max=100, cmd_timeout=60s, acquire_timeout=30s, session_setup_on_acquire=True)\n2026-10-24 21:10:43,440 - INFO - hindsight_api.engine.task_backend - BrokerTaskBackend initialized\n2026-10-24 21:10:43,440 - INFO - hindsight_api.engine.memory_engine - Memory system initialized (pool and task backend started)\n2026-10-24 21:10:43,440 - INFO - root - Memory system initialized\n2026-10-24 21:10:43,440 - INFO - root - DB pool metrics configured\n2026-10-24 21:10:43,441 - INFO - hindsight.loop_watchdog - Loop watchdog started (stall_threshold=1.00s, poll_interval=0.25s)\n2026-10-24 21:10:43,441 - INFO - root - Worker id: workstation.local (source: hostname (default))\n2026-10-24 21:10:43,441 - INFO - root - Worker poller started (worker_id=workstation.local)\n2026-10-24 21:10:43,441 - INFO - root - Tenant extension started\nINFO:     Application startup complete.\nINFO:     Uvicorn running on http://127.0.0.1:61703 (Press CTRL+C to quit)\n2026-10-24 21:10:43,443 - INFO - hindsight_api.worker.poller - Worker workstation.local starting polling loop (max_slots=10, reservations=[consolidation=2], shared_pool=8)\n2026-10-24 21:10:43,443 - INFO - hindsight_api.worker.poller - Worker workstation.local recovering stale tasks across 1 schemas\n2026-10-24 21:10:43,447 - INFO - hindsight_api.worker.poller - Worker workstation.local recovered 0 stale tasks from previous run (1 schemas in 0.0s)\n",
+    "warmStop": {
+      "stopped": true,
+      "waitMs": 997,
+      "forced": false
+    },
+    "coldFirstEverLaunch": {
+      "waitMs": 36510,
+      "note": "first-ever launch of the freshly staged onedir in this host session (OS first-run verification / cold page cache); the steady-state fresh-HOME cold start measured by this run is startup.cold.waitMs"
+    }
+  },
+  "memory": {
+    "write": {
+      "request": {
+        "items": [
+          {
+            "kind": "fact",
+            "namespace": "global",
+            "text": "我家住在杭州西湖区，平时骑自行车上班。"
+          },
+          {
+            "kind": "preference",
+            "namespace": "global",
+            "text": "我喜欢喝龙井茶，不加糖。"
+          },
+          {
+            "kind": "profile",
+            "namespace": "global",
+            "text": "我的职业是产品经理，工作日早上九点开会。"
+          }
+        ],
+        "writer": "bot"
+      },
+      "status": 200,
+      "latencyMs": 112,
+      "response": {
+        "ok": true,
+        "result": {
+          "ok": true,
+          "bankId": "whalegirl:bot",
+          "documentId": "nisse_322749cf-fd1a-4b93-8021-afea54e3bbc1",
+          "itemsWritten": 3,
+          "async": false,
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "total_tokens": 0,
+            "cached_tokens": 0,
+            "thoughts_tokens": 0
+          }
+        }
+      }
+    },
+    "recall": [
+      {
+        "name": "location",
+        "query": "我家住在哪个城市",
+        "expectedSubstring": "杭州",
+        "runs": [
+          {
+            "status": 200,
+            "latencyMs": 64,
+            "hitCount": 3,
+            "topScore": 1.0999999991631089,
+            "topText": "我家住在杭州西湖区，平时骑自行车上班。",
+            "hits": [
+              {
+                "id": "6ec7a6bf-2df1-4b57-918b-3187e85c8194",
+                "kind": "fact",
+                "namespace": "global",
+                "text": "我家住在杭州西湖区，平时骑自行车上班。",
+                "score": 1.0999999991631089,
+                "updatedAt": "2026-10-24T13:10:31.137000+00:00",
+                "documentId": "nisse_322749cf-fd1a-4b93-8021-afea54e3bbc1",
+                "nativeType": "world",
+                "scores": {
+                  "final": 1.0999999991631089,
+                  "reranker": null,
+                  "semantic": 0.9125489644677081,
+                  "keyword": null
+                }
+              },
+              {
+                "id": "f9ca784e-ed5b-4c6a-90cc-9067bda044d8",
+                "kind": "profile",
+                "namespace": "global",
+                "text": "我的职业是产品经理，工作日早上九点开会。",
+                "score": 0.6049999995431979,
+                "updatedAt": "2026-10-24T13:10:31.138000+00:00",
+                "documentId": "nisse_322749cf-fd1a-4b93-8021-afea54e3bbc1",
+                "nativeType": "world",
+                "scores": {
+                  "final": 0.6049999995431979,
+                  "reranker": null,
+                  "semantic": 0.8591244220733643,
+                  "keyword": null
+                }
+              },
+              {
+                "id": "eeab1bf3-0c4d-4bc4-8dc9-6a3af275669c",
+                "kind": "preference",
+                "namespace": "global",
+                "text": "我喜欢喝龙井茶，不加糖。",
+                "score": 0.10999999991694505,
+                "updatedAt": "2026-10-24T13:10:31.138000+00:00",
+                "documentId": "nisse_322749cf-fd1a-4b93-8021-afea54e3bbc1",
+                "nativeType": "world",
+                "scores": {
+                  "final": 0.10999999991694505,
+                  "reranker": null,
+                  "semantic": 0.8484299273234664,
+                  "keyword": null
+                }
+              }
+            ]
+          },
+          {
+            "status": 200,
+            "latencyMs": 24,
+            "hitCount": 3,
+            "topScore": 1.0999999982019344,
+            "topText": "我家住在杭州西湖区，平时骑自行车上班。",
+            "hits": [
+              {
+                "id": "6ec7a6bf-2df1-4b57-918b-3187e85c8194",
+                "kind": "fact",
+                "namespace": "global",
+                "text": "我家住在杭州西湖区，平时骑自行车上班。",
+                "score": 1.0999999982019344,
+                "updatedAt": "2026-10-24T13:10:31.137000+00:00",
+                "documentId": "nisse_322749cf-fd1a-4b93-8021-afea54e3bbc1",
+                "nativeType": "world",
+                "scores": {
+                  "final": 1.0999999982019344,
+                  "reranker": null,
+                  "semantic": 0.9125489644677081,
+                  "keyword": null
+                }
+              },
+              {
+                "id": "f9ca784e-ed5b-4c6a-90cc-9067bda044d8",
+                "kind": "profile",
+                "namespace": "global",
+                "text": "我的职业是产品经理，工作日早上九点开会。",
+                "score": 0.6049999990145519,
+                "updatedAt": "2026-10-24T13:10:31.138000+00:00",
+                "documentId": "nisse_322749cf-fd1a-4b93-8021-afea54e3bbc1",
+                "nativeType": "world",
+                "scores": {
+                  "final": 0.6049999990145519,
+                  "reranker": null,
+                  "semantic": 0.8591244220733643,
+                  "keyword": null
+                }
+              },
+              {
+                "id": "eeab1bf3-0c4d-4bc4-8dc9-6a3af275669c",
+                "kind": "preference",
+                "namespace": "global",
+                "text": "我喜欢喝龙井茶，不加糖。",
+                "score": 0.1099999998208276,
+                "updatedAt": "2026-10-24T13:10:31.138000+00:00",
+                "documentId": "nisse_322749cf-fd1a-4b93-8021-afea54e3bbc1",
+                "nativeType": "world",
+                "scores": {
+                  "final": 0.1099999998208276,
+                  "reranker": null,
+                  "semantic": 0.8484299273234664,
+                  "keyword": null
+                }
+              }
+            ]
+          }
+        ],
+        "matched": true
+      },
+      {
+        "name": "preference",
+        "query": "我平时喝什么茶",
+        "expectedSubstring": "龙井",
+        "runs": [
+          {
+            "status": 200,
+            "latencyMs": 23,
+            "hitCount": 3,
+            "topScore": 1.0999999973009322,
+            "topText": "我喜欢喝龙井茶，不加糖。",
+            "hits": [
+              {
+                "id": "eeab1bf3-0c4d-4bc4-8dc9-6a3af275669c",
+                "kind": "preference",
+                "namespace": "global",
+                "text": "我喜欢喝龙井茶，不加糖。",
+                "score": 1.0999999973009322,
+                "updatedAt": "2026-10-24T13:10:31.138000+00:00",
+                "documentId": "nisse_322749cf-fd1a-4b93-8021-afea54e3bbc1",
+                "nativeType": "world",
+                "scores": {
+                  "final": 1.0999999973009322,
+                  "reranker": null,
+                  "semantic": 0.8967874974969811,
+                  "keyword": null
+                }
+              },
+              {
+                "id": "f9ca784e-ed5b-4c6a-90cc-9067bda044d8",
+                "kind": "profile",
+                "namespace": "global",
+                "text": "我的职业是产品经理，工作日早上九点开会。",
+                "score": 0.6049999985155128,
+                "updatedAt": "2026-10-24T13:10:31.138000+00:00",
+                "documentId": "nisse_322749cf-fd1a-4b93-8021-afea54e3bbc1",
+                "nativeType": "world",
+                "scores": {
+                  "final": 0.6049999985155128,
+                  "reranker": null,
+                  "semantic": 0.8372655760426995,
+                  "keyword": null
+                }
+              },
+              {
+                "id": "6ec7a6bf-2df1-4b57-918b-3187e85c8194",
+                "kind": "fact",
+                "namespace": "global",
+                "text": "我家住在杭州西湖区，平时骑自行车上班。",
+                "score": 0.10999999972945902,
+                "updatedAt": "2026-10-24T13:10:31.137000+00:00",
+                "documentId": "nisse_322749cf-fd1a-4b93-8021-afea54e3bbc1",
+                "nativeType": "world",
+                "scores": {
+                  "final": 0.10999999972945902,
+                  "reranker": null,
+                  "semantic": 0.8336268414966247,
+                  "keyword": null
+                }
+              }
+            ]
+          },
+          {
+            "status": 200,
+            "latencyMs": 20,
+            "hitCount": 3,
+            "topScore": 1.099999996398015,
+            "topText": "我喜欢喝龙井茶，不加糖。",
+            "hits": [
+              {
+                "id": "eeab1bf3-0c4d-4bc4-8dc9-6a3af275669c",
+                "kind": "preference",
+                "namespace": "global",
+                "text": "我喜欢喝龙井茶，不加糖。",
+                "score": 1.099999996398015,
+                "updatedAt": "2026-10-24T13:10:31.138000+00:00",
+                "documentId": "nisse_322749cf-fd1a-4b93-8021-afea54e3bbc1",
+                "nativeType": "world",
+                "scores": {
+                  "final": 1.099999996398015,
+                  "reranker": null,
+                  "semantic": 0.8967874974969811,
+                  "keyword": null
+                }
+              },
+              {
+                "id": "f9ca784e-ed5b-4c6a-90cc-9067bda044d8",
+                "kind": "profile",
+                "namespace": "global",
+                "text": "我的职业是产品经理，工作日早上九点开会。",
+                "score": 0.6049999980189082,
+                "updatedAt": "2026-10-24T13:10:31.138000+00:00",
+                "documentId": "nisse_322749cf-fd1a-4b93-8021-afea54e3bbc1",
+                "nativeType": "world",
+                "scores": {
+                  "final": 0.6049999980189082,
+                  "reranker": null,
+                  "semantic": 0.8372655760426995,
+                  "keyword": null
+                }
+              },
+              {
+                "id": "6ec7a6bf-2df1-4b57-918b-3187e85c8194",
+                "kind": "fact",
+                "namespace": "global",
+                "text": "我家住在杭州西湖区，平时骑自行车上班。",
+                "score": 0.10999999963916729,
+                "updatedAt": "2026-10-24T13:10:31.137000+00:00",
+                "documentId": "nisse_322749cf-fd1a-4b93-8021-afea54e3bbc1",
+                "nativeType": "world",
+                "scores": {
+                  "final": 0.10999999963916729,
+                  "reranker": null,
+                  "semantic": 0.8336268414966247,
+                  "keyword": null
+                }
+              }
+            ]
+          }
+        ],
+        "matched": true
+      },
+      {
+        "name": "profile",
+        "query": "我的职业是什么，几点开会",
+        "expectedSubstring": "产品经理",
+        "runs": [
+          {
+            "status": 200,
+            "latencyMs": 24,
+            "hitCount": 3,
+            "topScore": 1.0999999954849442,
+            "topText": "我的职业是产品经理，工作日早上九点开会。",
+            "hits": [
+              {
+                "id": "f9ca784e-ed5b-4c6a-90cc-9067bda044d8",
+                "kind": "profile",
+                "namespace": "global",
+                "text": "我的职业是产品经理，工作日早上九点开会。",
+                "score": 1.0999999954849442,
+                "updatedAt": "2026-10-24T13:10:31.138000+00:00",
+                "documentId": "nisse_322749cf-fd1a-4b93-8021-afea54e3bbc1",
+                "nativeType": "world",
+                "scores": {
+                  "final": 1.0999999954849442,
+                  "reranker": null,
+                  "semantic": 0.9218428134918213,
+                  "keyword": null
+                }
+              },
+              {
+                "id": "6ec7a6bf-2df1-4b57-918b-3187e85c8194",
+                "kind": "fact",
+                "namespace": "global",
+                "text": "我家住在杭州西湖区，平时骑自行车上班。",
+                "score": 0.6049999975132312,
+                "updatedAt": "2026-10-24T13:10:31.137000+00:00",
+                "documentId": "nisse_322749cf-fd1a-4b93-8021-afea54e3bbc1",
+                "nativeType": "world",
+                "scores": {
+                  "final": 0.6049999975132312,
+                  "reranker": null,
+                  "semantic": 0.8547282901568255,
+                  "keyword": null
+                }
+              },
+              {
+                "id": "eeab1bf3-0c4d-4bc4-8dc9-6a3af275669c",
+                "kind": "preference",
+                "namespace": "global",
+                "text": "我喜欢喝龙井茶，不加糖。",
+                "score": 0.10999999954849439,
+                "updatedAt": "2026-10-24T13:10:31.138000+00:00",
+                "documentId": "nisse_322749cf-fd1a-4b93-8021-afea54e3bbc1",
+                "nativeType": "world",
+                "scores": {
+                  "final": 0.10999999954849439,
+                  "reranker": null,
+                  "semantic": 0.8461691828865315,
+                  "keyword": null
+                }
+              }
+            ]
+          },
+          {
+            "status": 200,
+            "latencyMs": 18,
+            "hitCount": 3,
+            "topScore": 1.0999999946031456,
+            "topText": "我的职业是产品经理，工作日早上九点开会。",
+            "hits": [
+              {
+                "id": "f9ca784e-ed5b-4c6a-90cc-9067bda044d8",
+                "kind": "profile",
+                "namespace": "global",
+                "text": "我的职业是产品经理，工作日早上九点开会。",
+                "score": 1.0999999946031456,
+                "updatedAt": "2026-10-24T13:10:31.138000+00:00",
+                "documentId": "nisse_322749cf-fd1a-4b93-8021-afea54e3bbc1",
+                "nativeType": "world",
+                "scores": {
+                  "final": 1.0999999946031456,
+                  "reranker": null,
+                  "semantic": 0.9218428134918213,
+                  "keyword": null
+                }
+              },
+              {
+                "id": "6ec7a6bf-2df1-4b57-918b-3187e85c8194",
+                "kind": "fact",
+                "namespace": "global",
+                "text": "我家住在杭州西湖区，平时骑自行车上班。",
+                "score": 0.604999997028242,
+                "updatedAt": "2026-10-24T13:10:31.137000+00:00",
+                "documentId": "nisse_322749cf-fd1a-4b93-8021-afea54e3bbc1",
+                "nativeType": "world",
+                "scores": {
+                  "final": 0.604999997028242,
+                  "reranker": null,
+                  "semantic": 0.8547282901568255,
+                  "keyword": null
+                }
+              },
+              {
+                "id": "eeab1bf3-0c4d-4bc4-8dc9-6a3af275669c",
+                "kind": "preference",
+                "namespace": "global",
+                "text": "我喜欢喝龙井茶，不加糖。",
+                "score": 0.10999999946031454,
+                "updatedAt": "2026-10-24T13:10:31.138000+00:00",
+                "documentId": "nisse_322749cf-fd1a-4b93-8021-afea54e3bbc1",
+                "nativeType": "world",
+                "scores": {
+                  "final": 0.10999999946031454,
+                  "reranker": null,
+                  "semantic": 0.8461691828865315,
+                  "keyword": null
+                }
+              }
+            ]
+          }
+        ],
+        "matched": true
+      }
+    ],
+    "recallLatency": {
+      "samples": 6,
+      "p50Ms": 24,
+      "p95Ms": 64,
+      "minMs": 18,
+      "maxMs": 64
+    },
+    "negativeRecall": {
+      "query": "我的汽车牌照号码是多少",
+      "hitCount": 3,
+      "hits": [
+        {
+          "id": "f9ca784e-ed5b-4c6a-90cc-9067bda044d8",
+          "kind": "profile",
+          "namespace": "global",
+          "text": "我的职业是产品经理，工作日早上九点开会。",
+          "score": 1.099999993708663,
+          "updatedAt": "2026-10-24T13:10:31.138000+00:00",
+          "documentId": "nisse_322749cf-fd1a-4b93-8021-afea54e3bbc1",
+          "nativeType": "world",
+          "scores": {
+            "final": 1.099999993708663,
+            "reranker": null,
+            "semantic": 0.849923695621601,
+            "keyword": null
+          }
+        },
+        {
+          "id": "6ec7a6bf-2df1-4b57-918b-3187e85c8194",
+          "kind": "fact",
+          "namespace": "global",
+          "text": "我家住在杭州西湖区，平时骑自行车上班。",
+          "score": 0.6049999965362768,
+          "updatedAt": "2026-10-24T13:10:31.137000+00:00",
+          "documentId": "nisse_322749cf-fd1a-4b93-8021-afea54e3bbc1",
+          "nativeType": "world",
+          "scores": {
+            "final": 0.6049999965362768,
+            "reranker": null,
+            "semantic": 0.840762828565755,
+            "keyword": null
+          }
+        },
+        {
+          "id": "eeab1bf3-0c4d-4bc4-8dc9-6a3af275669c",
+          "kind": "preference",
+          "namespace": "global",
+          "text": "我喜欢喝龙井茶，不加糖。",
+          "score": 0.10999999937086628,
+          "updatedAt": "2026-10-24T13:10:31.138000+00:00",
+          "documentId": "nisse_322749cf-fd1a-4b93-8021-afea54e3bbc1",
+          "nativeType": "world",
+          "scores": {
+            "final": 0.10999999937086628,
+            "reranker": null,
+            "semantic": 0.8305193534338701,
+            "keyword": null
+          }
+        }
+      ]
+    },
+    "invalidate": {
+      "softTarget": {
+        "id": "6ec7a6bf-2df1-4b57-918b-3187e85c8194",
+        "text": "我家住在杭州西湖区，平时骑自行车上班。",
+        "source": "recall"
+      },
+      "listBefore": {
+        "status": 200,
+        "total": 3,
+        "items": [
+          {
+            "id": "eeab1bf3-0c4d-4bc4-8dc9-6a3af275669c",
+            "text": "我喜欢喝龙井茶，不加糖。",
+            "kind": "preference",
+            "namespace": "global",
+            "date": "2026-10-24T13:10:31.138000+00:00",
+            "documentId": "nisse_322749cf-fd1a-4b93-8021-afea54e3bbc1",
+            "state": "valid"
+          },
+          {
+            "id": "f9ca784e-ed5b-4c6a-90cc-9067bda044d8",
+            "text": "我的职业是产品经理，工作日早上九点开会。",
+            "kind": "profile",
+            "namespace": "global",
+            "date": "2026-10-24T13:10:31.138000+00:00",
+            "documentId": "nisse_322749cf-fd1a-4b93-8021-afea54e3bbc1",
+            "state": "valid"
+          },
+          {
+            "id": "6ec7a6bf-2df1-4b57-918b-3187e85c8194",
+            "text": "我家住在杭州西湖区，平时骑自行车上班。",
+            "kind": "fact",
+            "namespace": "global",
+            "date": "2026-10-24T13:10:31.137000+00:00",
+            "documentId": "nisse_322749cf-fd1a-4b93-8021-afea54e3bbc1",
+            "state": "valid"
+          }
+        ]
+      },
+      "softForgetStatus": 200,
+      "softForgetResult": {
+        "ok": true,
+        "result": {
+          "deleted": 1,
+          "invalidated": 1,
+          "deletedDocuments": 0,
+          "notFound": [],
+          "verified": true,
+          "remaining": 0
+        }
+      },
+      "recallAfterSoft": {
+        "hitCount": 2,
+        "stillContainsTarget": false,
+        "hits": [
+          {
+            "id": "f9ca784e-ed5b-4c6a-90cc-9067bda044d8",
+            "kind": "profile",
+            "namespace": "global",
+            "text": "我的职业是产品经理，工作日早上九点开会。",
+            "score": 1.0999999931940703,
+            "updatedAt": "2026-10-24T13:10:31.138000+00:00",
+            "documentId": "nisse_322749cf-fd1a-4b93-8021-afea54e3bbc1",
+            "nativeType": "world",
+            "scores": {
+              "final": 1.0999999931940703,
+              "reranker": null,
+              "semantic": 0.8591244220733643,
+              "keyword": null
+            }
+          },
+          {
+            "id": "eeab1bf3-0c4d-4bc4-8dc9-6a3af275669c",
+            "kind": "preference",
+            "namespace": "global",
+            "text": "我喜欢喝龙井茶，不加糖。",
+            "score": 0.109999999319407,
+            "updatedAt": "2026-10-24T13:10:31.138000+00:00",
+            "documentId": "nisse_322749cf-fd1a-4b93-8021-afea54e3bbc1",
+            "nativeType": "world",
+            "scores": {
+              "final": 0.109999999319407,
+              "reranker": null,
+              "semantic": 0.8484299273234664,
+              "keyword": null
+            }
+          }
+        ]
+      },
+      "listAfterSoft": {
+        "status": 200,
+        "total": 2,
+        "items": [
+          {
+            "id": "eeab1bf3-0c4d-4bc4-8dc9-6a3af275669c",
+            "text": "我喜欢喝龙井茶，不加糖。",
+            "kind": "preference",
+            "namespace": "global",
+            "date": "2026-10-24T13:10:31.138000+00:00",
+            "documentId": "nisse_322749cf-fd1a-4b93-8021-afea54e3bbc1",
+            "state": "valid"
+          },
+          {
+            "id": "f9ca784e-ed5b-4c6a-90cc-9067bda044d8",
+            "text": "我的职业是产品经理，工作日早上九点开会。",
+            "kind": "profile",
+            "namespace": "global",
+            "date": "2026-10-24T13:10:31.138000+00:00",
+            "documentId": "nisse_322749cf-fd1a-4b93-8021-afea54e3bbc1",
+            "state": "valid"
+          }
+        ],
+        "targetStillListed": false
+      },
+      "hardTargetDocumentId": "nisse_322749cf-fd1a-4b93-8021-afea54e3bbc1",
+      "hardForgetStatus": 200,
+      "hardForgetResult": {
+        "ok": true,
+        "result": {
+          "deleted": 1,
+          "invalidated": 0,
+          "deletedDocuments": 1,
+          "notFound": [],
+          "verified": true,
+          "remaining": 0
+        }
+      }
+    },
+    "afterInvalidate": {
+      "searches": [
+        {
+          "query": "我家住在哪个城市",
+          "hitCount": 0,
+          "containsForgottenText": false,
+          "hits": []
+        },
+        {
+          "query": "我平时喝什么茶",
+          "hitCount": 0,
+          "containsForgottenText": false,
+          "hits": []
+        },
+        {
+          "query": "我的职业是什么，几点开会",
+          "hitCount": 0,
+          "containsForgottenText": false,
+          "hits": []
+        }
+      ],
+      "list": {
+        "status": 200,
+        "total": 0,
+        "itemCount": 0,
+        "items": []
+      }
+    }
+  },
+  "rss": {
+    "coldServerTree": {
+      "rootPids": [
+        35411
+      ],
+      "processes": [
+        {
+          "pid": 35411,
+          "ppid": 35402,
+          "rssMb": 823.3,
+          "command": "/tmp/wg-memory-staging/runtime/hindsight/HindsightAPI"
+        }
+      ],
+      "totalMb": 823.3,
+      "sampledAt": "2026-10-24T13:10:30.881Z"
+    },
+    "steadyServerTree": {
+      "rootPids": [
+        35411
+      ],
+      "processes": [
+        {
+          "pid": 35411,
+          "ppid": 1,
+          "rssMb": 844.1,
+          "command": "/tmp/wg-memory-staging/runtime/hindsight/HindsightAPI"
+        }
+      ],
+      "totalMb": 844.1,
+      "sampledAt": "2026-10-24T13:10:32.298Z"
+    },
+    "peakServerTreeMb": 844.4,
+    "sidecar": {
+      "rootPids": [
+        35579
+      ],
+      "processes": [
+        {
+          "pid": 35579,
+          "ppid": 35242,
+          "rssMb": 73.4,
+          "command": "$HOME/.local/share/fnm/node-versions/v24.18.0/installation/bin/node"
+        }
+      ],
+      "totalMb": 73.4,
+      "sampledAt": "2026-10-24T13:10:36.649Z"
+    },
+    "warmServerTree": {
+      "rootPids": [
+        35862
+      ],
+      "processes": [
+        {
+          "pid": 35862,
+          "ppid": 35854,
+          "rssMb": 890.6,
+          "command": "/tmp/wg-memory-staging/runtime/hindsight/HindsightAPI"
+        }
+      ],
+      "totalMb": 890.6,
+      "sampledAt": "2026-10-24T13:10:43.483Z"
+    }
+  },
+  "commands": {
+    "server": {
+      "argv": [
+        "/bin/bash",
+        "/tmp/wg-memory-staging/runtime/hindsight/scripts/run-server.sh"
+      ],
+      "cwd": "/tmp/wg-memory-staging/runtime/hindsight",
+      "env": {
+        "PATH": "$HOME/.local/share/fnm/node-versions/v24.18.0/installation/bin:$HOME/.kimi-code/bin:$HOME/.local/state/fnm_multishells/18295_1792834689706/bin:/Applications/Kimi.app/Contents/Resources/resources/runtime:$HOME/Library/Application Support/kimi-desktop/daimon-share/daimon/npm-global/bin:$HOME/.deno/bin:/opt/homebrew/bin:$HOME/.local/share/vite-plus/bin:$HOME/.local/bin:$HOME/.cargo/bin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/opt/homebrew/bin:$HOME/.local/share/vite-plus/fallback-bin:$HOME/.orbstack/bin",
+        "LANG": "en_US.UTF-8",
+        "LC_ALL": "en_US.UTF-8",
+        "NISSE_M1C_ROOT": "/tmp/wg-memory-offline-verify/runtime",
+        "NISSE_M1C_PORT": "61703",
+        "NISSE_M1C_STARTUP_TIMEOUT": "240",
+        "HINDSIGHT_API_LLM_PROVIDER": "mock",
+        "HINDSIGHT_API_LLM_MODEL": "mock-model",
+        "HINDSIGHT_API_EMBEDDINGS_PROVIDER": "onnx",
+        "HINDSIGHT_API_RERANKER_PROVIDER": "rrf",
+        "HF_HUB_OFFLINE": "1"
+      }
+    },
+    "sidecar": {
+      "argv": [
+        "$HOME/.local/share/fnm/node-versions/v24.18.0/installation/bin/node",
+        "/tmp/wg-memory-offline-verify/dsh-bot.app/Contents/Resources/memory/sidecar.mjs"
+      ],
+      "cwd": "/tmp/wg-memory-offline-verify/runtime/data",
+      "env": {
+        "HOME": "/tmp/wg-memory-offline-verify/runtime/home",
+        "ELECTRON_RUN_AS_NODE": "1",
+        "NISSE_M4_MEMORY_ROOT": "/tmp/wg-memory-offline-verify/runtime/data",
+        "NISSE_M4_MEMORY_TOKEN": "<redacted>",
+        "NISSE_M4_BANK": "whalegirl:bot",
+        "HINDSIGHT_URL": "http://127.0.0.1:61703"
+      }
+    },
+    "sidecarEndpointsExercised": [
+      "GET /health",
+      "POST /write",
+      "POST /search",
+      "POST /forget",
+      "POST /list"
+    ]
+  },
+  "logs": {
+    "coldServerLog": "/tmp/wg-memory-offline-verify/runtime/logs/server.log"
+  },
+  "simulatedPackagedLayout": {
+    "note": "sidecar is copied to Contents/Resources/memory/sidecar.mjs and adapter to Contents/spike/m1-c-hindsight/src to satisfy its relative import, exactly as the packaged app must be laid out",
+    "appRoot": "/tmp/wg-memory-offline-verify/dsh-bot.app",
+    "sidecar": "/tmp/wg-memory-offline-verify/dsh-bot.app/Contents/Resources/memory/sidecar.mjs",
+    "adapter": "/tmp/wg-memory-offline-verify/dsh-bot.app/Contents/spike/m1-c-hindsight/src"
+  },
+  "summary": {
+    "stagedBytes": 617310084,
+    "stagedFiles": 7821,
+    "coldStartMs": 10135,
+    "warmRestartMs": 5287,
+    "steadyRssMb": 844.1,
+    "peakRssMb": 844.4,
+    "sidecarRssMb": 73.4,
+    "recallP50Ms": 24,
+    "recallP95Ms": 64,
+    "retainItems": 3,
+    "searchesAfterDelete": [
+      0,
+      0,
+      0
+    ]
+  },
+  "failedChecks": [],
+  "conditions": [
+    {
+      "id": "MEM-COND-1",
+      "severity": "medium",
+      "title": "HindsightAPI may open one best-effort background TLS connection at startup",
+      "observed": {
+        "detectedInThisRun": false,
+        "targetsThisRun": [],
+        "observedInPreviousRuns": 2,
+        "previousTargets": [
+          "172.19.0.1:<ephemeral> -> 198.18.0.134:443 (ESTABLISHED, kept alive)"
+        ],
+        "transport": "TCP :443",
+        "fakeIpNote": "destination 198.18.0.0/15 is the local proxy/DNS fake-IP range on this host; the real hostname could not be recovered from lsof",
+        "observedAt": "2026-10-24T13:10:30.903Z"
+      },
+      "impact": "None on functionality: /health, pg0, ONNX embeddings, retain, recall, soft invalidation, document delete and warm restart all PASS. No model, database or memory data is fetched over the network.",
+      "eliminationAttempts": [
+        "HF_HUB_OFFLINE=1 + TRANSFORMERS_OFFLINE=1 + HF_HUB_DISABLE_TELEMETRY=1",
+        "HINDSIGHT_API_MCP_ENABLED=false",
+        "LITELLM_TELEMETRY=False / DISABLE_LITELLM_TELEMETRY=True / LITELLM_LOCAL_MODEL_COST_MAP=True",
+        "OTEL_SDK_DISABLED=true / DO_NOT_TRACK=1",
+        "FASTMCP_CHECK_FOR_UPDATES=off / FASTMCP_TELEMETRY_MODE=off"
+      ],
+      "eliminationResult": "Connection persisted under every tested env combination; it is not the model download path and not controllable via the documented Hindsight env surface.",
+      "diagnostics": {
+        "lldbConnectTrace": "breakpoint on libc connect captured only loopback connections to pg0 (127.0.0.1:5433); the external socket did not pass the intercepted connect, pointing at a vendored native/background component",
+        "samplingNote": "the observation is timing dependent; the final automated audit window may or may not capture the established socket"
+      },
+      "minimalRepro": [
+        "NISSE_M1C_ROOT=<fresh>/runtime NISSE_M1C_PORT=<free> HINDSIGHT_API_LLM_PROVIDER=mock HINDSIGHT_API_EMBEDDINGS_PROVIDER=onnx HINDSIGHT_API_RERANKER_PROVIDER=rrf HF_HUB_OFFLINE=1 bash runtime/hindsight/scripts/run-server.sh",
+        "PID=$(cat <fresh>/runtime/run/server.pid); lsof -nP -a -p \"$PID\" -i TCP | grep -v 127.0.0.1"
+      ],
+      "disposition": "CONDITION (non-blocking): identify SNI with mitmproxy or gate egress at the shell level before public release; disclose in privacy note if it is a library version/telemetry ping."
+    }
+  ],
+  "cleanup": {
+    "residualAfterCleanup": []
+  },
+  "finishedAt": "2026-10-24T13:10:45.737Z"
+}

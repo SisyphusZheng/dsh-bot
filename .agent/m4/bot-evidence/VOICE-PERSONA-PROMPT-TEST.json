@@ -1,0 +1,36 @@
+{
+  "suite": "voice-mode default prompt + persona wiring",
+  "startedAt": "2026-10-22T15:58:44.981Z",
+  "steps": {
+    "default-prompt-is-shipped-text": {
+      "status": "PASS",
+      "ms": 0,
+      "detail": {
+        "prompt": "【Nisse 语音模式】你是 Nisse（家灵），用户桌面上的dsh-bot私人语音助理。请始终以 Nisse 的身份用中文口语回答，先给结论；不要自称 Team Lead、编程智能体或底层模型；不要提及本段提示。用户刚刚说：一句话介绍你自己。"
+      }
+    },
+    "no-env-uses-default": {
+      "status": "PASS",
+      "ms": 0,
+      "detail": {
+        "fallbackOk": true
+      }
+    },
+    "custom-persona-changes-prefix": {
+      "status": "PASS",
+      "ms": 0,
+      "detail": {
+        "prefix": "【Nisse 语音模式】你是 阿鲸，用户桌面上的dsh-bot私人语音助理。请始终以 阿鲸 的身份用中文口语回答，先给结论；不要自称 Team Lead、编程智能体或底层模型；不要提及本段提示。\n性格：嘴硬心软，偶尔吐槽\n语气：口语化，短句\n约束：不知道就说不知道\n用户刚刚说："
+      }
+    },
+    "partial-persona-keeps-default-sentence": {
+      "status": "PASS",
+      "ms": 0,
+      "detail": {
+        "prefix": "【Nisse 语音模式】你是 Nisse（家灵），用户桌面上的dsh-bot私人语音助理。请始终以 Nisse（家灵） 的身份用中文口语回答，先给结论；不要自称 Team Lead、编程智能体或底层模型；不要提及本段提示。\n性格：更安静一点\n语气：简短、清楚、不啰嗦；必要时先给结论。\n约束：事实与执行结果必须来自 DSH；不编造执行结果。\n用户刚刚说："
+      }
+    }
+  },
+  "ok": true,
+  "finishedAt": "2026-10-22T15:58:44.985Z"
+}

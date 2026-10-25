@@ -1,0 +1,65 @@
+{
+  "suite": "dsh-bot shell UX round 2 (prompt/persona, dark settings, logo, Bot workspace grouping)",
+  "date": "2026-10-22",
+  "items": {
+    "1-default-voice-prompt": {
+      "status": "PASS",
+      "where": "research/qwen-audio-agent/server/src/voice/nisse-voice-persona.mjs (new pure module) wired into nisse-bridge-turn.mjs",
+      "default": "【Nisse 语音模式】你是 Nisse（家灵），用户桌面上的dsh-bot私人语音助理。请始终以 Nisse 的身份用中文口语回答，先给结论；不要自称 Team Lead、编程智能体或底层模型；不要提及本段提示。用户刚刚说：",
+      "test": "m4/test-voice-persona-prompt.mjs",
+      "evidence": "m4/bot-evidence/VOICE-PERSONA-PROMPT-TEST.json"
+    },
+    "2-persona-editable": {
+      "status": "PASS",
+      "settings": "DSH 设置 -> Bot -> Bot 人格：称呼 / 性格 / 语气 / 人格说明（默认 Nisse（家灵）/ 自然可靠… / 简短清楚… / 事实与执行结果必须来自 DSH）",
+      "wiring": [
+        "bot-config.json persona{tone} -> shell 写 profile patch 后重启（main.ts hostRestart 条件含 persona 四字段）",
+        "语音网关 spawn 时带 NISSE_BOT_PERSONA_JSON；voicePersonaPrefix() 在 persona 被改动时生成「称呼/性格/语气/约束」版本，默认与第 1 项完全一致",
+        "host-integration 的 DSH 人格 prompt section 也改读 Bot 设置 persona（不再用 nisse/persona.json）"
+      ],
+      "screenshot": "m4/bot-evidence/DEV-RUN-SETTINGS-BOT-PERSONA-DARK.png"
+    },
+    "3-settings-follows-system-theme": {
+      "status": "PASS",
+      "implementation": "bot-config-server 页面改 CSS 变量 + color-scheme + prefers-color-scheme(dark)；iframe background:transparent/colorScheme:light dark",
+      "screenshot": "m4/bot-evidence/DEV-RUN-SETTINGS-BOT-DARK.png"
+    },
+    "4-settings-bot-nav-logo": {
+      "status": "PASS",
+      "implementation": "ui-settings-general SettingsRoot navIcon('bot') -> 透明dsh-bot logo（webp，16px）",
+      "screenshot": "m4/bot-evidence/DEV-RUN-SETTINGS-BOT-DARK.png"
+    },
+    "5-product-logo": {
+      "status": "PASS",
+      "assets": [
+        "packages/client/ui-brand-official/src/client/whalegirl-logo.webp (512px transparent WebP, from whale-girl spritesheet, MIT)",
+        "packages/client/ui-settings-general/src/client/whalegirl-bot-logo.webp (256px)",
+        "apps/desktop/resources/icon-whalegirl.png (1024px transparent PNG for app icon/icns)",
+        "apps/web/public/whalegirl-logo.png + favicon/manifest; old opaque whalegirl.png removed"
+      ],
+      "screenshot": "m4/bot-evidence/DEV-RUN-SIDEBAR-BOT-WORKSPACE.png"
+    },
+    "6-bot-conversation-workspace": {
+      "status": "PASS",
+      "implementation": [
+        "host-integration canonicalizes the configured Bot workspace (realpathSync) for session cwd, bridge descriptor and preflight boundary -> no /tmp vs /private/tmp split",
+        "on agent create/resume it calls workspace.attachSession(sessionId) so DSH groups the conversation under the Bot workspace record instead of 未分组",
+        "one durable Bot conversation: $DSH_HOME/nisse/session.json (0600) records {sessionId, workspace}; restarted app resumes it, and changing agent.workspace starts a conversation in the new workspace"
+      ],
+      "observed": {
+        "sidebar": "工作区 -> BotWorkspace -> 会话「一句话自我介绍」（无「未分组」分组）",
+        "workspaceStore": "/private/tmp/whalegirl-demo/BotWorkspace sessionIds = ['9aab6840-0842-4d9a-a851-0a8383330c15','session-cfd969f4-6b88-4244-bd6b-391d25c16ffe']",
+        "appLog": "bot session restored in workspace { sessionId: '9aab6840-...' }",
+        "bridgeWorkspaceDir": "/private/tmp/whalegirl-demo/BotWorkspace"
+      },
+      "screenshot": "m4/bot-evidence/DEV-RUN-SIDEBAR-BOT-WORKSPACE.png"
+    }
+  },
+  "devRun": {
+    "DSH_HOME": "/tmp/whalegirl-demo",
+    "userData": "/tmp/whalegirl-demo-userdata",
+    "voiceDir": "$HOME/projects/dsh-bot-workspace/research/qwen-audio-agent",
+    "shellStatus": "gateway running, no host-integration bundle error",
+    "pageTitle": "dsh-bot"
+  }
+}

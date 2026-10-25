@@ -1,0 +1,1638 @@
+{
+  "suite": "PET-VOICE-UX-ROUND2 (hint visibility / global Option / click toggle)",
+  "startedAt": "2026-10-23T05:27:41.910Z",
+  "electron": "$HOME/projects/dsh-bot-workspace/research/qwen-audio-agent/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron",
+  "steps": {
+    "phase1-electron-exit-and-status": {
+      "status": "PASS",
+      "ms": 1,
+      "detail": {
+        "windows": [
+          "Nisse 头顶气泡",
+          "Nisse 家灵"
+        ]
+      }
+    },
+    "hint-not-persistent": {
+      "status": "PASS",
+      "ms": 0,
+      "detail": {
+        "firstRunText": "按住 Option/Alt 说话",
+        "globalOptionAvailable": true
+      }
+    },
+    "global-option-hold-to-talk": {
+      "status": "PASS",
+      "ms": 0,
+      "detail": {
+        "diagnostics": {
+          "frameworkPath": "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices",
+          "koffiVersion": "3.1.1",
+          "error": "",
+          "watcher": {
+            "running": true,
+            "pressed": false,
+            "polls": 56,
+            "errors": 0,
+            "downCount": 0,
+            "upCount": 0,
+            "lastChangeAt": 0,
+            "lastError": "",
+            "pollMs": 40,
+            "stablePolls": 2
+          }
+        },
+        "watcher": {
+          "running": true,
+          "pressed": false,
+          "polls": 186,
+          "errors": 0,
+          "downCount": 1,
+          "upCount": 1,
+          "lastChangeAt": 1792733270149,
+          "lastError": "",
+          "pollMs": 40,
+          "stablePolls": 2
+        },
+        "enabledBy": "global-option",
+        "hint": "按住 Option/Alt 说话"
+      }
+    },
+    "click-toggle-mouseup-does-not-cancel": {
+      "status": "PASS",
+      "ms": 0,
+      "detail": {
+        "finalState": {
+          "enabled": false,
+          "waiting": false,
+          "mode": "hold",
+          "reports": 9,
+          "applied": 2,
+          "actions": [
+            {
+              "action": "enable",
+              "source": "global-option",
+              "at": 1792733270008
+            },
+            {
+              "action": "disable",
+              "source": "global-option",
+              "at": 1792733270149
+            },
+            {
+              "action": "enable",
+              "source": "click",
+              "at": 1792733270206
+            },
+            {
+              "action": "disable",
+              "source": "click",
+              "at": 1792733271031
+            }
+          ],
+          "lastPhase": "up",
+          "hasButton": true,
+          "badge": "按住 Option/Alt 说话",
+          "dryRun": true,
+          "detected": {
+            "enabled": false,
+            "waiting": false
+          },
+          "debugLog": [
+            "62661:report:d=1:en=0",
+            "62661:show:first-run:2500",
+            "62672:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+            "62672:report:d=1:en=0",
+            "62911:report:d=1:en=0",
+            "65173:hide:0:en=0",
+            "65410:window-blur",
+            "68614:hover-in:first=0:consumed=0:en=0",
+            "68614:show:hover:2500",
+            "69010:hover-out:first=0",
+            "69010:hide:400:en=0",
+            "70008:apply:enable:global-option",
+            "70013:hide:0:en=1",
+            "70064:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+            "70064:report:d=1:en=1",
+            "70149:apply:disable:global-option",
+            "70149:report:d=1:en=0",
+            "70206:config:{\"dryRun\":true}",
+            "70206:report:d=1:en=0",
+            "70206:apply:enable:click",
+            "70328:phase:up",
+            "70328:phase:up",
+            "71031:apply:disable:click",
+            "71031:report:d=1:en=0"
+          ],
+          "hintText": "按住 Option/Alt 说话",
+          "hintVisible": false,
+          "hintShows": 2,
+          "hintConsumed": true,
+          "hintReason": "hover",
+          "clickCount": 0,
+          "enabledBy": "click"
+        }
+      }
+    },
+    "screenshots": {
+      "status": "PASS",
+      "ms": 1,
+      "detail": [
+        "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-hint-first-run.png",
+        "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-hint-hover.png",
+        "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-global-option-listening.png",
+        "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-orb-voice-ux.png"
+      ]
+    },
+    "hint-seen-persisted-to-disk": {
+      "status": "PASS",
+      "ms": 0,
+      "detail": {
+        "hintSeen": true
+      }
+    },
+    "second-launch-no-persistent-hint": {
+      "status": "PASS",
+      "ms": 1,
+      "detail": {
+        "hintText": "按住 Option/Alt 说话",
+        "effectiveHint": {
+          "source": "global-option",
+          "keyId": "alt",
+          "mode": "hold",
+          "displayKey": "Option/Alt",
+          "global": true,
+          "text": "按住 Option/Alt 说话"
+        }
+      }
+    }
+  },
+  "phaseOneExit": {
+    "code": 0,
+    "signal": null
+  },
+  "phaseOneStderrTail": "",
+  "phaseTwoExit": {
+    "code": 0,
+    "signal": null
+  },
+  "petStatus": {
+    "generatedAt": "2026-10-23T05:27:51.073Z",
+    "bridgeOnly": true,
+    "gatewayOrigin": "http://127.0.0.1:59842",
+    "shellControlUrl": "http://127.0.0.1:59840",
+    "bridgeFile": "/tmp/nisse-pet-voice-ux-smoke-1792733261908/dsh-home/bridge.json",
+    "bridgePollActive": true,
+    "settingsWindowPresent": false,
+    "windows": [
+      {
+        "title": "Nisse 头顶气泡",
+        "visible": true,
+        "destroyed": false,
+        "url": "file://$HOME/projects/dsh-bot-workspace/m3/pet/desktop/src/bubble.html"
+      },
+      {
+        "title": "Nisse 家灵",
+        "visible": true,
+        "destroyed": false,
+        "url": "http://127.0.0.1:59845/9bb4591f45f8de7e46af14482a1e455e71215e7e348b368d/?desktop=orb&orbSkin=whale-girl&autoHideSeconds=0&lang=zh-CN"
+      }
+    ],
+    "bubble": {
+      "visible": true,
+      "interactive": false,
+      "inputMode": false,
+      "kind": "status",
+      "text": "好，先不听。",
+      "title": "",
+      "clickThrough": false
+    },
+    "experience": {
+      "onboarding": {
+        "active": false,
+        "busy": false,
+        "stepId": "done",
+        "substate": "",
+        "completed": true,
+        "paused": false,
+        "approvalPersisted": true,
+        "answers": {
+          "addressUser": "小智",
+          "persona": {
+            "presetId": "gentle",
+            "personality": "温柔",
+            "tone": "温和",
+            "custom": ""
+          },
+          "llm": {
+            "provider": "opencode-go",
+            "baseUrl": "",
+            "model": "",
+            "apiKey": "",
+            "apiKeySet": true,
+            "skipped": false
+          },
+          "voice": {
+            "provider": "dashscope",
+            "baseUrl": "",
+            "model": "",
+            "voice": "",
+            "wakeWord": "小鲸小鲸",
+            "apiKey": "",
+            "apiKeySet": true,
+            "skipped": false
+          },
+          "approval": {
+            "mode": "ask-each",
+            "onceMinutes": 30
+          },
+          "behavior": {
+            "pauseOnInput": true,
+            "allowScreenView": true
+          }
+        }
+      },
+      "voice": {
+        "settings": {
+          "mode": "hold",
+          "keyId": "alt",
+          "fallbackAccelerator": "Alt+Space",
+          "holdMaxMs": 15000,
+          "hintSeen": true
+        },
+        "talkKey": {
+          "mode": "hold",
+          "keyId": "alt",
+          "source": "global-option",
+          "displayKey": "Option/Alt",
+          "hint": "按住 Option/Alt 说话",
+          "global": true,
+          "accelerator": "Alt+Space",
+          "registered": true,
+          "globalOption": {
+            "available": true,
+            "frameworkPath": "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices",
+            "koffiPath": "$HOME/projects/dsh-bot/node_modules/.pnpm/koffi@3.1.1/node_modules/koffi",
+            "koffiVersion": "3.1.1",
+            "error": ""
+          },
+          "presetLabel": "Option / Alt（桌宠聚焦时按住）",
+          "hintText": "按住 Option/Alt 说话",
+          "dryRun": true,
+          "fallback": "Alt+Space"
+        },
+        "hint": {
+          "source": "global-option",
+          "keyId": "alt",
+          "mode": "hold",
+          "displayKey": "Option/Alt",
+          "global": true,
+          "text": "按住 Option/Alt 说话"
+        },
+        "lastReport": {
+          "enabled": false,
+          "waiting": false,
+          "mode": "hold",
+          "reports": 9,
+          "dryRun": true,
+          "hintSeen": true,
+          "hintVisible": false,
+          "hintShows": 2,
+          "clickCount": 0,
+          "enabledBy": "click"
+        },
+        "globalOption": {
+          "available": true,
+          "frameworkPath": "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices",
+          "koffiPath": "$HOME/projects/dsh-bot/node_modules/.pnpm/koffi@3.1.1/node_modules/koffi",
+          "koffiVersion": "3.1.1",
+          "error": "",
+          "watcher": {
+            "running": true,
+            "pressed": false,
+            "polls": 206,
+            "errors": 0,
+            "downCount": 1,
+            "upCount": 1,
+            "lastChangeAt": 1792733270149,
+            "lastError": "",
+            "pollMs": 40,
+            "stablePolls": 2
+          },
+          "smokeOverride": false
+        }
+      },
+      "pause": {
+        "turnActive": false,
+        "turnStartedAt": 0,
+        "paused": 0,
+        "lastPause": null,
+        "lastError": "",
+        "monitor": {
+          "running": true,
+          "previousIdle": null,
+          "pauses": 0,
+          "lastPause": null,
+          "thresholdSeconds": 1.5,
+          "graceMs": 2500,
+          "pollMs": 1000
+        }
+      },
+      "lastHeardText": ""
+    },
+    "shell": {
+      "lastToggle": null,
+      "lastApproval": null
+    },
+    "shots": [
+      "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-orb-voice-ux.png"
+    ],
+    "voiceUx": {
+      "assertions": {
+        "injectedControlsReady": true,
+        "effectiveHint": {
+          "source": "global-option",
+          "keyId": "alt",
+          "mode": "hold",
+          "displayKey": "Option/Alt",
+          "global": true,
+          "text": "按住 Option/Alt 说话"
+        },
+        "globalOptionAvailable": true,
+        "globalOptionDiagnostics": {
+          "frameworkPath": "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices",
+          "koffiVersion": "3.1.1",
+          "error": "",
+          "watcher": {
+            "running": true,
+            "pressed": false,
+            "polls": 56,
+            "errors": 0,
+            "downCount": 0,
+            "upCount": 0,
+            "lastChangeAt": 0,
+            "lastError": "",
+            "pollMs": 40,
+            "stablePolls": 2
+          }
+        },
+        "firstRunHintVisible": true,
+        "firstRunHintText": "按住 Option/Alt 说话",
+        "firstRunHintShows": 1,
+        "firstRunBadgeStyle": {
+          "text": "按住 Option/Alt 说话",
+          "width": 121.578125,
+          "height": 21,
+          "opacity": "0.95",
+          "display": "block",
+          "fontSize": "10.5px",
+          "scrollWidth": 122
+        },
+        "firstRunHintAutoHides": true,
+        "hoverHintVisible": true,
+        "hoverHintText": "按住 Option/Alt 说话",
+        "hintMatchesEffectiveKey": true,
+        "hoverBadgeStyle": {
+          "text": "按住 Option/Alt 说话",
+          "width": 121.578125,
+          "height": 21,
+          "x": 25.2109375,
+          "y": 177,
+          "opacity": "0",
+          "display": "block",
+          "fontSize": "10.5px",
+          "scrollWidth": 122
+        },
+        "hoverHintHides": true,
+        "optionPressStartsListening": true,
+        "optionPressEnabledBy": "global-option",
+        "optionWatcherState": {
+          "running": true,
+          "pressed": true,
+          "polls": 183,
+          "errors": 0,
+          "downCount": 1,
+          "upCount": 0,
+          "lastChangeAt": 1792733269995,
+          "lastError": "",
+          "pollMs": 40,
+          "stablePolls": 2
+        },
+        "hintHiddenWhenListening": true,
+        "hintSeenPersisted": true,
+        "optionReleaseStopsListening": true,
+        "optionWatcherAfter": {
+          "running": true,
+          "pressed": false,
+          "polls": 186,
+          "errors": 0,
+          "downCount": 1,
+          "upCount": 1,
+          "lastChangeAt": 1792733270149,
+          "lastError": "",
+          "pollMs": 40,
+          "stablePolls": 2
+        },
+        "toggleFirstClickEnables": true,
+        "mouseupKeepsListening": true,
+        "mouseupSendsNoDisable": true,
+        "noBridgeCancelDuringToggle": true,
+        "toggleSecondClickStops": true,
+        "toggleClicksApplied": 2,
+        "hintStaysHiddenAfterUse": true,
+        "hintConsumed": true,
+        "hintSeenPersistedFile": true,
+        "bridgeCancelsFromPet": {
+          "pauseStatus": 0
+        }
+      },
+      "shots": [
+        {
+          "name": "pet-hint-first-run.png",
+          "file": "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-hint-first-run.png"
+        },
+        {
+          "name": "pet-hint-hover.png",
+          "file": "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-hint-hover.png"
+        },
+        {
+          "name": "pet-global-option-listening.png",
+          "file": "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-global-option-listening.png"
+        }
+      ],
+      "errors": [],
+      "stages": [],
+      "toggleSamples": [
+        {
+          "at": 1792733270450,
+          "enabled": true,
+          "enabledBy": "click",
+          "actions": [
+            {
+              "action": "enable",
+              "source": "global-option",
+              "at": 1792733270008
+            },
+            {
+              "action": "disable",
+              "source": "global-option",
+              "at": 1792733270149
+            },
+            {
+              "action": "enable",
+              "source": "click",
+              "at": 1792733270206
+            }
+          ],
+          "log": [
+            "62661:report:d=1:en=0",
+            "62661:show:first-run:2500",
+            "62672:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+            "62672:report:d=1:en=0",
+            "62911:report:d=1:en=0",
+            "65173:hide:0:en=0",
+            "65410:window-blur",
+            "68614:hover-in:first=0:consumed=0:en=0",
+            "68614:show:hover:2500",
+            "69010:hover-out:first=0",
+            "69010:hide:400:en=0",
+            "70008:apply:enable:global-option",
+            "70013:hide:0:en=1",
+            "70064:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+            "70064:report:d=1:en=1",
+            "70149:apply:disable:global-option",
+            "70149:report:d=1:en=0",
+            "70206:config:{\"dryRun\":true}",
+            "70206:report:d=1:en=0",
+            "70206:apply:enable:click",
+            "70328:phase:up",
+            "70328:phase:up"
+          ]
+        },
+        {
+          "at": 1792733270572,
+          "enabled": true,
+          "enabledBy": "click",
+          "actions": [
+            {
+              "action": "enable",
+              "source": "global-option",
+              "at": 1792733270008
+            },
+            {
+              "action": "disable",
+              "source": "global-option",
+              "at": 1792733270149
+            },
+            {
+              "action": "enable",
+              "source": "click",
+              "at": 1792733270206
+            }
+          ],
+          "log": [
+            "62661:report:d=1:en=0",
+            "62661:show:first-run:2500",
+            "62672:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+            "62672:report:d=1:en=0",
+            "62911:report:d=1:en=0",
+            "65173:hide:0:en=0",
+            "65410:window-blur",
+            "68614:hover-in:first=0:consumed=0:en=0",
+            "68614:show:hover:2500",
+            "69010:hover-out:first=0",
+            "69010:hide:400:en=0",
+            "70008:apply:enable:global-option",
+            "70013:hide:0:en=1",
+            "70064:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+            "70064:report:d=1:en=1",
+            "70149:apply:disable:global-option",
+            "70149:report:d=1:en=0",
+            "70206:config:{\"dryRun\":true}",
+            "70206:report:d=1:en=0",
+            "70206:apply:enable:click",
+            "70328:phase:up",
+            "70328:phase:up"
+          ]
+        },
+        {
+          "at": 1792733270692,
+          "enabled": true,
+          "enabledBy": "click",
+          "actions": [
+            {
+              "action": "enable",
+              "source": "global-option",
+              "at": 1792733270008
+            },
+            {
+              "action": "disable",
+              "source": "global-option",
+              "at": 1792733270149
+            },
+            {
+              "action": "enable",
+              "source": "click",
+              "at": 1792733270206
+            }
+          ],
+          "log": [
+            "62661:report:d=1:en=0",
+            "62661:show:first-run:2500",
+            "62672:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+            "62672:report:d=1:en=0",
+            "62911:report:d=1:en=0",
+            "65173:hide:0:en=0",
+            "65410:window-blur",
+            "68614:hover-in:first=0:consumed=0:en=0",
+            "68614:show:hover:2500",
+            "69010:hover-out:first=0",
+            "69010:hide:400:en=0",
+            "70008:apply:enable:global-option",
+            "70013:hide:0:en=1",
+            "70064:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+            "70064:report:d=1:en=1",
+            "70149:apply:disable:global-option",
+            "70149:report:d=1:en=0",
+            "70206:config:{\"dryRun\":true}",
+            "70206:report:d=1:en=0",
+            "70206:apply:enable:click",
+            "70328:phase:up",
+            "70328:phase:up"
+          ]
+        },
+        {
+          "at": 1792733270813,
+          "enabled": true,
+          "enabledBy": "click",
+          "actions": [
+            {
+              "action": "enable",
+              "source": "global-option",
+              "at": 1792733270008
+            },
+            {
+              "action": "disable",
+              "source": "global-option",
+              "at": 1792733270149
+            },
+            {
+              "action": "enable",
+              "source": "click",
+              "at": 1792733270206
+            }
+          ],
+          "log": [
+            "62661:report:d=1:en=0",
+            "62661:show:first-run:2500",
+            "62672:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+            "62672:report:d=1:en=0",
+            "62911:report:d=1:en=0",
+            "65173:hide:0:en=0",
+            "65410:window-blur",
+            "68614:hover-in:first=0:consumed=0:en=0",
+            "68614:show:hover:2500",
+            "69010:hover-out:first=0",
+            "69010:hide:400:en=0",
+            "70008:apply:enable:global-option",
+            "70013:hide:0:en=1",
+            "70064:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+            "70064:report:d=1:en=1",
+            "70149:apply:disable:global-option",
+            "70149:report:d=1:en=0",
+            "70206:config:{\"dryRun\":true}",
+            "70206:report:d=1:en=0",
+            "70206:apply:enable:click",
+            "70328:phase:up",
+            "70328:phase:up"
+          ]
+        },
+        {
+          "at": 1792733270936,
+          "enabled": true,
+          "enabledBy": "click",
+          "actions": [
+            {
+              "action": "enable",
+              "source": "global-option",
+              "at": 1792733270008
+            },
+            {
+              "action": "disable",
+              "source": "global-option",
+              "at": 1792733270149
+            },
+            {
+              "action": "enable",
+              "source": "click",
+              "at": 1792733270206
+            }
+          ],
+          "log": [
+            "62661:report:d=1:en=0",
+            "62661:show:first-run:2500",
+            "62672:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+            "62672:report:d=1:en=0",
+            "62911:report:d=1:en=0",
+            "65173:hide:0:en=0",
+            "65410:window-blur",
+            "68614:hover-in:first=0:consumed=0:en=0",
+            "68614:show:hover:2500",
+            "69010:hover-out:first=0",
+            "69010:hide:400:en=0",
+            "70008:apply:enable:global-option",
+            "70013:hide:0:en=1",
+            "70064:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+            "70064:report:d=1:en=1",
+            "70149:apply:disable:global-option",
+            "70149:report:d=1:en=0",
+            "70206:config:{\"dryRun\":true}",
+            "70206:report:d=1:en=0",
+            "70206:apply:enable:click",
+            "70328:phase:up",
+            "70328:phase:up"
+          ]
+        }
+      ],
+      "finalVoiceState": {
+        "enabled": false,
+        "waiting": false,
+        "mode": "hold",
+        "reports": 9,
+        "applied": 2,
+        "actions": [
+          {
+            "action": "enable",
+            "source": "global-option",
+            "at": 1792733270008
+          },
+          {
+            "action": "disable",
+            "source": "global-option",
+            "at": 1792733270149
+          },
+          {
+            "action": "enable",
+            "source": "click",
+            "at": 1792733270206
+          },
+          {
+            "action": "disable",
+            "source": "click",
+            "at": 1792733271031
+          }
+        ],
+        "lastPhase": "up",
+        "hasButton": true,
+        "badge": "按住 Option/Alt 说话",
+        "dryRun": true,
+        "detected": {
+          "enabled": false,
+          "waiting": false
+        },
+        "debugLog": [
+          "62661:report:d=1:en=0",
+          "62661:show:first-run:2500",
+          "62672:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+          "62672:report:d=1:en=0",
+          "62911:report:d=1:en=0",
+          "65173:hide:0:en=0",
+          "65410:window-blur",
+          "68614:hover-in:first=0:consumed=0:en=0",
+          "68614:show:hover:2500",
+          "69010:hover-out:first=0",
+          "69010:hide:400:en=0",
+          "70008:apply:enable:global-option",
+          "70013:hide:0:en=1",
+          "70064:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+          "70064:report:d=1:en=1",
+          "70149:apply:disable:global-option",
+          "70149:report:d=1:en=0",
+          "70206:config:{\"dryRun\":true}",
+          "70206:report:d=1:en=0",
+          "70206:apply:enable:click",
+          "70328:phase:up",
+          "70328:phase:up",
+          "71031:apply:disable:click",
+          "71031:report:d=1:en=0"
+        ],
+        "hintText": "按住 Option/Alt 说话",
+        "hintVisible": false,
+        "hintShows": 2,
+        "hintConsumed": true,
+        "hintReason": "hover",
+        "clickCount": 0,
+        "enabledBy": "click"
+      },
+      "finalHint": {
+        "hint": {
+          "source": "global-option",
+          "keyId": "alt",
+          "mode": "hold",
+          "displayKey": "Option/Alt",
+          "global": true,
+          "text": "按住 Option/Alt 说话"
+        },
+        "globalOption": true,
+        "talkKey": {
+          "mode": "hold",
+          "keyId": "alt",
+          "source": "global-option",
+          "displayKey": "Option/Alt",
+          "hint": "按住 Option/Alt 说话",
+          "global": true,
+          "accelerator": "Alt+Space",
+          "registered": true,
+          "globalOption": {
+            "available": true,
+            "frameworkPath": "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices",
+            "koffiPath": "$HOME/projects/dsh-bot/node_modules/.pnpm/koffi@3.1.1/node_modules/koffi",
+            "koffiVersion": "3.1.1",
+            "error": ""
+          },
+          "presetLabel": "Option / Alt（桌宠聚焦时按住）",
+          "hintText": "按住 Option/Alt 说话",
+          "dryRun": true,
+          "fallback": "Alt+Space"
+        }
+      },
+      "hintDebugLog": [
+        "62661:report:d=1:en=0",
+        "62661:show:first-run:2500",
+        "62672:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+        "62672:report:d=1:en=0",
+        "62911:report:d=1:en=0",
+        "65173:hide:0:en=0",
+        "65410:window-blur",
+        "68614:hover-in:first=0:consumed=0:en=0",
+        "68614:show:hover:2500",
+        "69010:hover-out:first=0",
+        "69010:hide:400:en=0",
+        "70008:apply:enable:global-option",
+        "70013:hide:0:en=1",
+        "70064:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+        "70064:report:d=1:en=1",
+        "70149:apply:disable:global-option",
+        "70149:report:d=1:en=0",
+        "70206:config:{\"dryRun\":true}",
+        "70206:report:d=1:en=0",
+        "70206:apply:enable:click",
+        "70328:phase:up",
+        "70328:phase:up",
+        "71031:apply:disable:click",
+        "71031:report:d=1:en=0"
+      ]
+    }
+  },
+  "petStatusRestart": {
+    "generatedAt": "2026-10-23T05:27:55.789Z",
+    "bridgeOnly": true,
+    "gatewayOrigin": "http://127.0.0.1:59842",
+    "shellControlUrl": "http://127.0.0.1:59840",
+    "bridgeFile": "/tmp/nisse-pet-voice-ux-smoke-1792733261908/dsh-home/bridge.json",
+    "bridgePollActive": true,
+    "settingsWindowPresent": false,
+    "windows": [
+      {
+        "title": "Nisse 家灵",
+        "visible": true,
+        "destroyed": false,
+        "url": "http://127.0.0.1:59863/3d64f0c5663b94ee11491eb9653ef265b7a191c5fb30af59/?desktop=orb&orbSkin=whale-girl&autoHideSeconds=0&lang=zh-CN"
+      }
+    ],
+    "bubble": {
+      "visible": false,
+      "interactive": false,
+      "inputMode": false,
+      "kind": "",
+      "text": "",
+      "title": "",
+      "clickThrough": false
+    },
+    "experience": {
+      "onboarding": {
+        "active": false,
+        "busy": false,
+        "stepId": "done",
+        "substate": "",
+        "completed": true,
+        "paused": false,
+        "approvalPersisted": true,
+        "answers": {
+          "addressUser": "小智",
+          "persona": {
+            "presetId": "gentle",
+            "personality": "温柔",
+            "tone": "温和",
+            "custom": ""
+          },
+          "llm": {
+            "provider": "opencode-go",
+            "baseUrl": "",
+            "model": "",
+            "apiKey": "",
+            "apiKeySet": true,
+            "skipped": false
+          },
+          "voice": {
+            "provider": "dashscope",
+            "baseUrl": "",
+            "model": "",
+            "voice": "",
+            "wakeWord": "小鲸小鲸",
+            "apiKey": "",
+            "apiKeySet": true,
+            "skipped": false
+          },
+          "approval": {
+            "mode": "ask-each",
+            "onceMinutes": 30
+          },
+          "behavior": {
+            "pauseOnInput": true,
+            "allowScreenView": true
+          }
+        }
+      },
+      "voice": {
+        "settings": {
+          "mode": "hold",
+          "keyId": "alt",
+          "fallbackAccelerator": "Alt+Space",
+          "holdMaxMs": 15000,
+          "hintSeen": true
+        },
+        "talkKey": {
+          "mode": "hold",
+          "keyId": "alt",
+          "source": "global-option",
+          "displayKey": "Option/Alt",
+          "hint": "按住 Option/Alt 说话",
+          "global": true,
+          "accelerator": "Alt+Space",
+          "registered": true,
+          "globalOption": {
+            "available": true,
+            "frameworkPath": "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices",
+            "koffiPath": "$HOME/projects/dsh-bot/node_modules/.pnpm/koffi@3.1.1/node_modules/koffi",
+            "koffiVersion": "3.1.1",
+            "error": ""
+          },
+          "presetLabel": "Option / Alt（桌宠聚焦时按住）",
+          "hintText": "按住 Option/Alt 说话",
+          "dryRun": true,
+          "fallback": "Alt+Space"
+        },
+        "hint": {
+          "source": "global-option",
+          "keyId": "alt",
+          "mode": "hold",
+          "displayKey": "Option/Alt",
+          "global": true,
+          "text": "按住 Option/Alt 说话"
+        },
+        "lastReport": {
+          "enabled": false,
+          "waiting": false,
+          "mode": "hold",
+          "reports": 3,
+          "dryRun": true,
+          "hintSeen": true,
+          "hintVisible": false,
+          "hintShows": 0,
+          "clickCount": 0,
+          "enabledBy": ""
+        },
+        "globalOption": {
+          "available": true,
+          "frameworkPath": "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices",
+          "koffiPath": "$HOME/projects/dsh-bot/node_modules/.pnpm/koffi@3.1.1/node_modules/koffi",
+          "koffiVersion": "3.1.1",
+          "error": "",
+          "watcher": {
+            "running": true,
+            "pressed": false,
+            "polls": 99,
+            "errors": 0,
+            "downCount": 0,
+            "upCount": 0,
+            "lastChangeAt": 0,
+            "lastError": "",
+            "pollMs": 40,
+            "stablePolls": 2
+          },
+          "smokeOverride": null
+        }
+      },
+      "pause": {
+        "turnActive": false,
+        "turnStartedAt": 0,
+        "paused": 0,
+        "lastPause": null,
+        "lastError": "",
+        "monitor": {
+          "running": true,
+          "previousIdle": null,
+          "pauses": 0,
+          "lastPause": null,
+          "thresholdSeconds": 1.5,
+          "graceMs": 2500,
+          "pollMs": 1000
+        }
+      },
+      "lastHeardText": ""
+    },
+    "shell": {
+      "lastToggle": null,
+      "lastApproval": null
+    },
+    "shots": [
+      "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-orb-voice-ux.png"
+    ],
+    "voiceUxRestart": {
+      "assertions": {
+        "hintHiddenOnSecondLaunch": true,
+        "hintConsumedOnSecondLaunch": true,
+        "hintText": "按住 Option/Alt 说话",
+        "effectiveHint": {
+          "source": "global-option",
+          "keyId": "alt",
+          "mode": "hold",
+          "displayKey": "Option/Alt",
+          "global": true,
+          "text": "按住 Option/Alt 说话"
+        }
+      },
+      "errors": []
+    }
+  },
+  "voiceUx": {
+    "assertions": {
+      "injectedControlsReady": true,
+      "effectiveHint": {
+        "source": "global-option",
+        "keyId": "alt",
+        "mode": "hold",
+        "displayKey": "Option/Alt",
+        "global": true,
+        "text": "按住 Option/Alt 说话"
+      },
+      "globalOptionAvailable": true,
+      "globalOptionDiagnostics": {
+        "frameworkPath": "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices",
+        "koffiVersion": "3.1.1",
+        "error": "",
+        "watcher": {
+          "running": true,
+          "pressed": false,
+          "polls": 56,
+          "errors": 0,
+          "downCount": 0,
+          "upCount": 0,
+          "lastChangeAt": 0,
+          "lastError": "",
+          "pollMs": 40,
+          "stablePolls": 2
+        }
+      },
+      "firstRunHintVisible": true,
+      "firstRunHintText": "按住 Option/Alt 说话",
+      "firstRunHintShows": 1,
+      "firstRunBadgeStyle": {
+        "text": "按住 Option/Alt 说话",
+        "width": 121.578125,
+        "height": 21,
+        "opacity": "0.95",
+        "display": "block",
+        "fontSize": "10.5px",
+        "scrollWidth": 122
+      },
+      "firstRunHintAutoHides": true,
+      "hoverHintVisible": true,
+      "hoverHintText": "按住 Option/Alt 说话",
+      "hintMatchesEffectiveKey": true,
+      "hoverBadgeStyle": {
+        "text": "按住 Option/Alt 说话",
+        "width": 121.578125,
+        "height": 21,
+        "x": 25.2109375,
+        "y": 177,
+        "opacity": "0",
+        "display": "block",
+        "fontSize": "10.5px",
+        "scrollWidth": 122
+      },
+      "hoverHintHides": true,
+      "optionPressStartsListening": true,
+      "optionPressEnabledBy": "global-option",
+      "optionWatcherState": {
+        "running": true,
+        "pressed": true,
+        "polls": 183,
+        "errors": 0,
+        "downCount": 1,
+        "upCount": 0,
+        "lastChangeAt": 1792733269995,
+        "lastError": "",
+        "pollMs": 40,
+        "stablePolls": 2
+      },
+      "hintHiddenWhenListening": true,
+      "hintSeenPersisted": true,
+      "optionReleaseStopsListening": true,
+      "optionWatcherAfter": {
+        "running": true,
+        "pressed": false,
+        "polls": 186,
+        "errors": 0,
+        "downCount": 1,
+        "upCount": 1,
+        "lastChangeAt": 1792733270149,
+        "lastError": "",
+        "pollMs": 40,
+        "stablePolls": 2
+      },
+      "toggleFirstClickEnables": true,
+      "mouseupKeepsListening": true,
+      "mouseupSendsNoDisable": true,
+      "noBridgeCancelDuringToggle": true,
+      "toggleSecondClickStops": true,
+      "toggleClicksApplied": 2,
+      "hintStaysHiddenAfterUse": true,
+      "hintConsumed": true,
+      "hintSeenPersistedFile": true,
+      "bridgeCancelsFromPet": {
+        "pauseStatus": 0
+      }
+    },
+    "shots": [
+      {
+        "name": "pet-hint-first-run.png",
+        "file": "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-hint-first-run.png"
+      },
+      {
+        "name": "pet-hint-hover.png",
+        "file": "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-hint-hover.png"
+      },
+      {
+        "name": "pet-global-option-listening.png",
+        "file": "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-global-option-listening.png"
+      }
+    ],
+    "errors": [],
+    "stages": [],
+    "toggleSamples": [
+      {
+        "at": 1792733270450,
+        "enabled": true,
+        "enabledBy": "click",
+        "actions": [
+          {
+            "action": "enable",
+            "source": "global-option",
+            "at": 1792733270008
+          },
+          {
+            "action": "disable",
+            "source": "global-option",
+            "at": 1792733270149
+          },
+          {
+            "action": "enable",
+            "source": "click",
+            "at": 1792733270206
+          }
+        ],
+        "log": [
+          "62661:report:d=1:en=0",
+          "62661:show:first-run:2500",
+          "62672:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+          "62672:report:d=1:en=0",
+          "62911:report:d=1:en=0",
+          "65173:hide:0:en=0",
+          "65410:window-blur",
+          "68614:hover-in:first=0:consumed=0:en=0",
+          "68614:show:hover:2500",
+          "69010:hover-out:first=0",
+          "69010:hide:400:en=0",
+          "70008:apply:enable:global-option",
+          "70013:hide:0:en=1",
+          "70064:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+          "70064:report:d=1:en=1",
+          "70149:apply:disable:global-option",
+          "70149:report:d=1:en=0",
+          "70206:config:{\"dryRun\":true}",
+          "70206:report:d=1:en=0",
+          "70206:apply:enable:click",
+          "70328:phase:up",
+          "70328:phase:up"
+        ]
+      },
+      {
+        "at": 1792733270572,
+        "enabled": true,
+        "enabledBy": "click",
+        "actions": [
+          {
+            "action": "enable",
+            "source": "global-option",
+            "at": 1792733270008
+          },
+          {
+            "action": "disable",
+            "source": "global-option",
+            "at": 1792733270149
+          },
+          {
+            "action": "enable",
+            "source": "click",
+            "at": 1792733270206
+          }
+        ],
+        "log": [
+          "62661:report:d=1:en=0",
+          "62661:show:first-run:2500",
+          "62672:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+          "62672:report:d=1:en=0",
+          "62911:report:d=1:en=0",
+          "65173:hide:0:en=0",
+          "65410:window-blur",
+          "68614:hover-in:first=0:consumed=0:en=0",
+          "68614:show:hover:2500",
+          "69010:hover-out:first=0",
+          "69010:hide:400:en=0",
+          "70008:apply:enable:global-option",
+          "70013:hide:0:en=1",
+          "70064:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+          "70064:report:d=1:en=1",
+          "70149:apply:disable:global-option",
+          "70149:report:d=1:en=0",
+          "70206:config:{\"dryRun\":true}",
+          "70206:report:d=1:en=0",
+          "70206:apply:enable:click",
+          "70328:phase:up",
+          "70328:phase:up"
+        ]
+      },
+      {
+        "at": 1792733270692,
+        "enabled": true,
+        "enabledBy": "click",
+        "actions": [
+          {
+            "action": "enable",
+            "source": "global-option",
+            "at": 1792733270008
+          },
+          {
+            "action": "disable",
+            "source": "global-option",
+            "at": 1792733270149
+          },
+          {
+            "action": "enable",
+            "source": "click",
+            "at": 1792733270206
+          }
+        ],
+        "log": [
+          "62661:report:d=1:en=0",
+          "62661:show:first-run:2500",
+          "62672:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+          "62672:report:d=1:en=0",
+          "62911:report:d=1:en=0",
+          "65173:hide:0:en=0",
+          "65410:window-blur",
+          "68614:hover-in:first=0:consumed=0:en=0",
+          "68614:show:hover:2500",
+          "69010:hover-out:first=0",
+          "69010:hide:400:en=0",
+          "70008:apply:enable:global-option",
+          "70013:hide:0:en=1",
+          "70064:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+          "70064:report:d=1:en=1",
+          "70149:apply:disable:global-option",
+          "70149:report:d=1:en=0",
+          "70206:config:{\"dryRun\":true}",
+          "70206:report:d=1:en=0",
+          "70206:apply:enable:click",
+          "70328:phase:up",
+          "70328:phase:up"
+        ]
+      },
+      {
+        "at": 1792733270813,
+        "enabled": true,
+        "enabledBy": "click",
+        "actions": [
+          {
+            "action": "enable",
+            "source": "global-option",
+            "at": 1792733270008
+          },
+          {
+            "action": "disable",
+            "source": "global-option",
+            "at": 1792733270149
+          },
+          {
+            "action": "enable",
+            "source": "click",
+            "at": 1792733270206
+          }
+        ],
+        "log": [
+          "62661:report:d=1:en=0",
+          "62661:show:first-run:2500",
+          "62672:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+          "62672:report:d=1:en=0",
+          "62911:report:d=1:en=0",
+          "65173:hide:0:en=0",
+          "65410:window-blur",
+          "68614:hover-in:first=0:consumed=0:en=0",
+          "68614:show:hover:2500",
+          "69010:hover-out:first=0",
+          "69010:hide:400:en=0",
+          "70008:apply:enable:global-option",
+          "70013:hide:0:en=1",
+          "70064:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+          "70064:report:d=1:en=1",
+          "70149:apply:disable:global-option",
+          "70149:report:d=1:en=0",
+          "70206:config:{\"dryRun\":true}",
+          "70206:report:d=1:en=0",
+          "70206:apply:enable:click",
+          "70328:phase:up",
+          "70328:phase:up"
+        ]
+      },
+      {
+        "at": 1792733270936,
+        "enabled": true,
+        "enabledBy": "click",
+        "actions": [
+          {
+            "action": "enable",
+            "source": "global-option",
+            "at": 1792733270008
+          },
+          {
+            "action": "disable",
+            "source": "global-option",
+            "at": 1792733270149
+          },
+          {
+            "action": "enable",
+            "source": "click",
+            "at": 1792733270206
+          }
+        ],
+        "log": [
+          "62661:report:d=1:en=0",
+          "62661:show:first-run:2500",
+          "62672:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+          "62672:report:d=1:en=0",
+          "62911:report:d=1:en=0",
+          "65173:hide:0:en=0",
+          "65410:window-blur",
+          "68614:hover-in:first=0:consumed=0:en=0",
+          "68614:show:hover:2500",
+          "69010:hover-out:first=0",
+          "69010:hide:400:en=0",
+          "70008:apply:enable:global-option",
+          "70013:hide:0:en=1",
+          "70064:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+          "70064:report:d=1:en=1",
+          "70149:apply:disable:global-option",
+          "70149:report:d=1:en=0",
+          "70206:config:{\"dryRun\":true}",
+          "70206:report:d=1:en=0",
+          "70206:apply:enable:click",
+          "70328:phase:up",
+          "70328:phase:up"
+        ]
+      }
+    ],
+    "finalVoiceState": {
+      "enabled": false,
+      "waiting": false,
+      "mode": "hold",
+      "reports": 9,
+      "applied": 2,
+      "actions": [
+        {
+          "action": "enable",
+          "source": "global-option",
+          "at": 1792733270008
+        },
+        {
+          "action": "disable",
+          "source": "global-option",
+          "at": 1792733270149
+        },
+        {
+          "action": "enable",
+          "source": "click",
+          "at": 1792733270206
+        },
+        {
+          "action": "disable",
+          "source": "click",
+          "at": 1792733271031
+        }
+      ],
+      "lastPhase": "up",
+      "hasButton": true,
+      "badge": "按住 Option/Alt 说话",
+      "dryRun": true,
+      "detected": {
+        "enabled": false,
+        "waiting": false
+      },
+      "debugLog": [
+        "62661:report:d=1:en=0",
+        "62661:show:first-run:2500",
+        "62672:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+        "62672:report:d=1:en=0",
+        "62911:report:d=1:en=0",
+        "65173:hide:0:en=0",
+        "65410:window-blur",
+        "68614:hover-in:first=0:consumed=0:en=0",
+        "68614:show:hover:2500",
+        "69010:hover-out:first=0",
+        "69010:hide:400:en=0",
+        "70008:apply:enable:global-option",
+        "70013:hide:0:en=1",
+        "70064:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+        "70064:report:d=1:en=1",
+        "70149:apply:disable:global-option",
+        "70149:report:d=1:en=0",
+        "70206:config:{\"dryRun\":true}",
+        "70206:report:d=1:en=0",
+        "70206:apply:enable:click",
+        "70328:phase:up",
+        "70328:phase:up",
+        "71031:apply:disable:click",
+        "71031:report:d=1:en=0"
+      ],
+      "hintText": "按住 Option/Alt 说话",
+      "hintVisible": false,
+      "hintShows": 2,
+      "hintConsumed": true,
+      "hintReason": "hover",
+      "clickCount": 0,
+      "enabledBy": "click"
+    },
+    "finalHint": {
+      "hint": {
+        "source": "global-option",
+        "keyId": "alt",
+        "mode": "hold",
+        "displayKey": "Option/Alt",
+        "global": true,
+        "text": "按住 Option/Alt 说话"
+      },
+      "globalOption": true,
+      "talkKey": {
+        "mode": "hold",
+        "keyId": "alt",
+        "source": "global-option",
+        "displayKey": "Option/Alt",
+        "hint": "按住 Option/Alt 说话",
+        "global": true,
+        "accelerator": "Alt+Space",
+        "registered": true,
+        "globalOption": {
+          "available": true,
+          "frameworkPath": "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices",
+          "koffiPath": "$HOME/projects/dsh-bot/node_modules/.pnpm/koffi@3.1.1/node_modules/koffi",
+          "koffiVersion": "3.1.1",
+          "error": ""
+        },
+        "presetLabel": "Option / Alt（桌宠聚焦时按住）",
+        "hintText": "按住 Option/Alt 说话",
+        "dryRun": true,
+        "fallback": "Alt+Space"
+      }
+    },
+    "hintDebugLog": [
+      "62661:report:d=1:en=0",
+      "62661:show:first-run:2500",
+      "62672:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+      "62672:report:d=1:en=0",
+      "62911:report:d=1:en=0",
+      "65173:hide:0:en=0",
+      "65410:window-blur",
+      "68614:hover-in:first=0:consumed=0:en=0",
+      "68614:show:hover:2500",
+      "69010:hover-out:first=0",
+      "69010:hide:400:en=0",
+      "70008:apply:enable:global-option",
+      "70013:hide:0:en=1",
+      "70064:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+      "70064:report:d=1:en=1",
+      "70149:apply:disable:global-option",
+      "70149:report:d=1:en=0",
+      "70206:config:{\"dryRun\":true}",
+      "70206:report:d=1:en=0",
+      "70206:apply:enable:click",
+      "70328:phase:up",
+      "70328:phase:up",
+      "71031:apply:disable:click",
+      "71031:report:d=1:en=0"
+    ]
+  },
+  "voiceUxRestart": {
+    "assertions": {
+      "hintHiddenOnSecondLaunch": true,
+      "hintConsumedOnSecondLaunch": true,
+      "hintText": "按住 Option/Alt 说话",
+      "effectiveHint": {
+        "source": "global-option",
+        "keyId": "alt",
+        "mode": "hold",
+        "displayKey": "Option/Alt",
+        "global": true,
+        "text": "按住 Option/Alt 说话"
+      }
+    },
+    "errors": []
+  },
+  "bridgeCalls": {
+    "polls": [
+      {
+        "authorized": true,
+        "after": "0"
+      },
+      {
+        "authorized": true,
+        "after": "0"
+      },
+      {
+        "authorized": true,
+        "after": "0"
+      },
+      {
+        "authorized": true,
+        "after": "0"
+      },
+      {
+        "authorized": true,
+        "after": "0"
+      },
+      {
+        "authorized": true,
+        "after": "0"
+      },
+      {
+        "authorized": true,
+        "after": "0"
+      },
+      {
+        "authorized": true,
+        "after": "0"
+      },
+      {
+        "authorized": true,
+        "after": "0"
+      },
+      {
+        "authorized": true,
+        "after": "0"
+      },
+      {
+        "authorized": true,
+        "after": "0"
+      },
+      {
+        "authorized": true,
+        "after": "0"
+      },
+      {
+        "authorized": true,
+        "after": "0"
+      },
+      {
+        "authorized": true,
+        "after": "0"
+      },
+      {
+        "authorized": true,
+        "after": "0"
+      },
+      {
+        "authorized": true,
+        "after": "0"
+      },
+      {
+        "authorized": true,
+        "after": "0"
+      },
+      {
+        "authorized": true,
+        "after": "0"
+      },
+      {
+        "authorized": true,
+        "after": "0"
+      },
+      {
+        "authorized": true,
+        "after": "0"
+      },
+      {
+        "authorized": true,
+        "after": "0"
+      },
+      {
+        "authorized": true,
+        "after": "0"
+      }
+    ],
+    "cancels": []
+  },
+  "shellCalls": [
+    {
+      "method": "GET",
+      "path": "/bot/config",
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/bot/config",
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/bot/status",
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/bot/config",
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/bot/status",
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/bot/config",
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/bot/status",
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/bot/config",
+      "body": ""
+    }
+  ],
+  "finishedAt": "2026-10-23T05:27:55.953Z",
+  "ok": true
+}

@@ -1,0 +1,67 @@
+{
+  "suite": "M4 main paths",
+  "startedAt": "2026-10-22T13:12:39.556Z",
+  "steps": {
+    "setup-host": {
+      "status": "PASS",
+      "ms": 1382,
+      "detail": {
+        "pid": 61434,
+        "httpStatus": 401,
+        "sessionId": "9bb25a19-0c9d-40a2-ac19-2b1a18b3df2f"
+      }
+    },
+    "path1-qa": {
+      "status": "PASS",
+      "ms": 2538,
+      "detail": {
+        "answerPreview": "我可以帮你读写工作区里的文件、运行命令排查问题，并像这样通过这个界面把结果整理好交给你。",
+        "eventCount": 39
+      }
+    },
+    "path2a-inside-workspace-file": {
+      "status": "PASS",
+      "ms": 5550,
+      "detail": {
+        "target": "/tmp/nisse-m4-paths/dsh-home/workspace/m4-inside.txt",
+        "content": "hello m4",
+        "answerPreview": "已写入 [m4-inside.txt](/tmp/nisse-m4-paths/dsh-home/workspace/m4-inside.txt)，内容只有一行"
+      }
+    },
+    "path2b-outside-approval-allow": {
+      "status": "PASS",
+      "ms": 4532,
+      "detail": {
+        "approvalId": "approval_1792674772738_1",
+        "created": true,
+        "cleanedUp": true
+      }
+    },
+    "path3-history": {
+      "status": "PASS",
+      "ms": 3,
+      "detail": {
+        "count": 23,
+        "types": [
+          "user.message",
+          "assistant.message",
+          "turn.ended",
+          "tool.call",
+          "tool.result",
+          "approval.request",
+          "approval.decided"
+        ],
+        "toolPreview": "write"
+      }
+    },
+    "path4-cancel": {
+      "status": "PASS",
+      "ms": 1213,
+      "detail": {
+        "cancelled": true
+      }
+    }
+  },
+  "ok": true,
+  "finishedAt": "2026-10-22T13:12:54.916Z"
+}

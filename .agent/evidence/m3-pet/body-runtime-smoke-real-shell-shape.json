@@ -1,0 +1,134 @@
+{
+  "suite": "W1/W6 Body Runtime cleanup + double-click",
+  "startedAt": "2026-10-22T13:28:40.014Z",
+  "electron": "$HOME/projects/dsh-bot-workspace/research/qwen-audio-agent/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron",
+  "steps": {
+    "electron-exit": {
+      "status": "PASS",
+      "ms": 1,
+      "detail": {
+        "generatedAt": "2026-10-22T13:28:45.706Z",
+        "bridgeOnly": true,
+        "gatewayOrigin": "http://127.0.0.1:54666",
+        "shellControlUrl": "http://127.0.0.1:54664",
+        "bridgeFile": "/tmp/nisse-body-runtime-smoke-1792675720013/dsh-home/bridge.json",
+        "bridgePollActive": true,
+        "settingsWindowPresent": false,
+        "windows": [
+          {
+            "title": "Nisse 头顶气泡",
+            "visible": true,
+            "destroyed": false,
+            "url": "file://$HOME/projects/dsh-bot-workspace/m3/pet/desktop/src/bubble.html"
+          },
+          {
+            "title": "Nisse 家灵",
+            "visible": true,
+            "destroyed": false,
+            "url": "http://127.0.0.1:54667/c9277d0ecf0773bb9189e025e5e3017aba339885f4948973/?desktop=orb&orbSkin=whale-girl&autoHideSeconds=0&lang=zh-CN"
+          }
+        ],
+        "bubble": {
+          "visible": true,
+          "interactive": false
+        },
+        "shell": {
+          "lastToggle": {
+            "ok": true,
+            "result": "shown"
+          },
+          "lastApproval": {
+            "id": "smoke-approval-1",
+            "decision": "allow",
+            "ok": true,
+            "result": "forwarded"
+          }
+        },
+        "shots": [
+          "/tmp/brs-evidence-real/body-runtime-orb-bubble.png",
+          "/tmp/brs-evidence-real/body-runtime-orb.png"
+        ],
+        "dblclickDispatched": true,
+        "bubbleInteractiveAfterMouseMove": true,
+        "approvalClicked": true
+      }
+    },
+    "bridge-only-runtime": {
+      "status": "PASS",
+      "ms": 0
+    },
+    "no-settings-chat-onboarding-window": {
+      "status": "PASS",
+      "ms": 0
+    },
+    "double-click-opens-minimizes-dsh": {
+      "status": "PASS",
+      "ms": 1
+    },
+    "approval-bubble-interactive": {
+      "status": "PASS",
+      "ms": 0
+    },
+    "screenshots": {
+      "status": "PASS",
+      "ms": 0,
+      "detail": {
+        "orb": "/tmp/brs-evidence-real/body-runtime-orb.png",
+        "bubble": "/tmp/brs-evidence-real/body-runtime-orb-bubble.png"
+      }
+    }
+  },
+  "electronExit": {
+    "code": 0,
+    "signal": null
+  },
+  "stderrTail": "",
+  "petStatus": {
+    "generatedAt": "2026-10-22T13:28:45.706Z",
+    "bridgeOnly": true,
+    "gatewayOrigin": "http://127.0.0.1:54666",
+    "shellControlUrl": "http://127.0.0.1:54664",
+    "bridgeFile": "/tmp/nisse-body-runtime-smoke-1792675720013/dsh-home/bridge.json",
+    "bridgePollActive": true,
+    "settingsWindowPresent": false,
+    "windows": [
+      {
+        "title": "Nisse 头顶气泡",
+        "visible": true,
+        "destroyed": false,
+        "url": "file://$HOME/projects/dsh-bot-workspace/m3/pet/desktop/src/bubble.html"
+      },
+      {
+        "title": "Nisse 家灵",
+        "visible": true,
+        "destroyed": false,
+        "url": "http://127.0.0.1:54667/c9277d0ecf0773bb9189e025e5e3017aba339885f4948973/?desktop=orb&orbSkin=whale-girl&autoHideSeconds=0&lang=zh-CN"
+      }
+    ],
+    "bubble": {
+      "visible": true,
+      "interactive": false
+    },
+    "shell": {
+      "lastToggle": {
+        "ok": true,
+        "result": "shown"
+      },
+      "lastApproval": {
+        "id": "smoke-approval-1",
+        "decision": "allow",
+        "ok": true,
+        "result": "forwarded"
+      }
+    },
+    "shots": [
+      "/tmp/brs-evidence-real/body-runtime-orb-bubble.png",
+      "/tmp/brs-evidence-real/body-runtime-orb.png"
+    ],
+    "dblclickDispatched": true,
+    "bubbleInteractiveAfterMouseMove": true,
+    "approvalClicked": true
+  },
+  "finishedAt": "2026-10-22T13:28:45.975Z",
+  "ok": true
+}

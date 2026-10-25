@@ -1,0 +1,27 @@
+{
+  "suite": "M4-4 stop semantics",
+  "startedAt": "2026-10-24T04:18:08.637Z",
+  "steps": {
+    "stop-playback-keeps-task": {
+      "status": "PASS",
+      "ms": 210,
+      "detail": {
+        "speechEvents": [
+          "voice.speech_stopped",
+          "voice.state",
+          "pong"
+        ],
+        "state": "speaking"
+      }
+    },
+    "state-machine-settles": {
+      "status": "PASS",
+      "ms": 0,
+      "detail": {
+        "state": "idle"
+      }
+    }
+  },
+  "ok": true,
+  "finishedAt": "2026-10-24T04:18:08.900Z"
+}
