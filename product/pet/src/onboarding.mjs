@@ -60,14 +60,14 @@ export const VOICE_PROVIDER_CHOICES = Object.freeze([
 
 export const APPROVAL_CHOICES = Object.freeze([
   Object.freeze({ id: 'ask-each', label: '每次都问' }),
-  Object.freeze({ id: 'a[REDACTED_KEY]', label: '操作前问' }),
+  Object.freeze({ id: 'ask-before', label: '操作前问' }),
   Object.freeze({ id: 'ask-once', label: '一次 N 分钟' }),
   Object.freeze({ id: 'never-ask', label: '从不问' }),
 ])
 
 export const APPROVAL_EXPLANATIONS = Object.freeze({
   'ask-each': '每个需要审批的操作都会在气泡里问你「是/否」。最稳。',
-  'a[REDACTED_KEY]': '开始一批操作前问一次，之后同类操作不再逐条问。',
+  'ask-before': '开始一批操作前问一次，之后同类操作不再逐条问。',
   'ask-once': '你允许一次后，N 分钟内同类操作不再问。',
   'never-ask': '不再弹审批气泡，风险操作会直接执行。适合完全信任的时候。',
 })
@@ -128,7 +128,7 @@ function clampText(value, max = 400) {
 }
 
 function isMode(value) {
-  return ['ask-each', 'a[REDACTED_KEY]', 'ask-once', 'never-ask'].includes(value)
+  return ['ask-each', 'ask-before', 'ask-once', 'never-ask'].includes(value)
 }
 
 /** Sanitize anything read back from disk / IPC into the current schema. */

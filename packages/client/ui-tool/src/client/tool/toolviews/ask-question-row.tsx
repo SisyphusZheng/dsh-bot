@@ -8,7 +8,7 @@ import type {
   AskUserQuestionAnswerItem, AskUserQuestionItem, AskUserQuestionOption,
 } from '@deepseek-ai/dsh-user-questions/types'
 import type { ToolCallViewProps, UserQuestionRecord } from '../../contract/slots.ts'
-import type { AskQuestionCardModel } from '../models/a[REDACTED_KEY].ts'
+import type { AskQuestionCardModel } from '../models/ask-question-card-model.ts'
 import { singleResultText } from '../models/raw-tool-call.ts'
 import { toolRowModel } from '../models/tool-call-model.ts'
 import { ToolRow } from '../components/ToolRow.tsx'
@@ -367,9 +367,9 @@ export function AskQuestionRow({
   )
 }
 
-/** Registers the a[REDACTED_KEY] conversation row. */
+/** Registers the ask-user-question conversation row. */
 export const askQuestionToolview = {
-  name: 'a[REDACTED_KEY]',
+  name: 'ask-question-toolview',
   inject: ['slots'],
   apply(ctx: Context): void {
     ctx.slots.inject('tool.call.toolview', () => ctx.slots.register({

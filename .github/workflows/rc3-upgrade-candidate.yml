@@ -1,0 +1,123 @@
+name: Rehearse DSH rc.3 upgrade (isolated branch)
+
+on:
+  push:
+    branches:
+      - fix/safety-config-and-rc3-preflight-20261025
+    paths:
+      - .github/workflows/rc3-upgrade-candidate.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dsh-bot-rc3-candidate
+  cancel-in-progress: true
+
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.28.5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Fetch authenticated upstream tags
+        shell: bash
+        run: |
+          set -euo pipefail
+          git remote add dsh-upstream https://github.com/deepseek-ai/deepseek-harness.git
+          git fetch --no-tags dsh-upstream \
+            refs/tags/dsh-v0.2.1-rc.2:refs/tags/dsh-upstream-rc2 \
+            refs/tags/dsh-v0.2.1-rc.3:refs/tags/dsh-upstream-rc3
+          test "$(git rev-parse refs/tags/dsh-upstream-rc2)" = "687f282e8625c6b8d11ff58211a90524be2e4317"
+          test "$(git rev-parse refs/tags/dsh-upstream-rc3)" = "1f81c047fc48fa190a683e469daa699857e9afe8"
+      - name: Three-way upgrade using rc.2 as synthetic snapshot parent
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "dsh-bot upgrade rehearsal"
+          git config user.email "upgrade@users.noreply.github.com"
+          snapshot="$(git rev-parse HEAD)"
+          rc2="$(git rev-parse refs/tags/dsh-upstream-rc2)"
+          rc3="$(git rev-parse refs/tags/dsh-upstream-rc3)"
+          # This repo was imported as one root commit with no upstream parents.
+          # Use a *temporary*, local-only replace ref to recover rc.2 as a merge base.
+          # Neither the replace ref nor a rewritten main branch is pushed.
+          git replace --graft "$snapshot" "$rc2"
+          if ! git merge --no-edit --no-ff -m "merge: DeepSeek Harness dsh-v0.2.1-rc.3" "$rc3"; then
+            conflicts="$(git diff --name-only --diff-filter=U)"
+            # The only expected conflict: rc.3 aligns Desktop version with runtime,
+            # whereas dsh-bot deliberately owns an independent product version.
+            if [[ "$conflicts" != "apps/desktop/package.json" ]]; then
+              echo "::error::Unexpected rc.3 conflicts; require human resolution"
+              printf '%s\\n' "$conflicts"
+              exit 1
+            fi
+            node --input-type=module <<'EOF'
+          import { execFileSync } from 'node:child_process'
+          const file = 'apps/desktop/package.json'
+          const json = (rev) => JSON.parse(execFileSync('git', ['show', rev + ':' + file], { encoding: 'utf8' }))
+          const base = json('refs/tags/dsh-upstream-rc2')
+          const theirs = JSON.parse(execFileSync('git', ['show', ':3:' + file], { encoding: 'utf8' }))
+          const ours = JSON.parse(execFileSync('git', ['show', ':2:' + file], { encoding: 'utf8' }))
+          if (theirs.version !== '0.2.1-rc.3' || ours.version !== '0.0.1-beta') throw Error('Unexpected product/runtime version conflict')
+          base.version = theirs.version
+          if (JSON.stringify(base) !== JSON.stringify(theirs)) throw Error('Upstream Desktop package changed beyond version')
+          EOF
+            git checkout --ours -- apps/desktop/package.json
+            git add apps/desktop/package.json
+            git commit -m "merge: preserve dsh-bot app version during rc.3 runtime upgrade"
+          fi
+          git replace -d "$snapshot"
+          node --input-type=module <<'EOF'
+          import { readFileSync, writeFileSync } from 'node:fs'
+          const file = '.agent/versions.json'
+          const data = JSON.parse(readFileSync(file, 'utf8'))
+          data.runtime.dsh.version = '0.2.1-rc.3'
+          data.runtime.dsh.upstreamTag = 'dsh-v0.2.1-rc.3'
+          data.runtime.dsh.upgradePolicy = 'rc.3 candidate pending packaged real-provider and TCC qualification'
+          writeFileSync(file, JSON.stringify(data, null, 2) + '\n')
+          EOF
+          test "$(node -p "require('./package.json').version")" = "0.2.1-rc.3"
+          test "$(node -p "require('./apps/desktop/package.json').version")" = "0.0.1-beta"
+          git add .agent/versions.json
+          git commit -m "chore: record rc.3 runtime candidate separately from product version"
+      - name: Reject sanitized source paths before compiling
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git grep -n -F '[REDACTED_KEY]' -- ':(glob)packages/**/src/**/*' ':(glob)apps/**/src/**/*' ':(glob)product/**/src/**/*' ':(glob)nisse/**/lib/**/*'; then
+            echo "::error::Snapshot still contains redacted source text; restore exact upstream symbols first"
+            exit 1
+          fi
+          # Test fixtures deliberately contain redacted/fake credentials; TypeScript
+          # independently rejects malformed import paths in test files.
+          # The embedded pet and bridge are not part of DSH's TypeScript build.
+          for source in product/pet/src/main.mjs product/pet/src/onboarding.mjs \
+            product/pet/src/orb-shell.mjs product/pet/src/preload.cjs \
+            nisse/packages/host-integration/lib/index.js; do
+            node --check "$source"
+          done
+      - name: Compile and build rc.3 candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile
+          pnpm exec vitest run apps/desktop/tests/dsh-bot-regressions.spec.ts
+          pnpm run typecheck
+          pnpm run build
+      - name: Publish isolated candidate only after green gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          git push origin HEAD:refs/heads/upgrade/dsh-rc3-candidate
+          echo "Candidate: upgrade/dsh-rc3-candidate"

@@ -1,0 +1,30 @@
+name: dsh-bot regression
+on:
+  push:
+    branches: [fix/safety-config-and-rc3-preflight-20261025]
+    paths:
+      - .github/workflows/dsh-bot-regression.yml
+  pull_request:
+    paths:
+      - apps/desktop/src/bot-config-server.ts
+      - apps/desktop/src/secret-store.ts
+      - apps/desktop/src/main.ts
+      - apps/desktop/tests/dsh-bot-regressions.spec.ts
+      - .github/workflows/dsh-bot-regression.yml
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.28.5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: pnpm install --frozen-lockfile
+      - name: Run focused regressions
+        run: pnpm exec vitest run apps/desktop/tests/dsh-bot-regressions.spec.ts

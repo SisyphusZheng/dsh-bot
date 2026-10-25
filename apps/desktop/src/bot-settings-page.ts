@@ -337,7 +337,7 @@ function renderPermissionsPanel(panel){
   panel.appendChild(hint('Bot 代替你操作电脑时，什么时候需要你确认。保存后由桌宠与 DSH 按此执行。'));
   var modes = [
     ['ask-each', '每次操作都问', '每个工具调用前都弹出审批气泡（最谨慎，默认）。'],
-    ['a[REDACTED_KEY]', '操作前批一次', '执行一组操作前确认一次，组内自动继续。'],
+    ['ask-before', '操作前批一次', '执行一组操作前确认一次，组内自动继续。'],
     ['ask-once', '一次授权 N 分钟', '确认一次后在 N 分钟内不再询问。'],
     ['never-ask', '从不询问', '不再弹出审批（危险：Bot 可以直接改动电脑）。']
   ];

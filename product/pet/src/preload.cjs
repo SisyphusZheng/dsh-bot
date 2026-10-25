@@ -39,9 +39,9 @@ contextBridge.exposeInMainWorld('qwenAudioAgentDesktop', {
           : null,
       })
     }
-    ipcRenderer.on('qwen-audio-agent:ta[REDACTED_KEY]', listener)
+    ipcRenderer.on('qwen-audio-agent:task-card-placement', listener)
     return () => ipcRenderer.removeListener(
-      'qwen-audio-agent:ta[REDACTED_KEY]',
+      'qwen-audio-agent:task-card-placement',
       listener,
     )
   },

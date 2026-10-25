@@ -24,7 +24,7 @@ import {
   scheduleTasksForClosing, scheduleTurnDefinition, selectScheduleTasks,
   type ScheduleTurnData, type ScheduleTurnOwner,
 } from '../src/client/schedule-turn.ts'
-import { en, zh } from '../src/client/ta[REDACTED_KEY].ts'
+import { en, zh } from '../src/client/task-manager-locales.ts'
 
 const CALL = 'call-created'
 const PROMPT = 'Check the deployment\nand report'

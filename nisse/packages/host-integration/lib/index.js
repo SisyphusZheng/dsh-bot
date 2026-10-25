@@ -238,7 +238,7 @@ export function apply(ctx, config = {}) {
   function approvalSettings() {
     const raw = readBotConfig()?.approval
     const requested = String(raw?.mode || '')
-    const mode = ['ask-each', 'a[REDACTED_KEY]', 'ask-once', 'never-ask'].includes(requested) ? requested : 'ask-each'
+    const mode = ['ask-each', 'ask-before', 'ask-once', 'never-ask'].includes(requested) ? requested : 'ask-each'
     const minutes = Number(raw?.onceMinutes)
     return { mode, onceMinutes: Number.isFinite(minutes) && minutes > 0 ? Math.min(minutes, 24 * 60) : 30 }
   }

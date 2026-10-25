@@ -7,7 +7,7 @@ import type {
   ScheduleRecord, ScheduleUpdateRequest, ScheduleUpdateResult,
 } from '@deepseek-ai/dsh-schedule/client'
 import { assertNever } from '@deepseek-ai/dsh-util-values'
-import type { TaskManagerKey } from './ta[REDACTED_KEY].ts'
+import type { TaskManagerKey } from './task-manager-locales.ts'
 
 /** Task mutation callback injected by the task catalog owner. */
 export interface TaskTimingInjected {

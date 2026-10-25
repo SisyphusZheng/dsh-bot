@@ -11,7 +11,7 @@ import { PartialArguments } from '@deepseek-ai/dsh-util-values'
 import { ScheduleCreateCard, type ScheduleCreateCardProps } from '../src/client/ScheduleCreateCard.tsx'
 import { narrowScheduleRecord, scheduleCreateCardModel } from '../src/client/schedule-create-card.ts'
 import { zoneLabel } from '../src/client/schedule-format.ts'
-import { en, zh } from '../src/client/ta[REDACTED_KEY].ts'
+import { en, zh } from '../src/client/task-manager-locales.ts'
 
 type ToolBlock = ToolCallViewProps['block']
 

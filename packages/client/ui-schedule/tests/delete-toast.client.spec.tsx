@@ -7,7 +7,7 @@ import {
   createDeleteToastSource, ScheduleDeleteToast,
   type DeleteToastState, type ScheduleDeleteToastProps,
 } from '../src/client/DeleteToast.tsx'
-import { en, zh } from '../src/client/ta[REDACTED_KEY].ts'
+import { en, zh } from '../src/client/task-manager-locales.ts'
 
 afterEach(() => { cleanup(); vi.useRealTimers() })
 

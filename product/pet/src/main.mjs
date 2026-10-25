@@ -732,7 +732,7 @@ function sendDesktopTaskPlacement() {
     workArea,
   })
   mainWindow.webContents.send(
-    'qwen-audio-agent:ta[REDACTED_KEY]',
+    'qwen-audio-agent:task-card-placement',
     {
       placement: desktopTaskPlacement,
       orbOffsetX: desktopOrbOffsetX,
@@ -2205,13 +2205,13 @@ async function runExperienceSmokeProbe() {
   if (!(await clickBubbleText('OpenCode Go（默认）'))) throw new Error('failed to pick LLM provider')
   await waitStepTitle('模型 Key')
   await captureShot('pet-onboarding-llm-key.png')
-  if (!(await submitBubbleInput('[REDACTED_KEY]'))) throw new Error('failed to submit LLM key')
+  if (!(await submitBubbleInput('test-llm-key'))) throw new Error('failed to submit LLM key')
   // 测试连接走壳 POST /bot/test/llm（stub 返回 ok），随后进入语音服务步骤。
   await waitStepTitle('语音服务')
 
   if (!(await clickBubbleText('DashScope Qwen Realtime（默认）'))) throw new Error('failed to pick voice provider')
   await waitStepTitle('语音 Key')
-  if (!(await submitBubbleInput('[REDACTED_KEY]'))) throw new Error('failed to submit voice key')
+  if (!(await submitBubbleInput('test-voice-key'))) throw new Error('failed to submit voice key')
   await waitStepTitle('唤醒词')
   if (!(await submitBubbleInput('小鲸小鲸'))) throw new Error('failed to submit wake word')
   // 语音测试走壳 POST /bot/test/voice（stub 返回 ok）→ 权限步骤。

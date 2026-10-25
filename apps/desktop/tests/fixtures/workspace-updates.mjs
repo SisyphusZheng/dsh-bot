@@ -267,7 +267,7 @@ async function qualify() {
     const changed = await dialogWith(messages.updateTasksChanged)
     await screenshot(changed, 'new-task-refusal.png')
     await clickText(changed, messages.updateAcknowledge)
-    cases.push('new-ta[REDACTED_KEY]')
+    cases.push('new-task-during-idle-confirmation-refuses-install-and-preserves-work')
 
     await press(mainWindow, `document.querySelector('button[data-error="true"]')`)
     const warning = await dialogWith(messages.updateActiveTasks)
@@ -276,7 +276,7 @@ async function qualify() {
     await waitFor(() => fixture.coordinator.state.phase === 'ready', 'deferred install readiness')
     assert.equal((await control('status')).queued, 1)
     assert.equal(fixture.installations.length, 0)
-    cases.push('ta[REDACTED_KEY]')
+    cases.push('task-warning-deferral-preserves-work-and-ready-package')
     console.log('workspace qualification: real task confirmation and deferral complete')
 
     server.policy('force')

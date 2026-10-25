@@ -60,7 +60,7 @@ function page(): string {
 
 export interface BotConfigHooks {
   status?: () => unknown
-  onConfigSaved?: (config: BotConfig) => void | Promise<void>
+  onConfigSaved?: (config: BotConfig, previous: BotConfig) => void | Promise<void>
   onRestart?: () => unknown | Promise<unknown>
   onToggleMain?: () => unknown | Promise<unknown>
   onOpenSettings?: () => unknown | Promise<unknown>
@@ -154,6 +154,22 @@ export async function startBotConfigServer(
       const body = JSON.stringify(payload)
       res.writeHead(statusCode, { 'content-type': 'application/json; charset=utf-8', 'content-length': Buffer.byteLength(body) })
       res.end(body)
+    }
+    // A loopback listener is still reachable from browser tabs via DNS rebinding
+    // and cross-origin requests. Reject foreign Host/Origin and cross-site fetches
+    // before any read OR mutation. Trusted native clients have no Origin header.
+    // This is browser-origin hardening, not authentication against same-user code.
+    const listener = server.address()
+    const boundPort = typeof listener === 'object' && listener !== null ? listener.port : port
+    const permittedHosts = new Set([`127.0.0.1:${boundPort}`, `localhost:${boundPort}`])
+    const host = String(req.headers.host ?? '').toLowerCase()
+    const origin = req.headers.origin
+    const permittedOrigins = new Set([...permittedHosts].map(item => `http://${item}`))
+    if (!permittedHosts.has(host)
+      || (origin !== undefined && !permittedOrigins.has(origin))
+      || req.headers['sec-fetch-site'] === 'cross-site') {
+      reply(403, { ok: false, error: 'LOCAL_ORIGIN_REQUIRED' })
+      return
     }
     try {
       const url = new URL(req.url || '/', 'http://127.0.0.1')
@@ -317,7 +333,7 @@ export async function startBotConfigServer(
         const stored = await readConfig()
         const merged = mergeBotConfigEdit(stored, await readBody(req))
         const config = await writeConfig(merged)
-        await hooks.onConfigSaved?.(config)
+        await hooks.onConfigSaved?.(config, stored)
         reply(200, { ok: true, config: toBotConfigView(config) })
         return
       }

@@ -5,7 +5,7 @@ import {
   FALLBACK_ZONES, formatScheduleAbsolute, formatScheduleNextRun, formatWeekdays, recordTimeZone,
   zoneChoices, zoneLabel, zoneName,
 } from '../src/client/schedule-format.ts'
-import { en, zh } from '../src/client/ta[REDACTED_KEY].ts'
+import { en, zh } from '../src/client/task-manager-locales.ts'
 
 /** Host zone pinned for every case, so menu order reads the same on any runner. */
 const SYSTEM = 'Asia/Shanghai'

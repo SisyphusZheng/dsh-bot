@@ -22,7 +22,7 @@ it('keeps the automation title intact before moving New to another line', async 
           await page.goto(scaffold.authenticatedUrl, { waitUntil: 'load' })
           const title = language === 'en' ? 'Automation tasks' : '自动化任务'
           await page.getByRole('button', { name: title, exact: true }).click()
-          const panel = page.getByTestId('ta[REDACTED_KEY]')
+          const panel = page.getByTestId('task-manager-page')
           const heading = panel.getByRole('heading', { name: title, exact: true })
           await heading.waitFor()
           const header = heading.locator('..')

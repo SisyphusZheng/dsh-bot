@@ -7,7 +7,8 @@
  * configured in the Bot is visible to DSH (and vice versa) and the product does not
  * invent its own crypto. Writes are atomic (temp + rename, 0600).
  */
-import { chmodSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdirSync, readFileSync, renameSync, writeFileSync, rmSync } from 'node:fs'
+import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { dump, load } from 'js-yaml'
 import type { SecretAccess } from './bot-settings-model.ts'
@@ -24,13 +25,24 @@ export class DshCredentialStore implements SecretAccess {
 
   /** Parse the document and return only its `refs` mapping (version/records preserved by write). */
   private document(): Record<string, unknown> {
+    let raw: string
     try {
-      const parsed = load(readFileSync(this.path(), 'utf8')) as unknown
-      if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return { version: 1, refs: {} }
-      return parsed as Record<string, unknown>
-    } catch {
-      return { version: 1, refs: {} }
+      raw = readFileSync(this.path(), 'utf8')
+    } catch (error) {
+      // Only a truly absent file is a new profile; never turn I/O errors into an empty store.
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return { version: 1, refs: {} }
+      throw error
     }
+    // YAML parse/type errors must not silently wipe existing credentials on save.
+    const parsed = load(raw) as unknown
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error('DSH credentials document must be a YAML mapping')
+    }
+    const refs = (parsed as Record<string, unknown>).refs
+    if (refs !== undefined && (refs === null || typeof refs !== 'object' || Array.isArray(refs))) {
+      throw new Error('DSH credentials refs must be a mapping')
+    }
+    return parsed as Record<string, unknown>
   }
 
   private read(): Record<string, string> {
@@ -48,10 +60,14 @@ export class DshCredentialStore implements SecretAccess {
     document['refs'] = map
     if (typeof document['version'] !== 'number') document['version'] = 1
     mkdirSync(this.dshHome, { recursive: true, mode: 0o700 })
-    const temporary = `${this.path()}.tmp`
-    writeFileSync(temporary, dump(document, { lineWidth: -1 }), { mode: 0o600 })
-    chmodSync(temporary, 0o600)
-    renameSync(temporary, this.path())
+    const temporary = `${this.path()}.${randomUUID()}.tmp`
+    try {
+      writeFileSync(temporary, dump(document, { lineWidth: -1 }), { mode: 0o600, flag: 'wx' })
+      chmodSync(temporary, 0o600)
+      renameSync(temporary, this.path())
+    } finally {
+      try { rmSync(temporary, { force: true }) } catch { /* best-effort cleanup */ }
+    }
   }
 
   available(): boolean {

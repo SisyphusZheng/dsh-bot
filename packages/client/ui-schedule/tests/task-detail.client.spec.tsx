@@ -21,7 +21,7 @@ import { TaskManagerPage, type TaskManagerPageProps } from '../src/client/TaskMa
 import { mergeRuleDraft } from '../src/client/TaskDetail.tsx'
 import type { CatalogSnapshot } from '../src/client/catalog-source.ts'
 import { timingSnapshot } from '../src/client/task-timing.ts'
-import { en } from '../src/client/ta[REDACTED_KEY].ts'
+import { en } from '../src/client/task-manager-locales.ts'
 import { zoneOffsetMinutes } from './zone-fixture.ts'
 import css from '../src/client/TaskManagerPage.module.css'
 
@@ -42,13 +42,13 @@ const daily: ScheduleCatalogEntry = {
 }
 
 const weeklyMonday: ScheduleCatalogEntry = {
-  id: 'ta[REDACTED_KEY]' as ScheduleId, sessionId: 'session-alpha' as SessionId, kind: 'weekly', status: 'active',
+  id: 'task-weekly-monday' as ScheduleId, sessionId: 'session-alpha' as SessionId, kind: 'weekly', status: 'active',
   title: 'Weekly Monday', prompt: 'Weekly Monday', time: '09:30:00.000', timeZone: 'Asia/Shanghai',
   weekdays: [1], scheduledAt: '2026-10-05T01:30:00.000Z',
 }
 
 const weekdayRule: ScheduleCatalogEntry = {
-  id: 'ta[REDACTED_KEY]' as ScheduleId, sessionId: 'session-beta' as SessionId, kind: 'weekly', status: 'active',
+  id: 'task-weekday-rule' as ScheduleId, sessionId: 'session-beta' as SessionId, kind: 'weekly', status: 'active',
   title: 'Weekday rule', prompt: 'Weekday rule', time: '09:30:00.000', timeZone: 'Asia/Shanghai',
   weekdays: [1, 2, 3, 4, 5], scheduledAt: '2026-10-05T01:30:00.000Z',
 }
