@@ -1,0 +1,205 @@
+{
+  "schema": "whalegirl.upstream-check/1",
+  "checkedAt": "2026-10-24T12:12:50.142Z",
+  "repository": "deepseek-ai/deepseek-harness",
+  "pinnedTag": "dsh-v0.2.1-rc.2",
+  "pinnedVersion": "0.2.1-rc.2",
+  "pinned": {
+    "tag": "dsh-v0.2.1-rc.2",
+    "version": "0.2.1-rc.2",
+    "publishedAt": "2026-10-17T08:16:33Z",
+    "prerelease": true,
+    "draft": false,
+    "htmlUrl": "https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.2",
+    "body": "[中文](#cn-v0.2.1-rc.2-community) | [English](#en-v0.2.1-rc.2-community)\r\n\r\n<h3 id=\"cn-v0.2.1-rc.2-community\">新增功能</h3>\r\n\r\n- 适配 DeepSeek-V4.1-Flash-1017 上线 @LegGasai\r\n- 适配 DeepSeek Search 与 Fetch API，可在网页搜索设置中开启 @yudshj, @LegGasai\r\n\r\n<h3 id=\"en-v0.2.1-rc.2-community\">New Features</h3>\r\n\r\n- Add support for DeepSeek-V4.1-Flash-1017. by @LegGasai\r\n- Add support for DeepSeek Search and Fetch APIs, which can be enabled in Web Search settings. by @yudshj, @LegGasai\r\n\r\nFull Changelog: [dsh-v0.2.1-rc.1...dsh-v0.2.1-rc.2](https://github.com/deepseek-ai/deepseek-harness/compare/dsh-v0.2.1-rc.1...dsh-v0.2."
+  },
+  "latest": {
+    "tag": "dsh-v0.2.1-rc.3",
+    "version": "0.2.1-rc.3",
+    "publishedAt": "2026-10-23T15:26:39Z",
+    "prerelease": true,
+    "draft": false,
+    "htmlUrl": "https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.3",
+    "body": "[中文](#cn-v0.2.1-rc.3-community) | [English](#en-v0.2.1-rc.3-community)\r\n\r\n<h3 id=\"cn-v0.2.1-rc.3-community\">体验优化</h3>\r\n\r\n- 新增左侧栏、会话视图和右侧栏的「更多」菜单，方便浏览和创建插件。 @Yifffan, @imccyu\r\n- 修复切换会话后，点击「新会话」找不回未发送草稿的问题。 @imccyu\r\n\r\n### 其他变更\r\n\r\n- DeepSeek API Key 适配器的模型列表更新方式与账号登录模式保持一致。 @LegGasai\r\n\r\n<h3 id=\"en-v0.2.1-rc.3-community\">Improvements</h3>\r\n\r\n- Add More menus to the left sidebar, conversation views, and right sidebar for browsing and creating plugins. by @Yifffan, @imccyu\r\n- Fix New Session losing an unsent draft after switching sessions. by @imccyu\r\n\r\n### Chores\r\n\r\n- The DeepSeek API key adapter n"
+  },
+  "relation": "newer-upstream-available",
+  "newer": true,
+  "commits": {
+    "total": 6,
+    "list": [
+      {
+        "sha": "5ff29190ed8e",
+        "date": "2026-10-20T07:17:13Z",
+        "subject": "feat(ui): add navigation entry customization (#6247)"
+      },
+      {
+        "sha": "675164957aac",
+        "date": "2026-10-21T03:17:55Z",
+        "subject": "feat(analytics): track navigation entries and preset selections (#6600)"
+      },
+      {
+        "sha": "39d2903841fa",
+        "date": "2026-10-22T12:05:33Z",
+        "subject": "fix(ui): separate navigation pins from selection and show menu icons (#6883)"
+      },
+      {
+        "sha": "c48f8523f22a",
+        "date": "2026-10-22T12:42:19Z",
+        "subject": "feat(llm): follow the official /models listing on the DeepSeek API-key route (#6944)"
+      },
+      {
+        "sha": "d02ea370ee15",
+        "date": "2026-10-22T17:11:35Z",
+        "subject": "release(dsh): 0.2.1-rc.3"
+      },
+      {
+        "sha": "1f81c047fc48",
+        "date": "2026-10-23T03:29:36Z",
+        "subject": "Merge pull request #6999 from deepseek-harness/worktree/release-dsh-0.2.1-rc.3"
+      }
+    ]
+  },
+  "files": {
+    "changed": 300,
+    "truncated": true,
+    "additions": 4237,
+    "deletions": 496
+  },
+  "packages": [
+    {
+      "name": "packages/client",
+      "files": 182,
+      "additions": 3356,
+      "deletions": 335
+    },
+    {
+      "name": "apps/web",
+      "files": 26,
+      "additions": 148,
+      "deletions": 39
+    },
+    {
+      "name": ".agents",
+      "files": 15,
+      "additions": 541,
+      "deletions": 14
+    },
+    {
+      "name": "docs",
+      "files": 15,
+      "additions": 96,
+      "deletions": 42
+    },
+    {
+      "name": "packages/api",
+      "files": 11,
+      "additions": 11,
+      "deletions": 11
+    },
+    {
+      "name": "packages/core",
+      "files": 8,
+      "additions": 8,
+      "deletions": 8
+    },
+    {
+      "name": "packages/bundle",
+      "files": 7,
+      "additions": 12,
+      "deletions": 6
+    },
+    {
+      "name": "packages/context",
+      "files": 7,
+      "additions": 7,
+      "deletions": 7
+    },
+    {
+      "name": "packages/boot",
+      "files": 6,
+      "additions": 6,
+      "deletions": 6
+    },
+    {
+      "name": "packages/compaction",
+      "files": 5,
+      "additions": 5,
+      "deletions": 5
+    },
+    {
+      "name": "packages/credentials",
+      "files": 5,
+      "additions": 5,
+      "deletions": 5
+    },
+    {
+      "name": "apps/cli",
+      "files": 3,
+      "additions": 32,
+      "deletions": 8
+    },
+    {
+      "name": "packages/attachment",
+      "files": 2,
+      "additions": 2,
+      "deletions": 2
+    },
+    {
+      "name": "apps/desktop-host",
+      "files": 1,
+      "additions": 1,
+      "deletions": 1
+    },
+    {
+      "name": "apps/desktop",
+      "files": 1,
+      "additions": 1,
+      "deletions": 1
+    },
+    {
+      "name": "apps/plugin-market-generator",
+      "files": 1,
+      "additions": 1,
+      "deletions": 1
+    },
+    {
+      "name": "package.json",
+      "files": 1,
+      "additions": 1,
+      "deletions": 1
+    },
+    {
+      "name": "packages/acp",
+      "files": 1,
+      "additions": 1,
+      "deletions": 1
+    },
+    {
+      "name": "packages/browser-use",
+      "files": 1,
+      "additions": 1,
+      "deletions": 1
+    },
+    {
+      "name": "packages/computer-use",
+      "files": 1,
+      "additions": 1,
+      "deletions": 1
+    },
+    {
+      "name": "packages/deliverables",
+      "files": 1,
+      "additions": 1,
+      "deletions": 1
+    }
+  ],
+  "serverish": {
+    "total": 300,
+    "serverish": [
+      "package.json",
+      "packages/api/session-controller/src/client/sessions/service.ts",
+      "packages/bundle/web-app/cordis.patch.yml"
+    ]
+  },
+  "exitCode": 10
+}

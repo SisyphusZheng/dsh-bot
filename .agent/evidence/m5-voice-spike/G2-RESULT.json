@@ -1,0 +1,750 @@
+{
+  "gate": "G2",
+  "status": "PASS",
+  "date": "2026-10-23",
+  "checklist": {
+    "1_real_voice_triggers_dsh": "PASS (real ASR finals triggered real DSH turns in the earlier noisy-environment run)",
+    "2_dsh_reply_continuous_playback_in_order": "PASS (deterministic two-turn test: 2 TTS responses for 2 replies, ordered, no per-token TTS)",
+    "3_session_turn_ids": "PASS (same session session-3f31dfeb... across turns; DSH turn 1→2→…→9; requestId per voice turn)",
+    "4_cancel_bargein_late_isolation": "PASS — five-step fixture: forced timeout -> cancel_unconfirmed=1 -> quarantine; 423 blocks new turn; wrong turn-end ignored; recover 409 keeps quarantine; precise release turn=2 + unsuppress clears quarantine; new turn voice-4 (requestId distinct, dsh_turn=3) completed in same session",
+    "5_approval_remains_dsh_owned": "PASS (desktop dev DSH UI): no-click pending >8s; reject -> rejected + zero execution; allow -> allowed-once + exactly one execution",
+    "6_failure_disconnect_cleanup": "PARTIAL (DSH-unreachable error path observed earlier: 4 error frames + TTS fallback; full disconnect/cleanup not re-measured)"
+  },
+  "implementation": {
+    "bridge_plugin": "m5/dsh-bridge (host plugin inside DSH web, loopback NDJSON, token protected)",
+    "bridge_protocol": "POST /turn -> admitted, prompt-accepted, assistant-start, text*, assistant-end, turn-end; POST /cancel -> sessionController.cancel({sessionId}); no approval endpoint exists",
+    "bridge_session": "created once via sessionController.create({sessionId:'whalegirl-g2-main', cwd}) then reused via sessionController.prompt; session-d29a4586-4c29-412f-bedc-10a8a6e8a571 reused across turns",
+    "voice_processor": "m5/voice-spike/worker/dsh_bridge.py::DSHBridgeProcessor (Pipecat FrameProcessor)",
+    "worker_mode": "G1_MODE=dsh: transport.input -> Silero VAD -> DashScope ASR -> DSHBridgeProcessor -> DashScope TTS -> transport.output",
+    "interruptions": "VADUserStartedSpeakingFrame while speaking -> broadcast_interruption + audible=false; remaining DSH text dropped (late isolation), DSH turn keeps running",
+    "cancel": "transcript matching cancel phrases -> bridge /cancel (sessionController.cancel keepInbox=true) + local interruption; playback stop and task cancel are separate paths"
+  },
+  "evidence": {
+    "controlled_turns": {
+      "session_id": "session-d29a4586-4c29-412f-bedc-10a8a6e8a571",
+      "turns": [
+        {
+          "voice_turn": "voice-1",
+          "dsh_turn": 2,
+          "chars": 51,
+          "completed": true
+        },
+        {
+          "voice_turn": "voice-2",
+          "dsh_turn": 3,
+          "chars": 10,
+          "completed": true
+        }
+      ],
+      "text_deltas": 35,
+      "tts_responses": 2,
+      "tts_reply_1": {
+        "chars": 51,
+        "chunks": 22,
+        "audio_bytes": 380160,
+        "first_chunk_ms": 246.4,
+        "done_ms": 1559.4
+      },
+      "tts_reply_2": {
+        "chars": 10,
+        "chunks": 6,
+        "audio_bytes": 84480,
+        "first_chunk_ms": 241.7,
+        "done_ms": 478.3
+      },
+      "stats_file": "m5/voice-spike/logs/worker-g2-dsh.log"
+    },
+    "bargein_late_output": {
+      "barge_ins": 2,
+      "late_text_dropped": 319,
+      "turn_audible_false_completed": [
+        {
+          "voice_turn": "voice-5",
+          "dsh_turn": 6,
+          "chars": 709
+        },
+        {
+          "voice_turn": "voice-6",
+          "dsh_turn": 7,
+          "chars": 156
+        }
+      ],
+      "note": "ambient background audio in the real-mic environment also triggered additional barge-ins; values include that noise"
+    },
+    "cancel": {
+      "request": "POST /cancel -> 200 {cancelRequested:true}",
+      "local": "turn voice-11 task cancelled locally; turns_cancelled=1",
+      "open_issue": "bridge activeBySession not closed because turn-end for cancelled turn was not observed before the next /turn; next /turn returned 409 turn already active"
+    },
+    "failure": "DSH bridge unreachable while worker alive -> DSHBridgeProcessor error frames + TTS fallback; errors counted in /stats"
+  },
+  "known_limitations": [
+    "real-mic test environment had unrelated background audio (system playback), which ASR transcribed and sent to DSH; this contaminated turns and triggered extra barge-ins",
+    "bridge active-turn lifecycle after cancel needs fixing (close sink on cancelled turn-end or on cancel request)",
+    "no clean approval acceptance/rejection test yet; DSH ask_user_question tool can hold a turn open",
+    "end-to-end latency metrics and p50/p95 not collected for G2 yet",
+    "human listening of DSH-spoken replies not verified in this round"
+  ],
+  "next": [
+    "fix bridge cancel/active-sink lifecycle and add turn-end timeout",
+    "run clean G2 tests with controlled transcript injection for streaming/order/cancel, and a real-mic run in a quiet room",
+    "test approval authority: tool requiring approval stays pending in DSH; voice layer has no approve path",
+    "collect failure/disconnect/cleanup evidence and G2 latency samples",
+    "update G2-RESULT.json to PASS only after all 6 checklist items have evidence"
+  ],
+  "files": [
+    "m5/dsh-bridge/package.json",
+    "m5/dsh-bridge/cordis.patch.yml",
+    "m5/dsh-bridge/lib/index.js",
+    "m5/voice-spike/worker/dsh_bridge.py",
+    "m5/voice-spike/worker/server.py",
+    "m5/voice-spike/worker/dashscope_services.py",
+    "m5/voice-spike/logs/worker-g2-dsh.log"
+  ],
+  "checklist_summary": {
+    "PASS": 5,
+    "PARTIAL": 1,
+    "NOT_TESTED": 0,
+    "total": 6
+  },
+  "cancel_lifecycle_fix": {
+    "objects": {
+      "playback": "interrupted immediately on cancel/barge-in",
+      "dsh_turn": "sessionController.cancel({sessionId}) keepInbox=true; wait for turn-end",
+      "active_sink": "idempotent finalizeTurn closes NDJSON stream and clears activeBySession",
+      "persistent_session": "kept; reused for next turn",
+      "late_events": "filtered by turn id / audible flag and dropped"
+    },
+    "finalize_triggers": "turn-end, cancel-confirmation (5s), prompt-error, 180s idle timeout, bridge dispose",
+    "race_handled": "cancel + turn-end arrived together; finalized once with reason=turn-end (aborted/user), next turn succeeded",
+    "evidence": {
+      "cancel_requests": 1,
+      "cancel_confirmed": 1,
+      "cancel_unconfirmed": 0,
+      "next_turn_same_session": "dsh_turn 6 (then 8→9 in re-check) completed"
+    },
+    "known_metric_issue": "turns_cancelled was double-counted in the earlier snapshot; code fixed (single increment in _run_turn finally), not re-measured in a fresh run"
+  },
+  "deterministic_tests": {
+    "t1_streaming_order": {
+      "turns": [
+        {
+          "turn": 1,
+          "chars": 56,
+          "tts_chunks": 23,
+          "tts_first_chunk_ms": 203.7
+        },
+        {
+          "turn": 2,
+          "chars": 7,
+          "tts_chunks": 4,
+          "tts_first_chunk_ms": 224.9
+        }
+      ],
+      "same_session": true,
+      "completed": true
+    },
+    "t2_bargein": {
+      "barge_ins": 1,
+      "late_text_dropped": 154,
+      "old_turn_completed_but_muted": true,
+      "next_turn_audible": true,
+      "audible_flags": [
+        "voice-3 audible=false",
+        "voice-4 audible=true"
+      ]
+    },
+    "t3_cancel_next": {
+      "cancel_requested": true,
+      "cancel_confirmed": true,
+      "turn_end_reason": "aborted/user",
+      "sink_released": true,
+      "next_turn_same_session": true,
+      "next_turn_dsh_turn": 6
+    },
+    "t4_cancel_recheck": {
+      "session": "session-3f31dfeb-2db2-45e9-acfd-0b731a4d012c",
+      "cancelled_turn": 8,
+      "next_turn": 9,
+      "completed": true
+    }
+  },
+  "latency_samples": {
+    "dsh_turn_duration_ms": "3030 (cancelled), 5499, 5630, 8072 in deterministic runs",
+    "tts_first_chunk_ms": "203.7–246.4",
+    "note": "single-run samples; p50/p95 pending"
+  },
+  "single_writer_semantics": {
+    "status": "CONFIRMED (design + timestamps)",
+    "evidence": "barge-in deterministic test: voice-3 turn-end 17:29:38.300 -> voice-4 starts 17:29:38.301 (1 ms). Processor queues while _current exists; next turn starts only in _run_turn finally; bridge returns 409 while lease active.",
+    "concurrency": "none: strictly serialized per session"
+  },
+  "cancel_unconfirmed_quarantine": {
+    "status": "IMPLEMENTED; runtime verification pending",
+    "rule": "on 5s cancel timeout: finalize local sink + quarantine session; POST /turn returns 423; late turn-end clears quarantine. Resources release immediately, execution lock does not."
+  },
+  "known_issues": [
+    "corrected turns_cancelled re-run inconclusive in latest harness attempt (client timing); earlier deterministic run predates the count fix"
+  ],
+  "latest_round": {
+    "cancel_counting_clean_rerun": {
+      "status": "PASS",
+      "cancel_requests": 1,
+      "cancel_confirmed": 1,
+      "cancel_unconfirmed": 0,
+      "turns_started": 2,
+      "turns_completed": 1,
+      "note": "cancelled turn not counted as completed; no double count; next turn in same session completed"
+    },
+    "forced_cancel_unconfirmed": {
+      "status": "NOT REPRODUCED",
+      "note": "even with DSH_CANCEL_TIMEOUT_MS=0, DSH turn-end arrives in ~1-2ms, so the timeout path was not hit. Need an artificial turn-end suppression harness to exercise quarantine/423/recover; remains unverified."
+    },
+    "recovery_replay_safety": "IMPLEMENTED: after recovery the previous request is NOT auto-resubmitted; user must ask again (avoids duplicate side effects).",
+    "approval": "NOT TESTED",
+    "failure_cleanup": "PARTIAL",
+    "latency": "pending"
+  },
+  "cancel_unconfirmed_fixture": {
+    "status": "PASS (five steps)",
+    "run_id": "run-1792750428492",
+    "steps": {
+      "1_force_timeout": "PASS: cancel_unconfirmed=1, latency 2138ms, quarantine set, sink released",
+      "2_quarantine_423": "PASS: new turn blocked, quarantine_blocks=1, no DSH submission for blocked turn",
+      "3_wrong_turn_end": "PASS: isolated remained (wrongTurn=102)",
+      "4_recovery_failure": "PASS: /recover 409, quarantine stayed",
+      "5_matching_terminal_and_new_turn": "PASS: release 1 held event turn=2, leftoverHeld=0, quarantine cleared, new request voice-4 got distinct requestId + dsh_turn=3, completed=true, TTS replies present, session reused"
+    },
+    "boundary": "turn-end suppression tests bridge behavior when terminal event is delayed/lost; it does not prove DSH task was still running."
+  },
+  "request_id_semantics": "requestId = correlation id only; turnId = DSH turn; operationId (future) would be the stable idempotency key. Recovery does NOT auto-replay previous requests.",
+  "step5_diagnosis": {
+    "status": "STEP5 STILL PARTIAL",
+    "root_cause": "Fixture release bug: harness called /test/release with sessionId \"*\", but suppression was stored under the real sessionId. The wildcard path did not clear that entry, so the post-recovery turn's turn-end (turn 3) was still held; voice-4 started but could not complete. This does not disprove product isolation logic.",
+    "fixes": [
+      "/test/release with \"*\" must clear all suppression entries",
+      "harness should release with the real sessionId",
+      "rerun Step5 and verify voice-4 completes with new requestId/turnId, no replay"
+    ],
+    "verified_intermediates": [
+      "quarantine cleared on matching turn-end (turn 2)",
+      "local _quarantined synced and cleared",
+      "new request voice-4 submitted to DSH after recovery"
+    ]
+  },
+  "approval_tests": {
+    "environment": "dev DSH checkout ($HOME/projects/dsh-bot), Harness Dev.app, DSH_HOME=/tmp/wg-dev/home, DSH_DESKTOP_USER_DATA_DIR=/tmp/wg-dev/userdata, renderer CDP 127.0.0.1:9333; standard (non-bot) session in the dev desktop app; no web client, no main/user DSH app",
+    "p0_no_click_test": {
+      "result": "PASS (desktop dev): approval panel appeared with 拒绝/允许一次 buttons and remained pending for >8s with zero input events; file did not exist; no auto approval decision",
+      "note": "the earlier web-only allowed-once anomaly was NOT reproduced in the desktop dev app; web is out of product scope and is not used for acceptance"
+    },
+    "case_reject": {
+      "result": "PASS",
+      "ui_action": "clicked 拒绝",
+      "audit_outcomes": "seq18 asked -> seq20 rejected",
+      "tool_executed": false,
+      "evidence": "target file $HOME/Desktop/wg-dev-approval.txt absent after rejection; zero job registrations for that attempt"
+    },
+    "case_allow": {
+      "result": "PASS",
+      "ui_action": "clicked 允许一次 for the workspace-write ask and the danger-full-access escalation (two one-shot decisions)",
+      "audit_outcomes": "seq27/28 allowed-once; seq29/30 allowed-once",
+      "tool_executed_once": true,
+      "evidence": "exactly one job/registered for the target command (job 31); file created with content approved (8 bytes)"
+    },
+    "session_audit": "/tmp/wg-dev/home/sessions/--private-tmp-wg-dev-home-workspace--/session-7dc576de-6141-450d-9cc7-e388a0cc8fe8/session.v4.jsonl.zstd",
+    "voice_bridge": "not involved in these approval decisions; no approve endpoint or voice approval path exists"
+  },
+  "fault_injection": {
+    "environment": "dev DSH (nisse-dsh Harness Dev.app, isolated /tmp/wg-dev/home + userdata, CDP 9333) + m5 voice worker + m3/pet Electron client; one fault at a time",
+    "f1_dsh_unreachable_before_request": {
+      "result": "PASS",
+      "evidence": "bridge killed before turn: DSHBridgeProcessor error frame \"Cannot connect to host\"; turns_started=1, turns_completed=0, request_id=None, execution_unknown=0 (no fake execution)"
+    },
+    "f2_dsh_mid_turn_disconnect": {
+      "result": "PASS",
+      "evidence": "DSH killed after prompt: errors=1, execution_unknown=1, turn not completed; subsequent request blocked (blocked_while_quarantined++) with turns_started unchanged; explicit \"重试\" while bridge down stayed fail-closed (no duplicate execution)"
+    },
+    "f3_worker_crash": {
+      "result": "PASS (after client fault-perception fix)",
+      "fix": "client inject.js: 2s heartbeat to worker /health (via test proxy), voiceService state separate from transport; 2 misses -> stop playback/capture, transport disconnect, bubble \"语音服务已断开…不会自动重试\"; reconnect loop when health returns",
+      "evidence": {
+        "detection": "t+2s healthFailures=1; t+3s transport=disconnected, voiceService=unreachable, bubble shown",
+        "auto_reconnect": "worker restart -> r+3s initializing, r+4s transport=ready, voiceService=healthy",
+        "no_replay": "after reconnect sessions=1, turns_started=0 (no automatic DSH request)",
+        "cleanup": "client disconnected WebRTC and stopped heartbeat on loss; resources reopened on reconnect"
+      },
+      "remaining": "DSH-side unknown execution isolation lives in the bridge/processor process; a Worker restart loses that local state. Agent-level reconciliation after Worker/DSH restart is still required (fail-closed until reconciled)."
+    },
+    "f4_electron_disconnect_cleanup": {
+      "result": "PASS",
+      "evidence": "client disconnect while worker alive: worker active_sessions=0, bridge activeTurn=null; no orphan worker session observed"
+    },
+    "f5_asr_tts_failure": {
+      "result": "NOT TESTED",
+      "evidence": null
+    },
+    "f6_recovery_after_dsh_restart": {
+      "result": "NOT TESTED / fail-closed holding",
+      "evidence": "mid-turn unknown-execution quarantine not released by retry while bridge down; restart/reconciliation path pending"
+    },
+    "findings_for_followup": [
+      "Electron client should surface transport failure promptly when Worker dies (currently stale ready state)",
+      "unknown-execution quarantine must stay fail-closed until DSH session terminal state is reconciled after restart",
+      "ASR/TTS timeout/failure injection and orphan/port cleanup checks still pending"
+    ],
+    "agent_state_recovery": {
+      "result": "PASS (fail-closed persistence + 423 gate + corrupt-ledger) / remaining NOT TESTED: matched-terminal unlock, clean-state regression, mid-write crash, new-session product policy",
+      "design": "bridge durable ledger in DSH_HOME/whalegirl-g2/recovery.json; unresolved running/unknown turns survive DSH/Worker restart; /recover reconciles via sessionController.readSessionState",
+      "evidence": {
+        "ledger_after_crash": "turn 2 status=running persisted through DSH restart",
+        "recover_old_session": "409 unresolved-execution-state with requestId/turn 2; ledger unchanged -> fail-closed PASS",
+        "global_423_gate": "NOT VERIFIED: direct /turn hit 500 \"payload is not defined\" (bug in new block). Code fixed to use bodyJson.newSession; needs fresh restart/re-test."
+      },
+      "limitation": "reconciliation only confirms turns with turn/end in DSH log; unresolved turns cannot be cleared automatically; explicit new-session handling still to design",
+      "gate_tests": {
+        "old_session_turn_423": "PASS — persisted running record; /turn returned 423, records listed, no new DSH turn",
+        "wrong_session_recover": "PASS — 200 not_quarantined for unknown session; did not clear global unresolved state; subsequent /turn still 423",
+        "correct_session_recover_409": "PASS — unresolved execution state returned 409 with requestId/turn 2; ledger unchanged",
+        "newSession_bypass": "FAIL — /turn with newSession:true bypassed the unresolved gate and created/executed a new DSH turn. Code now blocks ALL turns while unresolved (bypass removed), but fix has NOT been re-run.",
+        "no_duplicate_execution": "PARTIAL — blocked calls produced no DSH turns; the newSession bypass did execute a new unrelated turn (not a replay, but it violated the global gate)",
+        "correct_terminal_recovery": "NOT TESTED — no matched turn/end exists for the crashed turn; cannot safely test unlock without fabricating evidence",
+        "ledger_crash_safety": "NOT TESTED — write atomicity/corrupt-file behavior pending"
+      },
+      "gate_tests_retest": {
+        "old_session_turn_423": "PASS — persisted running record; /turn 423; no new DSH turn",
+        "newSession_true_423": "PASS — newSession:true also returned 423 (bypass removed); no new DSH turn",
+        "wrong_session_recover": "PASS — 409 other-unresolved-execution-state (no false recovery success); global isolation retained",
+        "correct_session_recover_409": "PASS — 409 unresolved-execution-state, records listed, ledger unchanged",
+        "ledger_reload": "PASS — bridge restart reloaded pending record from disk (legacy array format still accepted)",
+        "no_new_dsh_turn": "PASS — blocked requests produced no admission/turn; ledger length unchanged",
+        "clean_state_regression": "NOT TESTED — requires resolving/removing unresolved record or a second clean DSH_HOME"
+      },
+      "matched_terminal_unlock": {
+        "result": "PASS (live DSH session reconciliation)",
+        "method": "fixture suppressed turn/end delivery to bridge (DSH still persisted real turn/end); ledger kept running; /turn blocked; /recover read the live DSH session snapshot, found real turn/end, marked record completed; held event released; new turn (turn 2) completed in same session; old request not replayed",
+        "evidence": {
+          "sessionId": "session-29454235-a518-4d47-965c-2918514b2896",
+          "requestId": "866403d8",
+          "turn": 1,
+          "ledger_after_recover": "completed",
+          "next_turn": 2,
+          "old_request_replayed": false
+        },
+        "fixed_followup": "recover response now reports quarantineCleared=true with resolvedRecords when reconciliation succeeds (was misleadingly 200 not_quarantined); code changed, not yet re-run",
+        "limitations": [
+          "cold-session reconciliation after a full DSH restart not implemented (uses live ctx.sessions snapshot first; cold persistence read still needed)",
+          "negative mismatched turn/session tests not rerun this round",
+          "beforeRename/afterRename crash stages and unsupported-schema runtime still untested"
+        ]
+      },
+      "latest_round": {
+        "wrong_turn_end_guard": "PASS — foreign turn-end no longer finalizes ledger (injected turn 999 left record running)",
+        "wrong_session_recover": "PASS — with a pending record, /recover for a different session returns 409 other-unresolved-execution-state and does not reconcile the pending session (ledger remained running)",
+        "live_recover_regression": "FAIL/PARTIAL — after making recover session-scoped, correct /recover for the held-turn session returned 409 unresolved even though DSH had completed the turn; not yet debugged",
+        "cold_recovery": "NOT VERIFIED — cold reader implemented (zstd CLI multi-frame; Node zlib decodes only first frame), but the DSH restart launch in the test attempt did not come up in time, so no runtime evidence",
+        "recover_response_contract": "NOT VERIFIED after latest changes (previous fix not re-run successfully)",
+        "before_after_rename_crash": "NOT TESTED",
+        "unsupported_schema_runtime": "NOT TESTED"
+      },
+      "live_recovery": "PASS (revalidated after syncing plugin into dev profile): correct session/turn held from bridge, live DSH snapshot terminal found; /recover returned 200 quarantineCleared:true resolvedRecords:[{turn:1,status:completed}]; ledger running->completed",
+      "negative_cases": "PASS: wrong injected turn-end ignored (record stayed running); wrong session /recover returned 409 other-unresolved-execution-state without reconciling the pending session",
+      "stale_test_artifact_note": "Earlier live-recovery regression was caused by the dev app loading a stale plugin copy/instance; syncing m5/dsh-bridge into profiles/desktop node_modules and restarting fixed it (files are identical now).",
+      "cold_recovery": "PASS — held real turn persisted; full DSH process killed; new dev DSH process loaded ledger (pending=1); /recover read the persisted multi-frame session log via zstd -dc, matched sessionId+turn, returned quarantineCleared:true + resolvedRecords (turn 1 completed); ledger running->completed; a new independent request then completed (new requestId; old request not replayed)",
+      "before_after_rename_crash": "NOT TESTED",
+      "unsupported_schema_runtime": "NOT TESTED",
+      "cold_recovery_evidence": {
+        "sessionId": "session-4ed89922-9279-4dae-9933-c746aee42b37",
+        "requestId": "4d868f31",
+        "turn": 1,
+        "ledger_after": "completed",
+        "new_request_replayed": false
+      },
+      "restart_bug_fixed": "Dev DSH cold restart initially failed to load the bridge plugin: boot quarantine loop referenced quarantinedSessions before its declaration (TDZ) whenever a pending ledger existed. Moved the boot marking after declaration; cold restart then loaded pending=1 correctly."
+    },
+    "ledger_crash_safety": {
+      "atomic_write": "IMPLEMENTED (tmp file + renameSync, schema v1)",
+      "clean_state_regression": "PASS (earlier)",
+      "mid_temp_write_crash": "PASS (file-level) — DSH_TEST_CRASH_LEDGER_STAGE=midTempWrite: process died during temp write; official ledger remained valid/complete; partial .tmp was set aside on next boot as recovery.json.tmp.rejected-*; no half JSON loaded",
+      "before_rename_crash": "PASS — official ledger stayed complete old version; complete .tmp was set aside on restart as .tmp.rejected-* (never loaded); pending=0; subsequent turn completed",
+      "after_rename_crash": "PASS — official ledger replaced with new version containing running phase=persisted; restart pending=1 and /turn 423; /recover resolved it as status=not-executed (no prompt was sent; phase persisted is recorded before prompt) with quarantineCleared:true; a new turn then completed",
+      "persist_before_submit_crash": "PASS — ledger running intent persisted, then crash before prompt; restart: pending=1, /turn 423, /recover 409. DSH session object exists from ensureSession, but session log has NO user/message, assistant/message, turn-end or tool events, so no execution occurred.",
+      "corrupt_file_test": "PASS (earlier: invalid JSON -> 503, file preserved)",
+      "unsupported_schema": "IMPLEMENTED (version mismatch => corrupt fail-closed); NOT separately run",
+      "matched_terminal_unlock": "NOT TESTED",
+      "not_executed_recovery": "IMPLEMENTED: ledger phase persisted before prompt, submitted immediately before prompt; persisted+no user/message => safe not-executed recovery; submitted => requires real terminal evidence",
+      "unsupported_schema_runtime": "PASS — ledger version 99: health.recovery.corrupt=true reason=unsupported-ledger-schema; /turn 503; /recover 503; original file preserved; supported ledger restored and loads normally"
+    },
+    "asr_tts_fault_matrix": {
+      "asr_handshake_failure": {
+        "result": "PASS",
+        "evidence": "injected ASR handshake failure: DashScopeASRService setup error -> Pipecat marks service unusable; partial=0 final=0; no fake transcript; no DSH turn (asr mode)"
+      },
+      "tts_handshake_failure": {
+        "result": "PASS",
+        "evidence": "injected TTS handshake failure: service setup error -> unusable; responses=0 chunks=0 audio_bytes=0; no fake audio/completion"
+      },
+      "tts_drop_after_first_chunk": {
+        "result": "PASS (strict) / PARTIAL (partial-audio semantics)",
+        "evidence": "injected mid-stream drop before any chunk is forwarded -> errors=1, responses=0, chunks=0; Pipecat error \"TTS context completed with no audio\"; no fake completion. A true partial-playback-then-drop case (first chunk already output) is not yet tested."
+      },
+      "pending": [
+        "explicit old-audio cross-turn isolation metrics",
+        "cross-component continuous fault cleanup/ports/sessions",
+        ">=30 latency samples (ASR final, DSH first reply, TTS first chunk, first audible response, task completion)"
+      ],
+      "tts_drop_after_first_chunk_forwarded": {
+        "result": "PASS",
+        "evidence": "injected drop after first audio chunk: tts chunks=1, audio_bytes=15360, errors=1, responses=0, done_ms=null; client <audio> was playing (readyState=4, currentTime advancing) -> partial audio delivered but NOT marked complete; no fake completion, no DSH involved"
+      },
+      "dsh_completed_tts_failed": {
+        "result": "PASS",
+        "steps": {
+          "baseline": "normal turn: DSH turns_completed=1, TTS responses=1",
+          "target_task": "unique request; DSH turn 2 completed=True (real turn/end + assistant reply persisted)",
+          "tts_failure": "TTS forwarded first chunk then dropped: responses=0, chunks=1, errors=1, done_ms=null; not marked complete",
+          "result_retrieval": "bridge /last-reply returned {found:true, turn:2, text:\"目标已完成。\"} for the target sessionId",
+          "recovery": "normal worker restarted; /debug/speak-text replayed the stored reply only: DSH turns_started=0, TTS responses=1 chunks=5 errors=0",
+          "no_reexecution": "recovery worker issued zero DSH prompts; target turn count unchanged",
+          "new_request": "independent new request completed: DSH turns_started=1 completed=1, TTS responses present"
+        },
+        "notes": "test guarded by readiness: worker health + pet transport:ready + active pipeline before injection; /debug/speak-text remains token-guarded and test-only"
+      },
+      "asr_final_suppressed": {
+        "result": "PASS",
+        "evidence": "partials=85, final=0, DSH turns_started=0"
+      },
+      "asr_drop_during_recognition": {
+        "result": "PARTIAL / contaminated",
+        "evidence": "WG_TEST_ASR_DROP_DURING=1: error recorded and socket closed, but the adapter reconnected and ambient-audio finals then triggered DSH turns (7). Test was not isolated by the transcript gate, so this is not used as evidence of stale-request protection."
+      },
+      "tts_drop_once_two_turns": {
+        "result": "FAIL (test objective)",
+        "evidence": "drop-once in loop mode: first turn forwarded 1 chunk then error; second injected turn produced no TTS response (responses=0, only 1 chunk total), so audio isolation/recovery in the same pipeline is not demonstrated. Possible cause: Pipecat TTS service becomes unusable after the error; needs restart-based isolation test or a second TTS instance."
+      },
+      "product_decision_tts_recovery": "MVP: fatal TTS failure ends the voice pipeline (ErrorFrame + EndFrame); supervisor rebuilds Worker; never replay the DSH prompt. Agent state remains DSH-owned.",
+      "asr_drop_isolated_gate": {
+        "result": "PASS",
+        "evidence": "ASR drop during recognition with DSH_TEST_PREFIX gate: errors=1, later ambient finals ignored by gate, DSH turns_started=0"
+      },
+      "cancel_without_active_turn": {
+        "result": "PASS",
+        "evidence": "cancel transcript while recognizing: logged \"cancel requested but no active turn\", DSH turns_started=0, cancel_requests=0"
+      },
+      "tts_fatal_rebuild": {
+        "result": "PASS",
+        "evidence": {
+          "target": "DSH turn 1 completed=True; TTS forwarded 1 chunk then failed (responses=0, chunks=1, errors=1, done_ms=null); not marked complete",
+          "agent_result_persisted": "bridge /last-reply returned turn=1, text=\"重建测试完成。\"",
+          "rebuild": "worker restarted; old pipeline ended via ErrorFrame+EndFrame; client reconnected",
+          "re_present_without_reexecution": "normal worker + /debug/speak-text: DSH turns_started=0, TTS responses=1, chunks=6",
+          "new_request": "independent request: DSH turns_started=1 completed=1, TTS responses=2 chunks=8"
+        }
+      }
+    }
+  },
+  "latency_preliminary": {
+    "samples": 18,
+    "scope": "simple DSH turns (injected transcripts); same dev DSH/bridge/worker/pet session",
+    "dsh_turn_total_ms": {
+      "n": 18,
+      "p50": 2455,
+      "p95": 2839,
+      "min": 1938,
+      "max": 2839
+    },
+    "tts_first_chunk_ms": {
+      "n": 18,
+      "p50": 174.4,
+      "p95": 238.8,
+      "min": 152.1,
+      "max": 238.8
+    },
+    "asr_final_ms": {
+      "n": "1-6 from earlier real-mic runs",
+      "note": "~179-290ms; not enough samples"
+    },
+    "first_audible_response_ms": "NOT MEASURED (client audio-start correlation only partially instrumented)",
+    "failure_goal": "30+ per metric not reached: 30-turn attempt aborted because the harness waited on recent_turns length (capped at 10) instead of turns_completed; harness fix required, not a product failure"
+  },
+  "old_audio_isolation": {
+    "status": "PASS",
+    "build": "audio-cleanup-events-v1 (runtime status.build); static check: onError calls stopBotAudio(\"server-error\")",
+    "flow": {
+      "target": "DSH turn completed once; TTS forwarded 1 chunk then fatal: responses=0, chunks=1, errors=1, done_ms=null (not marked complete)",
+      "cleanupEvents": [
+        {
+          "seq": 1,
+          "reason": "replaced-by-new-track",
+          "hadElement": false,
+          "result": "no-element"
+        },
+        {
+          "seq": 2,
+          "reason": "server-error",
+          "audioGeneration": 1,
+          "hadElement": true,
+          "pausedBefore": false,
+          "hasSrcObjectBefore": true,
+          "result": "cleared",
+          "pausedAfter": true,
+          "hasSrcObjectAfter": false
+        }
+      ],
+      "meaning": "old audio was actually playing (pausedBefore=false) and was paused + srcObject released on the fatal TTS path; event history preserved despite later transport-disconnect",
+      "rebuild": "worker restarted; /last-reply returned turn 1 text; re-presented via speak-text with DSH turns_started=0, TTS responses=1 chunks=5",
+      "new_turn": "independent turn completed: DSH turns_started=1 completed=1, TTS responses=2 chunks=8",
+      "no_repeat": "no DSH re-execution of the original task"
+    }
+  },
+  "latency_baseline": {
+    "simple_turns": 30,
+    "dsh_first_text_ms": {
+      "n": 30,
+      "p50": 2614,
+      "p95": 5148,
+      "note": "latest run; earlier 2415/3015 baseline kept separately; conditions differ (this run had TTS wait and higher load)"
+    },
+    "dsh_task_total_ms": {
+      "n": 30,
+      "p50": 2622,
+      "p95": 5148
+    },
+    "tts_first_chunk_ms": {
+      "n": 30,
+      "p50": 207.3,
+      "p95": 252.6
+    },
+    "asr_final_ms_real_mic": {
+      "n": 54,
+      "p50": 194.2,
+      "p95": 317.5,
+      "min": 149.2,
+      "max": 353.2
+    },
+    "first_audible_response_ms": {
+      "n": 25,
+      "p50": 3066,
+      "p95": 5519,
+      "status": "NOT QUALIFIED — window-based association; 30-sample one-request-per-session attempt hung (only 1 turn completed) and produced no samples"
+    },
+    "complex_tasks": {
+      "n": 0,
+      "status": "not started"
+    },
+    "notes": "DSH run-to-run variance (p95 3015 vs 5148) must be reconciled in G2 review; do not merge old/new samples.",
+    "first_audible_method": {
+      "implemented": "client tags audible onsets with requestId/turn via /stats at onset (audibleTurns); bundle contains audible-tagged-request",
+      "smoke_failure_root_cause": "client was healthy (transport:ready, voiceService:healthy, errors=[]); first real error was DSH turn failed: Cannot connect to host 127.0.0.1:57130. The worker used a stale descriptor.json from a previous bridge; the dev DSH in this run never emitted [whalegirl-g2] bridge listening, so no DSH turn could complete. This is a harness precondition failure, not a product DSH/client defect.",
+      "required_harness_fix": "before starting the worker, read descriptor.json, verify its port has a live listener and /health returns ok with the matching token; otherwise stop with PRECONDITION_FAILED. Delete/ignore stale descriptor.",
+      "qualified_samples": 0
+    },
+    "first_audible_explicit": {
+      "n": 30,
+      "p50": 2807,
+      "p95": 3567,
+      "failures": 0,
+      "method": "one request at a time; wait real turns_completed + TTS replies + client audible onset tagged with matching requestId/turn/audioGeneration"
+    },
+    "consecutive_turns": {
+      "runs": [
+        {
+          "turns": 3,
+          "result": "PASS"
+        },
+        {
+          "turns": 20,
+          "result": "PASS"
+        },
+        {
+          "turns": 30,
+          "result": "PASS"
+        }
+      ],
+      "note": "Earlier 13th-turn stall did not reproduce in 20/30-turn runs; retained as an intermittent observation, not a confirmed product defect."
+    }
+  },
+  "continuous_fault_regression": {
+    "worker_crash_x2": {
+      "result": "PASS",
+      "evidence": "baseline turn 1; kill -9 worker; restart; new request -> turn 2; kill again; restart; new request -> turn 3; no replay on restart"
+    },
+    "electron_disconnect_reconnect": {
+      "result": "PASS",
+      "evidence": "reload client without new request: /last-reply still turn 3, no extra DSH turn"
+    },
+    "bridge_convergence": {
+      "result": "PASS",
+      "evidence": "recovery pending=0, records=3, activeTurn=null after recovery"
+    },
+    "resource_caveat": "pgrep -f uvicorn counted 2 processes (python service + shell wrapper whose command line contains uvicorn); no independent process-tree audit yet. Worker health reported active_sessions=1 (expected connected client).",
+    "pending": [
+      "ASR failure followed by TTS failure (combined)",
+      "precise orphan/port/session audit at fault/recovery/stable points",
+      "DSH disconnect recovery already covered by cold-recovery ledger test but not in this combined run"
+    ]
+  },
+  "combined_fault_and_resource_audit": {
+    "baseline": {
+      "worker_pid": 80935,
+      "listener_pid": 80937,
+      "bridge_pending": 0,
+      "active_sessions": 1,
+      "dsh_turns": 0
+    },
+    "asr_fault": {
+      "evidence": "ASR drop during recognition: asr errors=1, dsh turns_started=0 -> no unintended DSH turn",
+      "bridge_pending": 0
+    },
+    "tts_fault_after_dsh": {
+      "evidence": "valid turn: DSH turns=1 (completed), TTS fatal errors=1, ledger records=1; /last-reply returned turn 1 text 组合故障。",
+      "activeTurn": null
+    },
+    "fault_kill_worker": {
+      "port8765_listeners": 0,
+      "bridge_pending": 0,
+      "activeTurn": null,
+      "note": "ps/pgrep count included shell wrapper; listener check is authoritative"
+    },
+    "rebuild": {
+      "new_worker_pid": 81108,
+      "new_listener_pid": 81110,
+      "bridge_pending": 0,
+      "active_sessions": 1
+    },
+    "re_present_no_reexecution": {
+      "dsh_turns_started": 0,
+      "tts_responses": 1,
+      "tts_chunks": 4
+    },
+    "new_request": {
+      "dsh_turns_started": 1,
+      "last_reply_turn": 2,
+      "text": "OK",
+      "bridge_records": 2,
+      "pending": 0
+    },
+    "verdict": "PASS — combined ASR->TTS fault sequence with PID/port/listener/bridge/session/turn audit before, during, after and stable recovery"
+  },
+  "sampling_harness_gate": {
+    "stages": "PASS: archive old descriptor/ledger; dsh bridge listening; descriptor port/token match; lsof listener; bridge /health + recovery.pending=0; worker health; client transport:ready/voiceService healthy",
+    "previous_failure_root_cause": "second gate run was blocked by bridge session quarantine from a stale unresolved recovery ledger; bridge correctly returned restart-unresolved. Gate now checks recovery.pending==0 before testing.",
+    "smoke": {
+      "turn0": "PASS — DSH turn 1 completed; audible onset tagged with same requestId (70b5c37b...), turn=1, audioGeneration=1; TTS reply present",
+      "turn1_2": "FAIL TO RUN — no completed DSH turn; client stayed transport:ready with no error; transcript injection/gate path for subsequent turns not yet reliable. Not a product fault conclusion."
+    },
+    "qualified_first_audible_samples": 1,
+    "consecutive_turn_trace": {
+      "turn1": "TEST:只回复SEQ0 -> admitted + completed dsh_turn=1 (4.8s)",
+      "turn2": "TEST:只回复SEQ1 -> admitted session=session-8060b42a request=663205cf, assistant-start dsh_turn=2; then /turn stream failed with TransferEncodingError \"not enough data to satisfy transfer length header\" and bridge became unreachable",
+      "turn3": "TEST:只回复SEQ2 queued behind active turn; on starting it failed Cannot connect to host bridge (app already gone)",
+      "product_behavior": "DSH execution state unknown -> session quarantined, no retry/replay (correct fail-closed)",
+      "root_cause_evidence": "dev DSH log ends with \"desktop development: exited with SIGKILL\" — harness fixed 8s sleeps reached cleanup while turn 2 was still in flight, killing the bridge and truncating the stream. This is a harness timing/cleanup fault, not a proven consecutive-turn product bug. Gate smoke run additionally had an unresolved-ledger quarantine; that is correctly handled by the new pending=0 gate."
+    },
+    "consecutive_smoke": {
+      "result": "PASS (3 consecutive turns)",
+      "evidence": [
+        "requestId b3a032ca... turn 1 audible tag match; tts_ok",
+        "requestId 8641c142... turn 2 audible tag match; tts_ok",
+        "requestId dff99388... turn 3 audible tag match; tts_ok",
+        "client transport:ready and errors=[] throughout; wait used real turns_completed + TTS replies + audible tag, not fixed sleep"
+      ]
+    }
+  },
+  "complex_tasks": {
+    "attempts": 30,
+    "success": 30,
+    "failures": 0,
+    "dsh_first_text_ms": {
+      "n": 30,
+      "p50": 2722,
+      "p95": 3344
+    },
+    "dsh_task_total_ms": {
+      "n": 30,
+      "p50": 2978,
+      "p95": 3883
+    },
+    "tts_first_chunk_ms": {
+      "n": 30,
+      "p50": 201.1,
+      "p95": 340.9
+    },
+    "first_audible_ms": {
+      "n": 30,
+      "p50": 3411,
+      "p95": 4236
+    },
+    "condition": "test-only DSH_TEST_DISABLE_BARGE_IN=1 for echo/noise isolation during sampling; production barge-in remains G3",
+    "collector_fix": "wait for per-turn TTS replies[] increment after audible and allow 3s inter-turn TTS drain; this closed the previous 23/30 accounting gap"
+  },
+  "g2_review_snapshot": {
+    "generated_at": "2026-10-24",
+    "complex_tts_accounting": "30 complex turns produced 98 TTS synthesis replies (run_tts reply#1..#98), 0 \"completed with no audio\", 0 barge-in under test flag. The 23/30 tts_first_chunk samples are a collection/snapshot gap (audible playback succeeded on all 30); not a missing TTS response.",
+    "acceptance_evidence": {
+      "execution_ledger_and_recovery": "PASS (live/cold recovery, negatives, before/afterRename, unsupported schema)",
+      "approval_authority": "PASS (desktop dev allow/reject/no-click)",
+      "cancel_isolation": "PASS",
+      "tts_fault_recovery_no_reexecution": "PASS",
+      "old_audio_isolation": "PASS (cleanupEvents seq2 hadElement=true paused->cleared; rebuild + re-present)",
+      "combined_fault_and_resource_audit": "PASS (ASR drop -> DSH complete + TTS fail -> rebuild; PID/listener/bridge/ledger audit)",
+      "simple_request_performance": "first text 30; TTS 30; real ASR 54; first audible 30/30 (p50 2807/p95 3567)",
+      "continuous_turns": "3/20/30 turn runs PASS",
+      "complex_task_performance": "30/30 end-to-end under test-only barge-in disable; DSH first 2033/3698; task 2467/4452; first audible 2661/4543; TTS first chunk 23/30 (accounting gap)"
+    },
+    "known_g3_blocker": "False barge-in during playback (echo/noise VAD) interrupts TTS and removes audible event; production echo suppression/barge-in gating not implemented. Test flag DSH_TEST_DISABLE_BARGE_IN only for sampling.",
+    "review_recommendation": "Submit G2 for formal review. Do not declare PASS unilaterally; decide whether 23/30 TTS-first-chunk accounting is acceptable or require one remeasurement run. G3 must address false barge-in/echo suppression."
+  },
+  "final_gap_remeasurement": {
+    "status": "CLOSED",
+    "result": "30/30 complex attempts, 30 valid TTS first-chunk samples (p50 201.1/p95 340.9), 0 failures"
+  },
+  "dashscope_minimal_diagnostic": {
+    "time": "2026-10-24T00:33:39+08:00",
+    "endpoint": "wss://dashscope.aliyuncs.com/api-ws/v1/realtime (Beijing)",
+    "model": "qwen3-tts-flash-realtime",
+    "voice": "Cherry",
+    "key_prefix": "sk-ws-",
+    "key_len": 116,
+    "result": "CONNECTED + session.created received; immediately after session.update the server closed with 1007 \"Access denied, please make sure your account is in good standing\"; no audio delta.",
+    "interpretation": "Account-level/workspace entitlement or quota/arrears condition reported by provider; not a product code/config mismatch proven. Console checks still required by owner: balance/arrears, free quota, qwen3-tts-flash-realtime activation, business-space permission, key region/workspace match.",
+    "action": "No retries, no key/model/config changes. G2 remains PARTIAL frozen. After provider access is restored, run only the 30-complex TTS-first-chunk remeasurement with the patched collector, then final G2 review.",
+    "post_payment_retest": {
+      "time": "2026-10-24T00:44:01+08:00",
+      "result": "session.created, session.updated, first response.audio.delta received; access restored"
+    }
+  },
+  "approved_at": "2026-10-24",
+  "final_approval": {
+    "gate": "G2",
+    "decision": "PASS — formally approved and closed",
+    "approved_by": "user/reviewer",
+    "boundary": "All G2 execution-safety, recovery, approval, cancel-isolation, TTS-fault recovery, old-audio cleanup and combined-fault evidence is frozen. Do not rerun G2 reliability matrix for G3. Production false-barge-in/echo suppression is a G3 issue and does not reopen G2.",
+    "final_complex_metrics": {
+      "attempts": 30,
+      "success": 30,
+      "failures": 0,
+      "dsh_first_text_ms": {
+        "n": 30,
+        "p50": 2722,
+        "p95": 3344
+      },
+      "dsh_task_total_ms": {
+        "n": 30,
+        "p50": 2978,
+        "p95": 3883
+      },
+      "tts_first_chunk_ms": {
+        "n": 30,
+        "p50": 201.1,
+        "p95": 340.9
+      },
+      "first_audible_ms": {
+        "n": 30,
+        "p50": 3411,
+        "p95": 4236
+      }
+    },
+    "note": "Performance values are a baseline under current test conditions, not a production SLA."
+  }
+}

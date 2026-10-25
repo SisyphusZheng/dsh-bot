@@ -1,0 +1,58 @@
+{
+  "suite": "M3-4 Voice Runtime boundary",
+  "startedAt": "2026-10-22T05:47:29.971Z",
+  "steps": {
+    "start-lifecycle": {
+      "status": "PASS",
+      "ms": 103,
+      "detail": {
+        "pid": 40249,
+        "state": "listening"
+      }
+    },
+    "tts-speak-stop": {
+      "status": "PASS",
+      "ms": 104,
+      "detail": {
+        "speaking": true,
+        "speechStarted": "2026-10-22T05:47:30.076Z",
+        "speechStopped": "2026-10-22T05:47:30.127Z",
+        "idle": "idle"
+      }
+    },
+    "barge-in": {
+      "status": "PASS",
+      "ms": 1,
+      "detail": {
+        "speechStopped": "2026-10-22T05:47:30.127Z",
+        "stateAfter": "listening"
+      }
+    },
+    "transcript-event": {
+      "status": "PASS",
+      "ms": 53,
+      "detail": {
+        "text": "你好，Nisse"
+      }
+    },
+    "crash-restart": {
+      "status": "PASS",
+      "ms": 55,
+      "detail": {
+        "oldPid": 40249,
+        "newPid": 40250
+      }
+    },
+    "stop-no-orphan": {
+      "status": "PASS",
+      "ms": 640,
+      "detail": {
+        "stopped": true,
+        "wasRunning": true,
+        "pid": 40250
+      }
+    }
+  },
+  "ok": true,
+  "finishedAt": "2026-10-22T05:47:30.928Z"
+}

@@ -1,0 +1,84 @@
+{
+  "suite": "M4 approval allow/reject E2E (real DSH host, real model, bridge /approval)",
+  "env": {
+    "node": "v24.18.0",
+    "fork": "$HOME/projects/dsh-bot",
+    "isolatedDshHome": "/tmp/nisse-m4-approval-verify/dsh-home",
+    "evidenceDir": "$HOME/projects/dsh-bot-workspace/m4/evidence/approval-rerun",
+    "credentialsSource": "$HOME/.dsh/.credentials.yaml"
+  },
+  "startedAt": "2026-10-22T14:11:03.474Z",
+  "forkCommit": "9b22d2371a8aaef279ac8ae182844eb293d186a1",
+  "preflight": {
+    "nodeVersion": "v24.18.0",
+    "cli": "$HOME/projects/dsh-bot/apps/cli/lib/bin.js",
+    "credentialsReadable": true,
+    "zstd": true,
+    "forkCommit": "9b22d2371a8aaef279ac8ae182844eb293d186a1"
+  },
+  "cases": {
+    "allow": {
+      "decision": "allow",
+      "target": "$HOME/projects/dsh-bot-workspace/m4/evidence/approval-rerun/host-approval-allow.txt",
+      "expectedFileExists": true,
+      "fileExists": true,
+      "fileContent": "hello\n",
+      "approval": {
+        "id": "approval_1792678267696_1",
+        "toolName": "write",
+        "reason": "write outside workspace: $HOME/projects/dsh-bot-workspace/m4/evidence/approval-rerun/host-approval-allow.txt",
+        "answer": {
+          "ok": true,
+          "decision": "allow",
+          "outcome": "allowed-once"
+        }
+      },
+      "ended": {
+        "durableSeq": 27,
+        "terminal": "completed",
+        "reason": {
+          "kind": "completed"
+        }
+      },
+      "ms": 7609,
+      "pass": true
+    },
+    "reject": {
+      "decision": "reject",
+      "target": "$HOME/projects/dsh-bot-workspace/m4/evidence/approval-rerun/host-approval-reject.txt",
+      "expectedFileExists": false,
+      "fileExists": false,
+      "fileContent": null,
+      "approval": {
+        "id": "approval_1792678278872_2",
+        "toolName": "write",
+        "reason": "write outside workspace: $HOME/projects/dsh-bot-workspace/m4/evidence/approval-rerun/host-approval-reject.txt",
+        "answer": {
+          "ok": true,
+          "decision": "reject",
+          "outcome": "rejected"
+        }
+      },
+      "ended": {
+        "durableSeq": 42,
+        "terminal": "completed",
+        "reason": {
+          "kind": "completed"
+        }
+      },
+      "ms": 14467,
+      "pass": true
+    }
+  },
+  "ok": true,
+  "host": {
+    "pid": 71553,
+    "url": "http://127.0.0.1:60771/?token=ueDUYo0xlrLJK7zfYNi2Itp2v-PKp4mbbyg70MUbiZs",
+    "port": 60771,
+    "httpStatus": 401
+  },
+  "contractVersion": "v0",
+  "pluginVersion": "0.1.0",
+  "sessionId": "abe5bae7-8ebb-478d-ba36-02081a5bb46b",
+  "finishedAt": "2026-10-22T14:11:26.965Z"
+}

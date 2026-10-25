@@ -1,0 +1,30 @@
+{
+  "test": "injected TTS provider error on first audio delta (WG_TEST_TTS_PROVIDER_ERROR_ONCE=1); dev DSH, production gate code otherwise unchanged",
+  "first_turn": {
+    "audio": null,
+    "client_status": "error",
+    "error": "TTS context ... completed with no audio (fatal:false)"
+  },
+  "reconnect": {
+    "attempt": 1,
+    "result": "success",
+    "session_updated": true
+  },
+  "next_turn": {
+    "audio_present": true,
+    "paused": false,
+    "currentTime_seen": 30.602,
+    "playback_identity": {
+      "requestId": "9dd089cf-53d9-44d9-9c50-eb8e4e691f81",
+      "turn": 2,
+      "turnKey": "voice-2",
+      "audioGeneration": 2
+    }
+  },
+  "residual": [
+    "First turn loses its audio for the injected error (expected).",
+    "Client status remains \"error\" with the old nonfatal error after the next turn succeeds; no error-reset event was observed.",
+    "Original DashScope 300s timeout not reproduced in this run; injected error validates reconnect mechanics, not the 300s root cause."
+  ],
+  "timestamp": "2026-10-24T12:01:46"
+}

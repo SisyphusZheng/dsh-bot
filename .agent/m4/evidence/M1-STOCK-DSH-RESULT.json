@@ -1,0 +1,44 @@
+{
+  "suite": "M1 — stock DSH 0.2.1-rc.2 integration validation",
+  "date": "2026-10-23",
+  "environment": {
+    "stockRuntime": "installed DeepSeek Harness.app runtime CLI 0.2.1-rc.2 (no fork)",
+    "isolatedHome": "/tmp/whalegirl-m1/home",
+    "webServer": "dsh web --no-open --port 53999 --host 127.0.0.1 (isolated DSH_HOME)",
+    "browser": "Google Chrome + CDP :9333 (isolated user-data-dir /tmp/whalegirl-m1/chrome)",
+    "plugin": "/tmp/m1-lead-plugin (package whalegirl-m1; host + client halves)",
+    "install": "DSH_HOME=... dsh plugin --profile web add file:/tmp/m1-lead-plugin"
+  },
+  "checks": {
+    "pluginInstallAndLoad": {
+      "status": "PASS",
+      "evidence": "`dsh --profile web --dump-config` shows `- id: whalegirl-m1 / name: whalegirl-m1`; web log prints `[whalegirl-m1] bridge listening`; hello-m1 probe plugin also loaded (HELLO-M1-PLUGIN-LOADED)."
+    },
+    "fixedDshSession": {
+      "status": "PASS",
+      "detail": "Host plugin created fixed session `whalegirl-m1-main` via ctx.agents.create({sessionId, agentOptions:{provider:'deepseek-account',model:'deepseek-flash'}}) and attached it to a workspace (`session attached to workspace { workspace: 55e30bf1-... }`); sidebar shows workspace `dsh-bot` + the session; session file exists at sessions/--tmp-whalegirl-m1-home-whalegirl-m1-workspace--/whalegirl-m1-main/."
+    },
+    "clientOverlay": {
+      "status": "PASS",
+      "detail": "CDP evaluated `Boolean(document.querySelector('[data-whalegirl-m1]')) === true` in the stock DSH page; overlay is an independent fixed-position root (not DSH React tree)."
+    },
+    "textToDshPersisted": {
+      "status": "PASS",
+      "detail": "POST /turn {text} -> 200 {ok:true, sessionId:'whalegirl-m1-main', messageId}; user message persisted in the DSH session jsonl."
+    },
+    "dshReplyToUi": {
+      "status": "BLOCKED",
+      "detail": "The plugin-created agent's turn ends with prompt-assembly error `prompt variable \"{{model}}\" has no value for this assembly (section \"deployment:persona-prefix\")`. The official UI chat path works (UI shows model DeepSeek-V4.1-Flash and model list). Conclusion: plugin creation path needs the same model binding/prompt deployment context as the official session creation path; not yet mirrored."
+    },
+    "presentationLayerBaseline": {
+      "status": "PASS",
+      "detail": "Published dsh-pet 0.3.8 installed into the same isolated stock DSH (`dsh plugin --profile web add dsh-pet`) and its pet overlay renders in the DSH page (UI text `蓝毛小女仆`, plus our M1 overlay). Confirms presentation layer can be reused on stock DSH."
+    }
+  },
+  "screenshots": ["m4/evidence/M1-STOCK-DSH-UI.png"],
+  "next": [
+    "M1 follow-up: mirror the official session/agent creation path so {{model}} deployment variable resolves (inspect app.asar create path / client remote; or acquire model selection from the same service the UI uses and pass complete agentOptions).",
+    "Then M1 gate re-run: text request -> DSH fixed session -> assistant reply -> visible in DSH UI.",
+    "After M1 passes: fork dsh-pet presentation layer into m5/whalegirl-pet with cuts (independent chat/memory/balance/whisper/standalone/multi-pet removed), wire its bubble/input to the fixed DSH session via this host bridge."
+  ]
+}

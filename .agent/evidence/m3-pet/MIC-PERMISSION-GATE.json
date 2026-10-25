@@ -1,0 +1,25 @@
+{
+  "date": "2026-10-24",
+  "test": "product-mode mic-permission gate with test-only denied override",
+  "setup": {
+    "worker": "real Pipecat worker managed by pet",
+    "bridge": "fake health-only descriptor (not a real DSH bridge)",
+    "mic_status_override": "NISSE_TEST_MIC_STATUS=denied (test-only; production path uses systemPreferences)",
+    "actual_tcc_status": "granted (manual connect succeeded after override)"
+  },
+  "result": {
+    "autoConnect": false,
+    "launch_state": "client injected but not auto-connected when permission gate reported denied",
+    "manual_connect_after_grant": {
+      "transport": "ready",
+      "connected": true,
+      "status": "connected",
+      "audioGeneration": 1
+    },
+    "app_exit_code": 0,
+    "auto_connect_when_denied": false
+  },
+  "scope": "This validates deny-state gating and the reconnect path, NOT a real macOS TCC denial/regrant. Real TCC user interaction remains UNVERIFIED.",
+  "note": "NISSE_TEST_MIC_STATUS is a test-only override for the denied state. Actual OS TCC denial/regrant was NOT performed; user interaction required.",
+  "updated_at": "2026-10-24T12:50:13"
+}

@@ -1,0 +1,379 @@
+{
+  "schema": "whalegirl.upstream-diff/1",
+  "analyzedAt": "2026-10-24T12:23:20.480Z",
+  "clone": {
+    "path": "/tmp/dsh-rc3",
+    "method": "git clone --depth 1 --branch dsh-v0.2.1-rc.3 + git fetch --depth 1 origin tag dsh-v0.2.1-rc.2"
+  },
+  "rc2": {
+    "tag": "dsh-v0.2.1-rc.2",
+    "commit": "687f282e8625c6b8d11ff58211a90524be2e4317"
+  },
+  "rc3": {
+    "tag": "dsh-v0.2.1-rc.3",
+    "commit": "1f81c047fc48fa190a683e469daa699857e9afe8"
+  },
+  "githubCompare": {
+    "totalCommits": 6,
+    "filesReported": 300,
+    "filesTruncated": true,
+    "commits": [
+      {
+        "sha": "5ff29190ed8e",
+        "subject": "feat(ui): add navigation entry customization (#6247)"
+      },
+      {
+        "sha": "675164957aac",
+        "subject": "feat(analytics): track navigation entries and preset selections (#6600)"
+      },
+      {
+        "sha": "39d2903841fa",
+        "subject": "fix(ui): separate navigation pins from selection and show menu icons (#6883)"
+      },
+      {
+        "sha": "c48f8523f22a",
+        "subject": "feat(llm): follow the official /models listing on the DeepSeek API-key route (#6944)"
+      },
+      {
+        "sha": "d02ea370ee15",
+        "subject": "release(dsh): 0.2.1-rc.3"
+      },
+      {
+        "sha": "1f81c047fc48",
+        "subject": "Merge pull request #6999 from deepseek-harness/worktree/release-dsh-0.2.1-rc.3"
+      }
+    ]
+  },
+  "worktreeDiff": {
+    "filesChanged": 640,
+    "shortstat": "640 files changed, 5682 insertions(+), 1021 deletions(-)",
+    "statusCounts": {
+      "M": 584,
+      "A": 50,
+      "R071": 1,
+      "R067": 1,
+      "R088": 1,
+      "R078": 1,
+      "R064": 1,
+      "R090": 1
+    }
+  },
+  "composition": {
+    "packageJsonVersionBumps": 349,
+    "snapshots": 71,
+    "uiClientSources": 208,
+    "serverishSources": 24,
+    "serverishPaths": [
+      "M\tpackages/api/session-controller/src/client/sessions/service.ts",
+      "M\tpackages/bundle/web-app/cordis.patch.yml",
+      "M\tpackages/extensions/cordis-client-runner/src/client/api-catalog.ts",
+      "M\tpackages/extensions/cordis-client-runner/src/client/slot-catalog.ts",
+      "M\tpackages/extensions/tool-cordis/src/api-catalog.ts",
+      "M\tpackages/llm/llm-deepseek-account/src/config.ts",
+      "M\tpackages/llm/llm-deepseek-account/src/index.ts",
+      "M\tpackages/llm/llm-deepseek-account/tsconfig.json",
+      "M\tpackages/llm/llm-deepseek-api-key/src/config.ts",
+      "M\tpackages/llm/llm-deepseek-api-key/src/index.ts",
+      "M\tpackages/llm/llm-deepseek/src/config.ts",
+      "M\tpackages/llm/llm-deepseek/src/index.ts",
+      "R071\tpackages/llm/llm-deepseek/src/listed-catalog.ts",
+      "R067\tpackages/llm/llm-deepseek/src/listing-cache.ts",
+      "A\tpackages/llm/llm-deepseek/src/listing-config.ts",
+      "R088\tpackages/llm/llm-deepseek/src/listing.ts",
+      "M\tpackages/llm/llm-deepseek/src/models.ts",
+      "M\tpnpm-lock.yaml",
+      "A\tscripts/test-official-listing-guard.ts",
+      "M\tscripts/verify-package-readme-model-experience.ts",
+      "M\ttsconfig.base.json",
+      "M\ttsconfig.client.json",
+      "M\ttsconfig.host.json",
+      "M\tvitest.config.ts"
+    ],
+    "apiNonManifest": [
+      "M\tpackages/api/session-controller/src/client/sessions/service.ts"
+    ],
+    "llmRealSources": [
+      "M\tpackages/llm/llm-deepseek-account/src/config.ts",
+      "M\tpackages/llm/llm-deepseek-account/src/index.ts",
+      "M\tpackages/llm/llm-deepseek-api-key/src/config.ts",
+      "M\tpackages/llm/llm-deepseek-api-key/src/index.ts",
+      "M\tpackages/llm/llm-deepseek/src/config.ts",
+      "M\tpackages/llm/llm-deepseek/src/index.ts",
+      "R071\tpackages/llm/llm-deepseek/src/listed-catalog.ts",
+      "R067\tpackages/llm/llm-deepseek/src/listing-cache.ts",
+      "A\tpackages/llm/llm-deepseek/src/listing-config.ts",
+      "R088\tpackages/llm/llm-deepseek/src/listing.ts",
+      "M\tpackages/llm/llm-deepseek/src/models.ts"
+    ]
+  },
+  "topLevelGroups": [
+    {
+      "name": "packages/client",
+      "files": 182
+    },
+    {
+      "name": "snapshots",
+      "files": 71
+    },
+    {
+      "name": "packages/experimental",
+      "files": 47
+    },
+    {
+      "name": "packages/llm",
+      "files": 42
+    },
+    {
+      "name": "apps/web",
+      "files": 26
+    },
+    {
+      "name": "packages/session",
+      "files": 21
+    },
+    {
+      "name": "packages/util",
+      "files": 18
+    },
+    {
+      "name": ".agents",
+      "files": 15
+    },
+    {
+      "name": "docs",
+      "files": 15
+    },
+    {
+      "name": "packages/api",
+      "files": 11
+    },
+    {
+      "name": "packages/shell",
+      "files": 10
+    },
+    {
+      "name": "packages/host",
+      "files": 9
+    },
+    {
+      "name": "packages/subagent",
+      "files": 9
+    },
+    {
+      "name": "packages/core",
+      "files": 8
+    },
+    {
+      "name": "packages/bundle",
+      "files": 7
+    },
+    {
+      "name": "packages/context",
+      "files": 7
+    },
+    {
+      "name": "packages/extensions",
+      "files": 7
+    },
+    {
+      "name": "packages/fs",
+      "files": 7
+    },
+    {
+      "name": "packages/test-support",
+      "files": 7
+    },
+    {
+      "name": "packages/web",
+      "files": 7
+    },
+    {
+      "name": "packages/boot",
+      "files": 6
+    },
+    {
+      "name": "packages/compaction",
+      "files": 5
+    },
+    {
+      "name": "packages/credentials",
+      "files": 5
+    },
+    {
+      "name": "packages/interaction",
+      "files": 5
+    },
+    {
+      "name": "packages/skill",
+      "files": 5
+    },
+    {
+      "name": "packages/ssh",
+      "files": 5
+    },
+    {
+      "name": "packages/goal",
+      "files": 4
+    },
+    {
+      "name": "packages/preset",
+      "files": 4
+    },
+    {
+      "name": "packages/sandbox",
+      "files": 4
+    },
+    {
+      "name": "packages/sdk",
+      "files": 4
+    },
+    {
+      "name": "packages/storage",
+      "files": 4
+    },
+    {
+      "name": "packages/typert",
+      "files": 4
+    },
+    {
+      "name": "apps/cli",
+      "files": 3
+    },
+    {
+      "name": "packages/jobs",
+      "files": 3
+    },
+    {
+      "name": "packages/lsp",
+      "files": 3
+    },
+    {
+      "name": "packages/session-query",
+      "files": 3
+    },
+    {
+      "name": "packages/spill",
+      "files": 3
+    },
+    {
+      "name": "packages/subprocess",
+      "files": 3
+    },
+    {
+      "name": "packages/workflow",
+      "files": 3
+    },
+    {
+      "name": "scripts",
+      "files": 3
+    },
+    {
+      "name": "packages/attachment",
+      "files": 2
+    },
+    {
+      "name": "packages/deliverables",
+      "files": 2
+    },
+    {
+      "name": "packages/feedback",
+      "files": 2
+    },
+    {
+      "name": "packages/guard",
+      "files": 2
+    },
+    {
+      "name": "packages/mcp",
+      "files": 2
+    },
+    {
+      "name": "packages/ptc-runtime",
+      "files": 2
+    },
+    {
+      "name": "packages/schedule",
+      "files": 2
+    },
+    {
+      "name": "packages/terminal",
+      "files": 2
+    },
+    {
+      "name": "apps/desktop-host",
+      "files": 1
+    },
+    {
+      "name": "apps/desktop",
+      "files": 1
+    },
+    {
+      "name": "apps/plugin-market-generator",
+      "files": 1
+    },
+    {
+      "name": "package.json",
+      "files": 1
+    },
+    {
+      "name": "packages/acp",
+      "files": 1
+    },
+    {
+      "name": "packages/browser-use",
+      "files": 1
+    },
+    {
+      "name": "packages/computer-use",
+      "files": 1
+    },
+    {
+      "name": "packages/document",
+      "files": 1
+    },
+    {
+      "name": "packages/identity",
+      "files": 1
+    },
+    {
+      "name": "packages/plan",
+      "files": 1
+    },
+    {
+      "name": "packages/settings",
+      "files": 1
+    },
+    {
+      "name": "packages/telemetry",
+      "files": 1
+    },
+    {
+      "name": "packages/todo",
+      "files": 1
+    },
+    {
+      "name": "packages/workspace",
+      "files": 1
+    },
+    {
+      "name": "pnpm-lock.yaml",
+      "files": 1
+    },
+    {
+      "name": "tsconfig.base.json",
+      "files": 1
+    },
+    {
+      "name": "tsconfig.client.json",
+      "files": 1
+    },
+    {
+      "name": "tsconfig.host.json",
+      "files": 1
+    },
+    {
+      "name": "vitest.config.ts",
+      "files": 1
+    }
+  ]
+}

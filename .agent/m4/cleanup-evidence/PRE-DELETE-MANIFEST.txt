@@ -1,0 +1,46 @@
+=== lsof (open handles) ===
+=== ps references ===
+(no process references m3/shell)
+
+=== file inventory + sha256 before W13 deletion (2026-10-22) ===
+5b3860cc7bb4d9ec5d79d6d04e7e4f3070b012227a15512ec75535f615238df4  $HOME/projects/dsh-bot-workspace/m3/shell/assets/trayTemplate.png
+c642232c1593c91ffee5b49a2666126ebe698ee9c0dd947643dec190054f0748  $HOME/projects/dsh-bot-workspace/m3/shell/assets/trayTemplate@2x.png
+69069b5039d5a8cb944ebd25970b20cc7d909a35bfab0d21229ec842942638e0  $HOME/projects/dsh-bot-workspace/m3/shell/evidence/M3-shell-RESULT.json
+7914388d21857bccc628474d6b66aacdfc216fdbc211fca6b9d0c704b03acf4c  $HOME/projects/dsh-bot-workspace/m3/shell/evidence/M3-shell-ui.png
+ebc6404546a294486b4d28fa38744a7790c4c63fcce9158e5232c48c8ae410a8  $HOME/projects/dsh-bot-workspace/m3/shell/main.mjs
+e87bb7ddfa9b84f684fb82c052e21f98a0005296d5082603efbd0ddd8f665d5f  $HOME/projects/dsh-bot-workspace/m3/shell/package.json
+0223363b943f194c57a2399a12518e647e8d358ee267913ba8b9b02edaeef3ff  $HOME/projects/dsh-bot-workspace/m3/shell/preload.cjs
+13d0a08a472c8e80f24376d072d08af78f6fd48adda0866fa4bec976322dc313  $HOME/projects/dsh-bot-workspace/m3/shell/renderer.html
+ca21042828b714e283244fc29b49896fa0d66ff3ceeb192c11c48ee5cce52933  $HOME/projects/dsh-bot-workspace/m3/shell/run-real.sh
+685fbdc98fa9090a7551eea126f1cebbde4c37c25f9b7816001ea1b7701dbd2e  $HOME/projects/dsh-bot-workspace/m3/shell/test-shell.mjs
+
+=== grep references under nisse root (excluding m3/shell itself) ===
+./WHALEGIRL-BOT-TASKBOOK.md:41:| W13 | 清理 m3/shell、旧 qwen 入口、临时实验 | 工作树 clean、无旧入口 |
+./m3/M3-FINAL-REPORT.md:27:- `m3/shell/`：单实例、托盘/窗口、监督 DSH Host + Voice Runtime stub、状态 UI、退出清理；
+./m3/M3-FINAL-REPORT.md:28:- 验收 **3/3 PASS**（smoke-app/single-instance/no-orphans）；UI 截图 `m3/shell/evidence/M3-shell-ui.png`；
+./m3/M3-SHELL-REPORT.md:10:| `m3/shell/main.mjs` | Electron main：单实例锁、窗口、托盘、启动 `DshHostSupervisor` + `VoiceRuntimeSupervisor`、轮询 voice 事件喂 `ProductStateMachine`、IPC 状态、退出清理 |
+./m3/M3-SHELL-REPORT.md:11:| `m3/shell/preload.cjs` | contextBridge 暴露只读状态 |
+./m3/M3-SHELL-REPORT.md:12:| `m3/shell/renderer.html` | 最小状态 UI（DSH/Voice/Product 三卡 + 事件列表） |
+./m3/M3-SHELL-REPORT.md:13:| `m3/shell/test-shell.mjs` | smoke + 单实例 + 无孤儿验收 |
+./m3/M3-SHELL-REPORT.md:14:| `m3/shell/evidence/M3-shell-ui.png` | 实际 UI 截图 |
+./m3/M3-SHELL-REPORT.md:15:| `m3/shell/evidence/M3-shell-RESULT.json` | 测试结果 |
+./m3/M3-SHELL-REPORT.md:32:- 启动脚本：`m3/shell/run-real.sh`。
+./m4/M4-DOGFOOD.md:4:> 启动：`cd $HOME/projects/dsh-bot-workspace && ./m3/shell/run-real.sh`
+./m4/cleanup-evidence/PRE-DELETE-MANIFEST.txt:3:(no process references m3/shell)
+./m4/cleanup-evidence/PRE-DELETE-MANIFEST.txt:6:5b3860cc7bb4d9ec5d79d6d04e7e4f3070b012227a15512ec75535f615238df4  $HOME/projects/dsh-bot-workspace/m3/shell/assets/trayTemplate.png
+./m4/cleanup-evidence/PRE-DELETE-MANIFEST.txt:7:c642232c1593c91ffee5b49a2666126ebe698ee9c0dd947643dec190054f0748  $HOME/projects/dsh-bot-workspace/m3/shell/assets/trayTemplate@2x.png
+./m4/cleanup-evidence/PRE-DELETE-MANIFEST.txt:8:69069b5039d5a8cb944ebd25970b20cc7d909a35bfab0d21229ec842942638e0  $HOME/projects/dsh-bot-workspace/m3/shell/evidence/M3-shell-RESULT.json
+./m4/cleanup-evidence/PRE-DELETE-MANIFEST.txt:9:7914388d21857bccc628474d6b66aacdfc216fdbc211fca6b9d0c704b03acf4c  $HOME/projects/dsh-bot-workspace/m3/shell/evidence/M3-shell-ui.png
+./m4/cleanup-evidence/PRE-DELETE-MANIFEST.txt:10:ebc6404546a294486b4d28fa38744a7790c4c63fcce9158e5232c48c8ae410a8  $HOME/projects/dsh-bot-workspace/m3/shell/main.mjs
+./m4/cleanup-evidence/PRE-DELETE-MANIFEST.txt:11:e87bb7ddfa9b84f684fb82c052e21f98a0005296d5082603efbd0ddd8f665d5f  $HOME/projects/dsh-bot-workspace/m3/shell/package.json
+./m4/cleanup-evidence/PRE-DELETE-MANIFEST.txt:12:0223363b943f194c57a2399a12518e647e8d358ee267913ba8b9b02edaeef3ff  $HOME/projects/dsh-bot-workspace/m3/shell/preload.cjs
+./m4/cleanup-evidence/PRE-DELETE-MANIFEST.txt:13:13d0a08a472c8e80f24376d072d08af78f6fd48adda0866fa4bec976322dc313  $HOME/projects/dsh-bot-workspace/m3/shell/renderer.html
+./m4/cleanup-evidence/PRE-DELETE-MANIFEST.txt:14:ca21042828b714e283244fc29b49896fa0d66ff3ceeb192c11c48ee5cce52933  $HOME/projects/dsh-bot-workspace/m3/shell/run-real.sh
+./m4/cleanup-evidence/PRE-DELETE-MANIFEST.txt:15:685fbdc98fa9090a7551eea126f1cebbde4c37c25f9b7816001ea1b7701dbd2e  $HOME/projects/dsh-bot-workspace/m3/shell/test-shell.mjs
+./m4/cleanup-evidence/PRE-DELETE-MANIFEST.txt:17:=== grep references under nisse root (excluding m3/shell itself) ===
+./m4/M4-FINAL-REPORT.md:25:- `m3/shell/run-real.sh`：真实 route-C Qwen 语音网关 + WebUI 载入 Shell 窗口；Host Integration bridge 已接通（realtime connected）；
+./m4/M4-FINAL-REPORT.md:51:- 真实语音 Shell 已运行：`m3/shell/run-real.sh`；TCC=granted；窗口待点「开启麦克风」；
+
+=== grep references under product fork nisse-dsh ===
+(none)
+DELETED: $HOME/projects/dsh-bot-workspace/m3/shell

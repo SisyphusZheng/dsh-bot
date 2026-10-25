@@ -1,0 +1,117 @@
+{
+  "gate": "G0 — 环境与媒体传输",
+  "date": "2026-10-23",
+  "status": "PASS (Electron 集成 + 真实麦克风采集；真实扬声器听测与 AEC 不在 G0 范围)",
+  "pinnedVersions": {
+    "python": "3.12.13 (uv-managed CPython; DSH 自带 3.12.14 因 macOS Team ID 校验拒绝 pydantic_core，改用 uv CPython)",
+    "pipecat-ai": "1.13.0",
+    "aiortc": "1.15.0",
+    "av": "17.1.0",
+    "fastapi": "0.161.1",
+    "uvicorn": "0.54.0",
+    "client": {
+      "@pipecat-ai/client-js": "1.14.0",
+      "@pipecat-ai/small-webrtc-transport": "1.11.0",
+      "esbuild": "0.25.11"
+    },
+    "lockFile": "m5/voice-spike/requirements.lock"
+  },
+  "implementation": {
+    "worker": "m5/voice-spike/worker/server.py — FastAPI + SmallWebRTCTransport (echo pipeline: InputAudioRawFrame -> OutputAudioRawFrame), loopback 127.0.0.1:8765, SPIKE_TOKEN 鉴权, /health /stats /api/offer",
+    "client": "m5/voice-spike/client — PipecatClient + SmallWebRTCTransport, esbuild bundle, 连接/断开按钮与状态日志",
+    "commands": [
+      ".venv/bin/python -m uvicorn server:app --host 127.0.0.1 --port 8765  (SPIKE_TOKEN=dev-token)",
+      "python3 -m http.server 8770 --directory client",
+      "Chrome --remote-debugging-port=9444 --user-data-dir=/tmp/whalegirl-g0-chrome --use-fake-ui-for-media-stream --use-fake-device-for-media-stream http://127.0.0.1:8770/?token=dev-token"
+    ]
+  },
+  "verification": {
+    "webrtcConnected": "PASS — client 日志 transport state: connected / ready / connected (bot ready)",
+    "bidirectionalAudio": "PASS — worker /stats: frames_in == frames_out，多次会话分别 271/271、590/590、701/701（Chrome 假麦克风音源）",
+    "cleanup": "PASS — 断开后 echo 计数清零，约 10s 内 active_sessions 回到 0、sessions 为空（EndFrame 关闭流水线需要等待，后续可优化）",
+    "loopbackOnly": "worker 只监听 127.0.0.1；/api/offer、/api/offer PATCH 需要 token",
+    "notYet": [
+      "尚未把 Pipecat JS client 接入现有 m3/pet Electron 渲染层（本 Gate 先用 Chromium 验证媒体通路）",
+      "未使用真实麦克风/TCC（Chrome 使用 fake device）",
+      "未验证真实设备回声消除（G1/G3）"
+    ]
+  },
+  "evidence": {
+    "clientScreenshot": "m5/voice-spike/evidence/G0-CLIENT.png",
+    "workerLog": "m5/voice-spike/logs/worker-g0.log",
+    "clientServerLog": "m5/voice-spike/logs/client-server.log",
+    "chromeLog": "m5/voice-spike/logs/chrome-g0.log"
+  },
+  "conclusion": "G0 PASS：Pipecat Client 已运行在现有 m3/pet orb 窗口（contextIsolation/sandbox/preload 均未改动，正式路径不受影响），真实麦克风可采集并传入 Worker，返回音频可播放（element play resolved），5 次连接/断开/重连通过，断开后约 310ms 回收，负向测试（错误 token→401、模拟麦克风拒绝→明确错误、Worker 断开→明确错误）通过。",
+  "next": [
+    "G0-剩余：把 @pipecat-ai/client-js + small-webrtc-transport 接入 m3/pet 渲染层（Electron 麦克风权限/TCC），复跑连接/双向音频/清理",
+    "G1：DashScope 流式 ASR 与流式 TTS 自定义适配器；记录模型/采样率/事件协议/错误与中断清理；验证回声抑制",
+    "G2：DSHBridgeProcessor（M1.5 会话路径 + DSH 事件流 + 取消/迟到输出隔离）",
+    "G3：真实 m3/pet 窗口端到端（对话/插话/取消/重连/失败恢复）+ 延迟与回声数据"
+  ],
+  "electron": {
+    "macOS": "26.5.1 (25F80)",
+    "electronVersion": "43.6.0",
+    "bundleId": "com.github.Electron (dev Electron; unsigned/adhoc, linker-signed; TeamIdentifier not set)",
+    "appPath": "$HOME/projects/dsh-bot-workspace/research/qwen-audio-agent/node_modules/electron/dist/Electron.app",
+    "window": "existing m3/pet orb BrowserWindow (contextIsolation=true, sandbox=true, existing preload unchanged)",
+    "injection": "test-mode only: WG_G0_VOICE_TEST=1; main reads locked IIFE bundle and injects into the existing orb renderer after did-finish-load; formal path unchanged",
+    "permissions": "existing m3/pet media permission handler reused (audio-only, renderer origin); fake media switches only when WG_G0_FAKE_MEDIA=1",
+    "mediaManager": "custom LocalMicMediaManager (plain getUserMedia; avoids Daily CDN bundle and AudioWorklet blob blocked by existing CSP)",
+    "proxy": "test-mode same-origin proxy in m3/pet renderer-server (WG_G0_VOICE_TEST=1) to loopback Pipecat worker; CSP unchanged",
+    "botAudio": "remote audio track attached to <audio srcObject> via onTrackStarted; play() resolved",
+    "tokenHandling": "scoped worker token passed from main via executeJavaScript config; not in bundle, not logged; worker returns 401 on bad token",
+    "micPermissionState": "navigator.permissions microphone = granted (fake UI device); real TCC not exercised yet",
+    "realMicrophone": {
+      "result": "PASS",
+      "evidence": "启动时未使用任何 fake-media 开关；Pipecat initDevices 成功，worker /stats 显示 frames_in=frames_out=953 且 non_silent_frames=835、avg_rms≈980（真实设备采集到非静音音频）；随后 5 次连接循环同样出现 non_silent_frames 15–45、连接成功。",
+      "tcc": "真实 getUserMedia 直接成功（本机对该 dev Electron 二进制此前已存在麦克风授权；本次运行未观察到新的系统弹窗）。正式 App 需在 G5 验证 Bundle ID/TCC 归因。"
+    }
+  },
+  "electronCycles": {
+    "cycles": 5,
+    "allConnected": true,
+    "media": "real microphone (no fake switches)",
+    "connectMs": [
+      1719,
+      1695,
+      1723,
+      1697,
+      1709
+    ],
+    "cleanupAfterDisconnectMs": [
+      318,
+      313,
+      310,
+      314,
+      312
+    ],
+    "framesPerCycle": "frames_in == frames_out; non_silent_frames 15–45; real device audio",
+    "finalActiveSessions": 0,
+    "finalSessions": {},
+    "screenshot": "m5/voice-spike/evidence/G0-ELECTRON-MEDIA.png"
+  },
+  "negativeTests": {
+    "badToken": {
+      "result": "PASS",
+      "evidence": "proxy POST /g0-voice/api/offer?token=bad-token -> 401 {\"error\":\"unauthorized\"}; direct worker POST -> 401"
+    },
+    "micDeniedSimulated": {
+      "result": "PASS (simulated)",
+      "evidence": "getUserMedia patched to throw NotAllowedError -> connect rejected, state=error, friendly bubble: 麦克风权限未授权"
+    },
+    "workerDown": {
+      "result": "PASS",
+      "evidence": "worker killed -> connect rejected, state=error, friendly bubble: 语音服务未启动或不可达"
+    },
+    "cleanup": {
+      "result": "PASS",
+      "evidence": "active_sessions -> 0 within ~310ms after disconnect"
+    }
+  },
+  "notYet": [
+    "真实扬声器\"人耳可听\"验证：bot audio track 已挂到 <audio srcObject> 且 play() resolved，但未做人工听测",
+    "真实设备 AEC/回声/自身语音误识别（属 G1/G3）",
+    "生产 App 的 TCC 归因（Bundle ID/签名）与正式启动路径（属 G5）"
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "suite": "Bot settings round 3 live integration (memory admin / prompt editor / approval policy) + shell wiring",
+  "date": "2026-10-22",
+  "status": "PASS",
+  "tabsObserved": ["语音前台", "LLM 模型", "后台 Agent", "Bot 人格", "提示词", "权限", "应用程序", "记忆"],
+  "liveChecks": {
+    "promptPreview": {
+      "endpoint": "GET /bot/prompt/preview",
+      "wired": true,
+      "dshPromptDefault": "你是 Nisse（家灵）… 只根据 DSH 提供的事实与执行结果说话…",
+      "voicePrefixDefault": "【Nisse 语音模式】你是 Nisse（家灵）… 用户刚刚说：",
+      "override": "PUT persona.promptOverride → preview immediately shows the override in BOTH dshPrompt and voicePrefix; clearing restores defaults",
+      "screenshot": "m4/bot-evidence/DEV-RUN-SETTINGS-提示词.png"
+    },
+    "memoryAdmin": {
+      "list": "POST /bot/memory/list → 1 item visible (episode, 深蓝色)",
+      "correct": "POST /bot/memory/correct → wrote new + forgot old (verified:true, deleted:1), list now shows 测试纠正：用户喜欢深蓝色（已纠正）",
+      "history": "POST /bot/memory/history → local entry {action:'correct', ok:true, source:'local'}",
+      "screenshot": "m4/bot-evidence/DEV-RUN-SETTINGS-记忆.png"
+    },
+    "approvalPolicy": {
+      "settings": "PUT /bot/config approval{ask-once,15} + behavior{pauseOnInput:true, allowScreenView:false} accepted; GET returns them; no secrets echoed",
+      "enforcement": "host-integration reads approval/behavior per tool call: never-ask / ask-once-window auto-allow; screen-view-off denies screen/computer tools; /health exposes approval+behavior",
+      "screenshot": "m4/bot-evidence/DEV-RUN-SETTINGS-权限.png"
+    }
+  },
+  "sourceTests": {
+    "m3/bot/test-bot-settings-round2.mjs": "17 steps PASS",
+    "m4/test-m4-memory-admin.mjs": "11 steps PASS (real Hindsight + real sidecar)",
+    "m3/bot/test-bot-providers.mjs": "PASS (W8 regression)",
+    "evidence": ["m4/bot-evidence/BOT-SETTINGS-ROUND2.json", "m4/bot-evidence/BOT-SETTINGS-MEMORY-ADMIN.json"]
+  },
+  "shellHardening": "desk-pet spawn failure no longer raises a blocking Electron error dialog (spawn 'error' listener added).",
+  "notYet": {
+    "petSide": "onboarding / talk-key voice input / activity bubbles / pause-on-input are being delivered by the pet-experience workstream (see m3/pet/evidence/PET-EXPERIENCE-ROUND1.json when complete)",
+    "realMicTcc": "UNVERIFIED (needs user on-device microphone/TCC)"
+  }
+}

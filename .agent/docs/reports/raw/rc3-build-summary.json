@@ -1,0 +1,11 @@
+{
+  "schema": "whalegirl.rc3-build/1",
+  "runtimeTag": "dsh-v0.2.1-rc.3",
+  "commit": "1f81c047fc48fa190a683e469daa699857e9afe8",
+  "environment": { "os": "macOS arm64", "node": "v24.18.0", "pnpm": "11.28.5" },
+  "install": { "command": "pnpm install --frozen-lockfile --registry=https://registry.npmmirror.com --network-concurrency=16", "exitCode": 0, "seconds": 11.3, "note": "pnpm store warm; lockfile unchanged" },
+  "build": { "command": "pnpm run build", "exitCode": 0, "seconds": 128.8, "wallSeconds": 133.7, "gates": 9, "gatesPassed": 9, "gatesFailed": 0, "perGateSeconds": { "native addon": 1.0, "host compiler": 30.75, "Host bundle": 10.57, "Desktop bundle": 1.93, "client compiler": 42.03, "Client bundle": 16.23, "Web build": 12.84, "host aggregate check": 80.42, "client aggregate check": 42.52 } },
+  "entrypoints": ["apps/cli/lib/bin.js", "packages/llm/llm/lib/index.js"],
+  "notCovered": ["Electron packaging/signing", "notarization", "installer/TCC"],
+  "notes": ["build writes lib/ and node_modules/ only; tracked sources unchanged"]
+}

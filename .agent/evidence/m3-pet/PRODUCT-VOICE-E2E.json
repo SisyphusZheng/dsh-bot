@@ -1,0 +1,55 @@
+{
+  "bridge": {
+    "port": 52184,
+    "token_present": true
+  },
+  "client_ready": true,
+  "steps": {
+    "playback": {
+      "ok": true,
+      "identity": {
+        "requestId": "078b809d-a6a0-4a3d-9bdf-f5ba3e716f8d",
+        "turn": 1,
+        "turnKey": "voice-1",
+        "receivedAt": 1792816957304,
+        "audioGeneration": 1,
+        "at": 1792816957304
+      },
+      "audio": {
+        "paused": false,
+        "currentTime": 16.502,
+        "readyState": 4,
+        "volume": 1
+      }
+    },
+    "barge": {
+      "confirmed": true,
+      "latency_ms": 2145.548828125,
+      "cleanup": {
+        "seq": 2,
+        "at": 1792816959779,
+        "reason": "barge-in-confirmed",
+        "audioGeneration": 1,
+        "hadElement": true,
+        "pausedBefore": false,
+        "hasSrcObjectBefore": true,
+        "result": "cleared",
+        "pausedAfter": true,
+        "hasSrcObjectAfter": false
+      },
+      "last": {
+        "type": "barge-in-confirmed",
+        "requestId": "078b809d-a6a0-4a3d-9bdf-f5ba3e716f8d",
+        "turnId": 1,
+        "turnKey": "voice-1",
+        "contextSource": "active",
+        "audioGeneration": null,
+        "epochMs": 1792816959778
+      }
+    }
+  },
+  "cleanup": {
+    "pet_exit": 0,
+    "orphan_worker_pids": []
+  }
+}

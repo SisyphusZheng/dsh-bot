@@ -1,0 +1,46 @@
+{
+  "generatedAt": "2026-10-22T13:32:15.176Z",
+  "bridgeOnly": true,
+  "gatewayOrigin": "http://127.0.0.1:55546",
+  "shellControlUrl": "http://127.0.0.1:55544",
+  "bridgeFile": "/tmp/nisse-body-runtime-smoke-1792675929027/dsh-home/bridge.json",
+  "bridgePollActive": true,
+  "settingsWindowPresent": false,
+  "windows": [
+    {
+      "title": "Nisse 头顶气泡",
+      "visible": true,
+      "destroyed": false,
+      "url": "file://$HOME/projects/dsh-bot-workspace/m3/pet/desktop/src/bubble.html"
+    },
+    {
+      "title": "Nisse 家灵",
+      "visible": true,
+      "destroyed": false,
+      "url": "http://127.0.0.1:55547/9f785dc428a4809e94557f3200346b5f0260770194fd8ae8/?desktop=orb&orbSkin=whale-girl&autoHideSeconds=0&lang=zh-CN"
+    }
+  ],
+  "bubble": {
+    "visible": true,
+    "interactive": false
+  },
+  "shell": {
+    "lastToggle": {
+      "ok": true,
+      "result": "shown"
+    },
+    "lastApproval": {
+      "id": "smoke-approval-1",
+      "decision": "allow",
+      "ok": true,
+      "result": "forwarded"
+    }
+  },
+  "shots": [
+    "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/body-runtime-orb-bubble.png",
+    "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/body-runtime-orb.png"
+  ],
+  "dblclickDispatched": true,
+  "bubbleInteractiveAfterMouseMove": true,
+  "approvalClicked": true
+}

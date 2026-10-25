@@ -1,0 +1,280 @@
+{
+  "task": "W1 Body Runtime 清理（无 settings/chat/onboarding/独立会话）+ W6 双击桌宠开/最小化 DSH（pet 侧）",
+  "owner": "body-runtime",
+  "generatedAt": "2026-10-22T21:31:52+0800",
+  "workspace": "$HOME/projects/dsh-bot-workspace",
+  "bodyRuntime": "$HOME/projects/dsh-bot-workspace/m3/pet/desktop",
+  "productRule": "DSH 是唯一 Agent/chat/session；桌宠只是 OS 级 Body Runtime（透明置顶dsh-bot、动画、拖动、位置记忆、气泡、语音采集/TTS/打断/唤醒词）。设置归 DSH Settings → Bot。",
+  "scopeBoundaries": {
+    "changedOnly": "m3/pet/**（主要 m3/pet/desktop）",
+    "notTouched": [
+      "$HOME/projects/dsh-bot/**（壳侧由 Lead 负责）",
+      "$HOME/projects/dsh-bot-workspace/research/qwen-audio-agent/**（上游参考，只借用其 Electron 43 与 node_modules）",
+      "m3/pet/shared/**（与嵌入宿主共享的 orb-shell 契约保持不动）"
+    ],
+    "noPackaging": true,
+    "noCommit": true
+  },
+  "files": {
+    "created": [
+      "m3/pet/desktop/src/body-runtime.mjs（253 行：桥模式解析、桌面壳控制通道、bridge 事件→气泡的纯函数）",
+      "m3/pet/desktop/test/body-runtime.test.mjs（10 个纯逻辑单测）",
+      "m3/pet/desktop/smoke/body-runtime-smoke.cjs（真实 Electron 启动冒烟：stub shell/gateway/bridge）",
+      "m3/pet/evidence/（本证据目录）"
+    ],
+    "modified": [
+      "m3/pet/desktop/src/main.mjs（重写，1897 行 → 1128 行）",
+      "m3/pet/desktop/src/bubble-window.mjs（默认点击穿透 + setInteractive/owns/_webContents）",
+      "m3/pet/desktop/src/bubble.js（hover 命中→交互；dblclick→openDsh；隐藏时恢复穿透）",
+      "m3/pet/desktop/src/bubble.css（.card pointer-events:auto；按钮/关闭 cursor:pointer）",
+      "m3/pet/desktop/src/bubble-preload.cjs（新增 setInteractive；保留 openDsh/answerApproval/onUpdate）",
+      "m3/pet/desktop/src/preload.cjs（只保留 Body Runtime API；删除 settings/backend/updater/bridge 等旧 API）",
+      "m3/pet/desktop/src/security.mjs（desktopOrbUrl 删除 surfaceMode/sessionId 参数与 conversation-session 依赖）",
+      "m3/pet/desktop/test/security.test.mjs（删除 panel/session 旧断言，保留 URL 安全断言）",
+      "m3/pet/desktop/test/settings-config.test.mjs（删除引用已删除 settings.html/js 的 UI 断言）",
+      "m3/pet/desktop/test/client-paths.test.mjs（更新接线断言；新增 no settings/chat/onboarding/session 静态断言）",
+      "m3/pet/desktop/test/bubble-window.test.mjs（新增气泡可交互单测）",
+      "m3/pet/desktop/smoke/electron-smoke.cjs（移除已删除 settings/conversation smoke）"
+    ],
+    "deleted": [
+      "m3/pet/desktop/src/settings.html（19034 B，独立设置窗口页面）",
+      "m3/pet/desktop/src/settings.js（52470 B，独立设置窗口渲染层）",
+      "m3/pet/desktop/src/settings.css（18457 B，独立设置窗口样式）",
+      "m3/pet/desktop/test/settings-renderer-boundary.test.mjs（只测独立设置页）",
+      "m3/pet/desktop/smoke/settings-smoke.cjs（只测独立设置页）",
+      "m3/pet/desktop/smoke/custom-acp-settings-smoke.cjs（只测独立设置页）",
+      "m3/pet/desktop/smoke/conversation-smoke.cjs（只测 chat/conversation panel）"
+    ],
+    "keptButInactive": [
+      "src/settings-config.mjs / settings-store.mjs / settings-picker.mjs / realtime-settings-form.mjs / update-status.mjs / updater.mjs / backend/** / gateway-*.mjs：主进程已不再接线（settings-store 仅用于读桌面外观/位置偏好与 orb 位置持久化；其余有各自单测，属上游共享代码，未删除以免超出 W1 范围）"
+    ]
+  },
+  "removedSurfaces": {
+    "independentSettingsWindow": {
+      "status": "deleted",
+      "oldCodeLocations": [
+        "旧 main.mjs:339 `let settingsWindow`；296-300 settingsSenderAllowed；873-913 createSettingsWindow；915-923 showSettings",
+        "旧 main.mjs: 全部 qwen-audio-agent:settings-* / skin-* / backend-* / updater-* / open-logs / wake-shortcut-pause|resume / nisse:bridge-* / nisse:choose-directory IPC（约 1246-1489、1604-1605、1687-1715 行）",
+        "旧 main.mjs:1491-1685 applyDesktopSettings（保存配置/重启 gateway）",
+        "旧 main.mjs: 托盘「设置…」入口（776-777）；showDesktop/setupRequired 打开设置窗（736-752、1819-1830、1855-1865）",
+        "旧 preload.cjs: loadSettings/saveSettings/loadRuntimeStatus/importSkin/removeSkin/setNodePath/detectBackends/installBackend/configureBackend/updater/logs/chooseNisseDirectory 等设置页 API",
+        "settings.html / settings.js / settings.css 文件删除"
+      ],
+      "replacement": "设置入口只保留托盘「Bot 设置…」与渲染层 openSettings → 主进程 → 桌面壳 POST /bot/open-settings（打开 DSH Settings → Bot）；桌宠自身不再创建窗口"
+    },
+    "chatConversationPanel": {
+      "status": "removed",
+      "oldCodeLocations": [
+        "旧 main.mjs:349 desktopSurfaceMode；1129-1182 setDesktopSurfaceMode（panel resize/orb 还原）；1150 desktopConversationPanelBounds 使用",
+        "旧 main.mjs:715-716 loadQwenAudioAgent 传 surfaceMode=panel 参数",
+        "旧 main.mjs:933-938 orbShell onLoadSurface/onSetSurface（panel 切换）",
+        "旧 main.mjs:688 注入 CSS 隐藏「打开对话」；694-698 stage dblclick 打开 panel"
+      ],
+      "replacement": "展示形态固定 orb：bindOrbShell 不传 onLoadSurface/onSetSurface（surface-set 恒返回 orb）；「打开对话」按钮继续隐藏；渲染层 setSurface(panel) 不再能切换形态"
+    },
+    "onboarding": {
+      "status": "removed",
+      "oldCodeLocations": [
+        "旧 main.mjs:261-267 setupRequired（首次运行/未配置 → 强制设置窗）",
+        "旧 main.mjs:730-752 showDesktop 中 setupRequired→showSettings",
+        "旧 main.mjs:1819-1830 启动时 setupRequired→showSettings；1824-1829 运行时失败→setupRequired+设置窗",
+        "旧 main.mjs:1855-1865 activate 分支 setupRequired→showSettings"
+      ],
+      "replacement": "无首次运行/引导窗口；启动失败只写日志（logger.error）并由 DSH/桌面壳呈现，桌宠不弹窗"
+    },
+    "independentSession": {
+      "status": "removed",
+      "oldCodeLocations": [
+        "旧 main.mjs:193-205 NISSE_SESSION_MARKER/.nisse-conversation-reset-v1 + conversationSession.save(randomUUID())",
+        "旧 main.mjs:215 desktopConversationSessionId = conversationSession.load()",
+        "旧 main.mjs:716 renderer URL 传 sessionId",
+        "旧 main.mjs:938-942 orbShell onSetConversationSession（写 conversationSession）",
+        "旧 security.mjs desktopOrbUrl 的 session 参数（sanitize + URLSearchParams.set('session')）"
+      ],
+      "replacement": "桌宠不创建/不保存/不切换任何会话；bindOrbShell 不传 onSetConversationSession（渲染层调用兼容返回空）；renderer URL 不再带 session 参数（*冒烟已验证 URL 无 session/surface*）"
+    },
+    "extraToolbarEntries": {
+      "status": "hidden",
+      "oldCodeLocations": "旧 main.mjs:688 注入 CSS 隐藏 打开对话/设置/退出",
+      "replacement": "installBodyRuntimeControls（新 main.mjs:394-416）：继续隐藏 打开对话/设置/退出/收起/收起为悬浮球，只留语音前台；双击统一走 preload→主进程；设置按钮如被触发会打开 DSH 设置（不再有独立窗）"
+    },
+    "embeddedGatewayAsMainPath": {
+      "status": "removed from pet",
+      "oldCodeLocations": [
+        "旧 main.mjs:56-61 EmbeddedGateway/resolveBorrowedGatewayAttachment 导入；485-563 startLocalGateway；581-593 startConfiguredRuntime 启动 gateway；514-537 gateway 崩溃重启",
+        "旧 main.mjs:207-216 gateway credential store / connection profiles；431-457 configuredGatewayEnvironment；1491-1685 保存设置时 gateway 重启/兼容性检查；1717-1773 qwaudio:// 配对"
+      ],
+      "replacement": "桥模式只连桌面壳提供的 gateway：origin = QWEN_AUDIO_AGENT_URL（body-runtime.bridgeGatewayOrigin）；不再 import/创建 EmbeddedGateway；失败不回退自带 gateway、不弹窗"
+    }
+  },
+  "retainedCapabilities": [
+    "透明、无边框、置顶（floating + 全屏空间可见）dsh-bot orb 窗口（createWindow + configureOrbWindow）",
+    "orb 动画/皮肤渲染：web/dist 渲染器 + 内置 whale-girl 皮肤（ensureBundledSkins/effectiveOrbSkin）",
+    "拖动 + 位置记忆：orb-shell drag 通道 + createOrbPlacement + ui-state.json orbPosition",
+    "头顶气泡：独立 340x210 透明窗口、orb 窗口不 resize、限宽 max-width 260、line-clamp 3、hasShadow:false、闭合尖角尾巴（bubble.css 未改视觉）",
+    "气泡可交互（W1/W2 要求）：默认 setIgnoreMouseEvents(true,{forward:true}) 点击穿透；指针进入卡片时 IPC 切换为可交互，是/否审批按钮可点击；隐藏后自动恢复穿透",
+    "审批链路：bridge approval.request → 气泡「是/否」→ IPC whale-girl:approval → 桌面壳 POST /bot/approval → bridge /approval；approval.decided 自动收起",
+    "DSH 状态气泡：bridge /events 轮询（Bearer token）turn.started/assistant.delta/turn.settled/agent.status idle → 气泡，无假状态",
+    "语音采集/TTS/打断：渲染层 + 桌面壳 gateway（mic 权限 handler 保留；本任务不接管音频链路）",
+    "唤醒词：DesktopWakeWordRuntime（master 开关/短语来自桌面客户端偏好，sherpa-onnx）",
+    "任务卡布局/悬浮球唤起快捷键/托盘/退出/生命周期（保留原实现）",
+    "本地气泡/审批回环 HTTP：127.0.0.1:59102（/bubble、/approval，仅 loopback；端口可用 NISSE_BUBBLE_PORT 覆盖）"
+  ],
+  "doubleClick": {
+    "status": "fixed/verified",
+    "chain": [
+      {
+        "step": 1,
+        "file": "m3/pet/desktop/src/bubble.js",
+        "line": 74,
+        "detail": "document dblclick → window.nisseBubble?.openDsh?.()"
+      },
+      {
+        "step": 2,
+        "file": "m3/pet/desktop/src/bubble-preload.cjs",
+        "line": 11,
+        "detail": "openDsh: ipcRenderer.invoke('nisse:open-dsh')"
+      },
+      {
+        "step": 3,
+        "file": "m3/pet/desktop/src/main.mjs",
+        "line": 306,
+        "detail": "ipcMain.handle('nisse:open-dsh')，600ms 去重防双触发"
+      },
+      {
+        "step": 4,
+        "file": "m3/pet/desktop/src/body-runtime.mjs",
+        "lines": "19,22,136",
+        "detail": "requestMainToggle → POST ${NISSE_SHELL_CONTROL_URL || http://127.0.0.1:59100}/bot/toggle-main"
+      },
+      {
+        "step": 5,
+        "file": "nisse-dsh/apps/desktop/src/bot-config-server.ts",
+        "line": 162,
+        "detail": "桌面壳路由 /bot/toggle-main → hooks.onToggleMain（main.ts:341）：visible&&focused → minimize，否则 show+focus，返回 'minimized'|'shown'"
+      },
+      {
+        "step": 6,
+        "file": "m3/pet/desktop/src/main.mjs",
+        "lines": "306-328",
+        "detail": "记录 {ok,result}；壳不可达时回退 open-dsh.sh（脚本自身先尝试 toggle-main 再启动应用）"
+      }
+    ],
+    "orbWindowPath": {
+      "file": "m3/pet/desktop/src/main.mjs",
+      "lines": "394-416",
+      "detail": "orb 渲染层 document dblclick（capture，preventDefault/stopPropagation）→ window.qwenAudioAgentDesktop.openDsh() → preload.cjs → 同一 nisse:open-dsh IPC；旧实现的两条重复路径（直连 59100 fetch + installOpenDsh spawn）已合并为一条，避免一次双击 toggle 两次"
+    },
+    "shellEventContract": {
+      "primary": "POST http://127.0.0.1:59100/bot/toggle-main",
+      "request": "空 body（pet 发送 {}）；可选自定义端口通过环境变量 NISSE_SHELL_CONTROL_URL 覆盖",
+      "response": "HTTP 200 JSON { ok: true, result: 'shown' | 'minimized' }",
+      "siblingEndpointsUsedByPet": [
+        "POST /bot/open-settings（托盘「Bot 设置…」/渲染层设置入口 → 打开 DSH Settings → Bot）",
+        "POST /bot/approval body { id, decision: 'allow'|'reject' }（气泡是/否 → 壳 → bridge /approval）"
+      ],
+      "shellSideStatus": "nisse-dsh 壳侧已实现上述 3 个路由与 onToggleMain 语义（apps/desktop/src/bot-config-server.ts:162，main.ts:341/346/352）；本任务未改壳侧，Lead 只需保持/接好",
+      "verification": "smoke/body-runtime-smoke.cjs 用 stub shell 断言：双击恰好 1 次 POST /bot/toggle-main，返回 shown 被 pet 正确记录"
+    }
+  },
+  "bridgeMode": {
+    "detection": "body-runtime.isBridgeOnly(process.env)：NISSE_BRIDGE_ONLY=1（桌面壳 spawn 时设置）",
+    "gateway": "QWEN_AUDIO_AGENT_URL（壳提供，main.ts:381 当前 http://127.0.0.1:59002）；pet 只做 renderer-server 反向代理，不 spawn/内嵌 gateway",
+    "bridge": "NISSE_BRIDGE_FILE（壳写 {pid,port,token}）；pet 轮询 GET http://127.0.0.1:<port>/events?after=<ioSeq>，Authorization: Bearer <token>",
+    "bubbleOwnership": "桥模式下渲染层自己的 qwen 气泡 IPC（qwen-audio-agent:orb-bubble）被忽略，气泡只由 DSH bridge 事件/审批驱动，避免旧语音前台覆盖 DSH 状态",
+    "noSettingsWindowOnError": "gateway origin 缺失/不可达时仅 logger.error + orb(或 orb-unavailable 页) 启动；无设置窗、无弹窗",
+    "verifiedCases": [
+      "stub gateway + stub shell + stub bridge：orb 正常启动、bridge 轮询带 token、双击/审批链路 PASS",
+      "真实壳 HOME/XDG 形状（HOME=/tmp/nisse-m1/home，XDG_*= /tmp/nisse-m1/voice/{config,data,state}）+ 真实客户端偏好读取：PASS（body-runtime-smoke-real-shell-shape.json）",
+      "QWEN_AUDIO_AGENT_URL 不可达（无语音 key、无内置 gateway）：orb 启动、无设置窗、干净退出（body-runtime-no-gateway-status.json）",
+      "QWEN_AUDIO_AGENT_URL 缺失：回落客户端偏好 gatewayUrl，orb 启动、无设置窗、干净退出（body-runtime-no-origin-status.json）"
+    ],
+    "embeddedGatewayGrep": "新 main.mjs 中已无 EmbeddedGateway/startLocalGateway/gateway-process 引用（client-paths.test.mjs 静态断言覆盖）"
+  },
+  "tests": {
+    "targeted": {
+      "command": "node --test test/body-runtime.test.mjs test/client-paths.test.mjs test/security.test.mjs",
+      "result": {
+        "tests": 18,
+        "pass": 18,
+        "fail": 0
+      },
+      "log": "m3/pet/evidence/node-test-targeted.log"
+    },
+    "bubbleWindow": {
+      "command": "node --test test/bubble-window.test.mjs",
+      "result": "4 pass（含新增「默认穿透→可交互→隐藏恢复穿透」）/ 1 fail（bubble window stays fixed-size and a tail overlaps the head：改动前基线即失败，几何断言差 2px，与本任务无关，未改视觉）"
+    },
+    "fullSuite": {
+      "command": "node --test（m3/pet/desktop）",
+      "result": {
+        "tests": 273,
+        "pass": 260,
+        "fail": 12,
+        "skipped": 1
+      },
+      "preExistingFailuresIdenticalToBaseline": [
+        "bubble window stays fixed-size and a tail overlaps the head（基线已有）",
+        "test/enter-sleep-flow.test.mjs（缺 m3/pet/server/src/client/client-action-port.mjs，基线已有）",
+        "test/realtime-configuration-lifecycle.test.mjs（基线已有）",
+        "builds and uploads both install and automatic-update macOS artifacts（基线已有）",
+        "test/release-environment.test.mjs（基线已有）",
+        "settings-store 7 项语言相关断言（基线已有：zh-CN vs auto 等）"
+      ],
+      "log": "m3/pet/evidence/node-test-full.log",
+      "note": "改动前后失败集合一致（新增/修改的测试均通过）；本任务未修无关基线失败"
+    }
+  },
+  "smoke": {
+    "script": "m3/pet/desktop/smoke/body-runtime-smoke.cjs",
+    "command": "node smoke/body-runtime-smoke.cjs --out <result.json> --evidence-dir <dir>",
+    "realElectron": "research/qwen-audio-agent/node_modules/electron（Electron 43.6.0，v24.20.0 node 内核）",
+    "spawnShape": "Electron <m3/pet/desktop> --user-data-dir=<tmp>；env=HOME/XDG_* + QWEN_AUDIO_AGENT_URL=<stub> + AGENT_PROTOCOL=none + NISSE_BRIDGE_ONLY=1 + NISSE_BRIDGE_FILE=<tmp bridge.json> + NISSE_SHELL_CONTROL_URL=<stub shell>（与 nisse-dsh/apps/desktop/src/main.ts:374-388 的 spawn 形状一致；因当前 harness 设置了 ELECTRON_RUN_AS_NODE=1，smoke 显式剔除它）",
+    "stubs": "shell(59100 API)/bridge(/events Bearer)/gateway(/api/health + /api/realtime WS) 均为本地 stub；不访问真实网络/DashScope",
+    "resultFile": "m3/pet/evidence/body-runtime-smoke-result.json",
+    "steps": {
+      "electron-exit": "PASS（exit code 0，status 文件生成）",
+      "bridge-only-runtime": "PASS（bridgeOnly=true，gatewayOrigin=壳提供的 URL，bridgePollActive=true，/events 轮询带 Bearer token）",
+      "no-settings-chat-onboarding-window": "PASS（窗口仅 Nisse 家灵 + Nisse 头顶气泡；无「设置」窗；orb URL 含 desktop=orb 且无 session/surface 参数）",
+      "double-click-opens-minimizes-dsh": "PASS（document dblclick → 恰好 1 次 POST /bot/toggle-main，pet 记录 {ok:true,result:'shown'}）",
+      "approval-bubble-interactive": "PASS（bridge approval.request 驱动气泡；mousemove 命中卡片后 isInteractive=true；点「是」→ 恰好 1 次 POST /bot/approval {id:'smoke-approval-1',decision:'allow'}）",
+      "screenshots": "PASS（orb 与审批气泡 PNG 写入证据目录）"
+    },
+    "screenshots": [
+      "m3/pet/evidence/body-runtime-orb.png（真实 Electron capturePage：dsh-bot orb，透明窗口+内置 whale-girl 皮肤）",
+      "m3/pet/evidence/body-runtime-orb-bubble.png（真实 Electron capturePage：DSH 审批气泡，白底黑边闭合尖角 + 是/否按钮）"
+    ],
+    "realShellShapeRun": "m3/pet/evidence/body-runtime-smoke-real-shell-shape.json（HOME/XDG 使用壳的默认值 + 已有客户端配置，6 步全 PASS）",
+    "noGatewayRun": "m3/pet/evidence/body-runtime-no-gateway-status.json（无 key/无内置 gateway：1 个 orb 窗口、无设置窗、干净退出）",
+    "noOriginRun": "m3/pet/evidence/body-runtime-no-origin-status.json（QWEN_AUDIO_AGENT_URL 缺失：回落客户端偏好，无设置窗、干净退出）"
+  },
+  "shellTodosForLead": [
+    "保持 POST /bot/toggle-main（当前已实现：apps/desktop/src/bot-config-server.ts:162 → main.ts:341 onToggleMain visible&&focused→minimize / 否则 show+focus）；pet 侧双击已按该契约接通，只需壳侧不回归并纳入 W6 验收（实测 shown/minimized）",
+    "保持 POST /bot/open-settings 与 POST /bot/approval（均已实现）；后者用于气泡「是/否」回传",
+    "语音唤醒词接线：DSH Bot 设置里的 voice.wakeWord 目前没有传给桌宠；桌宠仍读旧客户端偏好（settings.env/config.env 的 QWEN_AUDIO_WAKE_WORD_*）。建议壳 spawn pet 时补 NISSE_WAKE_WORD/NISSE_WAKE_WORD_ENABLED 或写 pet 的 settings.env；人格同理应由 DSH 侧消费（桌宠已不再写 persona 文件/gateway 配置）",
+    "可选：spawn 时显式传 NISSE_SHELL_CONTROL_URL（默认 http://127.0.0.1:59100 已可用）与 NISSE_BUBBLE_PORT（默认 59102）避免端口冲突",
+    "spawn pet 时确保不要继承 ELECTRON_RUN_AS_NODE/ELECTRON_NO_ATTACH_CONSOLE（否则 Electron 会以 Node 模式启动 main.mjs）",
+    "W7 默认 Bot 工作区/壳窗口的「未开→打开默认 Bot 工作区」仍在壳侧；pet 只发 toggle-main",
+    "如果壳希望自己推送气泡/审批（而非等 bridge 轮询），可 POST http://127.0.0.1:59102/bubble` 或 /approval（loopback，仅本机）；不是必须",
+    "W8 Bot 设置页（task-1）接管语音/LLM/persona 后，桌宠侧旧偏好项（唤醒词/自动休眠/显示快捷键/皮肤）目前无 UI；如需用户可调，后续在 DSH Bot 设置里补并接线"
+  ],
+  "limitations": [
+    "web/dist 是上游构建产物，本任务不改 bundle；其中仍存在 chat panel/设置按钮等代码，但宿主层已使其不可达：入口按钮隐藏、surface 固定 orb、渲染层自驱气泡被忽略、无独立窗口（证据见 removedSurfaces）",
+    "未在真实 dsh-bot 壳内跑完整联调（会启动 DSH host/真模型）；只按壳 main.ts 的 spawn 形状做了真实 Electron 冒烟，壳侧集成由 Lead 验证",
+    "真实麦克风/TCC、DashScope 实网语音、签名/打包均未涉及/未验证（W10/M6 范围）",
+    "12 个 node --test 基线失败与本任务无关（见 tests.fullSuite），未修",
+    "未提交任何 git commit、未打包（任务约束）"
+  ],
+  "artifacts": [
+    "m3/pet/evidence/BODY-RUNTIME-CLEANUP.json（本文件）",
+    "m3/pet/evidence/body-runtime-smoke-result.json",
+    "m3/pet/evidence/body-runtime-smoke-pet-status.json",
+    "m3/pet/evidence/body-runtime-smoke-real-shell-shape.json",
+    "m3/pet/evidence/body-runtime-no-gateway-status.json",
+    "m3/pet/evidence/body-runtime-no-origin-status.json",
+    "m3/pet/evidence/body-runtime-orb.png",
+    "m3/pet/evidence/body-runtime-orb-bubble.png",
+    "m3/pet/evidence/node-test-targeted.log",
+    "m3/pet/evidence/node-test-full.log"
+  ]
+}

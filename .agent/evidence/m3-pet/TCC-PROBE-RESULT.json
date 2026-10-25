@@ -1,0 +1,71 @@
+{
+  "date": "2026-10-24T13:30:01",
+  "app": "NisseTCCProbe.app",
+  "bundleId": "ai.nisse.tccprobe",
+  "launch": "manual double-click from Desktop (user), so app owns TCC responsibility",
+  "lifecycle": {
+    "initial": "not-determined",
+    "request_denied": {
+      "before": "not-determined",
+      "result": false,
+      "after": "denied"
+    },
+    "after_regrant": {
+      "status": "granted"
+    },
+    "evidence_events": [
+      {
+        "at": "2026-10-24T05:27:37.306Z",
+        "event": "request",
+        "before": "granted",
+        "result": true,
+        "after": "granted"
+      },
+      {
+        "at": "2026-10-24T05:27:41.659Z",
+        "event": "request",
+        "before": "granted",
+        "result": true,
+        "after": "granted"
+      },
+      {
+        "at": "2026-10-24T05:28:19.478Z",
+        "event": "startup",
+        "status": "not-determined",
+        "bundleId": "$HOME/Desktop/NisseTCCProbe.app/Contents/Resources/app.asar"
+      },
+      {
+        "at": "2026-10-24T05:28:19.630Z",
+        "event": "window-ready",
+        "status": "not-determined"
+      },
+      {
+        "at": "2026-10-24T05:28:23.016Z",
+        "event": "request",
+        "before": "not-determined",
+        "result": false,
+        "after": "denied"
+      },
+      {
+        "at": "2026-10-24T05:29:31.535Z",
+        "event": "startup",
+        "status": "granted",
+        "bundleId": "$HOME/Desktop/NisseTCCProbe.app/Contents/Resources/app.asar"
+      },
+      {
+        "at": "2026-10-24T05:29:31.710Z",
+        "event": "window-ready",
+        "status": "granted"
+      },
+      {
+        "at": "2026-10-24T05:29:32.913Z",
+        "event": "request",
+        "before": "granted",
+        "result": true,
+        "after": "granted"
+      }
+    ]
+  },
+  "result": "PASS on isolated probe identity: not-determined -> denied -> granted, observed via systemPreferences and persisted log.",
+  "scope": "This validates real macOS TCC denial/regrant mechanics and app-side observability. It is NOT the final product bundle; product Nisse packaging/signing and its TCC still pending."
+}

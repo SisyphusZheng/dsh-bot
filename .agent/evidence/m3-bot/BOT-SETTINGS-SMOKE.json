@@ -1,0 +1,41 @@
+{
+  "suite": "Bot settings smoke",
+  "startedAt": "2026-10-22T07:04:17.073Z",
+  "steps": {
+    "app-config-server": {
+      "status": "PASS",
+      "ms": 895,
+      "detail": {
+        "port": 59100
+      }
+    },
+    "settings-bot-section": {
+      "status": "PASS",
+      "ms": 1991,
+      "detail": {
+        "nav": "Bot",
+        "noAccount": true,
+        "iframe": "http://127.0.0.1:59100/bot/settings"
+      }
+    },
+    "runtime-status-restart": {
+      "status": "PASS",
+      "ms": 13,
+      "detail": {
+        "voiceAvailable": true,
+        "gateway": true,
+        "pid": 42924
+      }
+    },
+    "config-persistence-0600": {
+      "status": "PASS",
+      "ms": 10,
+      "detail": {
+        "file": "/tmp/whale-bot-smoke/dsh-home/bot/config.json",
+        "mode": "600"
+      }
+    }
+  },
+  "ok": true,
+  "finishedAt": "2026-10-22T07:04:22.231Z"
+}

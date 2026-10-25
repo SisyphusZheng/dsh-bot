@@ -1,0 +1,41 @@
+{
+  "suite": "voice UX round 2 (user-reported: aborted tool error / persistent hint / Option no response / click cancels)",
+  "date": "2026-10-23",
+  "items": {
+    "abortedToolError": {
+      "report": "DSH shows 'Error: terminal send aborted'",
+      "rootCause": "The turn was cancelled mid-tool (by an earlier test turn and by the old barge-in behavior that cancelled the running DSH turn when new speech arrived). DSH truthfully records the interrupted tool call.",
+      "fix": "gateway bridge-turn no longer aborts the running DSH turn for ordinary barge-in: the new utterance is queued and submitted after the current turn settles (explicit 取消/停止 still cancels). Verified: nisse.bridge_turn_queued_while_running + nisse.barge_in_flush in gateway log, running turn completed, no aborted bridge event caused by the new utterance.",
+      "cleanup": "current Bot conversation rotated to a fresh one (conversation index 4); old conversations keep their history."
+    },
+    "persistentHint": {
+      "report": "底部「按 Option/Alt 说话」一直显示",
+      "fix": "hint now hidden by default; shown once on first run (5s), hidden immediately when the user starts talking, afterwards only on hover (3s). hintSeen persisted.",
+      "status": "PASS (pet smoke 7/7)"
+    },
+    "globalOptionKey": {
+      "report": "按 Option 没反应（未聚焦）",
+      "fix": "new global-option.mjs: koffi 3.1.1 + ApplicationServices CGEventSourceKeyState(0, 58/61) polling (60ms, 2 stable samples) => true global hold-to-talk, no focus needed; fallback Alt+Space with matching hint when koffi/framework unavailable.",
+      "runtimeProof": "pet log: koffiVersion=3.1.1, frameworkPath=ApplicationServices, watcher running=true errors=0",
+      "status": "PASS (automation) / physical key UNVERIFIED"
+    },
+    "clickToggle": {
+      "report": "点击麦克风开始说话，松开就被取消",
+      "fix": "click = toggle: click starts listening, click again stops+sends; mouseup/pointerup ignored (1.2s guard), no bridge /cancel from clicks. Cancel only via bubble 取消 / voice 取消 / second click.",
+      "status": "PASS (dry-run smoke) / real mic TCC UNVERIFIED"
+    }
+  },
+  "evidence": [
+    "m3/pet/evidence/PET-VOICE-UX-ROUND2.json",
+    "m3/pet/evidence/PET-VOICE-UX-SMOKE-RESULT.json",
+    "m3/pet/evidence/pet-hint-first-run.png",
+    "m3/pet/evidence/pet-hint-hover.png",
+    "m3/pet/evidence/pet-global-option-listening.png"
+  ],
+  "packagingTodo": "bundle koffi NAPI binary with the desk-pet resources (or set NISSE_KOFFI_PATH); without it the app falls back to Alt+Space.",
+  "currentRuntime": {
+    "conversationIndex": 4,
+    "gateway": "running, route C, error=\"\"",
+    "pet": "running, koffi watcher active, hintSeen=false until first talk"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "suite": "voice transcript visibility + stale gateway fix",
+  "date": "2026-10-23",
+  "problemReportedByUser": "似乎没有真实接入 DSH；以及说一句话文字没显示好就立马调整了",
+  "rootCauses": {
+    "staleGateway": "A voice gateway orphaned by an earlier crashed/killed shell kept the qwen instance lease. The next shell's gateway then exited immediately with code 0 ('Gateway 已在运行'), so /bot/status showed gateway=false and the voice path looked dead.",
+    "transcriptSwallowed": "The pet treated the renderer's recognition bubble as transient: on recognition end it called hideBubble immediately, so the recognised sentence vanished before the reply/turn replaced it (it looked like the text was never shown)."
+  },
+  "fixes": {
+    "staleGateway": "bot-runtime.start now stops a stale qwen gateway listening on the voice port before spawning its own (lsof + ps guard, SIGTERM).",
+    "transcriptDisplay": "pet main keeps the final transcript as a grey input bubble (💬 你说：…) when recognition ends; it stays until the DSH turn/activity bubble replaces it.",
+    "bridgeText": "host integration now includes the user's text in the user.message bridge event (bounded), so the pet/evidence can show exactly what DSH received."
+  },
+  "proof": {
+    "gatewayNowRunning": "{\"gateway\":true,\"pid\":16281,\"error\":\"\",\"port\":59002} (stable after restart)",
+    "transcriptBefore": "🎙️ 帮我把今天的会议整理成待办 + 取消",
+    "transcriptAfterRecognitionEnd": "💬 帮我把今天的会议整理成待办 （保持显示，不再消失）",
+    "gatewayToDsh": "m4/bot-evidence/GATEWAY-DSH-E2E.json — shell-spawned gateway ws text.message → bridge user.message(sessionId bf3ecc4e…, turn 11) → assistant.message → turn.ended completed; same text present in the DSH session log (sessions/--private-tmp-…/bf3ecc4e…)",
+    "dshUi": "m4/bot-evidence/DSH-REAL-GATEWAY-TURN.png — DSH conversation 「Bot 对话 2」 shows the gateway/voice sentences and the assistant's replies",
+    "screenshots": ["m4/bot-evidence/PET-VOICE-TRANSCRIPT-KEPT.png", "m4/bot-evidence/DSH-REAL-GATEWAY-TURN.png"]
+  },
+  "stillUnverified": "real microphone capture / TCC permission (needs the user); everything above uses the same gateway protocol with scripted text instead of ASR audio."
+}

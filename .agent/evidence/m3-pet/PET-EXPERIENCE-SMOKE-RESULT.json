@@ -1,0 +1,1604 @@
+{
+  "suite": "PET-EXPERIENCE-ROUND1 (onboarding / voice input / activity bubble / pause on input)",
+  "startedAt": "2026-10-23T05:28:09.732Z",
+  "electron": "$HOME/projects/dsh-bot-workspace/research/qwen-audio-agent/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron",
+  "steps": {
+    "electron-exit-and-status": {
+      "status": "PASS",
+      "ms": 1,
+      "detail": {
+        "generatedAt": "2026-10-23T05:28:19.525Z",
+        "bridgeOnly": true,
+        "gatewayOrigin": "http://127.0.0.1:59881",
+        "shellControlUrl": "http://127.0.0.1:59879",
+        "bridgeFile": "/tmp/nisse-pet-experience-smoke-1792733289731/dsh-home/bridge.json",
+        "bridgePollActive": true,
+        "settingsWindowPresent": false,
+        "windows": [
+          {
+            "title": "Nisse 头顶气泡",
+            "visible": true,
+            "destroyed": false,
+            "url": "file://$HOME/projects/dsh-bot-workspace/m3/pet/desktop/src/bubble.html"
+          },
+          {
+            "title": "Nisse 家灵",
+            "visible": true,
+            "destroyed": false,
+            "url": "http://127.0.0.1:59883/82a3ae2a5b2a9c68a12e700f58aec7311c7b6d2692291092/?desktop=orb&orbSkin=whale-girl&autoHideSeconds=0&lang=zh-CN"
+          }
+        ],
+        "bubble": {
+          "visible": true,
+          "interactive": false,
+          "inputMode": false,
+          "kind": "status",
+          "text": "已暂停，等你。想做别的直接说。",
+          "title": "",
+          "clickThrough": false
+        },
+        "experience": {
+          "onboarding": {
+            "active": false,
+            "busy": false,
+            "stepId": "done",
+            "substate": "",
+            "completed": true,
+            "paused": false,
+            "approvalPersisted": true,
+            "answers": {
+              "addressUser": "小智",
+              "persona": {
+                "presetId": "gentle",
+                "personality": "温柔、可靠、有耐心；像家人一样陪着用户，遇事先接住情绪再解决问题。",
+                "tone": "温和、清楚、不催促；必要时先给结论。",
+                "custom": ""
+              },
+              "llm": {
+                "provider": "opencode-go",
+                "baseUrl": "https://opencode.ai/zen/go/v1",
+                "model": "deepseek-v4.1-flash",
+                "apiKey": "<redacted>",
+                "apiKeySet": true,
+                "skipped": false,
+                "apiKeyLength": 16
+              },
+              "voice": {
+                "provider": "dashscope",
+                "baseUrl": "wss://dashscope.aliyuncs.com/api-ws/v1/realtime",
+                "model": "qwen-audio-3.0-realtime-plus",
+                "voice": "longanxiaoxin",
+                "wakeWord": "小鲸小鲸",
+                "apiKey": "<redacted>",
+                "apiKeySet": true,
+                "skipped": false,
+                "apiKeyLength": 18
+              },
+              "approval": {
+                "mode": "ask-each",
+                "onceMinutes": 30
+              },
+              "behavior": {
+                "pauseOnInput": true,
+                "allowScreenView": true
+              }
+            }
+          },
+          "voice": {
+            "settings": {
+              "mode": "hold",
+              "keyId": "alt",
+              "fallbackAccelerator": "Alt+Space",
+              "holdMaxMs": 15000,
+              "hintSeen": true
+            },
+            "talkKey": {
+              "mode": "hold",
+              "keyId": "alt",
+              "source": "global-option",
+              "displayKey": "Option/Alt",
+              "hint": "按住 Option/Alt 说话",
+              "global": true,
+              "accelerator": "Alt+Space",
+              "registered": true,
+              "globalOption": {
+                "available": true,
+                "frameworkPath": "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices",
+                "koffiPath": "$HOME/projects/dsh-bot/node_modules/.pnpm/koffi@3.1.1/node_modules/koffi",
+                "koffiVersion": "3.1.1",
+                "error": ""
+              },
+              "presetLabel": "Option / Alt（桌宠聚焦时按住）",
+              "hintText": "按住 Option/Alt 说话",
+              "dryRun": true,
+              "fallback": "Alt+Space"
+            },
+            "hint": {
+              "source": "global-option",
+              "keyId": "alt",
+              "mode": "hold",
+              "displayKey": "Option/Alt",
+              "global": true,
+              "text": "按住 Option/Alt 说话"
+            },
+            "lastReport": {
+              "enabled": false,
+              "waiting": false,
+              "mode": "hold",
+              "reports": 9,
+              "dryRun": true,
+              "hintSeen": true,
+              "hintVisible": true,
+              "hintShows": 2,
+              "clickCount": 0,
+              "enabledBy": "key"
+            },
+            "globalOption": {
+              "available": true,
+              "frameworkPath": "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices",
+              "koffiPath": "$HOME/projects/dsh-bot/node_modules/.pnpm/koffi@3.1.1/node_modules/koffi",
+              "koffiVersion": "3.1.1",
+              "error": "",
+              "watcher": {
+                "running": true,
+                "pressed": false,
+                "polls": 154,
+                "errors": 0,
+                "downCount": 0,
+                "upCount": 0,
+                "lastChangeAt": 0,
+                "lastError": "",
+                "pollMs": 60,
+                "stablePolls": 2
+              },
+              "smokeOverride": null
+            }
+          },
+          "pause": {
+            "turnActive": false,
+            "turnStartedAt": 1792733297961,
+            "paused": 1,
+            "lastPause": {
+              "at": "2026-10-23T05:28:18.818Z",
+              "idleSeconds": 0.25,
+              "ok": true,
+              "cancelled": true,
+              "error": ""
+            },
+            "lastError": "",
+            "monitor": {
+              "running": true,
+              "previousIdle": null,
+              "pauses": 1,
+              "lastPause": {
+                "at": 1792733298811,
+                "idleSeconds": 0.25
+              },
+              "thresholdSeconds": 1.5,
+              "graceMs": 600,
+              "pollMs": 250
+            }
+          },
+          "lastHeardText": "帮我看下今天的安排"
+        },
+        "shell": {
+          "lastToggle": null,
+          "lastApproval": null
+        },
+        "shots": [
+          "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-orb.png"
+        ],
+        "experienceSmoke": {
+          "stages": [
+            "voice-error",
+            "voice-restore",
+            "activity",
+            "activity-done",
+            "pause",
+            "pause-done"
+          ],
+          "shots": [
+            {
+              "name": "pet-onboarding-address.png",
+              "file": "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-onboarding-address.png"
+            },
+            {
+              "name": "pet-onboarding-llm-key.png",
+              "file": "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-onboarding-llm-key.png"
+            },
+            {
+              "name": "pet-onboarding-done.png",
+              "file": "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-onboarding-done.png"
+            },
+            {
+              "name": "pet-orb-hover-controls.png",
+              "file": "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-orb-hover-controls.png"
+            },
+            {
+              "name": "pet-voice-input-bubble.png",
+              "file": "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-voice-input-bubble.png"
+            },
+            {
+              "name": "pet-voice-error-bubble.png",
+              "file": "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-voice-error-bubble.png"
+            },
+            {
+              "name": "pet-activity-write-file.png",
+              "file": "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-activity-write-file.png"
+            },
+            {
+              "name": "pet-paused-bubble.png",
+              "file": "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-paused-bubble.png"
+            }
+          ],
+          "assertions": {
+            "onboardingAutoStarted": true,
+            "stepAddress": true,
+            "stepPersona": true,
+            "stepLlmProvider": true,
+            "llmAndVoiceTested": true,
+            "onboardingCompleted": true,
+            "onboardingApprovalPersisted": true,
+            "onboardingAnswers": {
+              "addressUser": "小智",
+              "persona": {
+                "presetId": "gentle",
+                "personality": "温柔、可靠、有耐心；像家人一样陪着用户，遇事先接住情绪再解决问题。",
+                "tone": "温和、清楚、不催促；必要时先给结论。",
+                "custom": ""
+              },
+              "llm": {
+                "provider": "opencode-go",
+                "baseUrl": "https://opencode.ai/zen/go/v1",
+                "model": "deepseek-v4.1-flash",
+                "apiKey": "[REDACTED_KEY]",
+                "apiKeySet": true,
+                "skipped": false
+              },
+              "voice": {
+                "provider": "dashscope",
+                "baseUrl": "wss://dashscope.aliyuncs.com/api-ws/v1/realtime",
+                "model": "qwen-audio-3.0-realtime-plus",
+                "voice": "longanxiaoxin",
+                "wakeWord": "小鲸小鲸",
+                "apiKey": "[REDACTED_KEY]",
+                "apiKeySet": true,
+                "skipped": false
+              },
+              "approval": {
+                "mode": "ask-each",
+                "onceMinutes": 30
+              },
+              "behavior": {
+                "pauseOnInput": true,
+                "allowScreenView": true
+              }
+            },
+            "onboardingProgressPersisted": true,
+            "badgeState": {
+              "text": "按住 Option/Alt 说话",
+              "x": 25.2109375,
+              "y": 177,
+              "width": 121.578125,
+              "height": 21,
+              "display": "block",
+              "opacity": "0.95",
+              "background": "rgba(23, 23, 29, 0.72)"
+            },
+            "micHoverButton": true,
+            "micHoverCss": true,
+            "micHoverVisible": true,
+            "talkKey": {
+              "mode": "hold",
+              "keyId": "alt",
+              "source": "global-option",
+              "displayKey": "Option/Alt",
+              "hint": "按住 Option/Alt 说话",
+              "global": true,
+              "accelerator": "Alt+Space",
+              "registered": true,
+              "globalOption": {
+                "available": true,
+                "frameworkPath": "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices",
+                "koffiPath": "$HOME/projects/dsh-bot/node_modules/.pnpm/koffi@3.1.1/node_modules/koffi",
+                "koffiVersion": "3.1.1",
+                "error": ""
+              },
+              "presetLabel": "Option / Alt（桌宠聚焦时按住）",
+              "hintText": "按住 Option/Alt 说话",
+              "dryRun": true,
+              "fallback": "Alt+Space"
+            },
+            "injectedVoiceControls": {
+              "enabled": false,
+              "waiting": false,
+              "mode": "hold",
+              "reports": 3,
+              "applied": 0,
+              "actions": [],
+              "lastPhase": "",
+              "hasButton": true,
+              "badge": "按住 Option/Alt 说话",
+              "dryRun": true,
+              "detected": {
+                "enabled": false,
+                "waiting": false
+              },
+              "debugLog": [
+                "90147:report:d=1:en=0",
+                "90147:show:first-run:5000",
+                "90154:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+                "90154:report:d=1:en=0",
+                "90398:report:d=1:en=0",
+                "90971:window-blur"
+              ],
+              "hintText": "按住 Option/Alt 说话",
+              "hintVisible": true,
+              "hintShows": 1,
+              "hintConsumed": false,
+              "hintReason": "first-run",
+              "clickCount": 0,
+              "enabledBy": ""
+            },
+            "talkKeyEnabledListening": true,
+            "talkKeyApplied": true,
+            "talkKeyStopped": true,
+            "inputBubbleText": "帮我看下今天的安排",
+            "inputBubbleCancel": true,
+            "inputBubbleCancelled": true,
+            "voiceErrorBubble": true,
+            "activityText": "✍️写文件 · report.md",
+            "activityHasFileName": true,
+            "activityClickThrough": true,
+            "activityNotInteractive": true,
+            "activityCleared": true,
+            "pauseBubble": "已暂停，等你。想做别的直接说。",
+            "pauseStatus": {
+              "paused": 1,
+              "lastPause": {
+                "at": "2026-10-23T05:28:18.818Z",
+                "idleSeconds": 0.25,
+                "ok": true,
+                "cancelled": true,
+                "error": ""
+              },
+              "lastError": ""
+            },
+            "pauseTurnActiveAfter": false,
+            "bridgeCancel": {
+              "at": "2026-10-23T05:28:18.818Z",
+              "idleSeconds": 0.25,
+              "ok": true,
+              "cancelled": true,
+              "error": ""
+            }
+          },
+          "clicks": 9,
+          "errors": [],
+          "hoverForced": true,
+          "hoverState": {
+            "found": true,
+            "stage": true,
+            "buttons": 4,
+            "micLabel": "开启麦克风",
+            "opacity": "1",
+            "pointerEvents": "auto",
+            "hoverRule": true
+          },
+          "voiceSamples": [
+            {
+              "at": 1792733294529,
+              "enabled": true,
+              "applied": 1,
+              "actions": [
+                {
+                  "action": "enable",
+                  "source": "global",
+                  "at": 1792733294452
+                }
+              ]
+            },
+            {
+              "at": 1792733294612,
+              "enabled": true,
+              "applied": 1,
+              "actions": [
+                {
+                  "action": "enable",
+                  "source": "global",
+                  "at": 1792733294452
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "onboarding-in-bubble-completes": {
+      "status": "PASS",
+      "ms": 0,
+      "detail": {
+        "puts": 7,
+        "answers": {
+          "addressUser": "小智",
+          "persona": {
+            "presetId": "gentle",
+            "personality": "温柔、可靠、有耐心；像家人一样陪着用户，遇事先接住情绪再解决问题。",
+            "tone": "温和、清楚、不催促；必要时先给结论。",
+            "custom": ""
+          },
+          "llm": {
+            "provider": "opencode-go",
+            "baseUrl": "https://opencode.ai/zen/go/v1",
+            "model": "deepseek-v4.1-flash",
+            "apiKey": "<redacted>",
+            "apiKeySet": true,
+            "skipped": false,
+            "apiKeyLength": 16
+          },
+          "voice": {
+            "provider": "dashscope",
+            "baseUrl": "wss://dashscope.aliyuncs.com/api-ws/v1/realtime",
+            "model": "qwen-audio-3.0-realtime-plus",
+            "voice": "longanxiaoxin",
+            "wakeWord": "小鲸小鲸",
+            "apiKey": "<redacted>",
+            "apiKeySet": true,
+            "skipped": false,
+            "apiKeyLength": 18
+          },
+          "approval": {
+            "mode": "ask-each",
+            "onceMinutes": 30
+          },
+          "behavior": {
+            "pauseOnInput": true,
+            "allowScreenView": true
+          }
+        }
+      }
+    },
+    "mic-hover-button-and-talk-key": {
+      "status": "PASS",
+      "ms": 0,
+      "detail": {
+        "talkKey": {
+          "mode": "hold",
+          "keyId": "alt",
+          "source": "global-option",
+          "displayKey": "Option/Alt",
+          "hint": "按住 Option/Alt 说话",
+          "global": true,
+          "accelerator": "Alt+Space",
+          "registered": true,
+          "globalOption": {
+            "available": true,
+            "frameworkPath": "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices",
+            "koffiPath": "$HOME/projects/dsh-bot/node_modules/.pnpm/koffi@3.1.1/node_modules/koffi",
+            "koffiVersion": "3.1.1",
+            "error": ""
+          },
+          "presetLabel": "Option / Alt（桌宠聚焦时按住）",
+          "hintText": "按住 Option/Alt 说话",
+          "dryRun": true,
+          "fallback": "Alt+Space"
+        },
+        "injected": {
+          "enabled": false,
+          "waiting": false,
+          "mode": "hold",
+          "reports": 3,
+          "applied": 0,
+          "actions": [],
+          "lastPhase": "",
+          "hasButton": true,
+          "badge": "按住 Option/Alt 说话",
+          "dryRun": true,
+          "detected": {
+            "enabled": false,
+            "waiting": false
+          },
+          "debugLog": [
+            "90147:report:d=1:en=0",
+            "90147:show:first-run:5000",
+            "90154:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+            "90154:report:d=1:en=0",
+            "90398:report:d=1:en=0",
+            "90971:window-blur"
+          ],
+          "hintText": "按住 Option/Alt 说话",
+          "hintVisible": true,
+          "hintShows": 1,
+          "hintConsumed": false,
+          "hintReason": "first-run",
+          "clickCount": 0,
+          "enabledBy": ""
+        }
+      }
+    },
+    "voice-input-and-error-bubbles": {
+      "status": "PASS",
+      "ms": 0,
+      "detail": {
+        "inputBubbleText": "帮我看下今天的安排",
+        "voiceError": true
+      }
+    },
+    "activity-bubble-icon-file-clickthrough": {
+      "status": "PASS",
+      "ms": 0,
+      "detail": {
+        "activityText": "✍️写文件 · report.md"
+      }
+    },
+    "pause-on-user-input-cancels-turn": {
+      "status": "PASS",
+      "ms": 0,
+      "detail": {
+        "pauseStatus": {
+          "paused": 1,
+          "lastPause": {
+            "at": "2026-10-23T05:28:18.818Z",
+            "idleSeconds": 0.25,
+            "ok": true,
+            "cancelled": true,
+            "error": ""
+          },
+          "lastError": ""
+        },
+        "bridgeCancel": [
+          {
+            "authorized": true,
+            "at": "2026-10-23T05:28:18.817Z"
+          }
+        ]
+      }
+    },
+    "no-independent-windows": {
+      "status": "PASS",
+      "ms": 0,
+      "detail": {
+        "titles": [
+          "Nisse 头顶气泡",
+          "Nisse 家灵"
+        ]
+      }
+    },
+    "screenshots": {
+      "status": "PASS",
+      "ms": 1,
+      "detail": [
+        "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-onboarding-address.png",
+        "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-onboarding-llm-key.png",
+        "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-onboarding-done.png",
+        "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-orb-hover-controls.png",
+        "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-voice-input-bubble.png",
+        "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-voice-error-bubble.png",
+        "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-activity-write-file.png",
+        "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-paused-bubble.png",
+        "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-orb.png"
+      ]
+    }
+  },
+  "electronExit": {
+    "code": 0,
+    "signal": null
+  },
+  "stderrTail": "",
+  "shellCalls": [
+    {
+      "method": "GET",
+      "path": "/bot/config",
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/bot/config",
+      "body": ""
+    },
+    {
+      "method": "PUT",
+      "path": "/bot/config",
+      "body": "{\"persona\":{\"name\":\"Nisse（家灵）\",\"personality\":\"default personality\",\"tone\":\"default tone\",\"background\":\"\",\"quirks\":\"\",\"addressUser\":\"小智\",\"boundaries\":\"\",\"instructions\":\"keep-me\"},\"llm\":{\"provider\":\"opencode-go\",\"model\":\"deepseek-v4.1-flash\",\"baseUrl\":\"https://opencode.ai/zen/go/v1\"},\"voice\":{\"provider\":\"dashscope\",\"baseUrl\":\"wss://dashscope.aliyuncs.com/api-ws/v1/realtime\",\"model\":\"qwen-audio-3.0-realtime-plus\",\"voice\":\"longanxiaoxin\",\"wakeWord\":\"你好小鲸\"},\"approval\":{\"mode\":\"ask-each\",\"onceMinutes\":30},\"behavior\":{\"pauseOnInput\":true,\"allowScreenView\":true},\"unsupportedUntilShell\":[\"approval.mode\",\"approval.onceMinutes\",\"behavior.pauseOnInput\",\"behavior.allowScreenView\"]}"
+    },
+    {
+      "method": "PUT",
+      "path": "/bot/config",
+      "body": "{\"persona\":{\"name\":\"Nisse（家灵）\",\"personality\":\"温柔、可靠、有耐心；像家人一样陪着用户，遇事先接住情绪再解决问题。\",\"tone\":\"温和、清楚、不催促；必要时先给结论。\",\"background\":\"\",\"quirks\":\"\",\"addressUser\":\"小智\",\"boundaries\":\"\",\"instructions\":\"keep-me\"},\"llm\":{\"provider\":\"opencode-go\",\"model\":\"deepseek-v4.1-flash\",\"baseUrl\":\"https://opencode.ai/zen/go/v1\"},\"voice\":{\"provider\":\"dashscope\",\"baseUrl\":\"wss://dashscope.aliyuncs.com/api-ws/v1/realtime\",\"model\":\"qwen-audio-3.0-realtime-plus\",\"voice\":\"longanxiaoxin\",\"wakeWord\":\"你好小鲸\"},\"approval\":{\"mode\":\"ask-each\",\"onceMinutes\":30},\"behavior\":{\"pauseOnInput\":true,\"allowScreenView\":true},\"unsupportedUntilShell\":[\"approval.mode\",\"approval.onceMinutes\",\"behavior.pauseOnInput\",\"behavior.allowScreenView\"]}"
+    },
+    {
+      "method": "PUT",
+      "path": "/bot/config",
+      "body": "{\"persona\":{\"name\":\"Nisse（家灵）\",\"personality\":\"温柔、可靠、有耐心；像家人一样陪着用户，遇事先接住情绪再解决问题。\",\"tone\":\"温和、清楚、不催促；必要时先给结论。\",\"background\":\"\",\"quirks\":\"\",\"addressUser\":\"小智\",\"boundaries\":\"\",\"instructions\":\"keep-me\"},\"llm\":{\"provider\":\"opencode-go\",\"model\":\"deepseek-v4.1-flash\",\"baseUrl\":\"https://opencode.ai/zen/go/v1\",\"apiKey\":\"[REDACTED_KEY]\"},\"voice\":{\"provider\":\"dashscope\",\"baseUrl\":\"wss://dashscope.aliyuncs.com/api-ws/v1/realtime\",\"model\":\"qwen-audio-3.0-realtime-plus\",\"voice\":\"longanxiaoxin\",\"wakeWord\":\"你好小鲸\"},\"approval\":{\"mode\":\"ask-each\",\"onceMinutes\":30},\"behavior\":{\"pauseOnInput\":true,\"allowScreenView\":true},\"unsupportedUntilShell\":[\"approval.mode\",\"approval.onceMinutes\",\"behavior.pauseOnInput\",\"behavior.allowScreenView\"]}"
+    },
+    {
+      "method": "POST",
+      "path": "/bot/test/llm",
+      "body": "{\"llm\":{\"provider\":\"opencode-go\",\"model\":\"deepseek-v4.1-flash\",\"baseUrl\":\"https://opencode.ai/zen/go/v1\",\"apiKey\":\"[REDACTED_KEY]\"}}"
+    },
+    {
+      "method": "PUT",
+      "path": "/bot/config",
+      "body": "{\"persona\":{\"name\":\"Nisse（家灵）\",\"personality\":\"温柔、可靠、有耐心；像家人一样陪着用户，遇事先接住情绪再解决问题。\",\"tone\":\"温和、清楚、不催促；必要时先给结论。\",\"background\":\"\",\"quirks\":\"\",\"addressUser\":\"小智\",\"boundaries\":\"\",\"instructions\":\"keep-me\"},\"llm\":{\"provider\":\"opencode-go\",\"model\":\"deepseek-v4.1-flash\",\"baseUrl\":\"https://opencode.ai/zen/go/v1\",\"apiKey\":\"[REDACTED_KEY]\"},\"voice\":{\"provider\":\"dashscope\",\"baseUrl\":\"wss://dashscope.aliyuncs.com/api-ws/v1/realtime\",\"model\":\"qwen-audio-3.0-realtime-plus\",\"voice\":\"longanxiaoxin\",\"wakeWord\":\"你好小鲸\",\"apiKey\":\"[REDACTED_KEY]\"},\"approval\":{\"mode\":\"ask-each\",\"onceMinutes\":30},\"behavior\":{\"pauseOnInput\":true,\"allowScreenView\":true},\"unsupportedUntilShell\":[\"approval.mode\",\"approval.onceMinutes\",\"behavior.pauseOnInput\",\"behavior.allowScreenView\"]}"
+    },
+    {
+      "method": "PUT",
+      "path": "/bot/config",
+      "body": "{\"persona\":{\"name\":\"Nisse（家灵）\",\"personality\":\"温柔、可靠、有耐心；像家人一样陪着用户，遇事先接住情绪再解决问题。\",\"tone\":\"温和、清楚、不催促；必要时先给结论。\",\"background\":\"\",\"quirks\":\"\",\"addressUser\":\"小智\",\"boundaries\":\"\",\"instructions\":\"keep-me\"},\"llm\":{\"provider\":\"opencode-go\",\"model\":\"deepseek-v4.1-flash\",\"baseUrl\":\"https://opencode.ai/zen/go/v1\",\"apiKey\":\"[REDACTED_KEY]\"},\"voice\":{\"provider\":\"dashscope\",\"baseUrl\":\"wss://dashscope.aliyuncs.com/api-ws/v1/realtime\",\"model\":\"qwen-audio-3.0-realtime-plus\",\"voice\":\"longanxiaoxin\",\"wakeWord\":\"小鲸小鲸\",\"apiKey\":\"[REDACTED_KEY]\"},\"approval\":{\"mode\":\"ask-each\",\"onceMinutes\":30},\"behavior\":{\"pauseOnInput\":true,\"allowScreenView\":true},\"unsupportedUntilShell\":[\"approval.mode\",\"approval.onceMinutes\",\"behavior.pauseOnInput\",\"behavior.allowScreenView\"]}"
+    },
+    {
+      "method": "POST",
+      "path": "/bot/test/voice",
+      "body": "{\"voice\":{\"provider\":\"dashscope\",\"baseUrl\":\"wss://dashscope.aliyuncs.com/api-ws/v1/realtime\",\"model\":\"qwen-audio-3.0-realtime-plus\",\"voice\":\"longanxiaoxin\",\"wakeWord\":\"小鲸小鲸\",\"apiKey\":\"[REDACTED_KEY]\"}}"
+    },
+    {
+      "method": "PUT",
+      "path": "/bot/config",
+      "body": "{\"persona\":{\"name\":\"Nisse（家灵）\",\"personality\":\"温柔、可靠、有耐心；像家人一样陪着用户，遇事先接住情绪再解决问题。\",\"tone\":\"温和、清楚、不催促；必要时先给结论。\",\"background\":\"\",\"quirks\":\"\",\"addressUser\":\"小智\",\"boundaries\":\"\",\"instructions\":\"keep-me\"},\"llm\":{\"provider\":\"opencode-go\",\"model\":\"deepseek-v4.1-flash\",\"baseUrl\":\"https://opencode.ai/zen/go/v1\",\"apiKey\":\"[REDACTED_KEY]\"},\"voice\":{\"provider\":\"dashscope\",\"baseUrl\":\"wss://dashscope.aliyuncs.com/api-ws/v1/realtime\",\"model\":\"qwen-audio-3.0-realtime-plus\",\"voice\":\"longanxiaoxin\",\"wakeWord\":\"小鲸小鲸\",\"apiKey\":\"[REDACTED_KEY]\"},\"approval\":{\"mode\":\"ask-each\",\"onceMinutes\":30},\"behavior\":{\"pauseOnInput\":true,\"allowScreenView\":true},\"unsupportedUntilShell\":[\"approval.mode\",\"approval.onceMinutes\",\"behavior.pauseOnInput\",\"behavior.allowScreenView\"]}"
+    },
+    {
+      "method": "PUT",
+      "path": "/bot/config",
+      "body": "{\"persona\":{\"name\":\"Nisse（家灵）\",\"personality\":\"温柔、可靠、有耐心；像家人一样陪着用户，遇事先接住情绪再解决问题。\",\"tone\":\"温和、清楚、不催促；必要时先给结论。\",\"background\":\"\",\"quirks\":\"\",\"addressUser\":\"小智\",\"boundaries\":\"\",\"instructions\":\"keep-me\"},\"llm\":{\"provider\":\"opencode-go\",\"model\":\"deepseek-v4.1-flash\",\"baseUrl\":\"https://opencode.ai/zen/go/v1\",\"apiKey\":\"[REDACTED_KEY]\"},\"voice\":{\"provider\":\"dashscope\",\"baseUrl\":\"wss://dashscope.aliyuncs.com/api-ws/v1/realtime\",\"model\":\"qwen-audio-3.0-realtime-plus\",\"voice\":\"longanxiaoxin\",\"wakeWord\":\"小鲸小鲸\",\"apiKey\":\"[REDACTED_KEY]\"},\"approval\":{\"mode\":\"ask-each\",\"onceMinutes\":30},\"behavior\":{\"pauseOnInput\":true,\"allowScreenView\":true},\"unsupportedUntilShell\":[\"approval.mode\",\"approval.onceMinutes\",\"behavior.pauseOnInput\",\"behavior.allowScreenView\"]}"
+    },
+    {
+      "method": "GET",
+      "path": "/bot/config",
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/bot/config",
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/bot/config",
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/bot/status",
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/bot/config",
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/bot/status",
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/bot/config",
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/bot/config",
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/bot/status",
+      "body": ""
+    }
+  ],
+  "bridgeCalls": {
+    "polls": [
+      {
+        "authorized": true,
+        "after": "0",
+        "stage": "idle"
+      },
+      {
+        "authorized": true,
+        "after": "0",
+        "stage": "idle"
+      },
+      {
+        "authorized": true,
+        "after": "0",
+        "stage": "idle"
+      },
+      {
+        "authorized": true,
+        "after": "0",
+        "stage": "idle"
+      },
+      {
+        "authorized": true,
+        "after": "0",
+        "stage": "idle"
+      },
+      {
+        "authorized": true,
+        "after": "0",
+        "stage": "idle"
+      },
+      {
+        "authorized": true,
+        "after": "0",
+        "stage": "idle"
+      },
+      {
+        "authorized": true,
+        "after": "0",
+        "stage": "idle"
+      },
+      {
+        "authorized": true,
+        "after": "0",
+        "stage": "voice-error"
+      },
+      {
+        "authorized": true,
+        "after": "0",
+        "stage": "voice-restore"
+      },
+      {
+        "authorized": true,
+        "after": "0",
+        "stage": "activity"
+      },
+      {
+        "authorized": true,
+        "after": "2",
+        "stage": "activity-done"
+      },
+      {
+        "authorized": true,
+        "after": "4",
+        "stage": "activity-done"
+      },
+      {
+        "authorized": true,
+        "after": "4",
+        "stage": "pause"
+      },
+      {
+        "authorized": true,
+        "after": "5",
+        "stage": "pause"
+      },
+      {
+        "authorized": true,
+        "after": "5",
+        "stage": "pause-done"
+      }
+    ],
+    "cancels": [
+      {
+        "authorized": true,
+        "at": "2026-10-23T05:28:18.817Z"
+      }
+    ]
+  },
+  "storedConfig": {
+    "voice": {
+      "provider": "dashscope",
+      "baseUrl": "wss://dashscope.aliyuncs.com/api-ws/v1/realtime",
+      "model": "qwen-audio-3.0-realtime-plus",
+      "voice": "longanxiaoxin",
+      "wakeWord": "小鲸小鲸",
+      "apiKey": "<redacted>"
+    },
+    "llm": {
+      "provider": "opencode-go",
+      "model": "deepseek-v4.1-flash",
+      "baseUrl": "https://opencode.ai/zen/go/v1",
+      "apiKey": "<redacted>"
+    },
+    "agent": {
+      "mode": "dsh",
+      "workspace": "",
+      "session": ""
+    },
+    "persona": {
+      "name": "Nisse（家灵）",
+      "personality": "温柔、可靠、有耐心；像家人一样陪着用户，遇事先接住情绪再解决问题。",
+      "tone": "温和、清楚、不催促；必要时先给结论。",
+      "background": "",
+      "quirks": "",
+      "addressUser": "小智",
+      "boundaries": "",
+      "instructions": "keep-me"
+    },
+    "app": {
+      "autoStart": true,
+      "keepRunning": true
+    },
+    "memory": {
+      "enabled": true
+    },
+    "approval": {
+      "mode": "ask-each",
+      "onceMinutes": 30
+    },
+    "behavior": {
+      "pauseOnInput": true,
+      "allowScreenView": true
+    }
+  },
+  "voiceKeySet": true,
+  "llmKeySet": true,
+  "staging": "pause-done",
+  "petStatus": {
+    "generatedAt": "2026-10-23T05:28:19.525Z",
+    "bridgeOnly": true,
+    "gatewayOrigin": "http://127.0.0.1:59881",
+    "shellControlUrl": "http://127.0.0.1:59879",
+    "bridgeFile": "/tmp/nisse-pet-experience-smoke-1792733289731/dsh-home/bridge.json",
+    "bridgePollActive": true,
+    "settingsWindowPresent": false,
+    "windows": [
+      {
+        "title": "Nisse 头顶气泡",
+        "visible": true,
+        "destroyed": false,
+        "url": "file://$HOME/projects/dsh-bot-workspace/m3/pet/desktop/src/bubble.html"
+      },
+      {
+        "title": "Nisse 家灵",
+        "visible": true,
+        "destroyed": false,
+        "url": "http://127.0.0.1:59883/82a3ae2a5b2a9c68a12e700f58aec7311c7b6d2692291092/?desktop=orb&orbSkin=whale-girl&autoHideSeconds=0&lang=zh-CN"
+      }
+    ],
+    "bubble": {
+      "visible": true,
+      "interactive": false,
+      "inputMode": false,
+      "kind": "status",
+      "text": "已暂停，等你。想做别的直接说。",
+      "title": "",
+      "clickThrough": false
+    },
+    "experience": {
+      "onboarding": {
+        "active": false,
+        "busy": false,
+        "stepId": "done",
+        "substate": "",
+        "completed": true,
+        "paused": false,
+        "approvalPersisted": true,
+        "answers": {
+          "addressUser": "小智",
+          "persona": {
+            "presetId": "gentle",
+            "personality": "温柔、可靠、有耐心；像家人一样陪着用户，遇事先接住情绪再解决问题。",
+            "tone": "温和、清楚、不催促；必要时先给结论。",
+            "custom": ""
+          },
+          "llm": {
+            "provider": "opencode-go",
+            "baseUrl": "https://opencode.ai/zen/go/v1",
+            "model": "deepseek-v4.1-flash",
+            "apiKey": "<redacted>",
+            "apiKeySet": true,
+            "skipped": false,
+            "apiKeyLength": 16
+          },
+          "voice": {
+            "provider": "dashscope",
+            "baseUrl": "wss://dashscope.aliyuncs.com/api-ws/v1/realtime",
+            "model": "qwen-audio-3.0-realtime-plus",
+            "voice": "longanxiaoxin",
+            "wakeWord": "小鲸小鲸",
+            "apiKey": "<redacted>",
+            "apiKeySet": true,
+            "skipped": false,
+            "apiKeyLength": 18
+          },
+          "approval": {
+            "mode": "ask-each",
+            "onceMinutes": 30
+          },
+          "behavior": {
+            "pauseOnInput": true,
+            "allowScreenView": true
+          }
+        }
+      },
+      "voice": {
+        "settings": {
+          "mode": "hold",
+          "keyId": "alt",
+          "fallbackAccelerator": "Alt+Space",
+          "holdMaxMs": 15000,
+          "hintSeen": true
+        },
+        "talkKey": {
+          "mode": "hold",
+          "keyId": "alt",
+          "source": "global-option",
+          "displayKey": "Option/Alt",
+          "hint": "按住 Option/Alt 说话",
+          "global": true,
+          "accelerator": "Alt+Space",
+          "registered": true,
+          "globalOption": {
+            "available": true,
+            "frameworkPath": "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices",
+            "koffiPath": "$HOME/projects/dsh-bot/node_modules/.pnpm/koffi@3.1.1/node_modules/koffi",
+            "koffiVersion": "3.1.1",
+            "error": ""
+          },
+          "presetLabel": "Option / Alt（桌宠聚焦时按住）",
+          "hintText": "按住 Option/Alt 说话",
+          "dryRun": true,
+          "fallback": "Alt+Space"
+        },
+        "hint": {
+          "source": "global-option",
+          "keyId": "alt",
+          "mode": "hold",
+          "displayKey": "Option/Alt",
+          "global": true,
+          "text": "按住 Option/Alt 说话"
+        },
+        "lastReport": {
+          "enabled": false,
+          "waiting": false,
+          "mode": "hold",
+          "reports": 9,
+          "dryRun": true,
+          "hintSeen": true,
+          "hintVisible": true,
+          "hintShows": 2,
+          "clickCount": 0,
+          "enabledBy": "key"
+        },
+        "globalOption": {
+          "available": true,
+          "frameworkPath": "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices",
+          "koffiPath": "$HOME/projects/dsh-bot/node_modules/.pnpm/koffi@3.1.1/node_modules/koffi",
+          "koffiVersion": "3.1.1",
+          "error": "",
+          "watcher": {
+            "running": true,
+            "pressed": false,
+            "polls": 154,
+            "errors": 0,
+            "downCount": 0,
+            "upCount": 0,
+            "lastChangeAt": 0,
+            "lastError": "",
+            "pollMs": 60,
+            "stablePolls": 2
+          },
+          "smokeOverride": null
+        }
+      },
+      "pause": {
+        "turnActive": false,
+        "turnStartedAt": 1792733297961,
+        "paused": 1,
+        "lastPause": {
+          "at": "2026-10-23T05:28:18.818Z",
+          "idleSeconds": 0.25,
+          "ok": true,
+          "cancelled": true,
+          "error": ""
+        },
+        "lastError": "",
+        "monitor": {
+          "running": true,
+          "previousIdle": null,
+          "pauses": 1,
+          "lastPause": {
+            "at": 1792733298811,
+            "idleSeconds": 0.25
+          },
+          "thresholdSeconds": 1.5,
+          "graceMs": 600,
+          "pollMs": 250
+        }
+      },
+      "lastHeardText": "帮我看下今天的安排"
+    },
+    "shell": {
+      "lastToggle": null,
+      "lastApproval": null
+    },
+    "shots": [
+      "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-orb.png"
+    ],
+    "experienceSmoke": {
+      "stages": [
+        "voice-error",
+        "voice-restore",
+        "activity",
+        "activity-done",
+        "pause",
+        "pause-done"
+      ],
+      "shots": [
+        {
+          "name": "pet-onboarding-address.png",
+          "file": "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-onboarding-address.png"
+        },
+        {
+          "name": "pet-onboarding-llm-key.png",
+          "file": "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-onboarding-llm-key.png"
+        },
+        {
+          "name": "pet-onboarding-done.png",
+          "file": "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-onboarding-done.png"
+        },
+        {
+          "name": "pet-orb-hover-controls.png",
+          "file": "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-orb-hover-controls.png"
+        },
+        {
+          "name": "pet-voice-input-bubble.png",
+          "file": "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-voice-input-bubble.png"
+        },
+        {
+          "name": "pet-voice-error-bubble.png",
+          "file": "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-voice-error-bubble.png"
+        },
+        {
+          "name": "pet-activity-write-file.png",
+          "file": "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-activity-write-file.png"
+        },
+        {
+          "name": "pet-paused-bubble.png",
+          "file": "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-paused-bubble.png"
+        }
+      ],
+      "assertions": {
+        "onboardingAutoStarted": true,
+        "stepAddress": true,
+        "stepPersona": true,
+        "stepLlmProvider": true,
+        "llmAndVoiceTested": true,
+        "onboardingCompleted": true,
+        "onboardingApprovalPersisted": true,
+        "onboardingAnswers": {
+          "addressUser": "小智",
+          "persona": {
+            "presetId": "gentle",
+            "personality": "温柔、可靠、有耐心；像家人一样陪着用户，遇事先接住情绪再解决问题。",
+            "tone": "温和、清楚、不催促；必要时先给结论。",
+            "custom": ""
+          },
+          "llm": {
+            "provider": "opencode-go",
+            "baseUrl": "https://opencode.ai/zen/go/v1",
+            "model": "deepseek-v4.1-flash",
+            "apiKey": "[REDACTED_KEY]",
+            "apiKeySet": true,
+            "skipped": false
+          },
+          "voice": {
+            "provider": "dashscope",
+            "baseUrl": "wss://dashscope.aliyuncs.com/api-ws/v1/realtime",
+            "model": "qwen-audio-3.0-realtime-plus",
+            "voice": "longanxiaoxin",
+            "wakeWord": "小鲸小鲸",
+            "apiKey": "[REDACTED_KEY]",
+            "apiKeySet": true,
+            "skipped": false
+          },
+          "approval": {
+            "mode": "ask-each",
+            "onceMinutes": 30
+          },
+          "behavior": {
+            "pauseOnInput": true,
+            "allowScreenView": true
+          }
+        },
+        "onboardingProgressPersisted": true,
+        "badgeState": {
+          "text": "按住 Option/Alt 说话",
+          "x": 25.2109375,
+          "y": 177,
+          "width": 121.578125,
+          "height": 21,
+          "display": "block",
+          "opacity": "0.95",
+          "background": "rgba(23, 23, 29, 0.72)"
+        },
+        "micHoverButton": true,
+        "micHoverCss": true,
+        "micHoverVisible": true,
+        "talkKey": {
+          "mode": "hold",
+          "keyId": "alt",
+          "source": "global-option",
+          "displayKey": "Option/Alt",
+          "hint": "按住 Option/Alt 说话",
+          "global": true,
+          "accelerator": "Alt+Space",
+          "registered": true,
+          "globalOption": {
+            "available": true,
+            "frameworkPath": "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices",
+            "koffiPath": "$HOME/projects/dsh-bot/node_modules/.pnpm/koffi@3.1.1/node_modules/koffi",
+            "koffiVersion": "3.1.1",
+            "error": ""
+          },
+          "presetLabel": "Option / Alt（桌宠聚焦时按住）",
+          "hintText": "按住 Option/Alt 说话",
+          "dryRun": true,
+          "fallback": "Alt+Space"
+        },
+        "injectedVoiceControls": {
+          "enabled": false,
+          "waiting": false,
+          "mode": "hold",
+          "reports": 3,
+          "applied": 0,
+          "actions": [],
+          "lastPhase": "",
+          "hasButton": true,
+          "badge": "按住 Option/Alt 说话",
+          "dryRun": true,
+          "detected": {
+            "enabled": false,
+            "waiting": false
+          },
+          "debugLog": [
+            "90147:report:d=1:en=0",
+            "90147:show:first-run:5000",
+            "90154:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+            "90154:report:d=1:en=0",
+            "90398:report:d=1:en=0",
+            "90971:window-blur"
+          ],
+          "hintText": "按住 Option/Alt 说话",
+          "hintVisible": true,
+          "hintShows": 1,
+          "hintConsumed": false,
+          "hintReason": "first-run",
+          "clickCount": 0,
+          "enabledBy": ""
+        },
+        "talkKeyEnabledListening": true,
+        "talkKeyApplied": true,
+        "talkKeyStopped": true,
+        "inputBubbleText": "帮我看下今天的安排",
+        "inputBubbleCancel": true,
+        "inputBubbleCancelled": true,
+        "voiceErrorBubble": true,
+        "activityText": "✍️写文件 · report.md",
+        "activityHasFileName": true,
+        "activityClickThrough": true,
+        "activityNotInteractive": true,
+        "activityCleared": true,
+        "pauseBubble": "已暂停，等你。想做别的直接说。",
+        "pauseStatus": {
+          "paused": 1,
+          "lastPause": {
+            "at": "2026-10-23T05:28:18.818Z",
+            "idleSeconds": 0.25,
+            "ok": true,
+            "cancelled": true,
+            "error": ""
+          },
+          "lastError": ""
+        },
+        "pauseTurnActiveAfter": false,
+        "bridgeCancel": {
+          "at": "2026-10-23T05:28:18.818Z",
+          "idleSeconds": 0.25,
+          "ok": true,
+          "cancelled": true,
+          "error": ""
+        }
+      },
+      "clicks": 9,
+      "errors": [],
+      "hoverForced": true,
+      "hoverState": {
+        "found": true,
+        "stage": true,
+        "buttons": 4,
+        "micLabel": "开启麦克风",
+        "opacity": "1",
+        "pointerEvents": "auto",
+        "hoverRule": true
+      },
+      "voiceSamples": [
+        {
+          "at": 1792733294529,
+          "enabled": true,
+          "applied": 1,
+          "actions": [
+            {
+              "action": "enable",
+              "source": "global",
+              "at": 1792733294452
+            }
+          ]
+        },
+        {
+          "at": 1792733294612,
+          "enabled": true,
+          "applied": 1,
+          "actions": [
+            {
+              "action": "enable",
+              "source": "global",
+              "at": 1792733294452
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "experience": {
+    "stages": [
+      "voice-error",
+      "voice-restore",
+      "activity",
+      "activity-done",
+      "pause",
+      "pause-done"
+    ],
+    "shots": [
+      {
+        "name": "pet-onboarding-address.png",
+        "file": "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-onboarding-address.png"
+      },
+      {
+        "name": "pet-onboarding-llm-key.png",
+        "file": "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-onboarding-llm-key.png"
+      },
+      {
+        "name": "pet-onboarding-done.png",
+        "file": "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-onboarding-done.png"
+      },
+      {
+        "name": "pet-orb-hover-controls.png",
+        "file": "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-orb-hover-controls.png"
+      },
+      {
+        "name": "pet-voice-input-bubble.png",
+        "file": "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-voice-input-bubble.png"
+      },
+      {
+        "name": "pet-voice-error-bubble.png",
+        "file": "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-voice-error-bubble.png"
+      },
+      {
+        "name": "pet-activity-write-file.png",
+        "file": "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-activity-write-file.png"
+      },
+      {
+        "name": "pet-paused-bubble.png",
+        "file": "$HOME/projects/dsh-bot-workspace/m3/pet/evidence/pet-paused-bubble.png"
+      }
+    ],
+    "assertions": {
+      "onboardingAutoStarted": true,
+      "stepAddress": true,
+      "stepPersona": true,
+      "stepLlmProvider": true,
+      "llmAndVoiceTested": true,
+      "onboardingCompleted": true,
+      "onboardingApprovalPersisted": true,
+      "onboardingAnswers": {
+        "addressUser": "小智",
+        "persona": {
+          "presetId": "gentle",
+          "personality": "温柔、可靠、有耐心；像家人一样陪着用户，遇事先接住情绪再解决问题。",
+          "tone": "温和、清楚、不催促；必要时先给结论。",
+          "custom": ""
+        },
+        "llm": {
+          "provider": "opencode-go",
+          "baseUrl": "https://opencode.ai/zen/go/v1",
+          "model": "deepseek-v4.1-flash",
+          "apiKey": "[REDACTED_KEY]",
+          "apiKeySet": true,
+          "skipped": false
+        },
+        "voice": {
+          "provider": "dashscope",
+          "baseUrl": "wss://dashscope.aliyuncs.com/api-ws/v1/realtime",
+          "model": "qwen-audio-3.0-realtime-plus",
+          "voice": "longanxiaoxin",
+          "wakeWord": "小鲸小鲸",
+          "apiKey": "[REDACTED_KEY]",
+          "apiKeySet": true,
+          "skipped": false
+        },
+        "approval": {
+          "mode": "ask-each",
+          "onceMinutes": 30
+        },
+        "behavior": {
+          "pauseOnInput": true,
+          "allowScreenView": true
+        }
+      },
+      "onboardingProgressPersisted": true,
+      "badgeState": {
+        "text": "按住 Option/Alt 说话",
+        "x": 25.2109375,
+        "y": 177,
+        "width": 121.578125,
+        "height": 21,
+        "display": "block",
+        "opacity": "0.95",
+        "background": "rgba(23, 23, 29, 0.72)"
+      },
+      "micHoverButton": true,
+      "micHoverCss": true,
+      "micHoverVisible": true,
+      "talkKey": {
+        "mode": "hold",
+        "keyId": "alt",
+        "source": "global-option",
+        "displayKey": "Option/Alt",
+        "hint": "按住 Option/Alt 说话",
+        "global": true,
+        "accelerator": "Alt+Space",
+        "registered": true,
+        "globalOption": {
+          "available": true,
+          "frameworkPath": "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices",
+          "koffiPath": "$HOME/projects/dsh-bot/node_modules/.pnpm/koffi@3.1.1/node_modules/koffi",
+          "koffiVersion": "3.1.1",
+          "error": ""
+        },
+        "presetLabel": "Option / Alt（桌宠聚焦时按住）",
+        "hintText": "按住 Option/Alt 说话",
+        "dryRun": true,
+        "fallback": "Alt+Space"
+      },
+      "injectedVoiceControls": {
+        "enabled": false,
+        "waiting": false,
+        "mode": "hold",
+        "reports": 3,
+        "applied": 0,
+        "actions": [],
+        "lastPhase": "",
+        "hasButton": true,
+        "badge": "按住 Option/Alt 说话",
+        "dryRun": true,
+        "detected": {
+          "enabled": false,
+          "waiting": false
+        },
+        "debugLog": [
+          "90147:report:d=1:en=0",
+          "90147:show:first-run:5000",
+          "90154:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+          "90154:report:d=1:en=0",
+          "90398:report:d=1:en=0",
+          "90971:window-blur"
+        ],
+        "hintText": "按住 Option/Alt 说话",
+        "hintVisible": true,
+        "hintShows": 1,
+        "hintConsumed": false,
+        "hintReason": "first-run",
+        "clickCount": 0,
+        "enabledBy": ""
+      },
+      "talkKeyEnabledListening": true,
+      "talkKeyApplied": true,
+      "talkKeyStopped": true,
+      "inputBubbleText": "帮我看下今天的安排",
+      "inputBubbleCancel": true,
+      "inputBubbleCancelled": true,
+      "voiceErrorBubble": true,
+      "activityText": "✍️写文件 · report.md",
+      "activityHasFileName": true,
+      "activityClickThrough": true,
+      "activityNotInteractive": true,
+      "activityCleared": true,
+      "pauseBubble": "已暂停，等你。想做别的直接说。",
+      "pauseStatus": {
+        "paused": 1,
+        "lastPause": {
+          "at": "2026-10-23T05:28:18.818Z",
+          "idleSeconds": 0.25,
+          "ok": true,
+          "cancelled": true,
+          "error": ""
+        },
+        "lastError": ""
+      },
+      "pauseTurnActiveAfter": false,
+      "bridgeCancel": {
+        "at": "2026-10-23T05:28:18.818Z",
+        "idleSeconds": 0.25,
+        "ok": true,
+        "cancelled": true,
+        "error": ""
+      }
+    },
+    "clicks": 9,
+    "errors": [],
+    "hoverForced": true,
+    "hoverState": {
+      "found": true,
+      "stage": true,
+      "buttons": 4,
+      "micLabel": "开启麦克风",
+      "opacity": "1",
+      "pointerEvents": "auto",
+      "hoverRule": true
+    },
+    "voiceSamples": [
+      {
+        "at": 1792733294529,
+        "enabled": true,
+        "applied": 1,
+        "actions": [
+          {
+            "action": "enable",
+            "source": "global",
+            "at": 1792733294452
+          }
+        ]
+      },
+      {
+        "at": 1792733294612,
+        "enabled": true,
+        "applied": 1,
+        "actions": [
+          {
+            "action": "enable",
+            "source": "global",
+            "at": 1792733294452
+          }
+        ]
+      }
+    ]
+  },
+  "experienceAssertions": {
+    "onboardingAutoStarted": true,
+    "stepAddress": true,
+    "stepPersona": true,
+    "stepLlmProvider": true,
+    "llmAndVoiceTested": true,
+    "onboardingCompleted": true,
+    "onboardingApprovalPersisted": true,
+    "onboardingAnswers": {
+      "addressUser": "小智",
+      "persona": {
+        "presetId": "gentle",
+        "personality": "温柔、可靠、有耐心；像家人一样陪着用户，遇事先接住情绪再解决问题。",
+        "tone": "温和、清楚、不催促；必要时先给结论。",
+        "custom": ""
+      },
+      "llm": {
+        "provider": "opencode-go",
+        "baseUrl": "https://opencode.ai/zen/go/v1",
+        "model": "deepseek-v4.1-flash",
+        "apiKey": "[REDACTED_KEY]",
+        "apiKeySet": true,
+        "skipped": false
+      },
+      "voice": {
+        "provider": "dashscope",
+        "baseUrl": "wss://dashscope.aliyuncs.com/api-ws/v1/realtime",
+        "model": "qwen-audio-3.0-realtime-plus",
+        "voice": "longanxiaoxin",
+        "wakeWord": "小鲸小鲸",
+        "apiKey": "[REDACTED_KEY]",
+        "apiKeySet": true,
+        "skipped": false
+      },
+      "approval": {
+        "mode": "ask-each",
+        "onceMinutes": 30
+      },
+      "behavior": {
+        "pauseOnInput": true,
+        "allowScreenView": true
+      }
+    },
+    "onboardingProgressPersisted": true,
+    "badgeState": {
+      "text": "按住 Option/Alt 说话",
+      "x": 25.2109375,
+      "y": 177,
+      "width": 121.578125,
+      "height": 21,
+      "display": "block",
+      "opacity": "0.95",
+      "background": "rgba(23, 23, 29, 0.72)"
+    },
+    "micHoverButton": true,
+    "micHoverCss": true,
+    "micHoverVisible": true,
+    "talkKey": {
+      "mode": "hold",
+      "keyId": "alt",
+      "source": "global-option",
+      "displayKey": "Option/Alt",
+      "hint": "按住 Option/Alt 说话",
+      "global": true,
+      "accelerator": "Alt+Space",
+      "registered": true,
+      "globalOption": {
+        "available": true,
+        "frameworkPath": "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices",
+        "koffiPath": "$HOME/projects/dsh-bot/node_modules/.pnpm/koffi@3.1.1/node_modules/koffi",
+        "koffiVersion": "3.1.1",
+        "error": ""
+      },
+      "presetLabel": "Option / Alt（桌宠聚焦时按住）",
+      "hintText": "按住 Option/Alt 说话",
+      "dryRun": true,
+      "fallback": "Alt+Space"
+    },
+    "injectedVoiceControls": {
+      "enabled": false,
+      "waiting": false,
+      "mode": "hold",
+      "reports": 3,
+      "applied": 0,
+      "actions": [],
+      "lastPhase": "",
+      "hasButton": true,
+      "badge": "按住 Option/Alt 说话",
+      "dryRun": true,
+      "detected": {
+        "enabled": false,
+        "waiting": false
+      },
+      "debugLog": [
+        "90147:report:d=1:en=0",
+        "90147:show:first-run:5000",
+        "90154:config:{\"mode\":\"hold\",\"keyId\":\"alt\",\"rendererKey\":\"Alt\",\"mouseButton\":null,\"displayKey\":\"Option/Alt\",\"hintText\":\"按住 Option/Alt ",
+        "90154:report:d=1:en=0",
+        "90398:report:d=1:en=0",
+        "90971:window-blur"
+      ],
+      "hintText": "按住 Option/Alt 说话",
+      "hintVisible": true,
+      "hintShows": 1,
+      "hintConsumed": false,
+      "hintReason": "first-run",
+      "clickCount": 0,
+      "enabledBy": ""
+    },
+    "talkKeyEnabledListening": true,
+    "talkKeyApplied": true,
+    "talkKeyStopped": true,
+    "inputBubbleText": "帮我看下今天的安排",
+    "inputBubbleCancel": true,
+    "inputBubbleCancelled": true,
+    "voiceErrorBubble": true,
+    "activityText": "✍️写文件 · report.md",
+    "activityHasFileName": true,
+    "activityClickThrough": true,
+    "activityNotInteractive": true,
+    "activityCleared": true,
+    "pauseBubble": "已暂停，等你。想做别的直接说。",
+    "pauseStatus": {
+      "paused": 1,
+      "lastPause": {
+        "at": "2026-10-23T05:28:18.818Z",
+        "idleSeconds": 0.25,
+        "ok": true,
+        "cancelled": true,
+        "error": ""
+      },
+      "lastError": ""
+    },
+    "pauseTurnActiveAfter": false,
+    "bridgeCancel": {
+      "at": "2026-10-23T05:28:18.818Z",
+      "idleSeconds": 0.25,
+      "ok": true,
+      "cancelled": true,
+      "error": ""
+    }
+  },
+  "finishedAt": "2026-10-23T05:28:19.833Z",
+  "ok": true
+}

@@ -1,0 +1,52 @@
+{
+  "suite": "M3-5 product state machine",
+  "startedAt": "2026-10-22T05:47:30.972Z",
+  "steps": {
+    "happy-path": {
+      "status": "PASS",
+      "ms": 2,
+      "detail": {
+        "state": "working"
+      }
+    },
+    "approval-transition": {
+      "status": "PASS",
+      "ms": 0,
+      "detail": {
+        "waiting": "waiting-approval",
+        "afterSpeak": "speaking"
+      }
+    },
+    "settle-to-idle": {
+      "status": "PASS",
+      "ms": 1,
+      "detail": {
+        "state": "idle"
+      }
+    },
+    "error-and-recover": {
+      "status": "PASS",
+      "ms": 0,
+      "detail": {
+        "errored": "error",
+        "recovered": "listening"
+      }
+    },
+    "invalid-event-rejected": {
+      "status": "PASS",
+      "ms": 0,
+      "detail": {
+        "rejected": true
+      }
+    },
+    "illegal-transition-rejected": {
+      "status": "PASS",
+      "ms": 0,
+      "detail": {
+        "rejected": true
+      }
+    }
+  },
+  "ok": true,
+  "finishedAt": "2026-10-22T05:47:30.976Z"
+}

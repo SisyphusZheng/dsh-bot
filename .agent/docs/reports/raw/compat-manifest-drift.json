@@ -1,0 +1,79 @@
+{
+  "schema": "whalegirl.compat/1",
+  "startedAt": "2026-10-24T12:16:27.299Z",
+  "projectRoot": "$HOME/projects/dsh-bot-workspace",
+  "manifestPath": "$HOME/projects/dsh-bot-workspace/versions.json",
+  "reportsDir": "/tmp/wg-upstream-c/repo/docs/reports",
+  "gates": [
+    {
+      "name": "manifest",
+      "status": "PRODUCT_FAIL",
+      "detail": {
+        "productVersion": "0.1.0",
+        "runtimeVersion": "0.2.1-rc.2",
+        "runtimeTag": "dsh-v0.2.1-rc.2",
+        "errors": [
+          "artifacts.unsignedInternal.sha256: recorded c082d6fb5b86… != actual 611ae8debad9…"
+        ],
+        "warnings": [
+          "rollback: no rollback block; release gate cannot prove \"previous tested version\" (see docs/UPSTREAM-SYNC.md)"
+        ]
+      },
+      "durationMs": 1147,
+      "evidence": null
+    },
+    {
+      "name": "preflight",
+      "status": "PASS",
+      "detail": {
+        "mode": "recorded",
+        "exitCode": 0,
+        "recordedAt": "2026-10-24T11:24:10.583Z",
+        "evidenceFile": "$HOME/projects/dsh-bot-workspace/m4/evidence/PREFLIGHT-2026-10-24T11-24-10.583Z.json",
+        "productFailures": [],
+        "preflightFailures": [],
+        "envFailures": []
+      },
+      "durationMs": 0,
+      "evidence": "$HOME/projects/dsh-bot-workspace/m4/evidence/PREFLIGHT-2026-10-24T11-24-10.583Z.json"
+    },
+    {
+      "name": "voice-worker",
+      "status": "PASS",
+      "detail": {
+        "port": 55864,
+        "startupMs": 1563,
+        "health": {
+          "service": "whalegirl-voice-spike",
+          "mode": "echo",
+          "pipecat": "1.13.0",
+          "ok": true
+        },
+        "shutdownMs": 10019,
+        "processExitedGracefully": false,
+        "note": "bootloader lingered after SIGTERM; port closed and SIGKILL was sent",
+        "logFile": "/tmp/wg-upstream-c/repo/docs/reports/raw/compat-2026-10-24T12-16-27.299Z-voice.log"
+      },
+      "durationMs": 11582,
+      "evidence": "/tmp/wg-upstream-c/repo/docs/reports/raw/compat-2026-10-24T12-16-27.299Z-voice.log"
+    },
+    {
+      "name": "memory-sidecar",
+      "status": "SKIP",
+      "detail": "no --memory-url supplied; memory sidecar startup is owned by the memory stream",
+      "durationMs": 0,
+      "evidence": null
+    },
+    {
+      "name": "private-home-untouched",
+      "status": "PASS",
+      "detail": "private DSH home mtime unchanged",
+      "durationMs": 0,
+      "evidence": null
+    }
+  ],
+  "exitCode": 3,
+  "ok": false,
+  "finishedAt": "2026-10-24T12:16:40.031Z",
+  "durationMs": 12732
+}

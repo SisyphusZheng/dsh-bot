@@ -1,0 +1,51 @@
+# Nisse profile user layer (M3 Host Integration v0).
+# Placeholders are substituted by nisse/scripts/install-profile.sh.
+# Route A/M2 freeze: no DSH core modifications; profile-level composition only.
+- id: agent-default-model
+  name: '@deepseek-ai/dsh-agent-default-model'
+  config:
+    provider: opencode-go
+    model: deepseek-v4.1-flash
+    reasoningEffort: low
+- id: llm-pi-ai
+  name: '@deepseek-ai/dsh-llm-pi-ai'
+  config:
+    providers:
+      opencode-go:
+        apiKeyEnv: OPENCODE_GO_API_KEY
+- id: tool-fs
+  disabled: false
+  config:
+    read: true
+    readImage: false
+    write: __FS_WRITE__
+    edit: false
+# The Bot session runs with the file sandbox opened, and the Host Integration
+# preflight gate (tools/pre-execute) is the approval boundary: every outside-
+# workspace mutation asks on the pet before it runs, and a rejection never runs.
+# Carrying both knobs together is what the preset table expresses; a preset
+# name never exists as a bare sandbox override.
+- id: permission
+  name: '@deepseek-ai/dsh-permission-presets'
+  config:
+    presets:
+      read-only:
+        sandbox: read-only
+        approval: ask
+      workspace-write:
+        sandbox: workspace-write
+        approval: ask
+      danger-full-access:
+        sandbox: danger-full-access
+        approval: never
+      bot-outside-write:
+        sandbox: danger-full-access
+        approval: ask
+        name: Bot（审批制）
+        description: Bot 可操作整个电脑；工作区外写操作在桌宠气泡里逐次审批。
+- id: nisse-host-integration
+  config:
+    ipcDir: __DSH_HOME__/nisse
+    workspaceDir: __DSH_HOME__/workspace
+    dshLlmEntry: __FORK__/packages/llm/llm/lib/index.js
+    permissionPreset: bot-outside-write

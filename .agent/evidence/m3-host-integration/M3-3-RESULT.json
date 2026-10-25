@@ -1,0 +1,93 @@
+{
+  "suite": "M3-3 Host Integration v0",
+  "startedAt": "2026-10-21T15:54:33.451Z",
+  "steps": {
+    "host-start-profile-load": {
+      "status": "PASS",
+      "ms": 997,
+      "detail": {
+        "pid": 65152,
+        "port": 63169,
+        "url": "http://127.0.0.1:63168/?token=C-3XqOLlOexhYZdRluug1Qpq-OdLT-SQjf2KhCs3x90"
+      }
+    },
+    "version-handshake": {
+      "status": "PASS",
+      "ms": 3,
+      "detail": {
+        "contractVersion": "v0",
+        "pluginVersion": "0.1.0",
+        "fixture": "nisse-host-integration",
+        "services": {
+          "agents": true,
+          "session": false,
+          "approval": true,
+          "tools": true
+        }
+      }
+    },
+    "session-create": {
+      "status": "PASS",
+      "ms": 12,
+      "detail": {
+        "sessionId": "f50244ce-f77c-4a6b-8f5b-ba58ed692c6b"
+      }
+    },
+    "text-turn": {
+      "status": "PASS",
+      "ms": 3032,
+      "detail": {
+        "turnTextPreview": "OK",
+        "eventCount": 2,
+        "contractTypes": [
+          "system.event",
+          "turn.settled",
+          "turn.started",
+          "turn.delta"
+        ]
+      }
+    },
+    "cancel": {
+      "status": "PASS",
+      "ms": 1218,
+      "detail": {
+        "cancel": {
+          "status": 200,
+          "json": {
+            "ok": true,
+            "cancelled": true,
+            "sessionId": "f50244ce-f77c-4a6b-8f5b-ba58ed692c6b",
+            "settledApprovals": 0
+          },
+          "text": "{\"ok\":true,\"cancelled\":true,\"sessionId\":\"f50244ce-f77c-4a6b-8f5b-ba58ed692c6b\",\"settledApprovals\":0}"
+        },
+        "settled": true,
+        "idleEvent": "2026-10-21T15:54:38.734Z"
+      }
+    },
+    "approval-reject": {
+      "status": "PASS",
+      "ms": 7041,
+      "detail": {
+        "approvalId": "approval_1792598083990_1",
+        "toolName": "write",
+        "decision": {
+          "ok": true,
+          "decision": "reject",
+          "outcome": "rejected"
+        },
+        "fileExists": false
+      }
+    },
+    "host-down-fail-closed": {
+      "status": "PASS",
+      "ms": 103,
+      "detail": {
+        "hostDown": true,
+        "noFallbackSuccess": true
+      }
+    }
+  },
+  "ok": true,
+  "finishedAt": "2026-10-21T15:54:45.883Z"
+}

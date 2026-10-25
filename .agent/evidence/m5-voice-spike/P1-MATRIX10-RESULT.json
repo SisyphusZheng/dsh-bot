@@ -1,0 +1,3086 @@
+{
+  "started_at": "2026-10-24T11:36:35",
+  "trials": [
+    {
+      "trial": 1,
+      "kind": "pure",
+      "volume": 13,
+      "confirmed": false,
+      "delta": {
+        "barge_candidates": 1,
+        "barge_confirmed": 0,
+        "barge_command_confirmed": 0,
+        "barge_rejected_echo": 0,
+        "duck_applied": 1,
+        "duck_skipped_limit": 0
+      },
+      "audio": {
+        "paused": false,
+        "currentTime": 25.794,
+        "readyState": 4,
+        "volume": 1
+      },
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 1,
+          "at": 1792813005547,
+          "stage": "duck-applied",
+          "candidateId": "voice-1-1792813005547",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 2,
+          "at": 1792813008547,
+          "stage": "volume-restored",
+          "candidateId": "voice-1-1792813005547",
+          "volume": 1,
+          "reason": "server-restore"
+        }
+      ],
+      "command_confirm_epoch": null,
+      "play_to_confirm_ms": null,
+      "cleanup": null,
+      "play_to_cleanup_ms": null
+    },
+    {
+      "trial": 2,
+      "kind": "pure",
+      "volume": 55,
+      "confirmed": false,
+      "delta": {
+        "barge_candidates": 2,
+        "barge_confirmed": 0,
+        "barge_command_confirmed": 0,
+        "barge_rejected_echo": 0,
+        "duck_applied": 1,
+        "duck_skipped_limit": 1
+      },
+      "audio": {
+        "paused": false,
+        "currentTime": 35.795,
+        "readyState": 4,
+        "volume": 1
+      },
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 2,
+          "at": 1792813008547,
+          "stage": "volume-restored",
+          "candidateId": "voice-1-1792813005547",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 3,
+          "at": 1792813012629,
+          "stage": "restore-skip",
+          "reason": "no-duck",
+          "candidateId": "voice-1-1792813009629"
+        },
+        {
+          "seq": 4,
+          "at": 1792813015309,
+          "stage": "duck-applied",
+          "candidateId": "voice-2-1792813015308",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 5,
+          "at": 1792813018309,
+          "stage": "volume-restored",
+          "candidateId": "voice-2-1792813015308",
+          "volume": 1,
+          "reason": "server-restore"
+        }
+      ],
+      "command_confirm_epoch": null,
+      "play_to_confirm_ms": null,
+      "cleanup": null,
+      "play_to_cleanup_ms": null
+    },
+    {
+      "trial": 3,
+      "kind": "pure",
+      "volume": 80,
+      "confirmed": false,
+      "delta": {
+        "barge_candidates": 1,
+        "barge_confirmed": 0,
+        "barge_command_confirmed": 0,
+        "barge_rejected_echo": 0,
+        "duck_applied": 1,
+        "duck_skipped_limit": 0
+      },
+      "audio": {
+        "paused": false,
+        "currentTime": 47.064,
+        "readyState": 4,
+        "volume": 1
+      },
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 5,
+          "at": 1792813018309,
+          "stage": "volume-restored",
+          "candidateId": "voice-2-1792813015308",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 6,
+          "at": 1792813022389,
+          "stage": "restore-skip",
+          "reason": "no-duck",
+          "candidateId": "voice-2-1792813019367"
+        },
+        {
+          "seq": 7,
+          "at": 1792813026829,
+          "stage": "duck-applied",
+          "candidateId": "voice-3-1792813026828",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 8,
+          "at": 1792813029829,
+          "stage": "volume-restored",
+          "candidateId": "voice-3-1792813026828",
+          "volume": 1,
+          "reason": "server-restore"
+        }
+      ],
+      "command_confirm_epoch": null,
+      "play_to_confirm_ms": null,
+      "cleanup": null,
+      "play_to_cleanup_ms": null
+    },
+    {
+      "trial": 4,
+      "kind": "pure",
+      "volume": 13,
+      "confirmed": false,
+      "delta": {
+        "barge_candidates": 0,
+        "barge_confirmed": 0,
+        "barge_command_confirmed": 0,
+        "barge_rejected_echo": 0,
+        "duck_applied": 0,
+        "duck_skipped_limit": 0
+      },
+      "audio": {
+        "paused": false,
+        "currentTime": 57.369,
+        "readyState": 4,
+        "volume": 1
+      },
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 6,
+          "at": 1792813022389,
+          "stage": "restore-skip",
+          "reason": "no-duck",
+          "candidateId": "voice-2-1792813019367"
+        },
+        {
+          "seq": 7,
+          "at": 1792813026829,
+          "stage": "duck-applied",
+          "candidateId": "voice-3-1792813026828",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 8,
+          "at": 1792813029829,
+          "stage": "volume-restored",
+          "candidateId": "voice-3-1792813026828",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 9,
+          "at": 1792813034747,
+          "stage": "restore-skip",
+          "reason": "no-duck",
+          "candidateId": "voice-3-1792813031747"
+        }
+      ],
+      "command_confirm_epoch": null,
+      "play_to_confirm_ms": null,
+      "cleanup": null,
+      "play_to_cleanup_ms": null
+    },
+    {
+      "trial": 5,
+      "kind": "pure",
+      "volume": 55,
+      "confirmed": false,
+      "delta": {
+        "barge_candidates": 2,
+        "barge_confirmed": 0,
+        "barge_command_confirmed": 0,
+        "barge_rejected_echo": 0,
+        "duck_applied": 2,
+        "duck_skipped_limit": 0
+      },
+      "audio": {
+        "paused": false,
+        "currentTime": 67.353,
+        "readyState": 4,
+        "volume": 1
+      },
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 10,
+          "at": 1792813043708,
+          "stage": "duck-applied",
+          "candidateId": "voice-4-1792813043708",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 11,
+          "at": 1792813046708,
+          "stage": "volume-restored",
+          "candidateId": "voice-4-1792813043708",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 12,
+          "at": 1792813046949,
+          "stage": "duck-applied",
+          "candidateId": "voice-5-1792813046949",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 13,
+          "at": 1792813049949,
+          "stage": "volume-restored",
+          "candidateId": "voice-5-1792813046949",
+          "volume": 1,
+          "reason": "server-restore"
+        }
+      ],
+      "command_confirm_epoch": null,
+      "play_to_confirm_ms": null,
+      "cleanup": null,
+      "play_to_cleanup_ms": null
+    },
+    {
+      "trial": 6,
+      "kind": "pure",
+      "volume": 80,
+      "confirmed": false,
+      "delta": {
+        "barge_candidates": 2,
+        "barge_confirmed": 0,
+        "barge_command_confirmed": 0,
+        "barge_rejected_echo": 0,
+        "duck_applied": 1,
+        "duck_skipped_limit": 1
+      },
+      "audio": {
+        "paused": false,
+        "currentTime": 79.535,
+        "readyState": 4,
+        "volume": 1
+      },
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 14,
+          "at": 1792813054388,
+          "stage": "restore-skip",
+          "reason": "no-duck",
+          "candidateId": "voice-5-1792813051387"
+        },
+        {
+          "seq": 15,
+          "at": 1792813057947,
+          "stage": "restore-skip",
+          "reason": "no-duck",
+          "candidateId": "voice-5-1792813054947"
+        },
+        {
+          "seq": 16,
+          "at": 1792813059328,
+          "stage": "duck-applied",
+          "candidateId": "voice-6-1792813059328",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 17,
+          "at": 1792813062329,
+          "stage": "volume-restored",
+          "candidateId": "voice-6-1792813059328",
+          "volume": 1,
+          "reason": "server-restore"
+        }
+      ],
+      "command_confirm_epoch": null,
+      "play_to_confirm_ms": null,
+      "cleanup": null,
+      "play_to_cleanup_ms": null
+    },
+    {
+      "trial": 7,
+      "kind": "pure",
+      "volume": 13,
+      "confirmed": false,
+      "delta": {
+        "barge_candidates": 0,
+        "barge_confirmed": 0,
+        "barge_command_confirmed": 0,
+        "barge_rejected_echo": 0,
+        "duck_applied": 0,
+        "duck_skipped_limit": 0
+      },
+      "audio": {
+        "paused": false,
+        "currentTime": 89.448,
+        "readyState": 4,
+        "volume": 1
+      },
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 15,
+          "at": 1792813057947,
+          "stage": "restore-skip",
+          "reason": "no-duck",
+          "candidateId": "voice-5-1792813054947"
+        },
+        {
+          "seq": 16,
+          "at": 1792813059328,
+          "stage": "duck-applied",
+          "candidateId": "voice-6-1792813059328",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 17,
+          "at": 1792813062329,
+          "stage": "volume-restored",
+          "candidateId": "voice-6-1792813059328",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 18,
+          "at": 1792813065588,
+          "stage": "restore-skip",
+          "reason": "no-duck",
+          "candidateId": "voice-6-1792813062587"
+        }
+      ],
+      "command_confirm_epoch": null,
+      "play_to_confirm_ms": null,
+      "cleanup": null,
+      "play_to_cleanup_ms": null
+    },
+    {
+      "trial": 8,
+      "kind": "pure",
+      "volume": 55,
+      "confirmed": false,
+      "delta": {
+        "barge_candidates": 1,
+        "barge_confirmed": 0,
+        "barge_command_confirmed": 0,
+        "barge_rejected_echo": 0,
+        "duck_applied": 1,
+        "duck_skipped_limit": 0
+      },
+      "audio": {
+        "paused": false,
+        "currentTime": 99.085,
+        "readyState": 4,
+        "volume": 1
+      },
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 17,
+          "at": 1792813062329,
+          "stage": "volume-restored",
+          "candidateId": "voice-6-1792813059328",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 18,
+          "at": 1792813065588,
+          "stage": "restore-skip",
+          "reason": "no-duck",
+          "candidateId": "voice-6-1792813062587"
+        },
+        {
+          "seq": 19,
+          "at": 1792813078294,
+          "stage": "duck-applied",
+          "candidateId": "voice-8-1792813078293",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 20,
+          "at": 1792813081291,
+          "stage": "volume-restored",
+          "candidateId": "voice-8-1792813078293",
+          "volume": 1,
+          "reason": "server-restore"
+        }
+      ],
+      "command_confirm_epoch": null,
+      "play_to_confirm_ms": null,
+      "cleanup": null,
+      "play_to_cleanup_ms": null
+    },
+    {
+      "trial": 9,
+      "kind": "pure",
+      "volume": 80,
+      "confirmed": false,
+      "delta": {
+        "barge_candidates": 2,
+        "barge_confirmed": 0,
+        "barge_command_confirmed": 0,
+        "barge_rejected_echo": 0,
+        "duck_applied": 1,
+        "duck_skipped_limit": 1
+      },
+      "audio": {
+        "paused": false,
+        "currentTime": 108.738,
+        "readyState": 4,
+        "volume": 1
+      },
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 21,
+          "at": 1792813084208,
+          "stage": "duck-applied",
+          "candidateId": "voice-8-1792813084207",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 22,
+          "at": 1792813087206,
+          "stage": "volume-restored",
+          "candidateId": "voice-8-1792813084207",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 23,
+          "at": 1792813087244,
+          "stage": "duck-applied",
+          "candidateId": "voice-9-1792813087244",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 24,
+          "at": 1792813090243,
+          "stage": "volume-restored",
+          "candidateId": "voice-9-1792813087244",
+          "volume": 1,
+          "reason": "server-restore"
+        }
+      ],
+      "command_confirm_epoch": null,
+      "play_to_confirm_ms": null,
+      "cleanup": null,
+      "play_to_cleanup_ms": null
+    },
+    {
+      "trial": 10,
+      "kind": "pure",
+      "volume": 55,
+      "confirmed": false,
+      "delta": {
+        "barge_candidates": 3,
+        "barge_confirmed": 0,
+        "barge_command_confirmed": 0,
+        "barge_rejected_echo": 0,
+        "duck_applied": 1,
+        "duck_skipped_limit": 2
+      },
+      "audio": {
+        "paused": false,
+        "currentTime": 118.403,
+        "readyState": 4,
+        "volume": 1
+      },
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 24,
+          "at": 1792813090243,
+          "stage": "volume-restored",
+          "candidateId": "voice-9-1792813087244",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 25,
+          "at": 1792813094142,
+          "stage": "restore-skip",
+          "reason": "no-duck",
+          "candidateId": "voice-9-1792813091143"
+        },
+        {
+          "seq": 26,
+          "at": 1792813097801,
+          "stage": "duck-applied",
+          "candidateId": "voice-10-1792813097800",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 27,
+          "at": 1792813100801,
+          "stage": "volume-restored",
+          "candidateId": "voice-10-1792813097800",
+          "volume": 1,
+          "reason": "server-restore"
+        }
+      ],
+      "command_confirm_epoch": null,
+      "play_to_confirm_ms": null,
+      "cleanup": null,
+      "play_to_cleanup_ms": null
+    },
+    {
+      "trial": 11,
+      "kind": "noise",
+      "volume": 55,
+      "confirmed": false,
+      "delta": {
+        "barge_candidates": 2,
+        "barge_confirmed": 0,
+        "barge_command_confirmed": 0,
+        "barge_rejected_echo": 0,
+        "duck_applied": 1,
+        "duck_skipped_limit": 1
+      },
+      "audio": {
+        "paused": false,
+        "currentTime": 131.408,
+        "readyState": 4,
+        "volume": 1
+      },
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 28,
+          "at": 1792813103473,
+          "stage": "restore-skip",
+          "reason": "no-duck",
+          "candidateId": "voice-10-1792813100801"
+        },
+        {
+          "seq": 29,
+          "at": 1792813107299,
+          "stage": "restore-skip",
+          "reason": "no-duck",
+          "candidateId": "voice-10-1792813104299"
+        },
+        {
+          "seq": 30,
+          "at": 1792813111279,
+          "stage": "duck-applied",
+          "candidateId": "voice-11-1792813111279",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 31,
+          "at": 1792813114279,
+          "stage": "volume-restored",
+          "candidateId": "voice-11-1792813111279",
+          "volume": 1,
+          "reason": "server-restore"
+        }
+      ],
+      "command_confirm_epoch": null,
+      "play_to_confirm_ms": null,
+      "cleanup": null,
+      "play_to_cleanup_ms": null
+    },
+    {
+      "trial": 12,
+      "kind": "noise",
+      "volume": 80,
+      "confirmed": false,
+      "delta": {
+        "barge_candidates": 1,
+        "barge_confirmed": 0,
+        "barge_command_confirmed": 0,
+        "barge_rejected_echo": 0,
+        "duck_applied": 1,
+        "duck_skipped_limit": 0
+      },
+      "audio": {
+        "paused": false,
+        "currentTime": 141.098,
+        "readyState": 4,
+        "volume": 1
+      },
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 30,
+          "at": 1792813111279,
+          "stage": "duck-applied",
+          "candidateId": "voice-11-1792813111279",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 31,
+          "at": 1792813114279,
+          "stage": "volume-restored",
+          "candidateId": "voice-11-1792813111279",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 32,
+          "at": 1792813120077,
+          "stage": "duck-applied",
+          "candidateId": "voice-12-1792813120077",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 33,
+          "at": 1792813123077,
+          "stage": "volume-restored",
+          "candidateId": "voice-12-1792813120077",
+          "volume": 1,
+          "reason": "server-restore"
+        }
+      ],
+      "command_confirm_epoch": null,
+      "play_to_confirm_ms": null,
+      "cleanup": null,
+      "play_to_cleanup_ms": null
+    },
+    {
+      "trial": 13,
+      "kind": "noise",
+      "volume": 55,
+      "confirmed": false,
+      "delta": {
+        "barge_candidates": 0,
+        "barge_confirmed": 0,
+        "barge_command_confirmed": 0,
+        "barge_rejected_echo": 0,
+        "duck_applied": 0,
+        "duck_skipped_limit": 0
+      },
+      "audio": {
+        "paused": false,
+        "currentTime": 150.798,
+        "readyState": 4,
+        "volume": 1
+      },
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 30,
+          "at": 1792813111279,
+          "stage": "duck-applied",
+          "candidateId": "voice-11-1792813111279",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 31,
+          "at": 1792813114279,
+          "stage": "volume-restored",
+          "candidateId": "voice-11-1792813111279",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 32,
+          "at": 1792813120077,
+          "stage": "duck-applied",
+          "candidateId": "voice-12-1792813120077",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 33,
+          "at": 1792813123077,
+          "stage": "volume-restored",
+          "candidateId": "voice-12-1792813120077",
+          "volume": 1,
+          "reason": "server-restore"
+        }
+      ],
+      "command_confirm_epoch": null,
+      "play_to_confirm_ms": null,
+      "cleanup": null,
+      "play_to_cleanup_ms": null
+    },
+    {
+      "trial": 14,
+      "kind": "noise",
+      "volume": 80,
+      "confirmed": false,
+      "delta": {
+        "barge_candidates": 2,
+        "barge_confirmed": 0,
+        "barge_command_confirmed": 0,
+        "barge_rejected_echo": 0,
+        "duck_applied": 2,
+        "duck_skipped_limit": 0
+      },
+      "audio": {
+        "paused": false,
+        "currentTime": 160.468,
+        "readyState": 4,
+        "volume": 1
+      },
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 34,
+          "at": 1792813136255,
+          "stage": "duck-applied",
+          "candidateId": "voice-13-1792813136255",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 35,
+          "at": 1792813139256,
+          "stage": "volume-restored",
+          "candidateId": "voice-13-1792813136255",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 36,
+          "at": 1792813140236,
+          "stage": "duck-applied",
+          "candidateId": "voice-14-1792813140236",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 37,
+          "at": 1792813143236,
+          "stage": "volume-restored",
+          "candidateId": "voice-14-1792813140236",
+          "volume": 1,
+          "reason": "server-restore"
+        }
+      ],
+      "command_confirm_epoch": null,
+      "play_to_confirm_ms": null,
+      "cleanup": null,
+      "play_to_cleanup_ms": null
+    },
+    {
+      "trial": 15,
+      "kind": "noise",
+      "volume": 55,
+      "confirmed": false,
+      "delta": {
+        "barge_candidates": 0,
+        "barge_confirmed": 0,
+        "barge_command_confirmed": 0,
+        "barge_rejected_echo": 0,
+        "duck_applied": 0,
+        "duck_skipped_limit": 0
+      },
+      "audio": {
+        "paused": false,
+        "currentTime": 170.548,
+        "readyState": 4,
+        "volume": 1
+      },
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 34,
+          "at": 1792813136255,
+          "stage": "duck-applied",
+          "candidateId": "voice-13-1792813136255",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 35,
+          "at": 1792813139256,
+          "stage": "volume-restored",
+          "candidateId": "voice-13-1792813136255",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 36,
+          "at": 1792813140236,
+          "stage": "duck-applied",
+          "candidateId": "voice-14-1792813140236",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 37,
+          "at": 1792813143236,
+          "stage": "volume-restored",
+          "candidateId": "voice-14-1792813140236",
+          "volume": 1,
+          "reason": "server-restore"
+        }
+      ],
+      "command_confirm_epoch": null,
+      "play_to_confirm_ms": null,
+      "cleanup": null,
+      "play_to_cleanup_ms": null
+    },
+    {
+      "trial": 16,
+      "kind": "noise",
+      "volume": 80,
+      "confirmed": false,
+      "delta": {
+        "barge_candidates": 1,
+        "barge_confirmed": 0,
+        "barge_command_confirmed": 0,
+        "barge_rejected_echo": 0,
+        "duck_applied": 1,
+        "duck_skipped_limit": 0
+      },
+      "audio": {
+        "paused": false,
+        "currentTime": 180.748,
+        "readyState": 4,
+        "volume": 1
+      },
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 36,
+          "at": 1792813140236,
+          "stage": "duck-applied",
+          "candidateId": "voice-14-1792813140236",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 37,
+          "at": 1792813143236,
+          "stage": "volume-restored",
+          "candidateId": "voice-14-1792813140236",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 38,
+          "at": 1792813160416,
+          "stage": "duck-applied",
+          "candidateId": "voice-16-1792813160416",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 39,
+          "at": 1792813163416,
+          "stage": "volume-restored",
+          "candidateId": "voice-16-1792813160416",
+          "volume": 1,
+          "reason": "server-restore"
+        }
+      ],
+      "command_confirm_epoch": null,
+      "play_to_confirm_ms": null,
+      "cleanup": null,
+      "play_to_cleanup_ms": null
+    },
+    {
+      "trial": 17,
+      "kind": "noise",
+      "volume": 55,
+      "confirmed": false,
+      "delta": {
+        "barge_candidates": 0,
+        "barge_confirmed": 0,
+        "barge_command_confirmed": 0,
+        "barge_rejected_echo": 0,
+        "duck_applied": 0,
+        "duck_skipped_limit": 0
+      },
+      "audio": {
+        "paused": false,
+        "currentTime": 190.618,
+        "readyState": 4,
+        "volume": 1
+      },
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 36,
+          "at": 1792813140236,
+          "stage": "duck-applied",
+          "candidateId": "voice-14-1792813140236",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 37,
+          "at": 1792813143236,
+          "stage": "volume-restored",
+          "candidateId": "voice-14-1792813140236",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 38,
+          "at": 1792813160416,
+          "stage": "duck-applied",
+          "candidateId": "voice-16-1792813160416",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 39,
+          "at": 1792813163416,
+          "stage": "volume-restored",
+          "candidateId": "voice-16-1792813160416",
+          "volume": 1,
+          "reason": "server-restore"
+        }
+      ],
+      "command_confirm_epoch": null,
+      "play_to_confirm_ms": null,
+      "cleanup": null,
+      "play_to_cleanup_ms": null
+    },
+    {
+      "trial": 18,
+      "kind": "noise",
+      "volume": 80,
+      "confirmed": false,
+      "delta": {
+        "barge_candidates": 0,
+        "barge_confirmed": 0,
+        "barge_command_confirmed": 0,
+        "barge_rejected_echo": 0,
+        "duck_applied": 0,
+        "duck_skipped_limit": 0
+      },
+      "audio": {
+        "paused": false,
+        "currentTime": 200.398,
+        "readyState": 4,
+        "volume": 1
+      },
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 36,
+          "at": 1792813140236,
+          "stage": "duck-applied",
+          "candidateId": "voice-14-1792813140236",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 37,
+          "at": 1792813143236,
+          "stage": "volume-restored",
+          "candidateId": "voice-14-1792813140236",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 38,
+          "at": 1792813160416,
+          "stage": "duck-applied",
+          "candidateId": "voice-16-1792813160416",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 39,
+          "at": 1792813163416,
+          "stage": "volume-restored",
+          "candidateId": "voice-16-1792813160416",
+          "volume": 1,
+          "reason": "server-restore"
+        }
+      ],
+      "command_confirm_epoch": null,
+      "play_to_confirm_ms": null,
+      "cleanup": null,
+      "play_to_cleanup_ms": null
+    },
+    {
+      "trial": 19,
+      "kind": "noise",
+      "volume": 55,
+      "confirmed": false,
+      "delta": {
+        "barge_candidates": 1,
+        "barge_confirmed": 0,
+        "barge_command_confirmed": 0,
+        "barge_rejected_echo": 0,
+        "duck_applied": 1,
+        "duck_skipped_limit": 0
+      },
+      "audio": {
+        "paused": false,
+        "currentTime": 210.061,
+        "readyState": 4,
+        "volume": 1
+      },
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 38,
+          "at": 1792813160416,
+          "stage": "duck-applied",
+          "candidateId": "voice-16-1792813160416",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 39,
+          "at": 1792813163416,
+          "stage": "volume-restored",
+          "candidateId": "voice-16-1792813160416",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 40,
+          "at": 1792813186595,
+          "stage": "duck-applied",
+          "candidateId": "voice-18-1792813186595",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 41,
+          "at": 1792813189596,
+          "stage": "volume-restored",
+          "candidateId": "voice-18-1792813186595",
+          "volume": 1,
+          "reason": "server-restore"
+        }
+      ],
+      "command_confirm_epoch": null,
+      "play_to_confirm_ms": null,
+      "cleanup": null,
+      "play_to_cleanup_ms": null
+    },
+    {
+      "trial": 20,
+      "kind": "noise",
+      "volume": 80,
+      "confirmed": false,
+      "delta": {
+        "barge_candidates": 0,
+        "barge_confirmed": 0,
+        "barge_command_confirmed": 0,
+        "barge_rejected_echo": 0,
+        "duck_applied": 0,
+        "duck_skipped_limit": 0
+      },
+      "audio": {
+        "paused": false,
+        "currentTime": 219.671,
+        "readyState": 4,
+        "volume": 1
+      },
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 38,
+          "at": 1792813160416,
+          "stage": "duck-applied",
+          "candidateId": "voice-16-1792813160416",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 39,
+          "at": 1792813163416,
+          "stage": "volume-restored",
+          "candidateId": "voice-16-1792813160416",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 40,
+          "at": 1792813186595,
+          "stage": "duck-applied",
+          "candidateId": "voice-18-1792813186595",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 41,
+          "at": 1792813189596,
+          "stage": "volume-restored",
+          "candidateId": "voice-18-1792813186595",
+          "volume": 1,
+          "reason": "server-restore"
+        }
+      ],
+      "command_confirm_epoch": null,
+      "play_to_confirm_ms": null,
+      "cleanup": null,
+      "play_to_cleanup_ms": null
+    },
+    {
+      "trial": 21,
+      "kind": "ordinary",
+      "volume": 55,
+      "confirmed": false,
+      "delta": {
+        "barge_candidates": 1,
+        "barge_confirmed": 0,
+        "barge_command_confirmed": 0,
+        "barge_rejected_echo": 0,
+        "duck_applied": 1,
+        "duck_skipped_limit": 0
+      },
+      "audio": {
+        "paused": false,
+        "currentTime": 229.613,
+        "readyState": 4,
+        "volume": 1
+      },
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 40,
+          "at": 1792813186595,
+          "stage": "duck-applied",
+          "candidateId": "voice-18-1792813186595",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 41,
+          "at": 1792813189596,
+          "stage": "volume-restored",
+          "candidateId": "voice-18-1792813186595",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 42,
+          "at": 1792813209357,
+          "stage": "duck-applied",
+          "candidateId": "voice-21-1792813209357",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 43,
+          "at": 1792813212357,
+          "stage": "volume-restored",
+          "candidateId": "voice-21-1792813209357",
+          "volume": 1,
+          "reason": "server-restore"
+        }
+      ],
+      "command_confirm_epoch": null,
+      "play_to_confirm_ms": null,
+      "cleanup": null,
+      "play_to_cleanup_ms": null
+    },
+    {
+      "trial": 22,
+      "kind": "ordinary",
+      "volume": 55,
+      "confirmed": false,
+      "delta": {
+        "barge_candidates": 1,
+        "barge_confirmed": 0,
+        "barge_command_confirmed": 0,
+        "barge_rejected_echo": 0,
+        "duck_applied": 1,
+        "duck_skipped_limit": 0
+      },
+      "audio": {
+        "paused": false,
+        "currentTime": 239.039,
+        "readyState": 4,
+        "volume": 1
+      },
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 42,
+          "at": 1792813209357,
+          "stage": "duck-applied",
+          "candidateId": "voice-21-1792813209357",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 1
+        },
+        {
+          "seq": 43,
+          "at": 1792813212357,
+          "stage": "volume-restored",
+          "candidateId": "voice-21-1792813209357",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 44,
+          "at": 1792813219237,
+          "stage": "duck-applied",
+          "candidateId": "voice-22-1792813219237",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 2
+        },
+        {
+          "seq": 45,
+          "at": 1792813222237,
+          "stage": "volume-restored",
+          "candidateId": "voice-22-1792813219237",
+          "volume": 1,
+          "reason": "server-restore"
+        }
+      ],
+      "command_confirm_epoch": null,
+      "play_to_confirm_ms": null,
+      "cleanup": null,
+      "play_to_cleanup_ms": null
+    },
+    {
+      "trial": 23,
+      "kind": "ordinary",
+      "volume": 55,
+      "confirmed": false,
+      "delta": {
+        "barge_candidates": 1,
+        "barge_confirmed": 0,
+        "barge_command_confirmed": 0,
+        "barge_rejected_echo": 0,
+        "duck_applied": 1,
+        "duck_skipped_limit": 0
+      },
+      "audio": {
+        "paused": false,
+        "currentTime": 249.521,
+        "readyState": 4,
+        "volume": 1
+      },
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 44,
+          "at": 1792813219237,
+          "stage": "duck-applied",
+          "candidateId": "voice-22-1792813219237",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 2
+        },
+        {
+          "seq": 45,
+          "at": 1792813222237,
+          "stage": "volume-restored",
+          "candidateId": "voice-22-1792813219237",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 46,
+          "at": 1792813229117,
+          "stage": "duck-applied",
+          "candidateId": "voice-23-1792813229117",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 2
+        },
+        {
+          "seq": 47,
+          "at": 1792813232117,
+          "stage": "volume-restored",
+          "candidateId": "voice-23-1792813229117",
+          "volume": 1,
+          "reason": "server-restore"
+        }
+      ],
+      "command_confirm_epoch": null,
+      "play_to_confirm_ms": null,
+      "cleanup": null,
+      "play_to_cleanup_ms": null
+    },
+    {
+      "trial": 24,
+      "kind": "ordinary",
+      "volume": 55,
+      "confirmed": false,
+      "delta": {
+        "barge_candidates": 0,
+        "barge_confirmed": 0,
+        "barge_command_confirmed": 0,
+        "barge_rejected_echo": 0,
+        "duck_applied": 0,
+        "duck_skipped_limit": 0
+      },
+      "audio": {
+        "paused": false,
+        "currentTime": 259.481,
+        "readyState": 4,
+        "volume": 1
+      },
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 44,
+          "at": 1792813219237,
+          "stage": "duck-applied",
+          "candidateId": "voice-22-1792813219237",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 2
+        },
+        {
+          "seq": 45,
+          "at": 1792813222237,
+          "stage": "volume-restored",
+          "candidateId": "voice-22-1792813219237",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 46,
+          "at": 1792813229117,
+          "stage": "duck-applied",
+          "candidateId": "voice-23-1792813229117",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 2
+        },
+        {
+          "seq": 47,
+          "at": 1792813232117,
+          "stage": "volume-restored",
+          "candidateId": "voice-23-1792813229117",
+          "volume": 1,
+          "reason": "server-restore"
+        }
+      ],
+      "command_confirm_epoch": null,
+      "play_to_confirm_ms": null,
+      "cleanup": null,
+      "play_to_cleanup_ms": null
+    },
+    {
+      "trial": 25,
+      "kind": "ordinary",
+      "volume": 55,
+      "confirmed": false,
+      "delta": {
+        "barge_candidates": 1,
+        "barge_confirmed": 0,
+        "barge_command_confirmed": 0,
+        "barge_rejected_echo": 0,
+        "duck_applied": 1,
+        "duck_skipped_limit": 0
+      },
+      "audio": {
+        "paused": false,
+        "currentTime": 269.661,
+        "readyState": 4,
+        "volume": 1
+      },
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 46,
+          "at": 1792813229117,
+          "stage": "duck-applied",
+          "candidateId": "voice-23-1792813229117",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 2
+        },
+        {
+          "seq": 47,
+          "at": 1792813232117,
+          "stage": "volume-restored",
+          "candidateId": "voice-23-1792813229117",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 48,
+          "at": 1792813249257,
+          "stage": "duck-applied",
+          "candidateId": "voice-25-1792813249257",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 2
+        },
+        {
+          "seq": 49,
+          "at": 1792813252258,
+          "stage": "volume-restored",
+          "candidateId": "voice-25-1792813249257",
+          "volume": 1,
+          "reason": "server-restore"
+        }
+      ],
+      "command_confirm_epoch": null,
+      "play_to_confirm_ms": null,
+      "cleanup": null,
+      "play_to_cleanup_ms": null
+    },
+    {
+      "trial": 26,
+      "kind": "ordinary",
+      "volume": 55,
+      "confirmed": false,
+      "delta": {
+        "barge_candidates": 1,
+        "barge_confirmed": 0,
+        "barge_command_confirmed": 0,
+        "barge_rejected_echo": 0,
+        "duck_applied": 1,
+        "duck_skipped_limit": 0
+      },
+      "audio": {
+        "paused": false,
+        "currentTime": 279.591,
+        "readyState": 4,
+        "volume": 1
+      },
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 48,
+          "at": 1792813249257,
+          "stage": "duck-applied",
+          "candidateId": "voice-25-1792813249257",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 2
+        },
+        {
+          "seq": 49,
+          "at": 1792813252258,
+          "stage": "volume-restored",
+          "candidateId": "voice-25-1792813249257",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 50,
+          "at": 1792813259198,
+          "stage": "duck-applied",
+          "candidateId": "voice-26-1792813259197",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 2
+        },
+        {
+          "seq": 51,
+          "at": 1792813262198,
+          "stage": "volume-restored",
+          "candidateId": "voice-26-1792813259197",
+          "volume": 1,
+          "reason": "server-restore"
+        }
+      ],
+      "command_confirm_epoch": null,
+      "play_to_confirm_ms": null,
+      "cleanup": null,
+      "play_to_cleanup_ms": null
+    },
+    {
+      "trial": 27,
+      "kind": "ordinary",
+      "volume": 55,
+      "confirmed": false,
+      "delta": {
+        "barge_candidates": 1,
+        "barge_confirmed": 0,
+        "barge_command_confirmed": 0,
+        "barge_rejected_echo": 0,
+        "duck_applied": 1,
+        "duck_skipped_limit": 0
+      },
+      "audio": {
+        "paused": false,
+        "currentTime": 289.531,
+        "readyState": 4,
+        "volume": 1
+      },
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 50,
+          "at": 1792813259198,
+          "stage": "duck-applied",
+          "candidateId": "voice-26-1792813259197",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 2
+        },
+        {
+          "seq": 51,
+          "at": 1792813262198,
+          "stage": "volume-restored",
+          "candidateId": "voice-26-1792813259197",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 52,
+          "at": 1792813269097,
+          "stage": "duck-applied",
+          "candidateId": "voice-27-1792813269097",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 2
+        },
+        {
+          "seq": 53,
+          "at": 1792813272097,
+          "stage": "volume-restored",
+          "candidateId": "voice-27-1792813269097",
+          "volume": 1,
+          "reason": "server-restore"
+        }
+      ],
+      "command_confirm_epoch": null,
+      "play_to_confirm_ms": null,
+      "cleanup": null,
+      "play_to_cleanup_ms": null
+    },
+    {
+      "trial": 28,
+      "kind": "ordinary",
+      "volume": 55,
+      "confirmed": false,
+      "delta": {
+        "barge_candidates": 1,
+        "barge_confirmed": 0,
+        "barge_command_confirmed": 0,
+        "barge_rejected_echo": 0,
+        "duck_applied": 1,
+        "duck_skipped_limit": 0
+      },
+      "audio": {
+        "paused": false,
+        "currentTime": 299.741,
+        "readyState": 4,
+        "volume": 1
+      },
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 52,
+          "at": 1792813269097,
+          "stage": "duck-applied",
+          "candidateId": "voice-27-1792813269097",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 2
+        },
+        {
+          "seq": 53,
+          "at": 1792813272097,
+          "stage": "volume-restored",
+          "candidateId": "voice-27-1792813269097",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 54,
+          "at": 1792813279338,
+          "stage": "duck-applied",
+          "candidateId": "voice-28-1792813279338",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 2
+        },
+        {
+          "seq": 55,
+          "at": 1792813282338,
+          "stage": "volume-restored",
+          "candidateId": "voice-28-1792813279338",
+          "volume": 1,
+          "reason": "server-restore"
+        }
+      ],
+      "command_confirm_epoch": null,
+      "play_to_confirm_ms": null,
+      "cleanup": null,
+      "play_to_cleanup_ms": null
+    },
+    {
+      "trial": 29,
+      "kind": "ordinary",
+      "volume": 55,
+      "confirmed": false,
+      "delta": {
+        "barge_candidates": 1,
+        "barge_confirmed": 0,
+        "barge_command_confirmed": 0,
+        "barge_rejected_echo": 0,
+        "duck_applied": 1,
+        "duck_skipped_limit": 0
+      },
+      "audio": {
+        "paused": false,
+        "currentTime": 309.931,
+        "readyState": 4,
+        "volume": 1
+      },
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 54,
+          "at": 1792813279338,
+          "stage": "duck-applied",
+          "candidateId": "voice-28-1792813279338",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 2
+        },
+        {
+          "seq": 55,
+          "at": 1792813282338,
+          "stage": "volume-restored",
+          "candidateId": "voice-28-1792813279338",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 56,
+          "at": 1792813289578,
+          "stage": "duck-applied",
+          "candidateId": "voice-29-1792813289578",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 2
+        },
+        {
+          "seq": 57,
+          "at": 1792813292578,
+          "stage": "volume-restored",
+          "candidateId": "voice-29-1792813289578",
+          "volume": 1,
+          "reason": "server-restore"
+        }
+      ],
+      "command_confirm_epoch": null,
+      "play_to_confirm_ms": null,
+      "cleanup": null,
+      "play_to_cleanup_ms": null
+    },
+    {
+      "trial": 30,
+      "kind": "ordinary",
+      "volume": 55,
+      "confirmed": false,
+      "delta": {
+        "barge_candidates": 1,
+        "barge_confirmed": 0,
+        "barge_command_confirmed": 0,
+        "barge_rejected_echo": 0,
+        "duck_applied": 1,
+        "duck_skipped_limit": 0
+      },
+      "audio": {
+        "paused": false,
+        "currentTime": 320.121,
+        "readyState": 4,
+        "volume": 1
+      },
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 56,
+          "at": 1792813289578,
+          "stage": "duck-applied",
+          "candidateId": "voice-29-1792813289578",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 2
+        },
+        {
+          "seq": 57,
+          "at": 1792813292578,
+          "stage": "volume-restored",
+          "candidateId": "voice-29-1792813289578",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 58,
+          "at": 1792813299758,
+          "stage": "duck-applied",
+          "candidateId": "voice-30-1792813299757",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 2
+        },
+        {
+          "seq": 59,
+          "at": 1792813302758,
+          "stage": "volume-restored",
+          "candidateId": "voice-30-1792813299757",
+          "volume": 1,
+          "reason": "server-restore"
+        }
+      ],
+      "command_confirm_epoch": null,
+      "play_to_confirm_ms": null,
+      "cleanup": null,
+      "play_to_cleanup_ms": null
+    },
+    {
+      "trial": 31,
+      "kind": "command",
+      "volume": 55,
+      "confirmed": true,
+      "delta": {
+        "barge_candidates": 1,
+        "barge_confirmed": 1,
+        "barge_command_confirmed": 1,
+        "barge_rejected_echo": 0,
+        "duck_applied": 1,
+        "duck_skipped_limit": 0
+      },
+      "audio": null,
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 58,
+          "at": 1792813299758,
+          "stage": "duck-applied",
+          "candidateId": "voice-30-1792813299757",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 2
+        },
+        {
+          "seq": 59,
+          "at": 1792813302758,
+          "stage": "volume-restored",
+          "candidateId": "voice-30-1792813299757",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 60,
+          "at": 1792813309516,
+          "stage": "duck-applied",
+          "candidateId": "voice-31-1792813309516",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 2
+        },
+        {
+          "seq": 61,
+          "at": 1792813310906,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-31-1792813309516"
+        }
+      ],
+      "command_confirm_epoch": 1792813310882,
+      "play_to_confirm_ms": 2032,
+      "cleanup": {
+        "seq": 3,
+        "at": 1792813310906,
+        "reason": "barge-in-confirmed",
+        "audioGeneration": 2,
+        "hadElement": true,
+        "pausedBefore": false,
+        "hasSrcObjectBefore": true,
+        "result": "cleared",
+        "pausedAfter": true,
+        "hasSrcObjectAfter": false
+      },
+      "play_to_cleanup_ms": 2056
+    },
+    {
+      "trial": 32,
+      "kind": "command",
+      "volume": 55,
+      "confirmed": true,
+      "delta": {
+        "barge_candidates": 1,
+        "barge_confirmed": 1,
+        "barge_command_confirmed": 1,
+        "barge_rejected_echo": 0,
+        "duck_applied": 1,
+        "duck_skipped_limit": 0
+      },
+      "audio": null,
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 60,
+          "at": 1792813309516,
+          "stage": "duck-applied",
+          "candidateId": "voice-31-1792813309516",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 2
+        },
+        {
+          "seq": 61,
+          "at": 1792813310906,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-31-1792813309516"
+        },
+        {
+          "seq": 62,
+          "at": 1792813317576,
+          "stage": "duck-applied",
+          "candidateId": "voice-32-1792813317576",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 3
+        },
+        {
+          "seq": 63,
+          "at": 1792813318964,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-32-1792813317576"
+        }
+      ],
+      "command_confirm_epoch": 1792813318963,
+      "play_to_confirm_ms": 2049,
+      "cleanup": {
+        "seq": 4,
+        "at": 1792813318964,
+        "reason": "barge-in-confirmed",
+        "audioGeneration": 3,
+        "hadElement": true,
+        "pausedBefore": false,
+        "hasSrcObjectBefore": true,
+        "result": "cleared",
+        "pausedAfter": true,
+        "hasSrcObjectAfter": false
+      },
+      "play_to_cleanup_ms": 2050
+    },
+    {
+      "trial": 33,
+      "kind": "command",
+      "volume": 55,
+      "confirmed": true,
+      "delta": {
+        "barge_candidates": 1,
+        "barge_confirmed": 1,
+        "barge_command_confirmed": 1,
+        "barge_rejected_echo": 0,
+        "duck_applied": 1,
+        "duck_skipped_limit": 0
+      },
+      "audio": null,
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 62,
+          "at": 1792813317576,
+          "stage": "duck-applied",
+          "candidateId": "voice-32-1792813317576",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 3
+        },
+        {
+          "seq": 63,
+          "at": 1792813318964,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-32-1792813317576"
+        },
+        {
+          "seq": 64,
+          "at": 1792813325696,
+          "stage": "duck-applied",
+          "candidateId": "voice-33-1792813325696",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 4
+        },
+        {
+          "seq": 65,
+          "at": 1792813327044,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-33-1792813325696"
+        }
+      ],
+      "command_confirm_epoch": 1792813327044,
+      "play_to_confirm_ms": 2023,
+      "cleanup": {
+        "seq": 5,
+        "at": 1792813327044,
+        "reason": "barge-in-confirmed",
+        "audioGeneration": 4,
+        "hadElement": true,
+        "pausedBefore": false,
+        "hasSrcObjectBefore": true,
+        "result": "cleared",
+        "pausedAfter": true,
+        "hasSrcObjectAfter": false
+      },
+      "play_to_cleanup_ms": 2023
+    },
+    {
+      "trial": 34,
+      "kind": "command",
+      "volume": 55,
+      "confirmed": true,
+      "delta": {
+        "barge_candidates": 1,
+        "barge_confirmed": 1,
+        "barge_command_confirmed": 1,
+        "barge_rejected_echo": 0,
+        "duck_applied": 1,
+        "duck_skipped_limit": 0
+      },
+      "audio": null,
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 64,
+          "at": 1792813325696,
+          "stage": "duck-applied",
+          "candidateId": "voice-33-1792813325696",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 4
+        },
+        {
+          "seq": 65,
+          "at": 1792813327044,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-33-1792813325696"
+        },
+        {
+          "seq": 66,
+          "at": 1792813333676,
+          "stage": "duck-applied",
+          "candidateId": "voice-34-1792813333676",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 5
+        },
+        {
+          "seq": 67,
+          "at": 1792813335177,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-34-1792813333676"
+        }
+      ],
+      "command_confirm_epoch": 1792813335176,
+      "play_to_confirm_ms": 2072,
+      "cleanup": {
+        "seq": 6,
+        "at": 1792813335177,
+        "reason": "barge-in-confirmed",
+        "audioGeneration": 5,
+        "hadElement": true,
+        "pausedBefore": false,
+        "hasSrcObjectBefore": true,
+        "result": "cleared",
+        "pausedAfter": true,
+        "hasSrcObjectAfter": false
+      },
+      "play_to_cleanup_ms": 2073
+    },
+    {
+      "trial": 35,
+      "kind": "command",
+      "volume": 55,
+      "confirmed": true,
+      "delta": {
+        "barge_candidates": 1,
+        "barge_confirmed": 1,
+        "barge_command_confirmed": 1,
+        "barge_rejected_echo": 0,
+        "duck_applied": 1,
+        "duck_skipped_limit": 0
+      },
+      "audio": null,
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 66,
+          "at": 1792813333676,
+          "stage": "duck-applied",
+          "candidateId": "voice-34-1792813333676",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 5
+        },
+        {
+          "seq": 67,
+          "at": 1792813335177,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-34-1792813333676"
+        },
+        {
+          "seq": 68,
+          "at": 1792813343236,
+          "stage": "duck-applied",
+          "candidateId": "voice-35-1792813343236",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 6
+        },
+        {
+          "seq": 69,
+          "at": 1792813344599,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-35-1792813343236"
+        }
+      ],
+      "command_confirm_epoch": 1792813344599,
+      "play_to_confirm_ms": 2015,
+      "cleanup": {
+        "seq": 7,
+        "at": 1792813344599,
+        "reason": "barge-in-confirmed",
+        "audioGeneration": 6,
+        "hadElement": true,
+        "pausedBefore": false,
+        "hasSrcObjectBefore": true,
+        "result": "cleared",
+        "pausedAfter": true,
+        "hasSrcObjectAfter": false
+      },
+      "play_to_cleanup_ms": 2015
+    },
+    {
+      "trial": 36,
+      "kind": "command",
+      "volume": 55,
+      "confirmed": true,
+      "delta": {
+        "barge_candidates": 1,
+        "barge_confirmed": 1,
+        "barge_command_confirmed": 1,
+        "barge_rejected_echo": 0,
+        "duck_applied": 1,
+        "duck_skipped_limit": 0
+      },
+      "audio": null,
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 68,
+          "at": 1792813343236,
+          "stage": "duck-applied",
+          "candidateId": "voice-35-1792813343236",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 6
+        },
+        {
+          "seq": 69,
+          "at": 1792813344599,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-35-1792813343236"
+        },
+        {
+          "seq": 70,
+          "at": 1792813360896,
+          "stage": "duck-applied",
+          "candidateId": "voice-36-1792813360896",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 7
+        },
+        {
+          "seq": 71,
+          "at": 1792813362337,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-36-1792813360896"
+        }
+      ],
+      "command_confirm_epoch": 1792813362336,
+      "play_to_confirm_ms": 2060,
+      "cleanup": {
+        "seq": 8,
+        "at": 1792813362337,
+        "reason": "barge-in-confirmed",
+        "audioGeneration": 7,
+        "hadElement": true,
+        "pausedBefore": false,
+        "hasSrcObjectBefore": true,
+        "result": "cleared",
+        "pausedAfter": true,
+        "hasSrcObjectAfter": false
+      },
+      "play_to_cleanup_ms": 2061
+    },
+    {
+      "trial": 37,
+      "kind": "command",
+      "volume": 55,
+      "confirmed": true,
+      "delta": {
+        "barge_candidates": 1,
+        "barge_confirmed": 1,
+        "barge_command_confirmed": 1,
+        "barge_rejected_echo": 0,
+        "duck_applied": 1,
+        "duck_skipped_limit": 0
+      },
+      "audio": null,
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 70,
+          "at": 1792813360896,
+          "stage": "duck-applied",
+          "candidateId": "voice-36-1792813360896",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 7
+        },
+        {
+          "seq": 71,
+          "at": 1792813362337,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-36-1792813360896"
+        },
+        {
+          "seq": 72,
+          "at": 1792813368736,
+          "stage": "duck-applied",
+          "candidateId": "voice-37-1792813368736",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 8
+        },
+        {
+          "seq": 73,
+          "at": 1792813370108,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-37-1792813368736"
+        }
+      ],
+      "command_confirm_epoch": 1792813370107,
+      "play_to_confirm_ms": 2042,
+      "cleanup": {
+        "seq": 9,
+        "at": 1792813370108,
+        "reason": "barge-in-confirmed",
+        "audioGeneration": 8,
+        "hadElement": true,
+        "pausedBefore": false,
+        "hasSrcObjectBefore": true,
+        "result": "cleared",
+        "pausedAfter": true,
+        "hasSrcObjectAfter": false
+      },
+      "play_to_cleanup_ms": 2043
+    },
+    {
+      "trial": 38,
+      "kind": "command",
+      "volume": 55,
+      "confirmed": true,
+      "delta": {
+        "barge_candidates": 1,
+        "barge_confirmed": 1,
+        "barge_command_confirmed": 1,
+        "barge_rejected_echo": 0,
+        "duck_applied": 1,
+        "duck_skipped_limit": 0
+      },
+      "audio": null,
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 72,
+          "at": 1792813368736,
+          "stage": "duck-applied",
+          "candidateId": "voice-37-1792813368736",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 8
+        },
+        {
+          "seq": 73,
+          "at": 1792813370108,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-37-1792813368736"
+        },
+        {
+          "seq": 74,
+          "at": 1792813377056,
+          "stage": "duck-applied",
+          "candidateId": "voice-38-1792813377056",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 9
+        },
+        {
+          "seq": 75,
+          "at": 1792813378238,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-38-1792813377056"
+        }
+      ],
+      "command_confirm_epoch": 1792813378237,
+      "play_to_confirm_ms": 1786,
+      "cleanup": {
+        "seq": 10,
+        "at": 1792813378238,
+        "reason": "barge-in-confirmed",
+        "audioGeneration": 9,
+        "hadElement": true,
+        "pausedBefore": false,
+        "hasSrcObjectBefore": true,
+        "result": "cleared",
+        "pausedAfter": true,
+        "hasSrcObjectAfter": false
+      },
+      "play_to_cleanup_ms": 1787
+    },
+    {
+      "trial": 39,
+      "kind": "command",
+      "volume": 55,
+      "confirmed": true,
+      "delta": {
+        "barge_candidates": 1,
+        "barge_confirmed": 1,
+        "barge_command_confirmed": 1,
+        "barge_rejected_echo": 0,
+        "duck_applied": 1,
+        "duck_skipped_limit": 0
+      },
+      "audio": null,
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 74,
+          "at": 1792813377056,
+          "stage": "duck-applied",
+          "candidateId": "voice-38-1792813377056",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 9
+        },
+        {
+          "seq": 75,
+          "at": 1792813378238,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-38-1792813377056"
+        },
+        {
+          "seq": 76,
+          "at": 1792813395195,
+          "stage": "duck-applied",
+          "candidateId": "voice-39-1792813395195",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 10
+        },
+        {
+          "seq": 77,
+          "at": 1792813396668,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-39-1792813395195"
+        }
+      ],
+      "command_confirm_epoch": 1792813396667,
+      "play_to_confirm_ms": 2039,
+      "cleanup": {
+        "seq": 11,
+        "at": 1792813396668,
+        "reason": "barge-in-confirmed",
+        "audioGeneration": 10,
+        "hadElement": true,
+        "pausedBefore": false,
+        "hasSrcObjectBefore": true,
+        "result": "cleared",
+        "pausedAfter": true,
+        "hasSrcObjectAfter": false
+      },
+      "play_to_cleanup_ms": 2040
+    },
+    {
+      "trial": 40,
+      "kind": "command",
+      "volume": 55,
+      "confirmed": true,
+      "delta": {
+        "barge_candidates": 1,
+        "barge_confirmed": 1,
+        "barge_command_confirmed": 1,
+        "barge_rejected_echo": 0,
+        "duck_applied": 1,
+        "duck_skipped_limit": 0
+      },
+      "audio": null,
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 76,
+          "at": 1792813395195,
+          "stage": "duck-applied",
+          "candidateId": "voice-39-1792813395195",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 10
+        },
+        {
+          "seq": 77,
+          "at": 1792813396668,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-39-1792813395195"
+        },
+        {
+          "seq": 78,
+          "at": 1792813403336,
+          "stage": "duck-applied",
+          "candidateId": "voice-40-1792813403336",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 11
+        },
+        {
+          "seq": 79,
+          "at": 1792813404804,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-40-1792813403336"
+        }
+      ],
+      "command_confirm_epoch": 1792813404803,
+      "play_to_confirm_ms": 2037,
+      "cleanup": {
+        "seq": 12,
+        "at": 1792813404804,
+        "reason": "barge-in-confirmed",
+        "audioGeneration": 11,
+        "hadElement": true,
+        "pausedBefore": false,
+        "hasSrcObjectBefore": true,
+        "result": "cleared",
+        "pausedAfter": true,
+        "hasSrcObjectAfter": false
+      },
+      "play_to_cleanup_ms": 2038
+    },
+    {
+      "trial": 41,
+      "kind": "boundary",
+      "volume": 55,
+      "confirmed": true,
+      "delta": {
+        "barge_candidates": 2,
+        "barge_confirmed": 1,
+        "barge_command_confirmed": 1,
+        "barge_rejected_echo": 0,
+        "duck_applied": 2,
+        "duck_skipped_limit": 0
+      },
+      "audio": null,
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 80,
+          "at": 1792813410590,
+          "stage": "duck-applied",
+          "candidateId": "voice-41-1792813410590",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 12
+        },
+        {
+          "seq": 81,
+          "at": 1792813413593,
+          "stage": "volume-restored",
+          "candidateId": "voice-41-1792813410590",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 82,
+          "at": 1792813415915,
+          "stage": "duck-applied",
+          "candidateId": "voice-41-1792813415916",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 12
+        },
+        {
+          "seq": 83,
+          "at": 1792813416968,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-41-1792813415916"
+        }
+      ],
+      "command_confirm_epoch": 1792813416968,
+      "play_to_confirm_ms": 1675,
+      "cleanup": {
+        "seq": 13,
+        "at": 1792813416968,
+        "reason": "barge-in-confirmed",
+        "audioGeneration": 12,
+        "hadElement": true,
+        "pausedBefore": false,
+        "hasSrcObjectBefore": true,
+        "result": "cleared",
+        "pausedAfter": true,
+        "hasSrcObjectAfter": false
+      },
+      "play_to_cleanup_ms": 1675
+    },
+    {
+      "trial": 42,
+      "kind": "boundary",
+      "volume": 55,
+      "confirmed": true,
+      "delta": {
+        "barge_candidates": 2,
+        "barge_confirmed": 1,
+        "barge_command_confirmed": 1,
+        "barge_rejected_echo": 0,
+        "duck_applied": 2,
+        "duck_skipped_limit": 0
+      },
+      "audio": null,
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 84,
+          "at": 1792813423504,
+          "stage": "duck-applied",
+          "candidateId": "voice-42-1792813423504",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 13
+        },
+        {
+          "seq": 85,
+          "at": 1792813426505,
+          "stage": "volume-restored",
+          "candidateId": "voice-42-1792813423504",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 86,
+          "at": 1792813428796,
+          "stage": "duck-applied",
+          "candidateId": "voice-42-1792813428796",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 13
+        },
+        {
+          "seq": 87,
+          "at": 1792813429528,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-42-1792813428796"
+        }
+      ],
+      "command_confirm_epoch": 1792813429526,
+      "play_to_confirm_ms": 1316,
+      "cleanup": {
+        "seq": 14,
+        "at": 1792813429528,
+        "reason": "barge-in-confirmed",
+        "audioGeneration": 13,
+        "hadElement": true,
+        "pausedBefore": false,
+        "hasSrcObjectBefore": true,
+        "result": "cleared",
+        "pausedAfter": true,
+        "hasSrcObjectAfter": false
+      },
+      "play_to_cleanup_ms": 1318
+    },
+    {
+      "trial": 43,
+      "kind": "boundary",
+      "volume": 55,
+      "confirmed": true,
+      "delta": {
+        "barge_candidates": 2,
+        "barge_confirmed": 1,
+        "barge_command_confirmed": 1,
+        "barge_rejected_echo": 0,
+        "duck_applied": 2,
+        "duck_skipped_limit": 0
+      },
+      "audio": null,
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 88,
+          "at": 1792813445249,
+          "stage": "duck-applied",
+          "candidateId": "voice-43-1792813445249",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 14
+        },
+        {
+          "seq": 89,
+          "at": 1792813448252,
+          "stage": "volume-restored",
+          "candidateId": "voice-43-1792813445249",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 90,
+          "at": 1792813450556,
+          "stage": "duck-applied",
+          "candidateId": "voice-43-1792813450556",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 14
+        },
+        {
+          "seq": 91,
+          "at": 1792813452002,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-43-1792813450556"
+        }
+      ],
+      "command_confirm_epoch": 1792813452001,
+      "play_to_confirm_ms": 2045,
+      "cleanup": {
+        "seq": 15,
+        "at": 1792813452002,
+        "reason": "barge-in-confirmed",
+        "audioGeneration": 14,
+        "hadElement": true,
+        "pausedBefore": false,
+        "hasSrcObjectBefore": true,
+        "result": "cleared",
+        "pausedAfter": true,
+        "hasSrcObjectAfter": false
+      },
+      "play_to_cleanup_ms": 2046
+    },
+    {
+      "trial": 44,
+      "kind": "boundary",
+      "volume": 55,
+      "confirmed": true,
+      "delta": {
+        "barge_candidates": 2,
+        "barge_confirmed": 1,
+        "barge_command_confirmed": 1,
+        "barge_rejected_echo": 0,
+        "duck_applied": 2,
+        "duck_skipped_limit": 0
+      },
+      "audio": null,
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 92,
+          "at": 1792813457778,
+          "stage": "duck-applied",
+          "candidateId": "voice-44-1792813457779",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 15
+        },
+        {
+          "seq": 93,
+          "at": 1792813460779,
+          "stage": "volume-restored",
+          "candidateId": "voice-44-1792813457779",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 94,
+          "at": 1792813463077,
+          "stage": "duck-applied",
+          "candidateId": "voice-44-1792813463076",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 15
+        },
+        {
+          "seq": 95,
+          "at": 1792813464172,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-44-1792813463076"
+        }
+      ],
+      "command_confirm_epoch": 1792813464171,
+      "play_to_confirm_ms": 1687,
+      "cleanup": {
+        "seq": 16,
+        "at": 1792813464172,
+        "reason": "barge-in-confirmed",
+        "audioGeneration": 15,
+        "hadElement": true,
+        "pausedBefore": false,
+        "hasSrcObjectBefore": true,
+        "result": "cleared",
+        "pausedAfter": true,
+        "hasSrcObjectAfter": false
+      },
+      "play_to_cleanup_ms": 1688
+    },
+    {
+      "trial": 45,
+      "kind": "boundary",
+      "volume": 55,
+      "confirmed": true,
+      "delta": {
+        "barge_candidates": 2,
+        "barge_confirmed": 1,
+        "barge_command_confirmed": 1,
+        "barge_rejected_echo": 0,
+        "duck_applied": 2,
+        "duck_skipped_limit": 0
+      },
+      "audio": null,
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 96,
+          "at": 1792813470531,
+          "stage": "duck-applied",
+          "candidateId": "voice-45-1792813470531",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 16
+        },
+        {
+          "seq": 97,
+          "at": 1792813473532,
+          "stage": "volume-restored",
+          "candidateId": "voice-45-1792813470531",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 98,
+          "at": 1792813475816,
+          "stage": "duck-applied",
+          "candidateId": "voice-45-1792813475816",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 16
+        },
+        {
+          "seq": 99,
+          "at": 1792813476697,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-45-1792813475816"
+        }
+      ],
+      "command_confirm_epoch": 1792813476696,
+      "play_to_confirm_ms": 1461,
+      "cleanup": {
+        "seq": 17,
+        "at": 1792813476697,
+        "reason": "barge-in-confirmed",
+        "audioGeneration": 16,
+        "hadElement": true,
+        "pausedBefore": false,
+        "hasSrcObjectBefore": true,
+        "result": "cleared",
+        "pausedAfter": true,
+        "hasSrcObjectAfter": false
+      },
+      "play_to_cleanup_ms": 1462
+    },
+    {
+      "trial": 46,
+      "kind": "boundary",
+      "volume": 55,
+      "confirmed": true,
+      "delta": {
+        "barge_candidates": 2,
+        "barge_confirmed": 1,
+        "barge_command_confirmed": 1,
+        "barge_rejected_echo": 0,
+        "duck_applied": 2,
+        "duck_skipped_limit": 0
+      },
+      "audio": null,
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 100,
+          "at": 1792813483270,
+          "stage": "duck-applied",
+          "candidateId": "voice-46-1792813483271",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 17
+        },
+        {
+          "seq": 101,
+          "at": 1792813486271,
+          "stage": "volume-restored",
+          "candidateId": "voice-46-1792813483271",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 101,
+          "at": 1792813488576,
+          "stage": "duck-applied",
+          "candidateId": "voice-46-1792813488576",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 17
+        },
+        {
+          "seq": 101,
+          "at": 1792813489557,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-46-1792813488576"
+        }
+      ],
+      "command_confirm_epoch": 1792813489555,
+      "play_to_confirm_ms": 1579,
+      "cleanup": {
+        "seq": 18,
+        "at": 1792813489557,
+        "reason": "barge-in-confirmed",
+        "audioGeneration": 17,
+        "hadElement": true,
+        "pausedBefore": false,
+        "hasSrcObjectBefore": true,
+        "result": "cleared",
+        "pausedAfter": true,
+        "hasSrcObjectAfter": false
+      },
+      "play_to_cleanup_ms": 1581
+    },
+    {
+      "trial": 47,
+      "kind": "boundary",
+      "volume": 55,
+      "confirmed": true,
+      "delta": {
+        "barge_candidates": 2,
+        "barge_confirmed": 1,
+        "barge_command_confirmed": 1,
+        "barge_rejected_echo": 0,
+        "duck_applied": 2,
+        "duck_skipped_limit": 0
+      },
+      "audio": null,
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 101,
+          "at": 1792813495762,
+          "stage": "duck-applied",
+          "candidateId": "voice-47-1792813495762",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 18
+        },
+        {
+          "seq": 101,
+          "at": 1792813498762,
+          "stage": "volume-restored",
+          "candidateId": "voice-47-1792813495762",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 101,
+          "at": 1792813501157,
+          "stage": "duck-applied",
+          "candidateId": "voice-47-1792813501157",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 18
+        },
+        {
+          "seq": 101,
+          "at": 1792813502231,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-47-1792813501157"
+        }
+      ],
+      "command_confirm_epoch": 1792813502230,
+      "play_to_confirm_ms": 1763,
+      "cleanup": {
+        "seq": 19,
+        "at": 1792813502231,
+        "reason": "barge-in-confirmed",
+        "audioGeneration": 18,
+        "hadElement": true,
+        "pausedBefore": false,
+        "hasSrcObjectBefore": true,
+        "result": "cleared",
+        "pausedAfter": true,
+        "hasSrcObjectAfter": false
+      },
+      "play_to_cleanup_ms": 1764
+    },
+    {
+      "trial": 48,
+      "kind": "boundary",
+      "precondition": false,
+      "error": "no active playback"
+    },
+    {
+      "trial": 49,
+      "kind": "boundary",
+      "volume": 55,
+      "confirmed": true,
+      "delta": {
+        "barge_candidates": 2,
+        "barge_confirmed": 1,
+        "barge_command_confirmed": 1,
+        "barge_rejected_echo": 0,
+        "duck_applied": 2,
+        "duck_skipped_limit": 0
+      },
+      "audio": null,
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 101,
+          "at": 1792813543773,
+          "stage": "duck-applied",
+          "candidateId": "voice-49-1792813543773",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 19
+        },
+        {
+          "seq": 101,
+          "at": 1792813546774,
+          "stage": "volume-restored",
+          "candidateId": "voice-49-1792813543773",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 101,
+          "at": 1792813549157,
+          "stage": "duck-applied",
+          "candidateId": "voice-49-1792813549157",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 19
+        },
+        {
+          "seq": 101,
+          "at": 1792813550597,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-49-1792813549157"
+        }
+      ],
+      "command_confirm_epoch": 1792813550595,
+      "play_to_confirm_ms": 2119,
+      "cleanup": {
+        "seq": 20,
+        "at": 1792813550597,
+        "reason": "barge-in-confirmed",
+        "audioGeneration": 19,
+        "hadElement": true,
+        "pausedBefore": false,
+        "hasSrcObjectBefore": true,
+        "result": "cleared",
+        "pausedAfter": true,
+        "hasSrcObjectAfter": false
+      },
+      "play_to_cleanup_ms": 2121
+    },
+    {
+      "trial": 50,
+      "kind": "boundary",
+      "volume": 55,
+      "confirmed": true,
+      "delta": {
+        "barge_candidates": 2,
+        "barge_confirmed": 1,
+        "barge_command_confirmed": 1,
+        "barge_rejected_echo": 0,
+        "duck_applied": 2,
+        "duck_skipped_limit": 0
+      },
+      "audio": null,
+      "duck": null,
+      "ducklog": [
+        {
+          "seq": 101,
+          "at": 1792813556338,
+          "stage": "duck-applied",
+          "candidateId": "voice-50-1792813556338",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 20
+        },
+        {
+          "seq": 101,
+          "at": 1792813559338,
+          "stage": "volume-restored",
+          "candidateId": "voice-50-1792813556338",
+          "volume": 1,
+          "reason": "server-restore"
+        },
+        {
+          "seq": 101,
+          "at": 1792813561737,
+          "stage": "duck-applied",
+          "candidateId": "voice-50-1792813561737",
+          "originalVolume": 1,
+          "appliedVolume": 0.3,
+          "generation": 20
+        },
+        {
+          "seq": 101,
+          "at": 1792813562802,
+          "stage": "duck-cleared-on-confirm",
+          "candidateId": "voice-50-1792813561737"
+        }
+      ],
+      "command_confirm_epoch": 1792813562801,
+      "play_to_confirm_ms": 1758,
+      "cleanup": {
+        "seq": 21,
+        "at": 1792813562802,
+        "reason": "barge-in-confirmed",
+        "audioGeneration": 20,
+        "hadElement": true,
+        "pausedBefore": false,
+        "hasSrcObjectBefore": true,
+        "result": "cleared",
+        "pausedAfter": true,
+        "hasSrcObjectAfter": false
+      },
+      "play_to_cleanup_ms": 1759
+    }
+  ],
+  "scenarios": {
+    "pure:13": {
+      "n": 3,
+      "confirmed": 0,
+      "false_confirmed": 0,
+      "candidates": 1,
+      "duck": 1,
+      "missed": 0,
+      "errors": 0
+    },
+    "pure:55": {
+      "n": 4,
+      "confirmed": 0,
+      "false_confirmed": 0,
+      "candidates": 8,
+      "duck": 5,
+      "missed": 0,
+      "errors": 0
+    },
+    "pure:80": {
+      "n": 3,
+      "confirmed": 0,
+      "false_confirmed": 0,
+      "candidates": 5,
+      "duck": 3,
+      "missed": 0,
+      "errors": 0
+    },
+    "noise": {
+      "n": 10,
+      "confirmed": 0,
+      "false_confirmed": 0,
+      "candidates": 7,
+      "duck": 6,
+      "missed": 0,
+      "errors": 0
+    },
+    "ordinary": {
+      "n": 10,
+      "confirmed": 0,
+      "false_confirmed": 0,
+      "candidates": 9,
+      "duck": 9,
+      "missed": 0,
+      "errors": 0
+    },
+    "command": {
+      "n": 10,
+      "confirmed": 10,
+      "false_confirmed": 0,
+      "candidates": 10,
+      "duck": 10,
+      "missed": 0,
+      "errors": 0
+    },
+    "boundary": {
+      "n": 10,
+      "confirmed": 9,
+      "false_confirmed": 0,
+      "candidates": 18,
+      "duck": 18,
+      "missed": 1,
+      "errors": 0
+    }
+  }
+}

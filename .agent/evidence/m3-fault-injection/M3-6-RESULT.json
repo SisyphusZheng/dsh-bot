@@ -1,0 +1,51 @@
+{
+  "suite": "M3-6 fault injection",
+  "startedAt": "2026-10-22T05:48:30.403Z",
+  "steps": {
+    "start-both": {
+      "status": "PASS",
+      "ms": 1063,
+      "detail": {
+        "dshPid": 40678,
+        "voicePid": 40680,
+        "dshPort": 64640
+      }
+    },
+    "dsh-crash-restart": {
+      "status": "PASS",
+      "ms": 1104,
+      "detail": {
+        "oldDsh": 40678,
+        "newDsh": 40681,
+        "voicePid": 40680
+      }
+    },
+    "voice-crash-restart": {
+      "status": "PASS",
+      "ms": 104,
+      "detail": {
+        "oldVoice": 40680,
+        "newVoice": 40682,
+        "dshPid": 40681
+      }
+    },
+    "dsh-down-fail-closed": {
+      "status": "PASS",
+      "ms": 102,
+      "detail": {
+        "hostDown": true,
+        "voiceIndependent": true
+      }
+    },
+    "stop-all-no-orphans": {
+      "status": "PASS",
+      "ms": 591,
+      "detail": {
+        "dshOrphans": 0,
+        "voiceOrphans": 0
+      }
+    }
+  },
+  "ok": true,
+  "finishedAt": "2026-10-22T05:48:33.388Z"
+}

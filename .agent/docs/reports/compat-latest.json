@@ -1,0 +1,87 @@
+{
+  "schema": "whalegirl.compat/1",
+  "startedAt": "2026-10-24T15:55:27.388Z",
+  "projectRoot": "$HOME/projects/dsh-bot-workspace",
+  "manifestPath": "$HOME/projects/dsh-bot-workspace/versions.json",
+  "reportsDir": "$HOME/projects/dsh-bot-workspace/docs/reports",
+  "gates": [
+    {
+      "name": "manifest",
+      "status": "PASS",
+      "detail": {
+        "productVersion": "0.1.0",
+        "runtimeVersion": "0.2.1-rc.2",
+        "runtimeTag": "dsh-v0.2.1-rc.2",
+        "errors": [],
+        "warnings": []
+      },
+      "durationMs": 1365,
+      "evidence": null
+    },
+    {
+      "name": "preflight",
+      "status": "PASS",
+      "detail": {
+        "mode": "live",
+        "exitCode": 0,
+        "runs": 1,
+        "evidenceFile": "$HOME/projects/dsh-bot-workspace/m4/evidence/PREFLIGHT-2026-10-24T15-55-28.792Z.json",
+        "logFile": "$HOME/projects/dsh-bot-workspace/docs/reports/raw/compat-2026-10-24T15-55-27.388Z-preflight.log",
+        "stdoutTail": [
+          "PASS agent-ready {\"sessionId\":\"5fa2fe9c-af70-47b3-9dba-de4cf377e661\",\"created\":true}",
+          "PASS descriptor-removed {\"descriptorGone\":true}",
+          "PASS log-assertions {\"moduleLoaded\":1,\"bridgeListening\":1,\"fixtureDisposed\":1,\"alreadyOwned\":0,\"inactiveContext\":0}",
+          "{",
+          "  \"ok\": true,",
+          "  \"exitCode\": 0,",
+          "  \"evidenceFile\": \"$HOME/projects/dsh-bot-workspace/m4/evidence/PREFLIGHT-2026-10-24T15-55-28.792Z.json\",",
+          "  \"productFailures\": [],",
+          "  \"preflightFailures\": [],",
+          "  \"envFailures\": []",
+          "}",
+          ""
+        ]
+      },
+      "durationMs": 2500,
+      "evidence": "$HOME/projects/dsh-bot-workspace/docs/reports/raw/compat-2026-10-24T15-55-27.388Z-preflight.log"
+    },
+    {
+      "name": "voice-worker",
+      "status": "PASS",
+      "detail": {
+        "port": 59256,
+        "startupMs": 1539,
+        "health": {
+          "service": "whalegirl-voice-spike",
+          "mode": "echo",
+          "pipecat": "1.13.0",
+          "ok": true
+        },
+        "shutdownMs": 10098,
+        "processExitedGracefully": false,
+        "note": "bootloader lingered after SIGTERM; port closed and SIGKILL was sent",
+        "logFile": "$HOME/projects/dsh-bot-workspace/docs/reports/raw/compat-2026-10-24T15-55-27.388Z-voice.log"
+      },
+      "durationMs": 11637,
+      "evidence": "$HOME/projects/dsh-bot-workspace/docs/reports/raw/compat-2026-10-24T15-55-27.388Z-voice.log"
+    },
+    {
+      "name": "memory-sidecar",
+      "status": "SKIP",
+      "detail": "no --memory-url supplied; memory sidecar startup is owned by the memory stream",
+      "durationMs": 0,
+      "evidence": null
+    },
+    {
+      "name": "private-home-untouched",
+      "status": "PASS",
+      "detail": "private DSH home mtime unchanged",
+      "durationMs": 0,
+      "evidence": null
+    }
+  ],
+  "exitCode": 0,
+  "ok": true,
+  "finishedAt": "2026-10-24T15:55:42.892Z",
+  "durationMs": 15504
+}

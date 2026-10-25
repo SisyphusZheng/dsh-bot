@@ -1,0 +1,127 @@
+{
+  "suite": "whalegirl preflight",
+  "startedAt": "2026-10-24T11:24:56.544Z",
+  "runs": [
+    {
+      "index": 1,
+      "root": "/tmp/whalegirl-preflight-1792841096547-1-198c06f1",
+      "steps": [
+        {
+          "name": "install-profile",
+          "status": "PASS",
+          "detail": {
+            "profile": "/tmp/whalegirl-preflight-1792841096547-1-198c06f1/dsh-home/profiles/nisse-smoke"
+          }
+        },
+        {
+          "name": "host-start",
+          "status": "PASS",
+          "detail": {
+            "pid": 27694,
+            "port": 52281
+          }
+        },
+        {
+          "name": "descriptor",
+          "status": "PASS",
+          "detail": {
+            "port": 52282,
+            "tokenPresent": true
+          }
+        },
+        {
+          "name": "concurrent-sessions-create",
+          "status": "PRODUCT_FAIL",
+          "detail": {
+            "statuses": [
+              500,
+              500,
+              500,
+              500
+            ],
+            "sessionIds": [],
+            "structuredErrors": [
+              {
+                "status": 500,
+                "error": "session \"65121ab7-6cd4-4ef6-a4c9-dce05b9f0f19\" is already owned by an active write handle"
+              },
+              {
+                "status": 500,
+                "error": "session \"65121ab7-6cd4-4ef6-a4c9-dce05b9f0f19\" is already owned by an active write handle"
+              },
+              {
+                "status": 500,
+                "error": "session \"65121ab7-6cd4-4ef6-a4c9-dce05b9f0f19\" is already owned by an active write handle"
+              },
+              {
+                "status": 500,
+                "error": "session \"65121ab7-6cd4-4ef6-a4c9-dce05b9f0f19\" is already owned by an active write handle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent-ready",
+          "status": "PRODUCT_FAIL",
+          "detail": {
+            "error": "agent never became ready",
+            "health": {
+              "sessionId": "65121ab7-6cd4-4ef6-a4c9-dce05b9f0f19",
+              "created": true,
+              "status": "idle",
+              "lastTurn": null,
+              "conversationIndex": 1,
+              "contextTokens": 0,
+              "approval": {
+                "mode": "ask-each",
+                "onceMinutes": 30
+              },
+              "behavior": {
+                "pauseOnInput": true,
+                "allowScreenView": true
+              },
+              "rotateTokenLimit": 90000
+            }
+          }
+        },
+        {
+          "name": "descriptor-removed",
+          "status": "PASS",
+          "detail": {
+            "descriptorGone": true
+          }
+        },
+        {
+          "name": "log-assertions",
+          "status": "PRODUCT_FAIL",
+          "detail": {
+            "moduleLoaded": 1,
+            "bridgeListening": 1,
+            "fixtureDisposed": 1,
+            "alreadyOwned": 4,
+            "inactiveContext": 0
+          }
+        }
+      ],
+      "ok": false,
+      "logCounts": {
+        "moduleLoaded": 1,
+        "bridgeListening": 1,
+        "fixtureDisposed": 1,
+        "alreadyOwned": 4,
+        "inactiveContext": 0
+      }
+    }
+  ],
+  "ok": false,
+  "mainDshTouched": false,
+  "productFailures": [
+    "run1: concurrent /sessions/create did not converge: {\"statuses\":[500,500,500,500],\"sessionIds\":[],\"structuredErrors\":[{\"status\":500,\"error\":\"session \\\"65121ab7-6cd4-4ef6-a4c9-dce05b9f0f19\\\" is already owned by an active write handle\"},{\"status\":500,\"error\":\"session \\\"65121ab7-6cd4-4ef6-a4c9-dce05b9f0f19\\\" is already owned by an active write handle\"},{\"status\":500,\"error\":\"session \\\"65121ab7-6cd4-4ef6-a4c9-dce05b9f0f19\\\" is already owned by an active write handle\"},{\"status\":500,\"error\":\"session \\\"65121ab7-6cd4-4ef6-a4c9-dce05b9f0f19\\\" is already owned by an active write handle\"}]}",
+    "run1: agent never ready: {\"error\":\"agent never became ready\",\"health\":{\"sessionId\":\"65121ab7-6cd4-4ef6-a4c9-dce05b9f0f19\",\"created\":true,\"status\":\"idle\",\"lastTurn\":null,\"conversationIndex\":1,\"contextTokens\":0,\"approval\":{\"mode\":\"ask-each\",\"onceMinutes\":30},\"behavior\":{\"pauseOnInput\":true,\"allowScreenView\":true},\"rotateTokenLimit\":90000}}",
+    "run1: ownership error appeared 4 times"
+  ],
+  "preflightFailures": [],
+  "envFailures": [],
+  "finishedAt": "2026-10-24T11:27:27.772Z",
+  "exitCode": 2
+}

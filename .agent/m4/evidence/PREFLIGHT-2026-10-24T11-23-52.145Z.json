@@ -1,0 +1,92 @@
+{
+  "suite": "whalegirl preflight",
+  "startedAt": "2026-10-24T11:23:52.145Z",
+  "runs": [
+    {
+      "index": 1,
+      "root": "/tmp/whalegirl-preflight-1792841032155-1-8652d51a",
+      "steps": [
+        {
+          "name": "install-profile",
+          "status": "PASS",
+          "detail": {
+            "profile": "/tmp/whalegirl-preflight-1792841032155-1-8652d51a/dsh-home/profiles/nisse-smoke"
+          }
+        },
+        {
+          "name": "host-start",
+          "status": "PASS",
+          "detail": {
+            "pid": 27570,
+            "port": 52209
+          }
+        },
+        {
+          "name": "descriptor",
+          "status": "PASS",
+          "detail": {
+            "port": 52210,
+            "tokenPresent": true
+          }
+        },
+        {
+          "name": "concurrent-sessions-create",
+          "status": "PASS",
+          "detail": {
+            "statuses": [
+              200,
+              200,
+              200,
+              200
+            ],
+            "sessionIds": [
+              "c94fcf10-1c58-42b2-9235-f70e5f485319"
+            ],
+            "structuredErrors": []
+          }
+        },
+        {
+          "name": "agent-ready",
+          "status": "PASS",
+          "detail": {
+            "sessionId": "c94fcf10-1c58-42b2-9235-f70e5f485319",
+            "created": true
+          }
+        },
+        {
+          "name": "descriptor-removed",
+          "status": "PASS",
+          "detail": {
+            "descriptorGone": true
+          }
+        },
+        {
+          "name": "log-assertions",
+          "status": "PASS",
+          "detail": {
+            "moduleLoaded": 1,
+            "bridgeListening": 1,
+            "fixtureDisposed": 1,
+            "alreadyOwned": 0,
+            "inactiveContext": 0
+          }
+        }
+      ],
+      "ok": true,
+      "logCounts": {
+        "moduleLoaded": 1,
+        "bridgeListening": 1,
+        "fixtureDisposed": 1,
+        "alreadyOwned": 0,
+        "inactiveContext": 0
+      }
+    }
+  ],
+  "ok": true,
+  "mainDshTouched": false,
+  "productFailures": [],
+  "preflightFailures": [],
+  "envFailures": [],
+  "finishedAt": "2026-10-24T11:23:55.109Z",
+  "exitCode": 0
+}

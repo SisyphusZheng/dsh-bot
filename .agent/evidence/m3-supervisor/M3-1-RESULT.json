@@ -1,0 +1,46 @@
+{
+  "suite": "M3-1 supervisor",
+  "startedAt": "2026-10-22T05:48:27.288Z",
+  "steps": {
+    "start": {
+      "status": "PASS",
+      "ms": 1301,
+      "detail": {
+        "pid": 40651,
+        "url": "http://127.0.0.1:64630/?token=5t1uBP3e9LO8vFrPuX5gdh1j97vZMag7uEpulFTusrE",
+        "port": 64630,
+        "httpStatus": 401
+      }
+    },
+    "singleton": {
+      "status": "PASS",
+      "ms": 0,
+      "detail": {
+        "rejected": true
+      }
+    },
+    "crash-restart": {
+      "status": "PASS",
+      "ms": 1118,
+      "detail": {
+        "oldPid": 40651,
+        "newPid": 40652,
+        "port": 64635,
+        "httpStatus": 401
+      }
+    },
+    "stop": {
+      "status": "PASS",
+      "ms": 625,
+      "detail": {
+        "stopped": true,
+        "wasRunning": true,
+        "pid": 40652,
+        "exitedGracefully": true,
+        "exit": null
+      }
+    }
+  },
+  "ok": true,
+  "finishedAt": "2026-10-22T05:48:30.361Z"
+}

@@ -1,0 +1,63 @@
+{
+  "suite": "M4-6 memory v1",
+  "startedAt": "2026-10-24T04:17:46.798Z",
+  "steps": {
+    "sidecar-start": {
+      "status": "PASS",
+      "ms": 235,
+      "detail": {
+        "port": 57158,
+        "bank": "nisse:m4:test",
+        "health": {
+          "ok": true,
+          "version": "1.0.0",
+          "latencyMs": 27,
+          "bankId": "nisse:m4:test",
+          "writerHeld": false
+        }
+      }
+    },
+    "write-recall": {
+      "status": "PASS",
+      "ms": 1229,
+      "detail": {
+        "write": "ok",
+        "nimbus": true,
+        "shanghai": true
+      }
+    },
+    "sensitive-rejected": {
+      "status": "PASS",
+      "ms": 3,
+      "detail": {
+        "status": 400,
+        "code": "SENSITIVE_CONTENT_REJECTED"
+      }
+    },
+    "forget-not-recallable": {
+      "status": "PASS",
+      "ms": 936,
+      "detail": {
+        "forget": {
+          "deleted": 3,
+          "invalidated": 3,
+          "deletedDocuments": 0,
+          "notFound": [],
+          "verified": true,
+          "remaining": 0
+        },
+        "noNimbus": true
+      }
+    },
+    "export": {
+      "status": "PASS",
+      "ms": 7,
+      "detail": {
+        "path": "/tmp/nisse-m4-memory/exports/nisse-memory-2026-10-24T04-17-49-242Z.jsonl",
+        "bytes": null
+      }
+    }
+  },
+  "ok": true,
+  "finishedAt": "2026-10-24T04:17:49.744Z"
+}

@@ -1,0 +1,33 @@
+{
+  "suite": "M4-6 memory host integration",
+  "startedAt": "2026-10-22T13:14:17.600Z",
+  "steps": {
+    "setup": {
+      "status": "PASS",
+      "ms": 1665,
+      "detail": {
+        "pid": 62748,
+        "httpStatus": 401,
+        "memory": true
+      }
+    },
+    "digest-recall-in-answer": {
+      "status": "PASS",
+      "ms": 2252,
+      "detail": {
+        "answerPreview": "Nimbus"
+      }
+    },
+    "memory-endpoints": {
+      "status": "PASS",
+      "ms": 109,
+      "detail": {
+        "health": true,
+        "search": true,
+        "forget": true
+      }
+    }
+  },
+  "ok": true,
+  "finishedAt": "2026-10-22T13:14:22.258Z"
+}

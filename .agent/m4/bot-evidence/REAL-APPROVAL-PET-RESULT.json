@@ -1,0 +1,76 @@
+{
+  "suite": "real approval on the pet bubble (是/否) driven by DSH",
+  "startedAt": "2026-10-22T14:07:01.537Z",
+  "cases": {
+    "allow": {
+      "decision": "allow",
+      "approvalId": "approval_1792678028354_1",
+      "toolName": "terminal_send",
+      "reason": "terminal_send outside workspace: $HOME/projects/dsh-bot-workspace/m4/bot-evidence/pet-approval-allow.txt",
+      "bubbleText": "DSH 请求确认：terminal_send\nterminal_send outside workspace: $HOME/projects/dsh-bot-workspace/m4/bot-evidence/pet-approval-allow.txt",
+      "bubbleButtons": [
+        {
+          "text": "是",
+          "visible": true
+        },
+        {
+          "text": "否",
+          "visible": true
+        }
+      ],
+      "clickedButton": "是",
+      "fallbackAnswered": null,
+      "bubbleScreenshot": "$HOME/projects/dsh-bot-workspace/m4/bot-evidence/PET-APPROVAL-BUBBLE-allow.png",
+      "decided": {
+        "durableSeq": 24,
+        "outcome": "allowed-once"
+      },
+      "ended": {
+        "durableSeq": 35,
+        "terminal": "completed",
+        "reason": {
+          "kind": "completed"
+        }
+      },
+      "fileExists": true,
+      "expectedFileExists": true,
+      "pass": true
+    },
+    "reject": {
+      "decision": "reject",
+      "approvalId": "approval_1792678044900_2",
+      "toolName": "terminal_send",
+      "reason": "terminal_send outside workspace: $HOME/projects/dsh-bot-workspace/m4/bot-evidence/pet-approval-reject.txt",
+      "bubbleText": "DSH 请求确认：terminal_send\nterminal_send outside workspace: $HOME/projects/dsh-bot-workspace/m4/bot-evidence/pet-approval-reject.txt",
+      "bubbleButtons": [
+        {
+          "text": "是",
+          "visible": true
+        },
+        {
+          "text": "否",
+          "visible": true
+        }
+      ],
+      "clickedButton": "否",
+      "fallbackAnswered": null,
+      "bubbleScreenshot": "$HOME/projects/dsh-bot-workspace/m4/bot-evidence/PET-APPROVAL-BUBBLE-reject.png",
+      "decided": {
+        "durableSeq": 50,
+        "outcome": "rejected"
+      },
+      "ended": {
+        "durableSeq": 61,
+        "terminal": "completed",
+        "reason": {
+          "kind": "completed"
+        }
+      },
+      "fileExists": false,
+      "expectedFileExists": false,
+      "pass": true
+    }
+  },
+  "ok": true,
+  "finishedAt": "2026-10-22T14:07:34.104Z"
+}

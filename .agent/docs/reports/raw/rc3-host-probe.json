@@ -1,0 +1,316 @@
+{
+  "schema": "whalegirl.rc3-boot/1",
+  "runtime": "/tmp/dsh-rc3",
+  "steps": [
+    {
+      "name": "candidate",
+      "status": "PASS",
+      "detail": {
+        "version": "0.2.1-rc.3"
+      }
+    },
+    {
+      "name": "mock-llm",
+      "status": "PASS",
+      "detail": {
+        "baseURL": "http://127.0.0.1:57257/v1"
+      }
+    },
+    {
+      "name": "profile",
+      "status": "PASS",
+      "detail": {
+        "profileDir": "/tmp/wg-rc3-boot-HtwIan/dsh-home/profiles/rc3-probe",
+        "plugin": "$HOME/projects/dsh-bot/nisse/packages/host-integration"
+      }
+    },
+    {
+      "name": "descriptor",
+      "status": "PASS",
+      "detail": {
+        "port": 57261,
+        "ms": 1313
+      }
+    },
+    {
+      "name": "health-ready",
+      "status": "PASS",
+      "detail": {
+        "sessionId": "fa167c41-86ea-458f-bf59-ce8543f9c537",
+        "ms": 1668
+      }
+    },
+    {
+      "name": "sessions-create",
+      "status": "PASS",
+      "detail": {
+        "status": 200,
+        "sessionId": "fa167c41-86ea-458f-bf59-ce8543f9c537"
+      }
+    },
+    {
+      "name": "turn",
+      "status": "PASS",
+      "detail": {
+        "httpStatus": 200,
+        "eventCount": 17,
+        "deltaCount": 4,
+        "settled": true,
+        "eventTypes": [
+          "system.event",
+          "turn.settled",
+          "turn.started",
+          "turn.delta"
+        ],
+        "assistantText": "rc.3 bridge probe OK.",
+        "ms": 6017
+      }
+    },
+    {
+      "name": "host-stop",
+      "status": "PASS",
+      "detail": {
+        "exitedGracefully": true
+      }
+    },
+    {
+      "name": "descriptor-removed",
+      "status": "PASS",
+      "detail": {
+        "descriptorGone": true
+      }
+    },
+    {
+      "name": "private-home-untouched",
+      "status": "PASS",
+      "detail": {
+        "touched": false
+      }
+    }
+  ],
+  "ok": true,
+  "bridgePort": 57261,
+  "turn": {
+    "httpStatus": 200,
+    "eventCount": 17,
+    "deltaCount": 4,
+    "settled": true,
+    "errorEvents": [],
+    "startedEvents": [
+      "{\"ioSeq\":6,\"ts\":\"2026-10-24T12:26:52.682Z\",\"component\":\"integration\",\"type\":\"user.message\",\"contractType\":\"turn.started\",\"contractVersion\":\"v0\",\"sessionId\":\"fa167c41-86ea-458f-bf59-ce8543f9c537\",\"turn\":1,\"turnId\":\"fa167c41-86ea-458f-bf59-ce8543f9c537:1\",\"data\":{\"durableSeq\":11,\"text\":\"Reply with one short sentence.\"},\"note\":\"\"}",
+      "{\"ioSeq\":7,\"ts\":\"2026-10-24T12:26:52.682Z\",\"component\":\"integration\",\"type\":\"user.message\",\"contractType\":\"turn.started\",\"contractVersion\":\"v0\",\"sessionId\":\"fa167c41-86ea-458f-bf59-ce8543f9c537\",\"turn\":1,\"turnId\":\"fa167c41-86ea-458f-bf59-ce8543f9c537:1\",\"data\":{\"durableSeq\":12,\"text\":\"Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\\n\\nCurrent working directory:"
+    ],
+    "settledEvents": [
+      "{\"ioSeq\":3,\"ts\":\"2026-10-24T12:26:52.659Z\",\"component\":\"integration\",\"type\":\"agent.status\",\"contractType\":\"turn.settled\",\"contractVersion\":\"v0\",\"sessionId\":\"fa167c41-86ea-458f-bf59-ce8543f9c537\",\"turn\":null,\"turnId\":null,\"data\":{\"status\":\"running\"},\"note\":\"\"}",
+      "{\"ioSeq\":16,\"ts\":\"2026-10-24T12:26:52.757Z\",\"component\":\"integration\",\"type\":\"turn.ended\",\"contractType\":\"turn.settled\",\"contractVersion\":\"v0\",\"sessionId\":\"fa167c41-86ea-458f-bf59-ce8543f9c537\",\"turn\":1,\"turnId\":\"fa167c41-86ea-458f-bf59-ce8543f9c537:1\",\"data\":{\"durableSeq\":17,\"terminal\":\"completed\",\"reason\":{\"kind\":\"completed\"}},\"note\":\"\"}",
+      "{\"ioSeq\":17,\"ts\":\"2026-10-24T12:26:52.758Z\",\"component\":\"integration\",\"type\":\"agent.status\",\"contractType\":\"turn.settled\",\"contractVersion\":\"v0\",\"sessionId\":\"fa167c41-86ea-458f-bf59-ce8543f9c537\",\"turn\":null,\"turnId\":null,\"data\":{\"status\":\"idle\"},\"note\":\"\"}"
+    ],
+    "events": [
+      {
+        "ioSeq": 1,
+        "type": "agent.created",
+        "contractType": "system.event",
+        "data": {
+          "requestedSessionId": "fa167c41-86ea-458f-bf59-ce8543f9c537",
+          "actualSessionId": "fa167c41-86ea-458f-bf59-ce8543f9c537",
+          "cwd": "/private/tmp/wg-rc3-boot-HtwIan/dsh-home/workspace",
+          "agentOptions": {
+            "provider": "opencode-go",
+            "model": "deepseek-v4.1-flash"
+          },
+          "defaultSelection": {
+            "provider": "opencode-go",
+            "model": "deepseek-v4.1-flash",
+            "reasoningEffort": "low"
+          }
+        }
+      },
+      {
+        "ioSeq": 2,
+        "type": "turn.accepted",
+        "contractType": "system.event",
+        "data": {
+          "chars": 30,
+          "messageId": "24278e79-f11e-4c2a-ab99-5bddde3f3c2a",
+          "constructor": "createUserMessage",
+          "clientTurnId": null
+        }
+      },
+      {
+        "ioSeq": 3,
+        "type": "agent.status",
+        "contractType": "turn.settled",
+        "data": {
+          "status": "running"
+        }
+      },
+      {
+        "ioSeq": 4,
+        "type": "turn.started",
+        "contractType": "system.event",
+        "data": {
+          "durableSeq": 7
+        }
+      },
+      {
+        "ioSeq": 5,
+        "type": "step.started",
+        "contractType": "system.event",
+        "data": {
+          "durableSeq": 9,
+          "step": 1
+        }
+      },
+      {
+        "ioSeq": 6,
+        "type": "user.message",
+        "contractType": "turn.started",
+        "data": {
+          "durableSeq": 11,
+          "text": "Reply with one short sentence."
+        }
+      },
+      {
+        "ioSeq": 7,
+        "type": "user.message",
+        "contractType": "turn.started",
+        "data": {
+          "durableSeq": 12,
+          "text": "Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\nCurrent working directory: \"/private/tmp/wg-rc3-boot-HtwIan/dsh-home/workspace\".\n\nCurrent DSH file policy: danger-full-access. The DSH file sandbox does not restrict file modifications by available operations.\n\nApproval policy: ask. Operations that require approval may ask through the configured answerers; without an available answerer, the request fails closed.\n\nCurrent DeepSeek Harness implementation checkout"
+        }
+      },
+      {
+        "ioSeq": 8,
+        "type": "assistant.stream.started",
+        "contractType": "system.event",
+        "data": {
+          "attemptId": "fa167c41-86ea-458f-bf59-ce8543f9c537:1",
+          "step": 1
+        }
+      },
+      {
+        "ioSeq": 9,
+        "type": "assistant.delta",
+        "contractType": "turn.delta",
+        "data": {
+          "text": "rc.3 bri",
+          "index": 1,
+          "attemptId": "fa167c41-86ea-458f-bf59-ce8543f9c537:1"
+        }
+      },
+      {
+        "ioSeq": 10,
+        "type": "assistant.delta",
+        "contractType": "turn.delta",
+        "data": {
+          "text": "dge prob",
+          "index": 2,
+          "attemptId": "fa167c41-86ea-458f-bf59-ce8543f9c537:1"
+        }
+      },
+      {
+        "ioSeq": 11,
+        "type": "assistant.delta",
+        "contractType": "turn.delta",
+        "data": {
+          "text": "e OK.",
+          "index": 3,
+          "attemptId": "fa167c41-86ea-458f-bf59-ce8543f9c537:1"
+        }
+      },
+      {
+        "ioSeq": 12,
+        "type": "assistant.usage",
+        "contractType": "system.event",
+        "data": {
+          "usage": {
+            "inputTokens": 3,
+            "outputTokens": 21,
+            "totalTokens": 24
+          },
+          "rawKeys": [
+            "type",
+            "usage"
+          ]
+        }
+      },
+      {
+        "ioSeq": 13,
+        "type": "assistant.message",
+        "contractType": "turn.delta",
+        "data": {
+          "durableSeq": 15,
+          "text": ""
+        }
+      },
+      {
+        "ioSeq": 14,
+        "type": "assistant.stream.ended",
+        "contractType": "system.event",
+        "data": {
+          "outcome": "committed"
+        }
+      },
+      {
+        "ioSeq": 15,
+        "type": "step.ended",
+        "contractType": "system.event",
+        "data": {
+          "durableSeq": 16,
+          "step": 1
+        }
+      },
+      {
+        "ioSeq": 16,
+        "type": "turn.ended",
+        "contractType": "turn.settled",
+        "data": {
+          "durableSeq": 17,
+          "terminal": "completed",
+          "reason": {
+            "kind": "completed"
+          }
+        }
+      },
+      {
+        "ioSeq": 17,
+        "type": "agent.status",
+        "contractType": "turn.settled",
+        "data": {
+          "status": "idle"
+        }
+      }
+    ]
+  },
+  "privateHomeTouched": false,
+  "exitCode": 0,
+  "finishedAt": "2026-10-24T12:26:58.875Z",
+  "hostLogTail": [
+    "[nisse-host-integration] bridge listening on 127.0.0.1:57261 {",
+    "  bridgeFile: '/tmp/wg-rc3-boot-HtwIan/dsh-home/nisse/host-integration.json',",
+    "  workspaceDir: '/private/tmp/wg-rc3-boot-HtwIan/dsh-home/workspace'",
+    "}",
+    "dsh web: http://127.0.0.1:57260/?token=LNlGWe_kndItHqtEO-eGOgaBYZgipW60WxnLn1nJUOU",
+    "[nisse-host-integration] bot workspace ready {",
+    "  path: '/private/tmp/wg-rc3-boot-HtwIan/dsh-home/workspace',",
+    "  id: '52993fa6-8760-4a81-a3b8-b513c5fdab1e'",
+    "}",
+    "[nisse-host-integration] bot workspace ready {",
+    "  path: '/private/tmp/wg-rc3-boot-HtwIan/dsh-home/workspace',",
+    "  id: '52993fa6-8760-4a81-a3b8-b513c5fdab1e'",
+    "}",
+    "[nisse-host-integration] bot session attached to workspace {",
+    "  sessionId: 'fa167c41-86ea-458f-bf59-ce8543f9c537',",
+    "  workspace: '52993fa6-8760-4a81-a3b8-b513c5fdab1e'",
+    "}",
+    "[nisse-host-integration] permission preset applied { preset: 'bot-outside-write' }",
+    "[nisse-host-integration] agent created {",
+    "  sessionId: 'fa167c41-86ea-458f-bf59-ce8543f9c537',",
+    "  agentOptions: { provider: 'opencode-go', model: 'deepseek-v4.1-flash' },",
+    "  workspace: '/private/tmp/wg-rc3-boot-HtwIan/dsh-home/workspace'",
+    "}",
+    "[nisse-host-integration] fixture disposed",
+    ""
+  ],
+  "runRoot": "/tmp/wg-rc3-boot-HtwIan"
+}

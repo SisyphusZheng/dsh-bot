@@ -1,0 +1,43 @@
+{
+  "startedAt": "2026-10-23T04:30:27.719Z",
+  "gatewayUrl": "ws://127.0.0.1:59002/api/realtime (shell-spawned qwen voice gateway)",
+  "userText": "用一句话介绍你自己，并说明你现在运行在哪个 Agent 基座上。",
+  "bridgeEvents": {
+    "userMessage": {
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05",
+      "text": "用一句话介绍你自己，并说明你现在运行在哪个 Agent 基座上。",
+      "durableSeq": 139
+    },
+    "assistantMessage": {
+      "sessionId": "bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05",
+      "durableSeq": 142
+    },
+    "turnEnded": {
+      "durableSeq": 144,
+      "terminal": "completed",
+      "reason": {
+        "kind": "completed"
+      }
+    }
+  },
+  "dshSession": {
+    "dir": "/tmp/whalegirl-demo/sessions/--private-tmp-whalegirl-demo-BotWorkspace--/bf3ecc4e-d2a1-43b5-ac5d-a4fbd88cec05",
+    "lastEventTypes": [
+      "session/end-seed",
+      "agent/inbox/spliced",
+      "turn/start",
+      "agent/inbox/spliced",
+      "step/start",
+      "system/message",
+      "user/message",
+      "user/message",
+      "request/header",
+      "assistant/message",
+      "step/end",
+      "turn/end"
+    ],
+    "containsUserText": true
+  },
+  "gatewayReplies": [],
+  "ok": true
+}
