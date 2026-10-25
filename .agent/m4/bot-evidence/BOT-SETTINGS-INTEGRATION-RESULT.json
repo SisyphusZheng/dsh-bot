@@ -1,0 +1,42 @@
+{
+  "suite": "Bot settings live integration (shell config server + DSH profile layer)",
+  "startedAt": "2026-10-22T14:08:18.344Z",
+  "config": {
+    "status": 200,
+    "voiceProvider": "dashscope",
+    "voiceKeySet": true,
+    "llmProvider": "opencode-go",
+    "llmModel": "deepseek-v4.1-flash",
+    "llmKeySet": true,
+    "workspace": "/tmp/whalegirl-int/BotWorkspace",
+    "wakeWord": "大肥鱼",
+    "secretEchoed": false
+  },
+  "page": {
+    "status": 200,
+    "hasVoiceTab": true,
+    "hasLlmTab": true,
+    "hasTestButtons": true,
+    "hasProviderSelectOptions": true,
+    "hasWorkspacePicker": true,
+    "secretEchoed": false
+  },
+  "liveLlmProbe": {
+    "status": 200,
+    "ok": true,
+    "error": null,
+    "hint": null,
+    "detail": "连接成功，模型名 deepseek-v4.1-flash",
+    "secretEchoed": false
+  },
+  "profileLayer": {
+    "hasManagedMarkers": true,
+    "hasPermissionPreset": true,
+    "hasHostIntegration": true,
+    "hasWorkspace": true,
+    "hasLlmProvider": true,
+    "userPatchPreserved": true
+  },
+  "ok": true,
+  "finishedAt": "2026-10-22T14:08:19.286Z"
+}

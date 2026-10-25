@@ -1,0 +1,153 @@
+html, body {
+  margin: 0; padding: 0; width: 100%; height: 100%;
+  background: transparent; overflow: hidden;
+  -webkit-user-select: none; user-select: none;
+  font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
+#bubble {
+  position: absolute; left: 50%; bottom: 0;
+  width: max-content; max-width: 330px; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center;
+  pointer-events: none;
+  opacity: 1; transition: opacity .24s ease;
+}
+#bubble.hidden { opacity: 0; }
+#bubble.fading { opacity: 0; }
+#bubble.entering { animation: bubble-in .18s ease-out; }
+#bubble.click-through .card { pointer-events: none; }
+@keyframes bubble-in { from { opacity: 0; transform: translate(-50%, 5px) scale(.985); } }
+
+.card {
+  position: relative;
+  width: 100%; box-sizing: border-box;
+  background: #ffffff;
+  border: 2px solid #101012;
+  border-radius: 18px;
+  padding: 12px 14px 13px;
+  color: #141416;
+  /* 气泡窗口默认点击穿透；卡片本体（输入/选项/审批按钮）必须接收点击。 */
+  pointer-events: auto;
+}
+/* 输入气泡：灰底，和 DSH 的白色回答气泡区分开。 */
+#bubble[data-kind="input"] .card { background: #f1f1f3; border-color: #3f3f46; }
+/* 错误气泡：浅红底。 */
+#bubble[data-kind="error"] .card { background: #fff4f4; border-color: #b91c1c; color: #7f1d1d; }
+/* 活动气泡：紧凑、无阴影；内容只用于「看见它在干什么」。 */
+#bubble[data-kind="activity"] .card { padding: 8px 13px 9px; border-radius: 15px; }
+#bubble[data-kind="activity"] .bubble-text { font-size: 14px; line-height: 20px; padding-right: 0; }
+
+.head { display: flex; align-items: baseline; gap: 6px; margin: 0 18px 4px 0; }
+.head .hidden { display: none; }
+.icon { font-size: 15px; line-height: 18px; }
+.title { font-size: 14px; font-weight: 700; }
+.progress { font-size: 11px; color: #9a9aa2; margin-left: auto; }
+#bubble[data-kind="activity"] .head { display: none; }
+.activity-icon {
+  display: inline-block; margin-right: 6px;
+  animation: activity-bounce 1.1s ease-in-out infinite;
+}
+@keyframes activity-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px) scale(1.06); }
+}
+@media (prefers-reduced-motion: reduce) { .activity-icon { animation: none; } }
+
+.bubble-text {
+  margin: 0;
+  font-size: 15px; line-height: 22px; text-align: left;
+  padding-right: 14px;
+  overflow-wrap: anywhere; word-break: break-word;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4;
+  max-height: 88px; overflow: hidden;
+  white-space: pre-line;
+}
+#bubble[data-kind="activity"] .bubble-text { padding-right: 8px; }
+.hint {
+  margin: 6px 0 0; font-size: 12px; line-height: 17px; color: #85858d;
+  white-space: pre-line; overflow-wrap: anywhere;
+}
+.hint.hidden { display: none; }
+.hint.ok { color: #15803d; }
+.hint.fail { color: #b91c1c; }
+
+.close {
+  position: absolute; top: 5px; right: 7px;
+  width: 20px; height: 20px; padding: 0;
+  border: none; background: transparent;
+  color: #a4a4a8; font-size: 13px; line-height: 20px; text-align: center;
+  cursor: pointer;
+}
+
+.input-row {
+  display: flex; align-items: center; gap: 8px; margin-top: 10px;
+}
+.input-row.hidden { display: none; }
+.input-label { font-size: 12px; color: #6b6b73; flex: none; }
+.input-label.hidden { display: none; }
+.input {
+  flex: 1; min-width: 0; height: 30px; box-sizing: border-box;
+  border: 1.5px solid #101012; border-radius: 15px;
+  padding: 0 12px; font-family: inherit; font-size: 13px;
+  background: #ffffff; color: #141416; outline: none;
+  -webkit-user-select: text; user-select: text;
+}
+.input:focus { box-shadow: 0 0 0 2px rgba(16, 16, 18, .18); }
+
+.choices { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.choices.hidden { display: none; }
+.choices .choice {
+  height: 34px; padding: 0 10px; border-radius: 17px;
+  border: 1.5px solid #101012; background: #ffffff; color: #101012;
+  font-family: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.choices .choice:hover { background: #101012; color: #ffffff; }
+
+.secondary { display: flex; gap: 12px; justify-content: center; margin-top: 9px; }
+.secondary.hidden { display: none; }
+.secondary .link {
+  border: none; background: transparent; padding: 2px 0;
+  font-family: inherit; font-size: 12px; color: #77777f; cursor: pointer;
+}
+.secondary .link:hover { color: #101012; text-decoration: underline; }
+
+.actions { display: flex; gap: 10px; justify-content: center; margin-top: 12px; }
+.actions.hidden { display: none; }
+.btn {
+  height: 34px; padding: 0 18px; border-radius: 17px;
+  font-family: inherit; font-size: 14px; font-weight: 600;
+  cursor: pointer; white-space: nowrap;
+}
+.btn.primary { background: #101012; border: 2px solid #101012; color: #ffffff; }
+.btn.secondary { background: #ffffff; border: 2px solid #101012; color: #101012; }
+.btn.small { height: 30px; padding: 0 13px; border-radius: 15px; font-size: 12px; }
+
+.cancel-link {
+  display: block; margin: 9px auto 0; border: none; background: transparent;
+  font-family: inherit; font-size: 12px; color: #b91c1c; cursor: pointer;
+  text-decoration: underline; padding: 2px 0;
+}
+.cancel-link.hidden { display: none; }
+
+.tail {
+  position: relative;
+  width: 20px; height: 10px;
+  margin-top: -1px;
+}
+.tail::before, .tail::after {
+  content: ""; position: absolute; left: 50%; transform: translateX(-50%);
+  width: 0; height: 0; border-style: solid;
+}
+.tail::before {
+  top: 0;
+  border-width: 10px 10px 0 10px;
+  border-color: #101012 transparent transparent transparent;
+}
+.tail::after {
+  top: 0;
+  border-width: 7px 7px 0 7px;
+  border-color: #ffffff transparent transparent transparent;
+}
+#bubble[data-kind="input"] .tail::after { border-top-color: #f1f1f3; }
+#bubble[data-kind="error"] .tail::after { border-top-color: #fff4f4; }
+@media (prefers-reduced-motion: reduce) { #bubble, #bubble.entering { animation: none; transition: none; } }

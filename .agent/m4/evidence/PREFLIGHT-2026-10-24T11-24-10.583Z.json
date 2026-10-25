@@ -1,0 +1,250 @@
+{
+  "suite": "whalegirl preflight",
+  "startedAt": "2026-10-24T11:24:10.583Z",
+  "runs": [
+    {
+      "index": 1,
+      "root": "/tmp/whalegirl-preflight-1792841050585-1-6fac2cd4",
+      "steps": [
+        {
+          "name": "install-profile",
+          "status": "PASS",
+          "detail": {
+            "profile": "/tmp/whalegirl-preflight-1792841050585-1-6fac2cd4/dsh-home/profiles/nisse-smoke"
+          }
+        },
+        {
+          "name": "host-start",
+          "status": "PASS",
+          "detail": {
+            "pid": 27606,
+            "port": 52226
+          }
+        },
+        {
+          "name": "descriptor",
+          "status": "PASS",
+          "detail": {
+            "port": 52227,
+            "tokenPresent": true
+          }
+        },
+        {
+          "name": "concurrent-sessions-create",
+          "status": "PASS",
+          "detail": {
+            "statuses": [
+              200,
+              200,
+              200,
+              200
+            ],
+            "sessionIds": [
+              "f4b43075-654a-42f1-abc4-74a8ab7bad29"
+            ],
+            "structuredErrors": []
+          }
+        },
+        {
+          "name": "agent-ready",
+          "status": "PASS",
+          "detail": {
+            "sessionId": "f4b43075-654a-42f1-abc4-74a8ab7bad29",
+            "created": true
+          }
+        },
+        {
+          "name": "descriptor-removed",
+          "status": "PASS",
+          "detail": {
+            "descriptorGone": true
+          }
+        },
+        {
+          "name": "log-assertions",
+          "status": "PASS",
+          "detail": {
+            "moduleLoaded": 1,
+            "bridgeListening": 1,
+            "fixtureDisposed": 1,
+            "alreadyOwned": 0,
+            "inactiveContext": 0
+          }
+        }
+      ],
+      "ok": true,
+      "logCounts": {
+        "moduleLoaded": 1,
+        "bridgeListening": 1,
+        "fixtureDisposed": 1,
+        "alreadyOwned": 0,
+        "inactiveContext": 0
+      }
+    },
+    {
+      "index": 2,
+      "root": "/tmp/whalegirl-preflight-1792841051896-2-225d5e29",
+      "steps": [
+        {
+          "name": "install-profile",
+          "status": "PASS",
+          "detail": {
+            "profile": "/tmp/whalegirl-preflight-1792841051896-2-225d5e29/dsh-home/profiles/nisse-smoke"
+          }
+        },
+        {
+          "name": "host-start",
+          "status": "PASS",
+          "detail": {
+            "pid": 27617,
+            "port": 52236
+          }
+        },
+        {
+          "name": "descriptor",
+          "status": "PASS",
+          "detail": {
+            "port": 52237,
+            "tokenPresent": true
+          }
+        },
+        {
+          "name": "concurrent-sessions-create",
+          "status": "PASS",
+          "detail": {
+            "statuses": [
+              200,
+              200,
+              200,
+              200
+            ],
+            "sessionIds": [
+              "94969997-eaaa-41ff-b75f-65e4be7f939f"
+            ],
+            "structuredErrors": []
+          }
+        },
+        {
+          "name": "agent-ready",
+          "status": "PASS",
+          "detail": {
+            "sessionId": "94969997-eaaa-41ff-b75f-65e4be7f939f",
+            "created": true
+          }
+        },
+        {
+          "name": "descriptor-removed",
+          "status": "PASS",
+          "detail": {
+            "descriptorGone": true
+          }
+        },
+        {
+          "name": "log-assertions",
+          "status": "PASS",
+          "detail": {
+            "moduleLoaded": 1,
+            "bridgeListening": 1,
+            "fixtureDisposed": 1,
+            "alreadyOwned": 0,
+            "inactiveContext": 0
+          }
+        }
+      ],
+      "ok": true,
+      "logCounts": {
+        "moduleLoaded": 1,
+        "bridgeListening": 1,
+        "fixtureDisposed": 1,
+        "alreadyOwned": 0,
+        "inactiveContext": 0
+      }
+    },
+    {
+      "index": 3,
+      "root": "/tmp/whalegirl-preflight-1792841053077-3-2d147d70",
+      "steps": [
+        {
+          "name": "install-profile",
+          "status": "PASS",
+          "detail": {
+            "profile": "/tmp/whalegirl-preflight-1792841053077-3-2d147d70/dsh-home/profiles/nisse-smoke"
+          }
+        },
+        {
+          "name": "host-start",
+          "status": "PASS",
+          "detail": {
+            "pid": 27627,
+            "port": 52247
+          }
+        },
+        {
+          "name": "descriptor",
+          "status": "PASS",
+          "detail": {
+            "port": 52248,
+            "tokenPresent": true
+          }
+        },
+        {
+          "name": "concurrent-sessions-create",
+          "status": "PASS",
+          "detail": {
+            "statuses": [
+              200,
+              200,
+              200,
+              200
+            ],
+            "sessionIds": [
+              "fef61b02-b354-4f20-93d6-97891e30d8f7"
+            ],
+            "structuredErrors": []
+          }
+        },
+        {
+          "name": "agent-ready",
+          "status": "PASS",
+          "detail": {
+            "sessionId": "fef61b02-b354-4f20-93d6-97891e30d8f7",
+            "created": true
+          }
+        },
+        {
+          "name": "descriptor-removed",
+          "status": "PASS",
+          "detail": {
+            "descriptorGone": true
+          }
+        },
+        {
+          "name": "log-assertions",
+          "status": "PASS",
+          "detail": {
+            "moduleLoaded": 1,
+            "bridgeListening": 1,
+            "fixtureDisposed": 1,
+            "alreadyOwned": 0,
+            "inactiveContext": 0
+          }
+        }
+      ],
+      "ok": true,
+      "logCounts": {
+        "moduleLoaded": 1,
+        "bridgeListening": 1,
+        "fixtureDisposed": 1,
+        "alreadyOwned": 0,
+        "inactiveContext": 0
+      }
+    }
+  ],
+  "ok": true,
+  "mainDshTouched": false,
+  "productFailures": [],
+  "preflightFailures": [],
+  "envFailures": [],
+  "finishedAt": "2026-10-24T11:24:14.244Z",
+  "exitCode": 0
+}

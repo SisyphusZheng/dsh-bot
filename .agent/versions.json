@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-24T23:55:00Z",
+  "product": {
+    "name": "dsh-bot",
+    "displayName": "dsh-bot",
+    "version": "0.1.0",
+    "bundleId": "ai.nisse.app",
+    "bundleIdStatus": "provisional-internal",
+    "channel": "internal",
+    "dataFormatVersion": 1
+  },
+  "source": {
+    "repository": "$HOME/projects/dsh-bot",
+    "branch": "nisse/main",
+    "baselineTag": "wg-v0.1-baseline.1",
+    "baselineTagObject": "231f17d2d62fe4d27b6d26b4758b168403d84444",
+    "baselineCommit": "d521e6579d4baf348ba5a3b2ea33cb14bfa3e84e",
+    "postBaselineCommits": [
+      "142552179d91e06dae4c4b3606a658253dbbf8ef",
+      "d7ae1b7b3e",
+      "4cd8dc129a",
+      "f635dda3c2",
+      "ca296dc1f1",
+      "f04ea76f62",
+      "e5fb462fb0",
+      "b9e145ea16",
+      "adbc1c18ad",
+      "a5dd919a3e"
+    ],
+    "forkBaseTag": "dsh-v0.2.1-rc.2",
+    "forkCommitsAheadOfBase": 53,
+    "remotePush": "not performed"
+  },
+  "runtime": {
+    "dsh": {
+      "package": "@deepseek-ai/dsh",
+      "version": "0.2.1-rc.2",
+      "upstreamTag": "dsh-v0.2.1-rc.2",
+      "upstreamLatestSeen": "dsh-v0.2.1-rc.3",
+      "upgradePolicy": "pinned; candidate requires isolated compat preview + human approval",
+      "candidateReport": "docs/reports/UPSTREAM-RC3-COMPAT.md"
+    },
+    "hostIntegration": {
+      "plugin": "nisse-host-integration",
+      "version": "0.1.0",
+      "contractVersion": "v0",
+      "bridgeProtocol": "dsh-nisse-subset-v0",
+      "lifecycle": "single-flight ensureAgent + agent.ready/lastStartupError (commit 142552179d)"
+    },
+    "g2Bridge": {
+      "plugin": "whalegirl-g2-bridge",
+      "version": "0.0.1",
+      "transport": "HTTP /turn NDJSON + /events"
+    },
+    "voice": {
+      "worker": "PyInstaller onedir VoiceWorker",
+      "pipecat": "1.13.0",
+      "aiortc": "1.15.0",
+      "av": "17.1.0",
+      "clientJs": "1.14.0",
+      "smallWebrtcTransport": "1.11.0",
+      "provider": "DashScope ASR/TTS (realtime), command barge-in contract frozen"
+    },
+    "memory": {
+      "backend": "Hindsight",
+      "hindsightVersion": "1.0.0",
+      "adapterVersion": "0.1.0",
+      "delivery": "bundled + async startup (user approved 2026-10-24)",
+      "bundleLayout": {
+        "resources": "Contents/Resources/memory/{hindsight,models,pg0,sidecar.mjs,VERSION.json}",
+        "adapter": "Contents/spike/m1-c-hindsight (vendored hindsight-client)"
+      },
+      "runtimeFootprint": {
+        "pyinstallerBundleMB": 419,
+        "pg0InstallationMB": 36,
+        "onnxModelMB": 113,
+        "payloadBytes": 597796821,
+        "payloadFiles": 7795
+      },
+      "embeddingModel": "Xenova/multilingual-e5-small onnx/model_int8.onnx",
+      "reranker": "rrf",
+      "offlineVerified": true,
+      "packagedVerified": {
+        "phase": "ready",
+        "serverUrlObserved": true,
+        "sidecarUrlObserved": true,
+        "searchEndpoint": "ok:true",
+        "dataRoot": "<userData>/dsh-home/memory",
+        "mainDshUntouched": true
+      },
+      "condition": {
+        "id": "MEM-COND-1",
+        "summary": "HindsightAPI start may make one unspecified background TLS egress (not reproduced in final round); SNI to be captured with a proxy before public release",
+        "impact": "no functional impact; not a blocker for internal MVP"
+      }
+    }
+  },
+  "artifacts": {
+    "unsignedInternal": {
+      "dmg": "whalegirlbot-0.1.0-mac-arm64-unsigned.dmg",
+      "dmgPath": "$HOME/projects/dsh-bot-workspace/dist/v0.1/whalegirlbot-0.1.0-mac-arm64-unsigned.dmg",
+      "sha256": "120e7b83c30c43658d63555a9343c6577e2ff15a65896d2e3af68559471640bf",
+      "sizeBytes": 778827854,
+      "appBytesApprox": 2300000000,
+      "buildCommit": "a5dd919a3e",
+      "appVersion": "0.1.0",
+      "bundledRuntimeVersion": "0.2.1-rc.2",
+      "signing": "ad-hoc, hardened runtime disabled for internal package (AMFI ad-hoc nested-framework constraint)",
+      "codesign": "--verify --deep --strict PASS",
+      "buildSourceTreeUnchanged": true,
+      "builtAt": "2026-10-24T23:29Z"
+    }
+  },
+  "rollback": {
+    "previousTestedVersion": "0.1.0",
+    "artifact": "dist/v0.1/whalegirlbot-0.1.0-mac-arm64-unsigned.dmg",
+    "dataSnapshot": "<userData>/dsh-home (initial release: no pre-update snapshot; v0.1.1 update must snapshot before migration)",
+    "note": "v0.1.0 is the initial internal release. The first real rollback pair is created by the v0.1.1 update drill (S11). Reinstall the recorded artifact and restore the data snapshot together if a later build fails health checks.",
+    "procedure": "keep previous .app + dsh-home snapshot; restore both together if the new build fails health checks"
+  },
+  "update": {
+    "targetSource": "github-releases",
+    "current": "local-feed smoke only (not yet executed on macOS)",
+    "publicStatus": "DEFERRED-EXTERNAL until Developer ID + notarization + identity freeze"
+  },
+  "gates": {
+    "gate2Internal": "MVP PASS WITH CONDITION (DMG install + Finder launch + host isolation + packaged voice/memory verified; real TCC requires user Finder interaction)",
+    "pM1": "MVP PASS WITH CONDITION (packaged memory runtime verified ready; cross-session/backup/real-provider validation pending user key)",
+    "pM2": "IN PROGRESS",
+    "pM3": "IN PROGRESS",
+    "pM4": "IN PROGRESS",
+    "pM5": "IN PROGRESS (host lifecycle race fixed, preflight 3/3)",
+    "pM6": "IN PROGRESS",
+    "pM7": "IN PROGRESS (internal DMG + update smoke pending)"
+  }
+}

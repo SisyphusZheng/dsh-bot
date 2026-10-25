@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-23T05:57:17.343Z",
+  "userText": "用一句话说明你现在运行在哪个 Agent 基座上，以及你的工作目录。",
+  "dshTurnEnded": {
+    "durableSeq": 80,
+    "terminal": "completed",
+    "reason": {
+      "kind": "completed"
+    }
+  },
+  "bridgeAssistantReceived": true,
+  "speech": {
+    "chunksEnqueued": [
+      {
+        "preview": "好，我看看。",
+        "chars": 6
+      },
+      {
+        "preview": "我运行在 DeepSeek Harness（DSH）上，工作目录是 /priva",
+        "chars": 75
+      }
+    ],
+    "chunksDelivered": 3,
+    "speechTimeouts": 0,
+    "audioDeltas": 36
+  },
+  "ok": true
+}

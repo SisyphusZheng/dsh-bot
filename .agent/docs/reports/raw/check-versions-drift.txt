@@ -1,0 +1,15 @@
+== dsh-bot manifest check (versions.json) ==
+manifest: $HOME/projects/dsh-bot-workspace/versions.json
+product:  dsh-bot 0.1.0 (dataFormat v1)
+runtime:  @deepseek-ai/dsh@0.2.1-rc.2 pinned to dsh-v0.2.1-rc.2
+PASS source repository HEAD 4cd8dc129a
+PASS baseline tag object matches (231f17d2d6…)
+PASS baseline tag -> commit matches (d521e6579d…)
+PASS baseline commit is an ancestor of HEAD
+PASS forkBaseTag equals runtime.dsh.upstreamTag
+PASS post-baseline commits verified against baseline and HEAD
+PASS runtime.dsh.version matches checkout root package.json (0.2.1-rc.2)
+WARN rollback: no rollback block; release gate cannot prove "previous tested version" (see docs/UPSTREAM-SYNC.md)
+FAIL artifacts.unsignedInternal.sha256: recorded c082d6fb5b86… != actual 173ea23bdd0f…
+FAIL source.forkCommitsAheadOfBase: recorded 45 but git reports 46
+RESULT FAIL  (7 checks, 1 warnings, 2 errors)

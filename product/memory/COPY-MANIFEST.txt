@@ -1,0 +1,59 @@
+COPY-MANIFEST — WhaleGirl Bot memory packaging payload
+generatedAt: 2026-10-24T13:15:15.013Z
+stagingRoot: /tmp/wg-memory-staging
+repoTarget:  nisse/product/memory/**
+
+Apply (Lead):
+  mkdir -p <repo>/nisse/product/memory
+  rsync -a --exclude EVIDENCE.json /tmp/wg-memory-staging/ <repo>/nisse/product/memory/
+  cp /tmp/wg-memory-staging/EVIDENCE.json <repo>/nisse/m4/evidence/MEMORY-PACKAGING-STAGING.json
+  # verify: cd <repo>/nisse && shasum -a 256 -c /tmp/wg-memory-staging/COPY-MANIFEST-FILES.sha256
+
+Entries (source -> destination, files, bytes, sha256):
+- runtime/hindsight -> product/memory/runtime/hindsight | 6421 files | 423400273 bytes | sha256=76c6060fa9da16574f074190dc0a7ff4f1bfa7e04348df6fc29d61af4d963ea2 (tree hash over "rel\tbytes\tsha256" lines)
+- runtime/models -> product/memory/runtime/models | 6 files | 140207642 bytes | sha256=f880dc086273a19afd9f0bcd2e9a1310e16da6dce1a94efa51173a6136c21bff (tree hash over "rel\tbytes\tsha256" lines)
+- runtime/pg0 -> product/memory/runtime/pg0 | 1385 files | 33950481 bytes | sha256=d8406f1b9e9afa037266653669489c2db4fbb3cb4089bb3a6189e34081bed3df (tree hash over "rel\tbytes\tsha256" lines)
+- adapter/m1-c-hindsight -> product/memory/adapter/m1-c-hindsight | 8 files | 153068 bytes | sha256=0a5480027f7ebf1405c9ac952e668fe52c3e14ee8706c486332ca8b166c67e7b (tree hash over "rel\tbytes\tsha256" lines)
+- scripts/validate-offline.mjs -> product/memory/scripts/validate-offline.mjs | 1 files | 35601 bytes | sha256=5b5faac9da0d448fe1511f96fb550c67658bc174a9639d52e6b667da9203f73a
+- scripts/gen-version.mjs -> product/memory/scripts/gen-version.mjs | 1 files | 4765 bytes | sha256=392bc7c6e79e10b509234e492a4bab2feff3ab99a2adc5de3dcfae66e5820496
+- scripts/gen-manifest.mjs -> product/memory/scripts/gen-manifest.mjs | 1 files | 4611 bytes | sha256=8a56e38017c24cb366f3b23dbbb3c94fe971a7d307919aafd75482803912630a
+- sidecar.mjs -> product/memory/sidecar.mjs | 1 files | 12696 bytes | sha256=ef747d5f932cf5c16c57d1dc6d5df07824231953887003803ee71e012d5d8764
+- VERSION.json -> product/memory/VERSION.json | 1 files | 4144 bytes | sha256=3669f4bdb42b36a7885ff11160e4c1b17a6b424956c19b282d1614e850973e54
+- INTEGRATION.md -> product/memory/INTEGRATION.md | 1 files | 17108 bytes | sha256=48664ba6af1a745291ffbb89bc0bc2530fd9011e3917feb7ebe8df9b1d61c796
+- R1B-VALIDATION-PLAN.md -> product/memory/R1B-VALIDATION-PLAN.md | 1 files | 6682 bytes | sha256=ce6e9908cfecda0d50e125684bb14897f9e2688c685e6c150b7bdf8d25c6c8aa
+
+Total: 7795 files, 597797071 bytes, 32 relative symlinks
+
+Symlinks (relative, must be preserved by the copy; listed in COPY-MANIFEST-LINKS.txt):
+- _internal/libavif.16.4.2.dylib -> PIL/.dylibs/libavif.16.4.2.dylib
+- _internal/libbrotlicommon.1.2.0.dylib -> PIL/.dylibs/libbrotlicommon.1.2.0.dylib
+- _internal/libbrotlidec.1.2.0.dylib -> PIL/.dylibs/libbrotlidec.1.2.0.dylib
+- _internal/libcom_err.3.0.dylib -> psycopg2/.dylibs/libcom_err.3.0.dylib
+- _internal/libcrypto.3.dylib -> psycopg2/.dylibs/libcrypto.3.dylib
+- _internal/libfreetype.6.dylib -> PIL/.dylibs/libfreetype.6.dylib
+- _internal/libgssapi_krb5.2.2.dylib -> psycopg2/.dylibs/libgssapi_krb5.2.2.dylib
+- _internal/libharfbuzz.0.dylib -> PIL/.dylibs/libharfbuzz.0.dylib
+- _internal/libjpeg.62.4.0.dylib -> PIL/.dylibs/libjpeg.62.4.0.dylib
+- _internal/libk5crypto.3.1.dylib -> psycopg2/.dylibs/libk5crypto.3.1.dylib
+- _internal/libkrb5.3.3.dylib -> psycopg2/.dylibs/libkrb5.3.3.dylib
+- _internal/libkrb5support.1.1.dylib -> psycopg2/.dylibs/libkrb5support.1.1.dylib
+- _internal/liblber.2.dylib -> psycopg2/.dylibs/liblber.2.dylib
+- _internal/liblcms2.2.dylib -> PIL/.dylibs/liblcms2.2.dylib
+- _internal/libldap.2.dylib -> psycopg2/.dylibs/libldap.2.dylib
+- _internal/liblzma.5.dylib -> PIL/.dylibs/liblzma.5.dylib
+- _internal/libopenjp2.2.5.4.dylib -> PIL/.dylibs/libopenjp2.2.5.4.dylib
+- _internal/libpng16.16.dylib -> PIL/.dylibs/libpng16.16.dylib
+- _internal/libpq.5.dylib -> psycopg2/.dylibs/libpq.5.dylib
+- _internal/libsharpyuv.0.dylib -> PIL/.dylibs/libsharpyuv.0.dylib
+- _internal/libssl.3.dylib -> psycopg2/.dylibs/libssl.3.dylib
+- _internal/libtiff.6.dylib -> PIL/.dylibs/libtiff.6.dylib
+- _internal/libwebp.7.dylib -> PIL/.dylibs/libwebp.7.dylib
+- _internal/libwebpdemux.2.dylib -> PIL/.dylibs/libwebpdemux.2.dylib
+- _internal/libwebpmux.3.dylib -> PIL/.dylibs/libwebpmux.3.dylib
+- _internal/libXau.6.dylib -> PIL/.dylibs/libXau.6.dylib
+- _internal/libxcb.1.1.0.dylib -> PIL/.dylibs/libxcb.1.1.0.dylib
+- _internal/libz.1.3.1.zlib-ng.dylib -> PIL/.dylibs/libz.1.3.1.zlib-ng.dylib
+- installation/18.1.0/lib/libecpg_compat.dylib -> libecpg_compat.3.dylib
+- installation/18.1.0/lib/libecpg.dylib -> libecpg.6.dylib
+- installation/18.1.0/lib/libpgtypes.dylib -> libpgtypes.3.dylib
+- installation/18.1.0/lib/libpq.dylib -> libpq.5.dylib

@@ -1,0 +1,9 @@
+{
+  "note": "Files touched by both the fork (45 commits off rc.2) and upstream rc.3 — 3-way merge candidates.",
+  "forkFilesChanged": 62,
+  "upstreamFilesChanged": 640,
+  "both": [
+    "apps/desktop/package.json",
+    "packages/client/ui-conversation/src/client/locales.ts"
+  ]
+}

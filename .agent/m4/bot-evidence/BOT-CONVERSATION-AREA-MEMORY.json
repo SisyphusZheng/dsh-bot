@@ -1,0 +1,40 @@
+{
+  "suite": "fixed Bot conversation AREA (folder) + conversation rotation + built-in Hindsight memory",
+  "date": "2026-10-22",
+  "conversationArea": {
+    "status": "PASS",
+    "meaning": "Bot conversations live in one dedicated workspace folder titled 「Bot 对话区」 (configurable path via DSH Settings -> Bot -> 默认工作区). It holds MULTIPLE conversations; when one no longer fits the model context a new conversation starts in the same area instead of deleting history.",
+    "observed": {
+      "workspaceTitle": "Bot 对话区",
+      "workspacePath": "/private/tmp/whalegirl-demo/BotWorkspace",
+      "conversations": ["Bot 对话", "Bot 对话 2"],
+      "rotation": {
+        "trigger": "last prompt totalTokens >= NISSE_BOT_ROTATE_TOKENS (default 90000; test used 2000)",
+        "turn1": "session c8a712de… conversationIndex=1 contextTokens=7988 (completed)",
+        "turn2": "new session bf3ecc4e… conversationIndex=2 (completed) — old conversation stayed in the area",
+        "endpoint": "POST /conversation/new rotates manually"
+      },
+      "noUngrouped": true,
+      "screenshot": "m4/bot-evidence/DEV-RUN-CONVERSATION-AREA.png"
+    }
+  },
+  "longTermMemory": {
+    "status": "PASS (built-in, local)",
+    "runtime": "Hindsight API server (local pg0 + local embeddings/reranker, loopback only) + product MemoryAdapter sidecar, both started/stopped by the desktop shell",
+    "wiring": [
+      "shell MemoryRuntime starts Hindsight + sidecar before the Host profile is composed and publishes memoryUrl/memoryToken into the managed profile layer",
+      "host integration injects a Hindsight digest into each new conversation prompt",
+      "every completed turn writes an episode (user + assistant text) to memory through the adapter (sensitive screening inherited)",
+      "Bot settings -> 记忆: enable switch, runtime status, search, export, clear"
+    ],
+    "proof": {
+      "turn1": "用户：记住：我最喜欢的颜色是深蓝色。助手：记住了",
+      "rotationThenRecall": "new conversation asked 我最喜欢的颜色是什么？ -> answered 深蓝色 (memory carried across conversations)",
+      "sidecarSearch": "用户：记住：我最喜欢的颜色是深蓝色。只回复“记住了”。\\n助手：记住了",
+      "runtimeStatus": "{\"enabled\":true,\"server\":\"http://127.0.0.1:18888\",\"sidecar\":\"http://127.0.0.1:<port>\",\"bank\":\"whalegirl:bot\",\"dataRoot\":\"<DSH_HOME>/memory\"}"
+    },
+    "screenshot": "m4/bot-evidence/DEV-RUN-SETTINGS-MEMORY.png",
+    "packagingNote": "dev uses the project spike venv/runtime; packaging must ship the Hindsight venv/binaries + sidecar under Resources/memory (M6)."
+  },
+  "coopanionGapAnalysis": "m4/COOPANION-GAP-ANALYSIS.md"
+}

@@ -1,0 +1,72 @@
+{
+  "suite": "M4 repeatable verification (verify-m4)",
+  "startedAt": "2026-10-22T13:17:02.643Z",
+  "env": {
+    "node": "v24.18.0",
+    "nodeBin": "$HOME/.local/share/fnm/node-versions/v24.18.0/installation/bin/node",
+    "fork": "$HOME/projects/dsh-bot",
+    "mode": "deterministic-only",
+    "isolation": {
+      "approvalDshHome": "/tmp/nisse-m4-approval-verify/dsh-home",
+      "note": "approval E2E uses an isolated /tmp DSH_HOME; ~/.dsh is only read for a credentials copy"
+    }
+  },
+  "preflight": {
+    "node": {
+      "ok": true,
+      "value": "v24.18.0"
+    },
+    "dshCli": {
+      "ok": true,
+      "value": "$HOME/projects/dsh-bot/apps/cli/lib/bin.js"
+    },
+    "installProfile": {
+      "ok": true,
+      "value": "$HOME/projects/dsh-bot/nisse/scripts/install-profile.sh"
+    },
+    "supervisor": {
+      "ok": true,
+      "value": "$HOME/projects/dsh-bot-workspace/m3/supervisor/supervisor.mjs"
+    },
+    "zstd": {
+      "ok": true,
+      "value": "on PATH"
+    },
+    "credentials": {
+      "ok": true,
+      "value": "$HOME/.dsh/.credentials.yaml",
+      "required": false
+    }
+  },
+  "steps": {
+    "stop-semantics": {
+      "command": "$HOME/.local/share/fnm/node-versions/v24.18.0/installation/bin/node $HOME/projects/dsh-bot-workspace/m4/test-m4-stop-semantics.mjs",
+      "status": "PASS",
+      "ms": 299,
+      "exitCode": 0,
+      "tail": "PASS stop-playback-keeps-task | PASS state-machine-settles | {\"ok\":true,\"summary\":{\"stop-playback-keeps-task\":\"PASS\",\"state-machine-settles\":\"PASS\"}}",
+      "signal": null
+    },
+    "memory-adapter": {
+      "command": "$HOME/.local/share/fnm/node-versions/v24.18.0/installation/bin/node $HOME/projects/dsh-bot-workspace/m4/test-m4-memory.mjs",
+      "status": "PASS",
+      "ms": 15347,
+      "exitCode": 0,
+      "tail": "PASS sidecar-start (228ms) | PASS write-recall (232ms) | PASS sensitive-rejected (3ms) | PASS forget-not-recallable (915ms) | PASS export (13ms) | {\"ok\":true,\"summary\":{\"sidecar-start\":\"PASS\",\"write-recall\":\"PASS\",\"sensitive-rejected\":\"PASS\",\"forget-not-recallable\":\"PASS\",\"export\":\"PASS\"}}",
+      "signal": null,
+      "hindsightCleanup": {
+        "wasRunningBefore": false,
+        "stoppedAfter": true,
+        "stopExit": 0
+      }
+    },
+    "approval-e2e": {
+      "status": "SKIP",
+      "ms": 0,
+      "reason": "--no-model: real-model approval E2E not executed; result UNVERIFIED"
+    }
+  },
+  "ok": true,
+  "finishedAt": "2026-10-22T13:17:20.435Z",
+  "exitCode": 0
+}

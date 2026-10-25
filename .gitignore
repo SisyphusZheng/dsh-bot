@@ -1,0 +1,14 @@
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+.desktop-build/
+.package-runtime/
+*.dmg
+*.zip
+*.log
+__pycache__/
+.DS_Store
+product/memory/runtime/
+product/memory/**/node_modules/
+.venv/

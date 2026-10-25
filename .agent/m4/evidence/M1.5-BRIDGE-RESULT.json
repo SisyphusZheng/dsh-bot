@@ -1,0 +1,28 @@
+{
+  "suite": "M1.5 — 本机通信契约（插件 ↔ DSH）打通",
+  "date": "2026-10-23",
+  "environment": {
+    "stockDsh": "installed DeepSeek Harness.app runtime 0.2.1-rc.2 (no fork)",
+    "isolatedHome": "/tmp/whalegirl-m1/home",
+    "web": "dsh web --no-open --port 53999 --host 127.0.0.1",
+    "plugin": "/tmp/m1-lead-plugin (package whalegirl-m1)",
+    "model": "deepseek-account / deepseek-flash (isolated profile overlay)"
+  },
+  "rootCauseOfModelVariable": "插件早先用 ctx.agents.create + agent.followup 直接创建 agent，绕过了官方 session admission 路径，导致 prompt 组装时 {{model}} 等变量没有值。",
+  "fix": [
+    "改为官方 session API：sessionController.create({ cwd }) → 得到真实 sessionId",
+    "使用 sessionController.prompt(request, signal) 提交用户消息（第二个参数必须是 AbortSignal，内部 signal.throwIfAborted()）",
+    "调用前把 profile 的 agent-default-model 配成 deepseek-account/deepseek-flash，并复制 .credentials.yaml 到隔离 home"
+  ],
+  "verification": {
+    "create": "PASS — 返回新会话 session-5ca2dd63-de47-4ca3-baa6-89d3275a4a67，并 attach 到 workspace（侧边栏出现 dsh-bot 工作区）",
+    "promptAdmission": "PASS — { accepted: true }",
+    "userMessagePersisted": "PASS — 「用一句话介绍你自己，并说明你运行在哪个 Agent 上。」写入 session jsonl",
+    "assistantReply": "PASS — 「我是 DeepSeek Harness 上的编码助手，由 deepseek-flash 模型驱动；我可以在工作区中读写文件、运行命令并完成开发任务。」（provider deepseek-account / model deepseek-flash）",
+    "turnEnd": "PASS — { kind: completed }",
+    "overlay": "PASS — 页面内 [data-whalegirl-m1] 存在",
+    "sessionVisibleInUI": "PARTIAL — 侧边栏出现 dsh-bot 工作区与会话行；自动点击打开会话的 DOM 自动化未成功（不影响会话/回复已落盘的事实）"
+  },
+  "conclusion": "M1.5 核心通信契约已通：插件可以把用户文本送进真实 DSH 会话并拿到助手回复。下一步可在同一契约上做语音引擎（M2）与桌面层消费事件。",
+  "next": "M2：DashScope 实时语音全双工原型（VAD/打断/AEC/状态机），DSH 保持唯一大脑；随后按 Coopanion 体验做dsh-botbot 桌面层。"
+}

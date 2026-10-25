@@ -1,0 +1,44 @@
+{
+  "suite": "M4 E2E/security",
+  "startedAt": "2026-10-24T04:17:41.126Z",
+  "tests": [
+    {
+      "file": "test-m4-paths.mjs",
+      "code": 1,
+      "ms": 2885,
+      "tail": "    at async file://$HOME/projects/dsh-bot-workspace/m4/test-m4-paths.mjs:46:3 |  | Node.js v24.18.0"
+    },
+    {
+      "file": "test-m4-persona.mjs",
+      "code": 1,
+      "ms": 1403,
+      "tail": "    at async file://$HOME/projects/dsh-bot-workspace/m4/test-m4-persona.mjs:29:3 |  | Node.js v24.18.0"
+    },
+    {
+      "file": "test-m4-security-audit.mjs",
+      "code": 1,
+      "ms": 1341,
+      "tail": "    at async file://$HOME/projects/dsh-bot-workspace/m4/test-m4-security-audit.mjs:42:3 |  | Node.js v24.18.0"
+    },
+    {
+      "file": "test-m4-memory.mjs",
+      "code": 0,
+      "ms": 2988,
+      "tail": "PASS forget-not-recallable (936ms) | PASS export (7ms) | {\"ok\":true,\"summary\":{\"sidecar-start\":\"PASS\",\"write-recall\":\"PASS\",\"sensitive-rejected\":\"PASS\",\"forget-not-recallable\":\"PASS\",\"export\":\"PASS\"}}"
+    },
+    {
+      "file": "test-m4-memory-host.mjs",
+      "code": 1,
+      "ms": 18834,
+      "tail": "    at async file://$HOME/projects/dsh-bot-workspace/m4/test-m4-memory-host.mjs:31:3 |  | Node.js v24.18.0"
+    },
+    {
+      "file": "test-m4-stop-semantics.mjs",
+      "code": 0,
+      "ms": 321,
+      "tail": "PASS stop-playback-keeps-task | PASS state-machine-settles | {\"ok\":true,\"summary\":{\"stop-playback-keeps-task\":\"PASS\",\"state-machine-settles\":\"PASS\"}}"
+    }
+  ],
+  "ok": false,
+  "finishedAt": "2026-10-24T04:18:08.903Z"
+}

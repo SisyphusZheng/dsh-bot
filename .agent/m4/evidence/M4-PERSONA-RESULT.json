@@ -1,0 +1,48 @@
+{
+  "suite": "M4-5 persona",
+  "startedAt": "2026-10-22T13:12:54.954Z",
+  "steps": {
+    "setup-host": {
+      "status": "PASS",
+      "ms": 1540,
+      "detail": {
+        "pid": 61572,
+        "httpStatus": 401,
+        "sessionId": "93af465d-4648-466e-952b-4a5587a5a3c7"
+      }
+    },
+    "default-persona": {
+      "status": "PASS",
+      "ms": 3,
+      "detail": {
+        "name": "Nisse"
+      }
+    },
+    "persona-set-next-turn": {
+      "status": "PASS",
+      "ms": 3068,
+      "detail": {
+        "marker": "【蓝】",
+        "answerPreview": "好【蓝】"
+      }
+    },
+    "persona-change-next-turn": {
+      "status": "PASS",
+      "ms": 2533,
+      "detail": {
+        "marker": "【橙】",
+        "answerPreview": "好【橙】"
+      }
+    },
+    "persisted-persona": {
+      "status": "PASS",
+      "ms": 0,
+      "detail": {
+        "file": "/tmp/nisse-m4-persona/dsh-home/nisse/persona.json",
+        "instructions": "回答末尾必须加【橙】"
+      }
+    }
+  },
+  "ok": true,
+  "finishedAt": "2026-10-22T13:13:02.235Z"
+}
