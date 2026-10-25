@@ -23,7 +23,7 @@ import type { ScheduleCatalogEntry } from '@deepseek-ai/dsh-schedule/client'
 import type { CatalogSnapshot } from './catalog-source.ts'
 import { CatalogFeedback } from './CatalogFeedback.tsx'
 import { TaskDetail, useTaskDetail, type TaskDetailInjected } from './TaskDetail.tsx'
-import type { TaskTabBindings } from './ta[REDACTED_KEY].ts'
+import type { TaskTabBindings } from './task-tab-bindings.ts'
 import { useTaskTabTarget } from './task-tab-target.ts'
 import css from './TaskManagerPage.module.css'
 

@@ -13,7 +13,7 @@ import { useEffect, useMemo } from 'react'
 import type { SidebarRightNavigationParams } from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { scheduleTaskParams } from './definition.ts'
-import type { TaskTabBindings, TaskTabPage, TaskTabTarget } from './ta[REDACTED_KEY].ts'
+import type { TaskTabBindings, TaskTabPage, TaskTabTarget } from './task-tab-bindings.ts'
 
 /** The layout and navigation fields one task tab carries. */
 export interface TaskTabSource extends TaskTabPage {

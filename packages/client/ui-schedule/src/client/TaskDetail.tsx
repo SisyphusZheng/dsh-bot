@@ -30,7 +30,7 @@ import { cronPreview, cronShapeExpression, parseCronExpression, recognizeCronSha
 import type { CronBuilderState } from './task-cron.ts'
 import { sessionLabel, sessionLinkState } from './session-link.ts'
 import { loadRecentTimeZones, rememberTimeZone } from './recent-time-zones.ts'
-import type { TaskManagerKey } from './ta[REDACTED_KEY].ts'
+import type { TaskManagerKey } from './task-manager-locales.ts'
 import { TaskMenu } from './TaskMenu.tsx'
 import type { TaskMenuEntry } from './TaskMenu.tsx'
 import css from './TaskManagerPage.module.css'

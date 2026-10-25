@@ -15,7 +15,7 @@ import type { ToolCallBlock, ToolResultNode } from '@deepseek-ai/dsh-client-ui-c
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
 // Export discipline: packages/client/AGENTS.md.
-import { AskQuestionRow, askQuestionToolview } from '../src/client/tool/toolviews/a[REDACTED_KEY].tsx'
+import { AskQuestionRow, askQuestionToolview } from '../src/client/tool/toolviews/ask-question-row.tsx'
 import type { UserQuestionPanels } from '../src/client/contract/slots.ts'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { zh } from '@deepseek-ai/dsh-client-ui-conversation/src/client/locales.ts'
@@ -641,7 +641,7 @@ describe('AskQuestionRow', () => {
   })
 
   it('askQuestionToolview injects the toolview declaration directly', () => {
-    expect(askQuestionToolview.name).toBe('a[REDACTED_KEY]')
+    expect(askQuestionToolview.name).toBe('ask-question-toolview')
     expect(askQuestionToolview.inject).toEqual(['slots'])
     const register = vi.fn((_declaration: ToolviewDeclaration, _view: unknown) => () => undefined)
     const inject = vi.fn((_name: string, callback: () => () => void) => callback())

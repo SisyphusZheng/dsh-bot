@@ -18,7 +18,7 @@ export const ORB_CHANNELS = Object.freeze({
   lifecycleReady: 'qwen-audio-agent:lifecycle-ready',
   lifecycleLoad: 'qwen-audio-agent:lifecycle-load',
   lifecycle: 'qwen-audio-agent:lifecycle',
-  taskCardPlacement: 'qwen-audio-agent:ta[REDACTED_KEY]',
+  taskCardPlacement: 'qwen-audio-agent:task-card-placement',
   surfaceLoad: 'qwen-audio-agent:surface-load',
   surfaceSet: 'qwen-audio-agent:surface-set',
   conversationSessionSet: 'qwen-audio-agent:conversation-session-set',

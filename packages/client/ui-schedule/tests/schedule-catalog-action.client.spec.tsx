@@ -23,7 +23,7 @@ import {
 import type { CatalogSnapshot } from '../src/client/catalog-source.ts'
 import { en, zh } from '../src/client/locales.ts'
 import catalogCss from '../src/client/ScheduleCatalogAction.module.css'
-import { en as managerEn, zh as managerZh } from '../src/client/ta[REDACTED_KEY].ts'
+import { en as managerEn, zh as managerZh } from '../src/client/task-manager-locales.ts'
 
 const SESSION = 'schedule-session' as SessionId
 const START = Date.parse('2026-08-25T12:00:00.000Z')

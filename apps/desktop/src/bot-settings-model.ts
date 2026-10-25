@@ -34,10 +34,10 @@ export interface SecretAccess {
 }
 
 /** How often the Bot asks the user before acting. */
-export type BotApprovalMode = 'ask-each' | 'a[REDACTED_KEY]' | 'ask-once' | 'never-ask'
+export type BotApprovalMode = 'ask-each' | 'ask-before' | 'ask-once' | 'never-ask'
 
 /** Approval granularity choices offered by the settings page. */
-export const BOT_APPROVAL_MODES: readonly BotApprovalMode[] = ['ask-each', 'a[REDACTED_KEY]', 'ask-once', 'never-ask']
+export const BOT_APPROVAL_MODES: readonly BotApprovalMode[] = ['ask-each', 'ask-before', 'ask-once', 'never-ask']
 
 /** Default approval mode: matches the shipped `bot-outside-write` preset (approval: ask per action). */
 export const DEFAULT_APPROVAL_MODE: BotApprovalMode = 'ask-each'
@@ -135,8 +135,8 @@ function textOf(value: unknown): string {
 export function normalizeApprovalMode(value: unknown): BotApprovalMode {
   const raw = typeof value === 'string' ? value.trim().toLowerCase() : ''
   if (raw === 'ask-each' || raw === 'each' || raw === 'every-time' || raw === 'always') return 'ask-each'
-  if (raw === 'a[REDACTED_KEY]' || raw === 'before-acting' || raw === 'before_action' || raw === 'act') return 'a[REDACTED_KEY]'
-  if (raw === 'ask-once' || raw === 'once' || raw === 'a[REDACTED_KEY]') return 'ask-once'
+  if (raw === 'ask-before' || raw === 'before-acting' || raw === 'before_action' || raw === 'act') return 'ask-before'
+  if (raw === 'ask-once' || raw === 'once') return 'ask-once'
   if (raw === 'never-ask' || raw === 'never' || raw === 'none') return 'never-ask'
   return DEFAULT_APPROVAL_MODE
 }

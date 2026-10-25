@@ -325,19 +325,16 @@ async function main(): Promise<void> {
   if (app.isPackaged) {
     // The packaged product must never inherit a terminal/agent DSH or dev
     // environment: those variables would make the bundled Host attach to the
-    // user's main ~/.dsh profile or a development tree. Scrub everything except
-    // the explicit test override NISSE_DSH_HOME (which only moves the product's
-    // own data root, never points at a user DSH home).
+    // user's main ~/.dsh profile or a development tree. Scrub all inherited
+    // DSH/WHALEGIRL/NISSE values, including NISSE_DSH_HOME. An override
+    // here could point a packaged app at the user's unrelated ~/.dsh profile.
     for (const name of Object.keys(process.env)) {
-      if (name === 'NISSE_DSH_HOME') continue
       if (/^(?:DSH|WHALEGIRL|NISSE)_/u.test(name)) Reflect.deleteProperty(process.env, name)
     }
     delete process.env.ELECTRON_RUN_AS_NODE
     delete process.env.ELECTRON_NO_ATTACH_CONSOLE
-    // Set the product data root before any path resolution runs; otherwise a
-    // resolveDshHome()/resolveDesktopPaths() call would capture the inherited
-    // DSH_HOME and point the Host at the user's main profile.
-    process.env.DSH_HOME = process.env.NISSE_DSH_HOME || join(app.getPath('userData'), 'dsh-home')
+    // The packaged Host always uses an application-owned data directory.
+    process.env.DSH_HOME = join(app.getPath('userData'), 'dsh-home')
   }
   const desktopSettings = readDesktopSettings(app.getPath('userData'))
   void pruneCrashReports(app.getPath('logs'))
@@ -362,8 +359,8 @@ async function main(): Promise<void> {
     process.env.WHALEGIRL_PROJECT_ROOT ||= join(repositoryRoot, '..', 'nisse')
     process.env.WHALEGIRL_VOICE_PERSONA_MODULE ||= join(process.env.WHALEGIRL_PROJECT_ROOT, 'research', 'qwen-audio-agent', 'server', 'src', 'voice', 'nisse-voice-persona.mjs')
   }
-  // Provider keys are encrypted through Electron safeStorage (macOS Keychain); the
-  // config file written to disk never contains a plaintext key.
+  // Provider keys use DSH .credentials.yaml with mode 0600 (not Keychain);
+  // config.json does not store provider keys.
   const secretStore = new DshCredentialStore(resolveDshHome())
   const botRuntime = new BotRuntime(resolveDshHome(), process.resourcesPath, secretStore)
   // Built-in long-term memory: start the local Hindsight server + adapter sidecar
@@ -434,8 +431,7 @@ async function main(): Promise<void> {
         sources: { personaPrompt: 'host-integration /persona/preview', voicePrefix: modulePath || 'unavailable' },
       }
     },
-    onConfigSaved: (config) => {
-      const previous = botRuntime.readConfig()
+    onConfigSaved: (config, previous) => {
       // The LLM route and the Bot workspace are composed into the DSH profile at
       // Host start, so a change to either needs one Host restart. Voice-only edits
       // just restart the gateway. Relaunch once instead of leaving a stale Host.
@@ -637,7 +633,12 @@ async function main(): Promise<void> {
     signal: loginShellRead.signal,
   }).then((result) => {
     for (const failure of result.failures) console.warn(`desktop login shell: ${failure.shell} failed (${failure.reason})`)
-    return result.environment
+    if (!app.isPackaged) return result.environment
+    // The login-shell read may re-introduce product-specific variables from .zshrc
+    // even though the packaged Electron environment was scrubbed at startup.
+    // Host and child processes must only get explicitly published product values.
+    return Object.fromEntries(Object.entries(result.environment).filter(([name]) =>
+      !/^(?:NISSE|WHALEGIRL)_/u.test(name)))
   })
   let hostEnvironment: NodeJS.ProcessEnv = process.env
   const prepareHostEnvironment = async (): Promise<void> => { hostEnvironment = await loginShell }

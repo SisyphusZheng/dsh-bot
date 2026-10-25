@@ -14,7 +14,7 @@ import {
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import { PickerPopover } from './PickerPopover.tsx'
-import type { TaskManagerKey } from './ta[REDACTED_KEY].ts'
+import type { TaskManagerKey } from './task-manager-locales.ts'
 import css from './DatePicker.module.css'
 
 /** Row copy of the task manager namespace, as the pickers receive it. */

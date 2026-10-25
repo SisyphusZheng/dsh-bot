@@ -100,7 +100,7 @@ export function TaskManagerPage(props: TaskManagerPageProps) {
     <section
       className={clsx(css.page, selected !== undefined && css.hasDetails)}
       aria-label={t('title')}
-      data-testid="ta[REDACTED_KEY]"
+      data-testid="task-manager-page"
       onKeyDown={(event) => {
         // A dropdown that closed on this Escape has already consumed the key: the
         // Menu primitive closes from the document capture phase and calls

@@ -1,6 +1,6 @@
 /** Ask-user transcript rendering from validated plain card data. @module */
 
-import type { AskQuestionCardModel } from '../models/a[REDACTED_KEY].ts'
+import type { AskQuestionCardModel } from '../models/ask-question-card-model.ts'
 import css from './AskQuestionCard.module.css'
 
 /**

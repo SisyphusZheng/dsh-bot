@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest'
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { SCHEDULE_TASK_ID, SCHEDULE_TASK_KIND, scheduleTaskDefinition } from '../src/client/definition.ts'
-import { en } from '../src/client/ta[REDACTED_KEY].ts'
+import { en } from '../src/client/task-manager-locales.ts'
 
 describe('scheduleTaskDefinition', () => {
   it('registers the builtin task type and names its chip through the bound translate', () => {

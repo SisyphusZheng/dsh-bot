@@ -17,7 +17,7 @@ import {
   formatScheduleRelative, zoneLabel,
 } from '../src/client/schedule-format.ts'
 import { timingSnapshot } from '../src/client/task-timing.ts'
-import { en, zh } from '../src/client/ta[REDACTED_KEY].ts'
+import { en, zh } from '../src/client/task-manager-locales.ts'
 import { zoneDifferingFrom, zoneOffsetMinutes } from './zone-fixture.ts'
 import css from '../src/client/TaskManagerPage.module.css'
 import taskMenuCss from '../src/client/TaskMenu.module.css'
@@ -625,7 +625,7 @@ describe('Task manager catalog', () => {
 
   it('lays the page out on the mock content column, heading, search field, and rows', () => {
     mount()
-    const page = screen.getByTestId('ta[REDACTED_KEY]')
+    const page = screen.getByTestId('task-manager-page')
     // The mock's `.page-scroll` > `.automation-content` scroll as one column.
     const scroll = page.querySelector<HTMLElement>(`.${css.pageScroll!}`)!
     const content = page.querySelector<HTMLElement>(`.${css.pageContent!}`)!
@@ -1505,7 +1505,7 @@ describe('Task manager details', () => {
   it('keeps the detail open when a dropdown consumed the Escape first', () => {
     mount()
     fireEvent.click(screen.getByRole('button', { name: 'Review release' }))
-    const page = screen.getByTestId('ta[REDACTED_KEY]')
+    const page = screen.getByTestId('task-manager-page')
     // A dropdown closes Escape from the document capture phase and calls
     // preventDefault there, so the page's own handler only ever sees the
     // consumed key — the ordering a real browser reaches and a bare keydown on

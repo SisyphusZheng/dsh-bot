@@ -526,7 +526,7 @@ describe.skipIf(MODE === 'record')('web e2e: conversational reminders', () => {
     // linked-Session assertions run with another Session in the main pane.
     await page.getByRole('treeitem', { name: /Explicit local-time reminder/ }).click()
     await page.getByRole('button', { name: 'Automation tasks', exact: true }).click()
-    const manager = page.getByTestId('ta[REDACTED_KEY]')
+    const manager = page.getByTestId('task-manager-page')
     await manager.getByRole('button', { name: 'Inactive', exact: true }).click()
     await manager.getByRole('list', { name: 'Task catalog' })
       .getByRole('button', { name: AFTER_PROMPT, exact: true }).click()
@@ -616,7 +616,7 @@ describe.skipIf(MODE === 'record')('web e2e: conversational reminders', () => {
     const first = await scaffold.ctx.schedule.history({ sessionId: everyHandle.agent.id, id: original.id, limit: 20 })
     if ('code' in first || first.records.length !== 1) throw new Error('expected one actual recurring receipt')
     await page.getByRole('button', { name: 'Automation tasks', exact: true }).click()
-    const manager = page.getByTestId('ta[REDACTED_KEY]')
+    const manager = page.getByTestId('task-manager-page')
     await manager.getByRole('list', { name: 'Task catalog' }).getByRole('button', { name: original.title, exact: true }).click()
     const detail = manager.getByRole('complementary', { name: 'Task details' })
     await detail.getByRole('tab', { name: 'Records', exact: true }).click()
@@ -818,7 +818,7 @@ describe.skipIf(MODE === 'record')('web e2e: active Schedule catalog', () => {
       prompt: 'Inspect the second workspace deployment', title: 'Second workspace deployment', at: '2099-08-25T12:08:00.000Z',
     })
     await page.getByRole('button', { name: 'Automation tasks', exact: true }).click()
-    const manager = page.getByTestId('ta[REDACTED_KEY]')
+    const manager = page.getByTestId('task-manager-page')
     await manager.getByRole('heading', { name: 'Automation tasks', exact: true }).waitFor()
     const tasks = manager.getByRole('list', { name: 'Task catalog' })
     await expect.poll(() => tasks.getByRole('listitem').count()).toBe(4)
@@ -930,7 +930,7 @@ describe.skipIf(MODE === 'record')('web e2e: active Schedule catalog', () => {
       || row.name === '@deepseek-ai/dsh-tool-schedule')).toBe(false)
 
     await page.getByRole('button', { name: 'Automation tasks', exact: true }).click()
-    const manager = page.getByTestId('ta[REDACTED_KEY]')
+    const manager = page.getByTestId('task-manager-page')
     await manager.getByRole('button', { name: 'Check exact cadence', exact: true }).click()
     await manager.getByRole('button', { name: `Linked session ${CATALOG_TITLE}: open original session`, exact: true }).click()
     await liveAgent(scaffold, CATALOG_SESSION_ID)
@@ -1102,7 +1102,7 @@ describe.skipIf(MODE === 'record')('web e2e: active Schedule catalog', () => {
     })
     try {
       await page.getByRole('button', { name: 'Automation tasks', exact: true }).click()
-      const manager = page.getByTestId('ta[REDACTED_KEY]')
+      const manager = page.getByTestId('task-manager-page')
       await manager.getByRole('button', { name: 'All', exact: true }).click()
       await manager.getByRole('searchbox', { name: 'Search tasks' }).fill(record.title)
       await manager.getByRole('list', { name: 'Task catalog' }).getByRole('button', { name: record.title, exact: true }).click()
@@ -1196,7 +1196,7 @@ describe.skipIf(MODE === 'record')('web e2e: active Schedule catalog', () => {
       expect(clock.format(new Date(created.scheduledAt))).toBe(time)
       await page.clock.setFixedTime(new Date())
       await page.getByRole('button', { name: 'Automation tasks', exact: true }).click()
-      const manager = page.getByTestId('ta[REDACTED_KEY]')
+      const manager = page.getByTestId('task-manager-page')
       await manager.getByRole('button', { name: 'All', exact: true }).click()
       await manager.getByRole('searchbox', { name: 'Search tasks' }).fill(prompt)
       const tasks = manager.getByRole('list', { name: 'Task catalog' })

@@ -3,7 +3,7 @@
 import { afterEach, expect, it, vi } from 'vitest'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { ScheduleId } from '@deepseek-ai/dsh-schedule/client'
-import { TaskTabBindings, type TaskTabPage, type TaskTabTarget } from '../src/client/ta[REDACTED_KEY].ts'
+import { TaskTabBindings, type TaskTabPage, type TaskTabTarget } from '../src/client/task-tab-bindings.ts'
 
 const session = 'session.with.dot' as SessionId
 const otherSession = 'session-other' as SessionId
