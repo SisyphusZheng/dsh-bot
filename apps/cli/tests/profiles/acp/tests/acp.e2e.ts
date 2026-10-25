@@ -51,7 +51,7 @@ describe('acp-agent over real stdio (no key required)', () => {
       agent: AGENT,
       cwd: workdir,
       env: {
-        DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY ?? '[REDACTED_KEY]',
+        DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY ?? 'sk-dummy-for-boot',
         ...DANGER_FULL_ACCESS_ENV,
       },
     })
@@ -85,7 +85,7 @@ describe('acp-agent over real stdio (no key required)', () => {
       agent: AGENT,
       cwd: workdir,
       env: {
-        DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY ?? '[REDACTED_KEY]',
+        DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY ?? 'sk-dummy-for-boot',
         ...DANGER_FULL_ACCESS_ENV,
       },
     })

@@ -57,7 +57,7 @@ The product preload publishes semantic updater phase, version, progress, and cla
 
 **Keep technical details only in logs.** In-dialog disclosure lets users inspect a stop failure without locating local logs, while the default recovery message stays readable.
 
-**Warn for every in-flight API request.** Startup reads produce a ta[REDACTED_KEY] warning without affected tasks. Separating request draining from task inspection avoids that warning without classifying RPCs by URL or abandoning pending writes.
+**Warn for every in-flight API request.** Startup reads produce a task-interruption warning without affected tasks. Separating request draining from task inspection avoids that warning without classifying RPCs by URL or abandoning pending writes.
 
 **Send localized update strings through the preload.** The Desktop shell locale can differ from the language selected inside the Web application, and transported strings cannot react to a later language change. Semantic presentation data keeps user-selected Web language ownership with the component.
 

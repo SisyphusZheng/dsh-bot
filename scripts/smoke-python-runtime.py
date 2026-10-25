@@ -921,7 +921,7 @@ def _smoke_sdk_authoring_cached(base_url: str, executable: Path, update_snapshot
             with DeepSeekHarness(
                 provider="deepseek-official", model="smoke-model", cwd=str(root),
                 dsh_bin=str(executable), dsh_home=str(home), patches=(str(patch),),
-                api_key="[REDACTED_KEY]", base_url=base_url,
+                api_key="sk-keyless-smoke", base_url=base_url,
                 env={"DSH_PERMISSION_MODE": "danger-full-access", "DSH_TELEMETRY_DISABLED": "1", "DSH_RESOURCE_CACHE": str(cache)},
                 request_timeout_seconds=60,
             ) as harness:
@@ -1032,7 +1032,7 @@ def smoke_sdk_office(executable: Path) -> None:
             dsh_bin=str(relocated),
             dsh_home=str(root / f"home-{mode}"),
             patches=(str(patch),),
-            api_key="[REDACTED_KEY]",
+            api_key="sk-keyless-smoke",
             base_url="http://127.0.0.1:9",
             env={"DSH_PERMISSION_MODE": "danger-full-access", "DSH_TELEMETRY_DISABLED": "1", "DSH_RESOURCE_CACHE": str(root / "cache")},
             # Startup performs three serial Office operations with 120-second engine deadlines.
@@ -1255,7 +1255,7 @@ def smoke_sdk_default(base_url: str) -> None:
                 "DSH_PERMISSION_MODE": "danger-full-access",
                 "DSH_TELEMETRY_DISABLED": "1",
             },
-            api_key="[REDACTED_KEY]",
+            api_key="sk-keyless-smoke",
             base_url=base_url,
             request_timeout_seconds=60,
         ) as harness:
@@ -1292,7 +1292,7 @@ def smoke_sdk_custom(base_url: str, executable: Path) -> None:
                     "DSH_PERMISSION_MODE": "danger-full-access",
                     "DSH_TELEMETRY_DISABLED": "1",
                 },
-                api_key="[REDACTED_KEY]",
+                api_key="sk-keyless-smoke",
                 base_url=base_url,
                 request_timeout_seconds=60,
             ) as harness:
@@ -1335,7 +1335,7 @@ def smoke_sdk_minimal(
             dsh_home=str(dsh_home),
             profile="sdk-minimal",
             patches=patches,
-            api_key="[REDACTED_KEY]",
+            api_key="sk-keyless-smoke",
             base_url=base_url,
             request_timeout_seconds=60,
         ) as harness:
@@ -1399,7 +1399,7 @@ def smoke_sdk_dynamic_tools(base_url: str, executable: Path, update_snapshots: b
                 # Pin the tool baseline independently of optional resources in the host cache.
                 "DSH_PRIMARY_RUNTIME": "",
             },
-            api_key="[REDACTED_KEY]", base_url=base_url, request_timeout_seconds=60,
+            api_key="sk-keyless-smoke", base_url=base_url, request_timeout_seconds=60,
         ) as harness:
             result = harness.run(DYNAMIC_TOOLS_PROMPT, session_id="dynamic-tools-smoke")
         assert result.final_response == DYNAMIC_TOOLS_TEXT, result.final_response
@@ -1438,7 +1438,7 @@ def smoke_sdk_fs_search(base_url: str, executable: Path) -> None:
                 "DSH_PERMISSION_MODE": "danger-full-access",
                 "DSH_TELEMETRY_DISABLED": "1",
             },
-            api_key="[REDACTED_KEY]",
+            api_key="sk-keyless-smoke",
             base_url=base_url,
             request_timeout_seconds=60,
         ) as harness:
@@ -1468,7 +1468,7 @@ def smoke_sdk_spawn_node(base_url: str, executable: Path) -> None:
                 "DSH_PERMISSION_MODE": "danger-full-access",
                 "DSH_TELEMETRY_DISABLED": "1",
             },
-            api_key="[REDACTED_KEY]",
+            api_key="sk-keyless-smoke",
             base_url=base_url,
             request_timeout_seconds=60,
         ) as harness:
@@ -1501,7 +1501,7 @@ def smoke_sdk_mcp(base_url: str, executable: Path | None) -> None:
                 "DSH_PERMISSION_MODE": "danger-full-access",
                 "DSH_TELEMETRY_DISABLED": "1",
             },
-            api_key="[REDACTED_KEY]",
+            api_key="sk-keyless-smoke",
             base_url=base_url,
             request_timeout_seconds=60,
         ) as harness:
@@ -1584,7 +1584,7 @@ def smoke_sdk_profile_plugin(base_url: str) -> None:
                 "DSH_PERMISSION_MODE": "danger-full-access",
                 "DSH_TELEMETRY_DISABLED": "1",
             },
-            api_key="[REDACTED_KEY]",
+            api_key="sk-keyless-smoke",
             base_url=base_url,
             request_timeout_seconds=60,
         )
@@ -1653,7 +1653,7 @@ def smoke_sdk_snapshot_mode(
                 "DSH_PERMISSION_MODE": "danger-full-access",
                 "DSH_TELEMETRY_DISABLED": "1",
             },
-            api_key="[REDACTED_KEY]",
+            api_key="sk-keyless-smoke",
             base_url=base_url,
             request_timeout_seconds=60,
         ) as harness:
@@ -1759,7 +1759,7 @@ def smoke_sdk_restart_snapshot(base_url: str, executable: Path, update_snapshots
                     "DSH_PERMISSION_MODE": "danger-full-access",
                     "DSH_TELEMETRY_DISABLED": "1",
                 },
-                api_key="[REDACTED_KEY]",
+                api_key="sk-keyless-smoke",
                 base_url=base_url,
                 request_timeout_seconds=60,
             )
@@ -1872,7 +1872,7 @@ def smoke_sdk_scheduler_recovery(base_url: str, executable: Path, update_snapsho
                 dsh_bin=str(executable), dsh_home=str(dsh_home),
                 patches=(str(base_patch), str(patch)),
                 env={"DSH_PERMISSION_MODE": "danger-full-access", "DSH_TELEMETRY_DISABLED": "1"},
-                api_key="[REDACTED_KEY]", base_url=base_url, request_timeout_seconds=60,
+                api_key="sk-keyless-smoke", base_url=base_url, request_timeout_seconds=60,
             )
 
         with connect() as harness:
@@ -1945,7 +1945,7 @@ def smoke_direct(base_url: str, executable: Path) -> None:
             "DSH_HOME": str(dsh_home),
             "DSH_PERMISSION_MODE": "danger-full-access",
             "DSH_TELEMETRY_DISABLED": "1",
-            "DEEPSEEK_API_KEY": "[REDACTED_KEY]",
+            "DEEPSEEK_API_KEY": "sk-keyless-smoke",
             "DEEPSEEK_BASE_URL": base_url,
         }
         peer = RuntimePeer(

@@ -44,7 +44,7 @@ try {
     overlayPaths: [resolveConfigPath(configPath, undefined)],
   })
   try {
-    await runFixtureTurn(ctx, { task: 'prove telemetry with key [REDACTED_KEY]' })
+    await runFixtureTurn(ctx, { task: 'prove telemetry with key sk-e2efixture1234567890' })
     const [agent] = ctx.get('agents')?.roots() ?? []
     if (agent === undefined) throw new Error('session-telemetry-otel driver requires one root agent')
     if (process.env.DSH_TELEMETRY_E2E_FEEDBACK !== 'none') {

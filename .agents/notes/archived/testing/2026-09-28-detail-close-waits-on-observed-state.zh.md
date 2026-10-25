@@ -7,7 +7,7 @@ Archived: 2026-09-30
 
 ## Problem
 
-`packages/client/ui-schedule/tests/ta[REDACTED_KEY].client.spec.tsx` 的用例 "keeps details after a refresh failure and closes them after a successful retry" 在 `node 24 / coverage` lane 的 `thread-safe` 分区上间歇失败，失败点是它最后一条断言：`AssertionError: expected <aside aria-label="Task details" …> to be null`。该用例与本文件全部 269 个用例在本地都通过；该 lane 的覆盖率插桩只改变下面两个 commit 之间那个窗口被观测到的概率。
+`packages/client/ui-schedule/tests/task-manager-page.client.spec.tsx` 的用例 "keeps details after a refresh failure and closes them after a successful retry" 在 `node 24 / coverage` lane 的 `thread-safe` 分区上间歇失败，失败点是它最后一条断言：`AssertionError: expected <aside aria-label="Task details" …> to be null`。该用例与本文件全部 269 个用例在本地都通过；该 lane 的覆盖率插桩只改变下面两个 commit 之间那个窗口被观测到的概率。
 
 该用例最后一步在一次已确认删除之后重试失败的目录读取，`await screen.findByText(en['list.empty'])`，然后只读一次 `screen.queryByRole('complementary')`。空列表与被移除的详情并不在同一个 commit：
 

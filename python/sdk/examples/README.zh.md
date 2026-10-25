@@ -9,7 +9,7 @@
 安装 `deepseek-harness-sdk`、导出模型凭据，然后提供隔离的 Harness home 与 workspace：
 
 ```sh
-export DEEPSEEK_API_KEY=[REDACTED_KEY]
+export DEEPSEEK_API_KEY=sk-your-key-here
 python python/sdk/examples/minimal.py \
   --dsh-home /absolute/path/to/example-dsh-home \
   --workspace /absolute/path/to/disposable-workspace \

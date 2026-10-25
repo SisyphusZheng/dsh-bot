@@ -122,7 +122,7 @@ export async function postShellControl(
   try {
     const response = await fetchImpl(endpoint, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'x-dsh-bot-token': String(env.NISSE_SHELL_CONTROL_TOKEN || '') },
       body: JSON.stringify(payload || {}),
       signal: AbortSignal.timeout(timeoutMs),
     })
@@ -284,7 +284,7 @@ async function shellJsonRequest(method, path, payload, {
   try {
     const init = {
       method,
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'x-dsh-bot-token': String(env.NISSE_SHELL_CONTROL_TOKEN || '') },
       signal: AbortSignal.timeout(timeoutMs),
     }
     if (payload !== undefined) init.body = JSON.stringify(payload)

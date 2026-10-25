@@ -51,7 +51,7 @@ from pipecat.services.settings import STTSettings, TTSSettings
 from pipecat.services.tts_service import WebsocketTTSService
 from pipecat.utils.time import time_now_iso8601
 
-DASHSCOPE_REALTIME_URL = "wss://dashscope.aliyuncs.com/api-ws/v1/realtime"
+DASHSCOPE_REALTIME_URL = os.getenv("DASHSCOPE_REALTIME_URL", "wss://dashscope.aliyuncs.com/api-ws/v1/realtime")
 
 
 def _event_id() -> str:

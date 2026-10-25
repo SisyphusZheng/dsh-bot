@@ -3,7 +3,7 @@
 Status: implemented
 Archived: 2026-09-04
 
-[English](2026-08-01-a[REDACTED_KEY].md) | 中文
+[English](2026-08-01-ask-user-delegated-caller-guard.md) | 中文
 
 ## 问题
 

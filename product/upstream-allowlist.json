@@ -1,0 +1,112 @@
+{
+  ".gitignore": {
+    "sha": "90de82a4d787f70b99d26b676708c54e26eca8d9",
+    "mode": "100644",
+    "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
+  },
+  "apps/desktop/electron-builder.config.d.mts": {
+    "sha": "3ffa7f7724fe9f1b022c695d45b0a2400c81a0db",
+    "mode": "100644",
+    "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
+  },
+  "apps/desktop/package.json": {
+    "sha": "d3f45df3a8196be54b490143acc28af7c0b8b68e",
+    "mode": "100644",
+    "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
+  },
+  "apps/desktop/scripts/desktop-package-environment.mjs": {
+    "sha": "52dfc9d748429440c53b1db735847223e01b88bb",
+    "mode": "100644",
+    "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
+  },
+  "apps/desktop/scripts/desktop-upload-plan.ts": {
+    "sha": "e05f8f0c5c92907ec39a13823c3f8e4c8b9f0eb5",
+    "mode": "100644",
+    "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
+  },
+  "apps/desktop/scripts/development-app.ts": {
+    "sha": "2eb8c1662c42a3b217df631aa49ae95e83ef32b1",
+    "mode": "100644",
+    "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
+  },
+  "apps/desktop/scripts/electron-builder-config.mjs": {
+    "sha": "b28af8b8c5e72228afa5e4766d6591e717a5be97",
+    "mode": "100644",
+    "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
+  },
+  "apps/desktop/scripts/package-macos.ts": {
+    "sha": "e2bfef9f57265cab5471e3785759aa9b66c66aff",
+    "mode": "100644",
+    "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
+  },
+  "apps/desktop/scripts/package-target.ts": {
+    "sha": "aada845c288a60d037d9138cfee5b8b53d7faa14",
+    "mode": "100644",
+    "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
+  },
+  "apps/desktop/scripts/prepare-dsh.ts": {
+    "sha": "10cdd71b0ae03319a862c5ac76c3ef248b375dd1",
+    "mode": "100644",
+    "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
+  },
+  "apps/desktop/scripts/smoke-packaged-runtime.ts": {
+    "sha": "01384ee28e01a9795371ef5d15dd5d05670ddda5",
+    "mode": "100644",
+    "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
+  },
+  "apps/desktop/scripts/verify-retained-desktop.ts": {
+    "sha": "37ed08ced354d9d7978658c0d1e21cb16bef3cc5",
+    "mode": "100644",
+    "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
+  },
+  "apps/desktop/src/locale.ts": {
+    "sha": "545681ba8ea598317108bae27368b484cbb09f09",
+    "mode": "100644",
+    "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
+  },
+  "apps/desktop/src/main.ts": {
+    "sha": "880598bf668a4d4a596b845c1dd0b20fa97e38d7",
+    "mode": "100644",
+    "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
+  },
+  "apps/desktop/src/welcome-api.ts": {
+    "sha": "3f45fb89db50547313105d68cd607d4667aedb2d",
+    "mode": "100644",
+    "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
+  },
+  "apps/web/index.html": {
+    "sha": "b370bcb760fb40a94901de478c453d48183fbbff",
+    "mode": "100644",
+    "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
+  },
+  "apps/web/public/manifest.webmanifest": {
+    "sha": "a87e11d9488059a217b5e46474a8943982446af7",
+    "mode": "100644",
+    "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
+  },
+  "packages/client/ui-brand-official/src/client/Brand.tsx": {
+    "sha": "6cd7cd4fb0fb8eb650d8c7191fe90998fafd63c3",
+    "mode": "100644",
+    "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
+  },
+  "packages/client/ui-brand-official/src/client/index.ts": {
+    "sha": "c056847a955cfceb37eab448b54334fc13d3fdf3",
+    "mode": "100644",
+    "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
+  },
+  "packages/client/ui-conversation/src/client/locales.ts": {
+    "sha": "c7d98de840ba414b1e5249dae40b0d9d21e5da92",
+    "mode": "100644",
+    "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
+  },
+  "packages/client/ui-settings-account/src/client/index.ts": {
+    "sha": "ac1e49602648e1ea82f18b5888c2a568682203a1",
+    "mode": "100644",
+    "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
+  },
+  "packages/client/ui-settings-general/src/client/SettingsRoot.tsx": {
+    "sha": "5ee0c595ca8c380eca0c9940e4c0bbfaf1ddb7b0",
+    "mode": "100644",
+    "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
+  }
+}

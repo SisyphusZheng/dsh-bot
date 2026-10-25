@@ -756,7 +756,7 @@ describe('timed card', () => {
   })
 
   it('unlocks an older reply when the rendered channel lags its continued state', async () => {
-    const carrier = new PendingQuestion(SID, TIMED, ToolCallId('a[REDACTED_KEY]'))
+    const carrier = new PendingQuestion(SID, TIMED, ToolCallId('ask-stale-channel'))
     const hide = vi.fn()
     carrier.attachRpc({ answer: vi.fn(async () => true) })
     carrier.attachSeat({ hide })

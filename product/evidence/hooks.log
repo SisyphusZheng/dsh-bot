@@ -1,0 +1,24 @@
+╭───────────────────────────────────────╮
+│ lefthook  v2.1.12   hook:  pre-commit │
+╰───────────────────────────────────────╯
+┃  translation pairing (staged records) ❯
+verify-translation-pairing: 7 named staged pair(s) consistent; the corpus-wide check still runs in doc-sync.
+
+┃  archived agent notes ❯
+verify-archived-agent-notes: 2772 frozen artifact(s) checked across 6 kind(s).
+
+┃  lint (staged) ❯
+apps/desktop/src/main.ts:996:5: warning: Unused eslint-disable directive (no problems were reported).
+
+┃  whitespace (staged) ❯
+
+│  pi-ai provider metadata (skip) no matching staged files
+┃  vendor manifest guard ❯
+
+  ────────────────────────────────────
+summary: (done in 4.77 seconds)
+✓ translation pairing (staged records) (2.29 seconds)
+✓ archived agent notes (0.22 seconds)
+✓ lint (staged) (2.14 seconds)
+✓ whitespace (staged) (0.03 seconds)
+✓ vendor manifest guard (0.01 seconds)

@@ -296,7 +296,7 @@ describe('document validation', () => {
   it('never puts a credential value in a diagnostic', async () => {
     const dir = await tempDir()
     const path = join(dir, '.credentials.yaml')
-    const secret = '[REDACTED_KEY]'
+    const secret = 'sk-live-DO-NOT-LOG-abcdef123456'
     // The yaml parser's own message quotes the offending source line, which in
     // this document is the secret itself. Boot stderr and the watcher's logger
     // both receive whatever this throws.

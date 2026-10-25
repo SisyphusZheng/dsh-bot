@@ -14,7 +14,7 @@ import {
   type SessionTelemetryRecord,
 } from '../src/index.ts'
 
-const FIXTURE_SECRET = '[REDACTED_KEY]'
+const FIXTURE_SECRET = 'sk-fixture1234567890'
 
 class CollectingBackend implements SessionTelemetrySink {
   records: SessionTelemetryRecord[] = []

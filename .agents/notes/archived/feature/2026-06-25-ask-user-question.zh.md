@@ -3,7 +3,7 @@
 Status: implemented
 Archived: 2026-07-27
 
-[English](2026-06-25-a[REDACTED_KEY].md) | 中文
+[English](2026-06-25-ask-user-question.md) | 中文
 
 ## 问题
 

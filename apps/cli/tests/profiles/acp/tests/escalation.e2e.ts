@@ -84,7 +84,7 @@ function launchExampleAcpAgent(
     cwd,
     // A dummy key lets the adapter boot keylessly; live tests carry the real key.
     env: {
-      DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY ?? '[REDACTED_KEY]',
+      DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY ?? 'sk-dummy-for-boot',
       DSH_PERMISSION_MODE: sandboxMode,
     },
     requestPermission(params) {

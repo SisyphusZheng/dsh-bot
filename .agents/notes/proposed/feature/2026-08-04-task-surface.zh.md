@@ -25,7 +25,7 @@ Status: proposed
 
 这里定义的是一个触发方式，不是一组产品启发式规则。agent 会显式调用 `show_task_surface`。用户可以通过普通语言要求 agent 使用 Task Surface。产品不会根据工具名称或任务主题打开专用面板；重复使用也不会自动把 Task Surface 转为插件。
 
-简短的阻塞式问题仍由 [`ask_user_question`](../../archived/feature/2026-07-29-a[REDACTED_KEY].md) 处理。纯文本说明仍留在聊天中。跨会话导航、后台行为、新服务或持久自定义 UI 则属于 Generated Client Plugin 工作流。
+简短的阻塞式问题仍由 [`ask_user_question`](../../archived/feature/2026-07-29-ask-question-web-presentation.md) 处理。纯文本说明仍留在聊天中。跨会话导航、后台行为、新服务或持久自定义 UI 则属于 Generated Client Plugin 工作流。
 
 ## 声明式模型
 

@@ -4,12 +4,13 @@ import { WINDOWS_TITLEBAR_HEIGHT } from './windows-layout.ts'
 
 import { readFile, writeFile } from 'node:fs/promises'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 import { BOT_CONFIG_PORT, startBotConfigServer } from './bot-config-server.ts'
 import { spawn } from 'node:child_process'
 import { BotRuntime, type BotRuntimeConfig } from './bot-runtime.ts'
-import { MemoryRuntime } from './memory-runtime.ts'
+import { botHostEnvironment } from './bot-host-environment.ts'
+import { MemoryRuntime, stopProductProcess } from './memory-runtime.ts'
 import { DshCredentialStore } from './secret-store.ts'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import {
@@ -336,6 +337,7 @@ async function main(): Promise<void> {
     // The packaged Host always uses an application-owned data directory.
     process.env.DSH_HOME = join(app.getPath('userData'), 'dsh-home')
   }
+  process.env.DSH_HOME = join(app.getPath('userData'), 'dsh-home')
   const desktopSettings = readDesktopSettings(app.getPath('userData'))
   void pruneCrashReports(app.getPath('logs'))
   const journalDirectory = process.env.DSH_DESKTOP_UPDATE_JOURNAL_DIR
@@ -362,7 +364,7 @@ async function main(): Promise<void> {
   // Provider keys use DSH .credentials.yaml with mode 0600 (not Keychain);
   // config.json does not store provider keys.
   const secretStore = new DshCredentialStore(resolveDshHome())
-  const botRuntime = new BotRuntime(resolveDshHome(), process.resourcesPath, secretStore)
+  const botRuntime = new BotRuntime(resolveDshHome(), process.resourcesPath, secretStore, resources.dsh)
   // Built-in long-term memory: start the local Hindsight server + adapter sidecar
   // before the Host profile is composed, then publish its loopback endpoints into
   // the managed profile layer. Fail-soft: the Bot runs without memory on failure.
@@ -435,11 +437,15 @@ async function main(): Promise<void> {
       // The LLM route and the Bot workspace are composed into the DSH profile at
       // Host start, so a change to either needs one Host restart. Voice-only edits
       // just restart the gateway. Relaunch once instead of leaving a stale Host.
+      if (JSON.stringify(previous.voice) !== JSON.stringify(config.voice)) {
+        void stopProductProcess(petProcess).then(() => { petProcess = null; startDeskPet(config) })
+      }
       const memoryChanged = previous.memory?.enabled !== config.memory.enabled
       const hostRestart = memoryChanged
         || previous.llm?.provider !== config.llm.provider
         || previous.llm?.model !== config.llm.model
         || previous.llm?.baseUrl !== config.llm.baseUrl
+        || previous.llm?.apiKey !== config.llm.apiKey
         || JSON.stringify(previous.persona || {}) !== JSON.stringify({
           name: config.persona.name,
           personality: config.persona.personality,
@@ -471,7 +477,10 @@ async function main(): Promise<void> {
         })()
       })
     },
-    onRestart: () => botRuntime.status(),
+    onRestart: async () => {
+      await stopProductProcess(petProcess); petProcess = null
+      startDeskPet(botRuntime.readConfig()); return botRuntime.status()
+    },
     onPickDirectory: async () => {
       const pick = { title: '选择 Bot 工作区', properties: ['openDirectory', 'createDirectory'] } as const
       const result = mainWindow === undefined
@@ -569,6 +578,7 @@ async function main(): Promise<void> {
       NISSE_BRIDGE_ONLY: '1',
       NISSE_BRIDGE_FILE: join(resolveDshHome(), 'bot', 'bridge.json'),
       NISSE_SHELL_CONTROL_URL: `http://127.0.0.1:${botConfigPort}`,
+      NISSE_SHELL_CONTROL_TOKEN: botConfigServer?.token ?? '',
       NISSE_BUBBLE_PORT: '59102',
       NISSE_APPROVAL_MODE: String(thisConfig?.approval?.mode || 'ask-each'),
       NISSE_PAUSE_ON_INPUT: (thisConfig?.behavior?.pauseOnInput ?? true) ? '1' : '0',
@@ -585,8 +595,12 @@ async function main(): Promise<void> {
         NISSE_VOICE_WORKER_PORT: '8765',
         NISSE_PIPECAT_PORT: '8765',
         NISSE_PIPECAT_HEALTH_URL: 'http://127.0.0.1:8765/health',
-        NISSE_PIPECAT_BRIDGE_DESCRIPTOR: join(resolveDshHome(), 'whalegirl-g2', 'descriptor.json'),
-        NISSE_PIPECAT_TOKEN: 'dev-token',
+        NISSE_PIPECAT_BRIDGE_DESCRIPTOR: join(resolveDshHome(), 'bot', 'bridge.json'),
+        NISSE_PIPECAT_TOKEN: botConfigServer?.token ?? '',
+        DASHSCOPE_ASR_MODEL: config.voice?.model?.startsWith('qwen3-asr') ? config.voice.model : 'qwen3-asr-flash-realtime',
+        DASHSCOPE_TTS_MODEL: 'qwen3-tts-flash-realtime',
+        DASHSCOPE_TTS_VOICE: !config.voice?.voice || config.voice.voice.startsWith('longan') ? 'Cherry' : config.voice.voice,
+        DASHSCOPE_REALTIME_URL: config.voice?.baseUrl || 'wss://dashscope.aliyuncs.com/api-ws/v1/realtime',
         DASHSCOPE_API_KEY: String(config.voice?.apiKey || process.env.DASHSCOPE_API_KEY || ''),
         WG_G0_VOICE_BUNDLE: join(process.resourcesPath, 'voice-client', 'inject-bundle.js'),
       })
@@ -641,7 +655,7 @@ async function main(): Promise<void> {
       !/^(?:NISSE|WHALEGIRL)_/u.test(name)))
   })
   let hostEnvironment: NodeJS.ProcessEnv = process.env
-  const prepareHostEnvironment = async (): Promise<void> => { hostEnvironment = await loginShell }
+  const prepareHostEnvironment = async (): Promise<void> => { hostEnvironment = botHostEnvironment(await loginShell, process.env) }
   let quitting = false
   let startup: Promise<void> | undefined
   let workspaceRecovery: Promise<void> | undefined
@@ -771,7 +785,7 @@ async function main(): Promise<void> {
   const backend = new DesktopBackendController((onFailure) => {
     const hostInspectPort = developmentHostInspectPort(development)
     const host = new DesktopHostProcess(resources.node, resources.dsh, activeProject,
-      hostInspectPort, { ...hostEnvironment, DSH_CLIENT_VERSION: desktopClientVersion() }, onFailure,
+      hostInspectPort, { ...botHostEnvironment(hostEnvironment, process.env), DSH_CLIENT_VERSION: desktopClientVersion() }, onFailure,
       primaryRuntime,
       resources, (next) => { platformView.setSession(next) })
     return {
@@ -1586,10 +1600,12 @@ async function main(): Promise<void> {
     updateDialog.dispose()
     mandatoryUI?.dispose()
     void Promise.all([Promise.resolve(mandatoryPolicy?.dispose()).then(() => policyAuth?.dispose()), backend.close(),
+      memoryRuntime.stop(), botConfigServer?.close(), stopProductProcess(petProcess),
       // A Platform cleanup failure is logged without cutting the remaining Host shutdown short.
       platformView.dispose().catch((error: unknown) => { console.error(error) })])
       .catch((error: unknown) => { console.error(error) }).finally(() => { app.quit() })
   }
+  for (const signal of ['SIGINT', 'SIGTERM'] as const) process.once(signal, () => { skipQuitConfirmation = true; app.quit() })
   app.on('before-quit', (event) => {
     if (shellInstallerOwnsQuit) {
       shuttingDown = true
@@ -1680,39 +1696,9 @@ async function main(): Promise<void> {
   }).catch((error: unknown) => { console.error(error) })
   await reconcileBackend().catch(() => undefined)
   if (app.isPackaged && !isQuitting()) {
-    // Packaged voice runs through the bundled Pipecat worker in the pet. Publish the
-    // Host Integration bridge descriptor the pet polls (the legacy gateway used to
-    // write this file; it is dev-only now), and keep refreshing it while the Host's
-    // bridge is still settling so the pet's poll never sticks to a stale port.
-    const bridgeFile = join(resolveDshHome(), 'bot', 'bridge.json')
-    const descriptorFile = join(resolveDshHome(), 'nisse', 'host-integration.json')
-    const publishBridgeDescriptor = (): boolean => {
-      try {
-        const descriptor = JSON.parse(readFileSync(descriptorFile, 'utf8')) as { port?: number; token?: string }
-        if (typeof descriptor.port !== 'number' || typeof descriptor.token !== 'string') return false
-        mkdirSync(join(resolveDshHome(), 'bot'), { recursive: true })
-        writeFileSync(bridgeFile, JSON.stringify({ pid: process.pid, port: descriptor.port, token: descriptor.token }, null, 2) + '\n')
-        return true
-      } catch { return false }
-    }
-    if (!publishBridgeDescriptor()) console.warn('host bridge descriptor not ready at pet start')
+    // Host Integration owns bot/bridge.json and republishes it on every Host start.
+    // Both the pet and Voice Worker read that same descriptor before connecting.
     startDeskPet(botRuntime.readConfig())
-    // The Host may restart once when memory becomes ready (new port); keep the file
-    // current for a bounded window so the pet's per-poll read always finds the live
-    // bridge instead of a stale one.
-    let lastBridge = ''
-    const bridgeWatcher = setInterval(() => {
-      try {
-        const descriptor = JSON.parse(readFileSync(descriptorFile, 'utf8')) as { port?: number; token?: string }
-        if (typeof descriptor.port !== 'number' || typeof descriptor.token !== 'string') return
-        const next = JSON.stringify({ pid: process.pid, port: descriptor.port, token: descriptor.token })
-        if (next === lastBridge) return
-        writeFileSync(bridgeFile, next + '\n')
-        lastBridge = next
-      } catch { /* Host bridge not ready yet */ }
-    }, 1000)
-    setTimeout(() => clearInterval(bridgeWatcher), 300_000)
-    app.on('will-quit', () => clearInterval(bridgeWatcher))
   }
   // Window lifecycle callbacks run while backend startup is pending.
   if (isQuitting()) return
@@ -1727,7 +1713,8 @@ async function main(): Promise<void> {
 // DSH app, so Electron would derive the same userData directory and single-instance
 // lock. Give WhaleGirl Bot its own identity before any path or lock is derived.
 app.setName('dsh-bot')
-app.setPath('userData', join(app.getPath('appData'), 'dsh-bot'))
+const explicitUserData = app.commandLine.getSwitchValue('user-data-dir')
+app.setPath('userData', explicitUserData ? resolve(explicitUserData) : join(app.getPath('appData'), 'dsh-bot'))
 
 const ownsDesktopInstance = claimDesktopSingleInstance(app, () => { focusPrimaryWindow() })
 

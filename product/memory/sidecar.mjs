@@ -10,10 +10,11 @@
 import { createServer } from 'node:http'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { MemoryAdapter } from '../../spike/m1-c-hindsight/src/index.mjs'
+import { MemoryAdapter } from './adapter/m1-c-hindsight/src/index.mjs'
 const ROOT = process.env.NISSE_M4_MEMORY_ROOT || '/tmp/nisse-m4-memory'
-mkdirSync(join(ROOT, 'run'), { recursive: true })
-const token = process.env.NISSE_M4_MEMORY_TOKEN || 'm4-memory-token'
+mkdirSync(join(ROOT, 'run'), { recursive: true, mode: 0o700 })
+const token = process.env.NISSE_M4_MEMORY_TOKEN
+if (!token) throw new Error('NISSE_M4_MEMORY_TOKEN required')
 const adapter = new MemoryAdapter({
   baseUrl: process.env.HINDSIGHT_URL || 'http://127.0.0.1:18888',
   bankId: process.env.NISSE_M4_BANK || 'nisse:m4:test',
@@ -186,6 +187,7 @@ async function memoryHistory(b) {
 // ---------------------------------------------------------------------------
 // HTTP server (all endpoints require the runtime bearer token)
 // ---------------------------------------------------------------------------
+await adapter.ensureBank()
 const server = createServer(async (req, res) => {
   const send = (code, obj) => { res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(obj)) }
   if (req.headers.authorization !== 'Bearer ' + token) return send(401, { ok: false, error: 'unauthorized' })
@@ -208,6 +210,8 @@ const server = createServer(async (req, res) => {
 })
 server.listen(0, '127.0.0.1', () => {
   const address = server.address()
-  writeFileSync(join(ROOT, 'sidecar.json'), JSON.stringify({ pid: process.pid, port: address.port, token, bank: process.env.NISSE_M4_BANK || 'nisse:m4:test' }, null, 2) + '\n')
+  writeFileSync(join(ROOT, 'sidecar.json'), JSON.stringify({ pid: process.pid, port: address.port, token, bank: process.env.NISSE_M4_BANK || 'nisse:m4:test' }, null, 2) + '\n', { mode: 0o600 })
   console.log('MEMORY_SIDECAR_READY ' + JSON.stringify({ port: address.port }))
 })
+
+for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => { server.close(() => process.exit(0)); server.closeAllConnections() })

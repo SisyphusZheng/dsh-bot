@@ -1,0 +1,59 @@
+{
+  "product": {
+    "name": "dsh-bot",
+    "version": "0.0.1-beta"
+  },
+  "runtime": {
+    "name": "DeepSeek Harness",
+    "version": "0.2.1-rc.3",
+    "repository": "https://github.com/deepseek-ai/deepseek-harness",
+    "tag": "dsh-v0.2.1-rc.3",
+    "commit": "1f81c047fc48fa190a683e469daa699857e9afe8"
+  },
+  "nativeInput": {
+    "release": "v0.0.1-beta",
+    "asset": "dsh-bot-0.0.1-beta-mac-arm64-unsigned.dmg",
+    "assetId": 674288815,
+    "bytes": 779421007,
+    "sha256": "76d13562a33d2efcc1aa6846710bcf2c2e25a7eb1b74e55277fc559780998cd2",
+    "use": "Pet native Electron/dependencies with current source overlay; voice client transport; Hindsight/ONNX/pg0 binaries only"
+  },
+  "voice": {
+    "pipecat": "1.13.0",
+    "python": "3.12.13",
+    "pyinstaller": "6.20.0",
+    "aiortc": "1.15.0",
+    "av": "17.1.0",
+    "asrModel": "qwen3-asr-flash-realtime",
+    "ttsModel": "qwen3-tts-flash-realtime",
+    "voice": "Cherry",
+    "source": "product/voice-worker-src",
+    "lock": "requirements-macos.lock",
+    "nativeWorker": "rebuilt from current source; not reused"
+  },
+  "memory": {
+    "hindsight": "1.0.0",
+    "client": "1.0.0",
+    "pg0": "0.15.2",
+    "postgres": "18.1.0",
+    "embedding": "Xenova/multilingual-e5-small@761b726d",
+    "onnxModelSha256": "4d24e2bc01a447951524466ef533e52944bf48509e6552810bcee1a2711cb02c"
+  },
+  "voiceClient": {
+    "pipecatClient": "1.14.0",
+    "smallWebrtcTransport": "1.11.0",
+    "compatibility": "Existing authenticated SmallWebRTC signaling and RTVI frames; source worker startup and protocol tests, real microphone pending"
+  },
+  "pet": {
+    "version": "2.0.1",
+    "electron": "43.6.0",
+    "source": "product/pet/src",
+    "nativeDependencies": "pinned existing release; sources overlaid and ASAR integrity refreshed"
+  },
+  "hostIntegration": {
+    "version": "0.1.0",
+    "source": "nisse/packages/host-integration",
+    "runtime": "same DSH agent and session as desktop",
+    "voiceTransport": "authenticated /voice/turn NDJSON"
+  }
+}

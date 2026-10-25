@@ -255,7 +255,7 @@ describe('ask_user_question tool', () => {
     ctx.agents.enter(agent, undefined)
     const detailed = await ctx.tools.execute({
       signal: testToolSignal,
-      callId: ToolCallId('a[REDACTED_KEY]'),
+      callId: ToolCallId('ask-legacy-detailed'),
       name: 'ask_user_question',
       arguments: { questions: [{
         id: 'pkg', question: 'Which package manager?', header: 'Setup', multi_select: false,
@@ -567,7 +567,7 @@ describe('ask_user_question tool', () => {
 
     const result = await ctx.tools.execute({
       signal: testToolSignal,
-      callId: ToolCallId('a[REDACTED_KEY]'),
+      callId: ToolCallId('ask-duplicate-ids'),
       name: 'ask_user_question',
       arguments: { questions: [
         { id: 'scope', question: 'Choose a scope.' },

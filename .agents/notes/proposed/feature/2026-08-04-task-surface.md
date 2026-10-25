@@ -25,7 +25,7 @@ Task Surface is the default structured-UI path when all of the following hold:
 
 This is one trigger, not a family of product heuristics. The agent calls `show_task_surface` explicitly. A user may ask the agent to use a Task Surface in ordinary language. Products do not inspect tool names or task topics to open bespoke panels, and repeated use does not automatically turn a Task Surface into a Plugin.
 
-Short blocking questions remain with [`ask_user_question`](../../archived/feature/2026-07-29-a[REDACTED_KEY].md). Plain explanation remains chat. Cross-Session navigation, background behavior, new services, or durable custom UI belongs to the Generated Client Plugin workflow.
+Short blocking questions remain with [`ask_user_question`](../../archived/feature/2026-07-29-ask-question-web-presentation.md). Plain explanation remains chat. Cross-Session navigation, background behavior, new services, or durable custom UI belongs to the Generated Client Plugin workflow.
 
 ## Declarative model
 

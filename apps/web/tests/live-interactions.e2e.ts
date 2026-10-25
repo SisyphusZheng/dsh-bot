@@ -44,7 +44,7 @@ const RETRY_EXPANDED_EXPECTED = join(SNAPSHOT_DIR, 'retry-expanded.expected.md')
 const RETRY_REQUEST_EXPECTED = join(SNAPSHOT_DIR, 'retry-request.expected.md')
 const RETRY_EXHAUSTED_EXPECTED = join(SNAPSHOT_DIR, 'retry-exhausted.expected.md')
 const MODE = webSnapshotMode()
-const AUTH_PROVIDER_MESSAGE = 'Authentication Fails, Your api key: [REDACTED_KEY] is invalid'
+const AUTH_PROVIDER_MESSAGE = 'Authentication Fails, Your api key: sk-preview-secret is invalid'
 
 // The recorded base: one text-only turn whose derived script the sidecars
 // patch. Kept deliberately tool-free so the derived script is exactly one
@@ -228,7 +228,7 @@ describe('web e2e: live-turn interactions (cancel / error / retry)', () => {
     await errorStatus.waitFor({ timeout: 10_000 })
     expect(await errorStatus.textContent()).toContain('API key is invalid')
     expect(await errorStatus.textContent()).toContain('AUTH')
-    expect(await page.locator('body').textContent()).not.toContain('[REDACTED_KEY]')
+    expect(await page.locator('body').textContent()).not.toContain('sk-preview-secret')
     const snapshot = await captureStableAria(page, '[class*="centerCol"]', scaffold!.workspaceCwd)
     await compareOrRefreshGolden(ERROR_EXPECTED, snapshot, MODE)
     await page.getByRole('tab', { name: 'Trajectory' }).click()
@@ -236,7 +236,7 @@ describe('web e2e: live-turn interactions (cancel / error / retry)', () => {
       .getByRole('button', { name: /Request #/ })
     await requestMarker.click()
     await page.getByText('API key is invalid', { exact: true }).waitFor({ timeout: 10_000 })
-    expect(await page.locator('body').textContent()).not.toContain('[REDACTED_KEY]')
+    expect(await page.locator('body').textContent()).not.toContain('sk-preview-secret')
     expect(tripwire.pageErrors).toEqual([])
     expect(tripwire.warnings).toEqual([])
   }, 120_000)

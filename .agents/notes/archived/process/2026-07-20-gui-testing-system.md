@@ -44,7 +44,7 @@ Inter-tier discipline: **each tier tests its own layer, upper tiers never re-tes
 
 - **Every bug fix pins an assertion**: a browser-visible bug is pinned into its owning browser spec (smoke or e2e scenario); a data-layer bug is pinned into the matching spec (precedent: the res-close misjudgment pinned in the webserver bridge suite — pure Node, reproduces in seconds, no longer needs the 12s browser sentinel as the only defense).
 - **All-green on RemoteMock is not done, the real wire must pass too**: a decoded in-process carrier deliberately omits the HTTP/WebSocket chain and its network timing. Changes touching connection, bridge, handler, or streaming transport must run the browser lane (`pnpm run test:web`), whose keyless e2e scenarios drive the real carrier; the with-key real-Host smoke remains the live-model complement.
-- The code-on-di[REDACTED_KEY] reconciliation workflow: when a behavior change lands and turns existing cases red, reconcile on the spot (fix the test or fix the code, with the RFC/contract as arbiter); no red left hanging.
+- The code-on-disk-is-the-answer reconciliation workflow: when a behavior change lands and turns existing cases red, reconcile on the spot (fix the test or fix the code, with the RFC/contract as arbiter); no red left hanging.
 
 ## Consequences
 

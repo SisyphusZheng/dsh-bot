@@ -190,14 +190,15 @@ export function createElectronBuilderConfig(
       { from: requiredWorkspaceInput('NISSE_PET_BUNDLE (NissePet.app)', NISSE_WORKSPACE_INPUTS.petBundle), to: 'pet/NissePet.app' },
       { from: requiredWorkspaceInput('NISSE_VOICE_WORKER_DIR (PyInstaller onedir)', NISSE_WORKSPACE_INPUTS.voiceWorker), to: 'voice-worker' },
       { from: requiredWorkspaceInput('NISSE_VOICE_CLIENT_BUNDLE (inject-bundle.js)', NISSE_WORKSPACE_INPUTS.voiceClient), to: 'voice-client/inject-bundle.js' },
-      { from: requiredWorkspaceInput('NISSE_BRIDGE_PLUGIN_DIR (whalegirl-g2-bridge)', NISSE_WORKSPACE_INPUTS.bridgePlugin), to: 'whalegirl-g2-bridge' },
       // Bundled memory runtime (Hindsight + int8 ONNX model + pg0 installation) and the
       // adapter sidecar. All inputs are explicit NISSE_MEMORY_DIR paths; the wrapper
       // stages them and the memory runtime starts asynchronously.
-      { from: memoryInput('runtime/hindsight'), to: 'memory/hindsight' },
-      { from: memoryInput('runtime/models'), to: 'memory/models' },
-      { from: memoryInput('runtime/pg0'), to: 'memory/pg0' },
+      { from: memoryInput('runtime/hindsight'), to: 'memory/runtime/hindsight' },
+      { from: memoryInput('runtime/models'), to: 'memory/runtime/models' },
+      { from: memoryInput('runtime/pg0'), to: 'memory/runtime/pg0' },
       { from: memoryInput('sidecar.mjs'), to: 'memory/sidecar.mjs' },
+      { from: memoryInput('scripts'), to: 'memory/scripts' },
+      { from: memoryInput('adapter/m1-c-hindsight'), to: 'memory/adapter/m1-c-hindsight', filter: ['**/*'] },
       { from: memoryInput('VERSION.json'), to: 'memory/VERSION.json' },
       { from: fileURLToPath(new URL('../resources/pet.html', import.meta.url)), to: 'pet.html' },
       { from: fileURLToPath(new URL('../resources/pet-preload.cjs', import.meta.url)), to: 'pet-preload.cjs' },
@@ -206,17 +207,10 @@ export function createElectronBuilderConfig(
       // Windows tray bitmaps; macOS keeps the Dock and ships no menu bar icon.
       ...(packagesWindows ? [{ from: fileURLToPath(new URL('../resources/tray-windows.ico', import.meta.url)), to: 'tray.ico' }] : []),
     ],
-    // The memory sidecar imports its adapter through a relative path computed from
-    // Resources/memory/sidecar.mjs ('../../spike/m1-c-hindsight'), so the adapter must
-    // live at Contents/spike/... (extraFiles), not under Resources/.
-    extraFiles: [
-      { from: memoryInput('adapter/m1-c-hindsight'), to: 'spike/m1-c-hindsight', filter: ['**/*'] },
-    ],
     mac: {
       icon: fileURLToPath(new URL('../resources/icon-whalegirl.png', import.meta.url)),
       category: 'public.app-category.developer-tools',
       // macOS matches the application locale against this bundle, not Electron Framework resources.
-      extendInfo: { CFBundleLocalizations: ['en', 'zh_CN'] },
       // Ad-hoc signing keeps the modified Electron executable runnable without a Developer ID.
       identity: unsigned ? '-' : macOSSigning?.signingIdentity,
       forceCodeSigning: !unsigned,
@@ -225,7 +219,7 @@ export function createElectronBuilderConfig(
       // packages therefore ship without hardened runtime; public builds keep it and
       // require a Developer ID certificate.
       hardenedRuntime: !unsigned,
-      extendInfo: { NSMicrophoneUsageDescription: 'dsh-bot uses your microphone to transcribe speech into message drafts.' },
+      extendInfo: { CFBundleLocalizations: ['en', 'zh_CN'], NSMicrophoneUsageDescription: 'dsh-bot uses your microphone to transcribe speech into message drafts.' },
       entitlements: fileURLToPath(new URL('./macos-entitlements.plist', import.meta.url)),
       entitlementsInherit: fileURLToPath(new URL('./macos-entitlements.plist', import.meta.url)),
       // Prepared runtime files retain their signatures; PAK resources are sealed by their enclosing bundle.

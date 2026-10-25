@@ -1,15 +1,27 @@
 {
-  "schema": "whalegirl.memory-packaging-version/v1",
-  "generatedAt": "2026-10-24T13:09:03.090Z",
-  "host": "workstation.local",
-  "platform": "darwin",
-  "arch": "arm64",
+  "schema": "dsh-bot.memory-input/v2",
   "product": {
-    "name": "WhaleGirl Bot",
-    "productVersion": "0.1.0",
-    "dshBaseline": "dsh-v0.2.1-rc.2 (fork baseline d521e6579d)"
+    "name": "dsh-bot",
+    "version": "0.0.1-beta"
   },
-  "components": [
+  "dshRuntime": "0.2.1-rc.3",
+  "dependencies": {
+    "hindsight": "1.0.0",
+    "client": "1.0.0",
+    "pg0": "0.15.2",
+    "postgres": "18.1.0",
+    "embedding": "Xenova/multilingual-e5-small@761b726d",
+    "onnxModelSha256": "4d24e2bc01a447951524466ef533e52944bf48509e6552810bcee1a2711cb02c"
+  },
+  "nativeInput": {
+    "release": "v0.0.1-beta",
+    "asset": "dsh-bot-0.0.1-beta-mac-arm64-unsigned.dmg",
+    "assetId": 674288815,
+    "bytes": 779421007,
+    "sha256": "76d13562a33d2efcc1aa6846710bcf2c2e25a7eb1b74e55277fc559780998cd2",
+    "use": "Pet native Electron/dependencies with current source overlay; voice client transport; Hindsight/ONNX/pg0 binaries only"
+  },
+  "nativeSourceComponents": [
     {
       "name": "hindsight-runtime",
       "path": "runtime/hindsight",
@@ -33,65 +45,10 @@
       "files": 1381,
       "fileTreeSha256": "d8406f1b9e9afa037266653669489c2db4fbb3cb4089bb3a6189e34081bed3df",
       "sources": "pg0 embedded PostgreSQL installation 18.1.0 (pre-seeded; prevents first-run download)"
-    },
-    {
-      "name": "memory-adapter",
-      "path": "adapter",
-      "bytes": 153068,
-      "files": 8,
-      "fileTreeSha256": "08046335698abbad4f7f84d7fc969820b190d54dc902b38d4ca8790e35d0053d",
-      "sources": "copy of nisse/spike/m1-c-hindsight (src byte-identical) + @vectorize-io/hindsight-client 1.0.0 runtime files (MIT); sidecar relative-import target"
     }
   ],
-  "clientPackage": {
-    "name": "@vectorize-io/hindsight-client",
-    "version": "1.0.0",
-    "license": "MIT",
-    "files": [
-      "package.json",
-      "dist/index.mjs",
-      "README.md"
-    ],
-    "note": "only runtime files staged; bundle is self-contained (no runtime npm dependencies)"
-  },
-  "files": {
-    "sidecar.mjs": {
-      "bytes": 12696,
-      "sha256": "ef747d5f932cf5c16c57d1dc6d5df07824231953887003803ee71e012d5d8764",
-      "source": "nisse/m4/memory/sidecar.mjs (byte-identical copy)"
-    },
-    "runtime/hindsight/scripts/run-server.sh": {
-      "bytes": 5589,
-      "sha256": "1949753bdad6166fb7a8190172c6f0c4b8fd943d79d83a6c5d8b518c4cc8386e",
-      "source": "product-owned launcher (new; packaged layout contract)"
-    }
-  },
-  "runtimeVersions": {
-    "hindsightApi": "1.0.0",
-    "pg0": "0.15.2",
-    "postgresInstallation": "18.1.0",
-    "embeddingModel": "Xenova/multilingual-e5-small (int8 ONNX, 384 dims)",
-    "onnxruntime": "bundled inside the PyInstaller onedir",
-    "nodeSidecar": "Node >= 20 ESM (Electron runs it with ELECTRON_RUN_AS_NODE=1)"
-  },
-  "offlineRecipe": {
-    "env": {
-      "HF_HUB_OFFLINE": "1",
-      "HF_HUB_DISABLE_TELEMETRY": "1",
-      "TRANSFORMERS_OFFLINE": "1",
-      "HINDSIGHT_API_EMBEDDINGS_PROVIDER": "onnx",
-      "HINDSIGHT_API_EMBEDDINGS_ONNX_MODEL_PATH": "<Resources>/memory/models/Xenova/multilingual-e5-small/onnx/model_int8.onnx",
-      "HINDSIGHT_API_EMBEDDINGS_ONNX_TOKENIZER_NAME_OR_PATH": "<Resources>/memory/models/Xenova/multilingual-e5-small",
-      "HINDSIGHT_API_RERANKER_PROVIDER": "rrf",
-      "HINDSIGHT_API_DATABASE_URL": "pg0",
-      "HINDSIGHT_API_HOST": "127.0.0.1"
-    },
-    "preseed": "<dataRoot>/home/.pg0/installation/18.1.0 copied from <Resources>/memory/pg0/installation on first start",
-    "isolation": "HOME=<dataRoot>/home; user DSH home never passed to children; no network egress for embeddings/DB"
-  },
-  "notes": [
-    "PyInstaller onedir is adhoc-signed (arm64); A-stream must re-sign nested binaries with Developer ID + hardened runtime before notarization.",
-    "pg0 downloads PostgreSQL on first start unless <HOME>/.pg0/installation/18.1.0 is pre-seeded; run-server.sh seeds it from the bundle.",
-    "sidecar.mjs is a byte-identical copy of m4/memory/sidecar.mjs and imports ../../spike/m1-c-hindsight/src/index.mjs relative to its own path; packaged layout must place adapter at Contents/spike/m1-c-hindsight."
-  ]
+  "adapterSource": "product/memory/adapter/m1-c-hindsight",
+  "clientRuntimeSha256": "bc1dd2f614c25f63fe217b18dfb7c306506a4cb8f7d844d9ee1e35b7d34840dd",
+  "packaging": "scripts/gen-version.mjs records every actual staged file in packaged VERSION.json",
+  "qualification": "Linux adapter lifecycle PASS; actual PostgreSQL semantic retrieval BLOCKED-ENVIRONMENT (root, setuid denied)"
 }

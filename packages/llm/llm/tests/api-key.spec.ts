@@ -3,7 +3,7 @@ import { assertUsableApiKey, INVALID_CREDENTIAL_CODE, normalizeApiKey } from '@d
 
 describe('normalizeApiKey', () => {
   it('accepts a printable-ASCII key unchanged', () => {
-    expect(normalizeApiKey('[REDACTED_KEY]')).toEqual({ ok: true, value: '[REDACTED_KEY]' })
+    expect(normalizeApiKey('sk-0123456789abcdef')).toEqual({ ok: true, value: 'sk-0123456789abcdef' })
   })
 
   it('trims surrounding whitespace before judging', () => {

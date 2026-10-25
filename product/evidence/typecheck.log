@@ -1,0 +1,14 @@
+$ tsx scripts/build.ts --scope typecheck
+run-gates: typecheck running 5 gate(s) with 1 worker(s) from $DSH_GATE_CONCURRENCY.
+run-gates: start host compiler
+run-gates: PASS host compiler (2.02s)
+run-gates: start Host Typert
+run-gates: PASS Host Typert (5.77s)
+run-gates: start client compiler
+run-gates: PASS client compiler (0.46s)
+run-gates: start host aggregate check
+run-gates: PASS host aggregate check (1.19s)
+run-gates: start client aggregate check
+run-gates: PASS client aggregate check (0.61s)
+
+run-gates: 5 passed, 0 failed, 0 skipped in 10.04s.
