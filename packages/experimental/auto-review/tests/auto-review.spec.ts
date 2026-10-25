@@ -857,10 +857,10 @@ describe('native review request', () => {
       return Promise.resolve<ApprovalOutcome>('allowed-once')
     })
     ctx.on('tools/pre-execute', () => Promise.resolve<PreToolDecision>({ kind: 'deny', reason: 'downstream guard' }))
-    const { session, agent } = autoSession(ctx, 'a[REDACTED_KEY]')
+    const { session, agent } = autoSession(ctx, 'ask-downstream-deny')
     appendHeader(session, [{ name: 'probe', description: 'probe', parameters: { type: 'object' } }])
     session.append('turn/start', { turn: 1 })
-    const callId = ToolCallId('a[REDACTED_KEY]')
+    const callId = ToolCallId('ask-downstream-deny-call')
     appendAssistant(session, [{ type: 'tool-call', id: callId, name: 'probe', arguments: '{}' }])
     appendNativeCall(session, callId, 'probe', '{}')
 

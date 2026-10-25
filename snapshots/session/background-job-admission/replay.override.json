@@ -33,8 +33,8 @@
     "kind": "chunks",
     "chunks": [
       { "type": "block-start", "index": 0, "blockType": "tool-call" },
-      { "type": "tool-call-delta", "index": 0, "id": "bounded-ta[REDACTED_KEY]", "name": "bash", "argumentsDelta": "{\"command\":\"test ! -e second-task-ran.txt\",\"description\":\"Verify the rejected producer did not run\"}" },
-      { "type": "block-end", "index": 0, "block": { "type": "tool-call", "id": "bounded-ta[REDACTED_KEY]", "name": "bash", "arguments": "{\"command\":\"test ! -e second-task-ran.txt\",\"description\":\"Verify the rejected producer did not run\"}" } },
+      { "type": "tool-call-delta", "index": 0, "id": "bounded-task-side-effect-check", "name": "bash", "argumentsDelta": "{\"command\":\"test ! -e second-task-ran.txt\",\"description\":\"Verify the rejected producer did not run\"}" },
+      { "type": "block-end", "index": 0, "block": { "type": "tool-call", "id": "bounded-task-side-effect-check", "name": "bash", "arguments": "{\"command\":\"test ! -e second-task-ran.txt\",\"description\":\"Verify the rejected producer did not run\"}" } },
       { "type": "usage", "usage": { "inputTokens": 10, "outputTokens": 5 } },
       { "type": "finish", "reason": { "kind": "tool-calls" } }
     ]

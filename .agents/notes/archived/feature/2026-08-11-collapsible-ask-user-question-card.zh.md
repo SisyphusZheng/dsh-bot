@@ -3,7 +3,7 @@
 Status: implemented
 Archived: 2026-08-22
 
-[English](2026-08-11-collapsible-a[REDACTED_KEY].md) | 中文
+[English](2026-08-11-collapsible-ask-user-question-card.md) | 中文
 
 ## Problem
 

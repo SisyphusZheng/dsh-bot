@@ -185,7 +185,7 @@ export function loadPersona() {
 
 export function apply(ctx, config = {}) {
   const dshHome = String(process.env.DSH_HOME || '/tmp/dsh-home')
-  const bridgeDir = String(config.ipcDir || process.env.NISSE_IPC_DIR || join(dshHome, 'nisse'))
+  const bridgeDir = String(config.ipcDir || process.env.NISSE_IPC_DIR || join(dshHome, 'bot'))
   const fallbackWorkspaceDir = String(config.workspaceDir || process.env.NISSE_WORKSPACE || join(dshHome, 'workspace'))
   const provider = String(config.provider || process.env.NISSE_M1_PROVIDER || '').trim()
   const model = String(config.model || process.env.NISSE_M1_MODEL || '').trim()
@@ -196,7 +196,8 @@ export function apply(ctx, config = {}) {
   const hostPid = process.pid
   const startedAt = now()
   const token = randomUUID()
-  const bridgeFile = join(bridgeDir, 'host-integration.json')
+  const voiceSubscribers = new Set()
+  const bridgeFile = join(bridgeDir, 'bridge.json')
   const botConfigFile = join(dshHome, 'bot', 'config.json')
 
   /** Read the user's Bot settings (DSH_HOME/bot/config.json), tolerating absence/mid-write. */
@@ -467,6 +468,7 @@ export function apply(ctx, config = {}) {
     events.push(record)
     if (events.length > MAX_EVENTS) events.splice(0, events.length - MAX_EVENTS)
     broadcastBridge(record)
+    for (const subscriber of voiceSubscribers) { try { subscriber(record) } catch (error) { voiceSubscribers.delete(subscriber); log(messageOf(error)) } }
     return record
   }
 
@@ -719,7 +721,7 @@ export function apply(ctx, config = {}) {
             finish('cancelled')
           }, 120000)
           pendingApprovals.set(id, { finish, toolName, reason, callId })
-          external.then(outcome => finish(outcome), () => finish('unavailable'))
+          external.then(outcome => { if (['allowed-once', 'rejected', 'cancelled'].includes(outcome)) finish(outcome) }, error => log('external approval UI unavailable: ' + messageOf(error)))
         })
       } catch (error) {
         log('approval handler failed: ' + messageOf(error))
@@ -1273,6 +1275,38 @@ export function apply(ctx, config = {}) {
         return json(res, 200, result)
       }
 
+      // One streaming transport over the same DSH agent, session and approvals.
+      if (url.pathname === '/voice/turn' && req.method === 'POST') {
+        const body = await readBody(req)
+        if (!String(body.text || '').trim()) return json(res, 400, { error: 'text required' })
+        await ensureAgent()
+        if (voiceSubscribers.size || agent.status !== 'idle') return json(res, 409, { error: 'agent busy' })
+        const requestId = randomUUID()
+        let admitted = false
+        const frame = value => res.write(JSON.stringify({ sessionId, requestId, ...value }) + '\n')
+        const subscriber = record => {
+          const data = record.data || {}
+          if (record.type === 'turn.accepted' && data.clientTurnId === requestId) { admitted = true; frame({ type: 'admitted' }) }
+          if (!admitted) return
+          if (record.type === 'assistant.stream.started') frame({ type: 'assistant-start', turn: record.turn, step: data.step })
+          if (record.type === 'assistant.delta') frame({ type: 'text', text: data.text || data.delta || '' })
+          if (record.type === 'assistant.stream.ended') frame({ type: 'assistant-end', outcome: data.outcome })
+          if (record.type === 'approval.request') frame({ type: 'approval', ...data })
+          if (record.type === 'tool.call' || record.type === 'tool.result') frame({ type: record.type, ...data })
+          if (record.type === 'error') frame({ type: 'error', message: data.message || record.note })
+          if (record.type === 'turn.ended') {
+            frame({ type: 'turn-end', reason: data.reason })
+            frame({ type: 'finalized', reason: 'turn-ended', turnReason: data.reason })
+            voiceSubscribers.delete(subscriber); res.end()
+          }
+        }
+        res.writeHead(200, { 'content-type': 'application/x-ndjson', 'cache-control': 'no-cache' })
+        res.once('close', () => voiceSubscribers.delete(subscriber))
+        voiceSubscribers.add(subscriber)
+        try { await submitTurn(body.text, { clientTurnId: requestId }) }
+        catch (error) { frame({ type: 'error', message: messageOf(error) }); voiceSubscribers.delete(subscriber); res.end() }
+        return
+      }
       // ---- W1 harness protocol (compatible with the same /turn) ----
       if (url.pathname === '/turn' && req.method === 'POST') {
         const body = await readBody(req)
@@ -1348,14 +1382,13 @@ export function apply(ctx, config = {}) {
     })()
   })
 
-  ctx.effect?.(() => () => {
-    for (const subscriber of sseSubscribers) {
-      try { subscriber.res.end() } catch { /* ignore */ }
-    }
+  ctx.effect?.(() => async () => {
+    for (const pending of pendingApprovals.values()) pending.finish('cancelled')
+    await handle?.dispose?.()
+    for (const subscriber of sseSubscribers) { try { subscriber.res.end() } catch {} }
     sseSubscribers.clear()
-    try { server.close() } catch { /* ignore */ }
-    try { unlinkSync(bridgeFile) } catch { /* ignore */ }
-    try { handle?.dispose?.() } catch { /* ignore */ }
+    await new Promise(resolve => { server.close(resolve); server.closeAllConnections() })
+    try { unlinkSync(bridgeFile) } catch {}
     log('fixture disposed')
   })
 }

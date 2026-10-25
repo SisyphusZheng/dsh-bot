@@ -9,7 +9,7 @@ Runnable Python SDK example over the sole application launcher, `dsh --profile s
 Install `deepseek-harness-sdk`, export a model credential, then supply an isolated Harness home and workspace:
 
 ```sh
-export DEEPSEEK_API_KEY=[REDACTED_KEY]
+export DEEPSEEK_API_KEY=sk-your-key-here
 python python/sdk/examples/minimal.py \
   --dsh-home /absolute/path/to/example-dsh-home \
   --workspace /absolute/path/to/disposable-workspace \

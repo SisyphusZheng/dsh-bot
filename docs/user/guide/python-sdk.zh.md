@@ -53,12 +53,12 @@ python -m pip install deepseek-harness-sdk
 ::: code-group
 
 ```sh [Linux/macOS]
-export DEEPSEEK_API_KEY=[REDACTED_KEY]
+export DEEPSEEK_API_KEY=sk-your-key-here
 # export DEEPSEEK_BASE_URL=http://127.0.0.1:8000/v1
 ```
 
 ```powershell [Windows PowerShell]
-$env:DEEPSEEK_API_KEY = "[REDACTED_KEY]"
+$env:DEEPSEEK_API_KEY = "sk-your-key-here"
 # $env:DEEPSEEK_BASE_URL = "http://127.0.0.1:8000/v1"
 ```
 

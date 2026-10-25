@@ -92,7 +92,7 @@ try {
         assert.equal(agent.inbox.nextTurn.length, createsTask ? 1 : 0)
         agent.inbox.clear()
         await host.updateTasks('unlock')
-        observed.push(createsTask ? 'admitted-write-ta[REDACTED_KEY]' : 'read-request-drained-without-task-warning')
+        observed.push(createsTask ? 'admitted-write-task-rechecked-after-drain' : 'read-request-drained-without-task-warning')
       } finally { finish.resolve(); await pending; await remove() }
     }
     for (const [target, field] of [['next-turn', 'nextTurn'], ['next-step', 'nextStep']]) {

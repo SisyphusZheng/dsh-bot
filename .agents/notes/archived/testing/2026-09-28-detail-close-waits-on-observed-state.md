@@ -7,7 +7,7 @@ English | [中文](2026-09-28-detail-close-waits-on-observed-state.zh.md)
 
 ## Problem
 
-`packages/client/ui-schedule/tests/ta[REDACTED_KEY].client.spec.tsx`, case "keeps details after a refresh failure and closes them after a successful retry", failed intermittently on the `node 24 / coverage` lane's `thread-safe` partition with `AssertionError: expected <aside aria-label="Task details" …> to be null` at its final assertion. The case and the whole 269-case file pass in local runs; the lane's coverage instrumentation changes only how often the window between the two commits below is observed.
+`packages/client/ui-schedule/tests/task-manager-page.client.spec.tsx`, case "keeps details after a refresh failure and closes them after a successful retry", failed intermittently on the `node 24 / coverage` lane's `thread-safe` partition with `AssertionError: expected <aside aria-label="Task details" …> to be null` at its final assertion. The case and the whole 269-case file pass in local runs; the lane's coverage instrumentation changes only how often the window between the two commits below is observed.
 
 The case's last step retries a failed catalog read after a confirmed deletion, awaits `screen.findByText(en['list.empty'])`, and then reads `screen.queryByRole('complementary')` once. The empty list and the removed detail are separate commits:
 

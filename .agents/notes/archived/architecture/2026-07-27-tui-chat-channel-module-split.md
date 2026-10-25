@@ -7,14 +7,14 @@ English | [中文](2026-07-27-tui-chat-channel-module-split.zh.md)
 
 ## Problem
 
-`packages/ui/tui/src/index.ts` had grown past 2000 lines. Most of it was one `createTuiChat` factory: a ~1600-line closure holding roughly forty mutable variables and as many nested closures. Model selection, the a[REDACTED_KEY] queue, and session resume were tangled into that single scope, so a reader could not follow any one concern without holding the whole file in their head, and unrelated edits collided. A prior pass had grouped `src/` into `components/`, `session/`, `extension/`, but the entry file itself and the loose top-level input files (`autocomplete.ts`, `file-autocomplete.ts`, `skill-invocation.ts`, `xml-tool-output.ts`) were untouched.
+`packages/ui/tui/src/index.ts` had grown past 2000 lines. Most of it was one `createTuiChat` factory: a ~1600-line closure holding roughly forty mutable variables and as many nested closures. Model selection, the ask-user-question queue, and session resume were tangled into that single scope, so a reader could not follow any one concern without holding the whole file in their head, and unrelated edits collided. A prior pass had grouped `src/` into `components/`, `session/`, `extension/`, but the entry file itself and the loose top-level input files (`autocomplete.ts`, `file-autocomplete.ts`, `skill-invocation.ts`, `xml-tool-output.ts`) were untouched.
 
 ## Decision
 
 The chat channel's cohesive sub-machines are extracted from `createTuiChat` into `src/chat/`, each a factory that takes an explicit dependency bundle instead of closing over the entry scope:
 
 - `chat/model-command.ts` — `createModelController`: the queued `/model` command, the model+reasoning-effort selector overlay, and the selected model's context-window resolution. Owns the context-window cache that the prompt and status views read.
-- `chat/questions.ts` — `createQuestionQueue`: the user-interaction provider and the one-at-a-time FIFO a[REDACTED_KEY] overlays.
+- `chat/questions.ts` — `createQuestionQueue`: the user-interaction provider and the one-at-a-time FIFO ask-user-question overlays.
 - `chat/resume.ts` — `createResumeController`: the `/resume` selector, per-candidate summary reads, the pre-handoff preflight, the terminal handoff, and the durable resume-hint command.
 - `chat/helpers.ts` — zero-state helpers (`formatCwd`, `gitBranch`, surface/tool-call derivations, session-reference cards), the `HintEditor`, and banner-reveal constants.
 - `chat/channel.ts` — `ChatChannelDeps` (the collaborator surface every sub-controller shares) and `ChannelNotice` (mixed in by the controllers that report outcomes). Each `*Deps` extends these, so the shared surface has one definition.

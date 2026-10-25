@@ -1,0 +1,114 @@
+{
+  "candidate": "dsh-bot MVP Candidate for macOS local acceptance",
+  "baseCommit": "113616c17a30b3c32bb08867c85d74194a844ccf",
+  "upstreamCommit": "1f81c047fc48fa190a683e469daa699857e9afe8",
+  "testedSourceTree": "03a8a94a831c8e8e9f01213d076d5d10456abafa",
+  "environment": {
+    "platform": "Linux x86_64",
+    "node": "v24.22.1",
+    "pnpm": "11.25.0",
+    "euid": 0
+  },
+  "gates": {
+    "G1": {
+      "status": "BLOCKED-ENVIRONMENT",
+      "crossPlatformBuild": "PASS",
+      "details": "Production build 9/9, native macOS packaging inputs/script prepared; no macOS DMG generated here"
+    },
+    "G2": {
+      "status": "PASS",
+      "details": "Real Cordis Agent/Session/Tool/Approval allow/reject/cancel, concurrent turn rejection; compiled CLI profile with custom and default provider mock SSE; graceful Host exit"
+    },
+    "G3": {
+      "status": "PASS",
+      "details": "Authenticated unified voice NDJSON, real Pipecat/WebRTC worker startup/supervisor shutdown; natural/explicit barge-in and echo/short-noise/late-text regressions",
+      "realQwenAudio": "BLOCKED-EXTERNAL"
+    },
+    "G4": {
+      "status": "BLOCKED-ENVIRONMENT",
+      "adapterLifecycle": "PASS",
+      "details": "Real adapter bank bootstrap and bearer-auth health against explicit HTTP fixture; actual Hindsight 1.0.0 embedded PostgreSQL rejects root. setuid/setgid unavailable. Actual semantic retrieval and persistence must pass accept-macos.sh"
+    },
+    "G5": {
+      "status": "PASS",
+      "details": "Linux host lifecycle, key refresh, profile environment isolation, memory adapter restart, abort/no-false-ready, persistence marker"
+    },
+    "G6": {
+      "status": "PASS",
+      "details": "Exact app origin/CORS, approval token, invalid credential preservation, private filesystem modes; TCC verified only on Mac"
+    },
+    "G7": {
+      "status": "BLOCKED-ENVIRONMENT",
+      "details": "Linux host; native ARM64 DMG, launch/quit/relaunch and TCC not executed"
+    }
+  },
+  "counts": {
+    "vitestFiles": 9,
+    "vitestTests": 117,
+    "pythonVoiceTests": 3,
+    "officialFiles": 16347,
+    "officialProductOverrides": 22,
+    "typecheckGates": 5,
+    "buildGates": 9
+  },
+  "githubActions": {
+    "used": false,
+    "publication": "one new branch without PR; branch not matched by any push trigger; no dispatch/rerun/runner/artifact build"
+  },
+  "providerCalls": {
+    "realProviderCredentialsUsed": false,
+    "method": "local mock OpenAI/Anthropic SSE, no real model claims"
+  },
+  "archiveRecovery": "Official archive baseline used via supported DSH_ARCHIVE_BASE_REF=1f81... because stable archive manifests were themselves corrupted; 2772 official artifacts validated, no gate skip",
+  "logs": {
+    "install.log": {
+      "rawSha256": "3b3f8eed0ad43dffd831a6fb860c1bd65ff6707dd766ba42c848e0502b40b491",
+      "savedSha256": "911d5def6b1c1bef450243a2547a4d00be61e483f5f196111ed27b271fa71b24"
+    },
+    "typecheck.log": {
+      "rawSha256": "1264a7dd30ed3d2c7cbd55dd427d5bc9bd89c4a480ac293d46c3ffaa5fd8f65d",
+      "savedSha256": "1264a7dd30ed3d2c7cbd55dd427d5bc9bd89c4a480ac293d46c3ffaa5fd8f65d"
+    },
+    "build.log": {
+      "rawSha256": "3fd5341870c4b56c6fdd4449efddc8787c4dbcd45eb11ce41230f55ee4f7e4a6",
+      "savedSha256": "3fd5341870c4b56c6fdd4449efddc8787c4dbcd45eb11ce41230f55ee4f7e4a6"
+    },
+    "tests.log": {
+      "rawSha256": "69d6695c58db8c90fa72dc37224d751839aebdf1c3a5c06b25ff4e3bbbe4b4a3",
+      "savedSha256": "5b2585a0cb34e1d2a9ddfd826aae64f1ffd98c7307a78a745b4b0263284330e6"
+    },
+    "voice-tests.log": {
+      "rawSha256": "bf53ef3e22269a55c89c1c1a49571f9b264f441c8792ecaaaf348abbf5946c33",
+      "savedSha256": "bf53ef3e22269a55c89c1c1a49571f9b264f441c8792ecaaaf348abbf5946c33"
+    },
+    "host-smoke.log": {
+      "rawSha256": "029b25be62921a63d0ef39ab7611303ae0c90b8b14bc6d48bebffdb0ed8a60e0",
+      "savedSha256": "029b25be62921a63d0ef39ab7611303ae0c90b8b14bc6d48bebffdb0ed8a60e0"
+    },
+    "host-default-smoke.log": {
+      "rawSha256": "5d7bf0058528d04c879f2cf017202d97c69879a17e621fa389ca3a7abc639115",
+      "savedSha256": "5d7bf0058528d04c879f2cf017202d97c69879a17e621fa389ca3a7abc639115"
+    },
+    "voice-smoke.log": {
+      "rawSha256": "97a8a19e17e0318752454accda5061216a55783ace094879bb1b700952db8016",
+      "savedSha256": "97a8a19e17e0318752454accda5061216a55783ace094879bb1b700952db8016"
+    },
+    "integrity.log": {
+      "rawSha256": "55f6466b8aef749e2e694f0600194a214666ad82894790fa0fad5c11d37c810e",
+      "savedSha256": "55f6466b8aef749e2e694f0600194a214666ad82894790fa0fad5c11d37c810e"
+    },
+    "integrity-final.log": {
+      "rawSha256": "6b316f81ad84b1aac8ffeac388f754d5637b48ed48fc20ad75c8da6e67cad192",
+      "savedSha256": "6b316f81ad84b1aac8ffeac388f754d5637b48ed48fc20ad75c8da6e67cad192"
+    },
+    "hooks.log": {
+      "rawSha256": "bf6ef93a5357dae56d935970e0a4b6b473776ac307fd3fecbf04bb1dd95aa165",
+      "savedSha256": "3a61bd402eb41736c43b6f666c927a7896c0bbaec58f612fc94b1d7342fddae6"
+    },
+    "hindsight-root-block.log": {
+      "rawSha256": "d383f80e7639fb6a3c6294fffb05d984c8475f5d928bcc7e5c6a3e94e958bd2c",
+      "savedSha256": "d383f80e7639fb6a3c6294fffb05d984c8475f5d928bcc7e5c6a3e94e958bd2c"
+    }
+  },
+  "priorAttempts": "Overlapping cold TypeScript/bundling exceeded memory; rerun sequentially. Fixture/schema and lint failures corrected before final gates. Logs here are final current-source runs."
+}

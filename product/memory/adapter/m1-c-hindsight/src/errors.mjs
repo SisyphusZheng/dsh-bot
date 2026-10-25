@@ -6,7 +6,7 @@
  *   - every mutating/reading operation throws one of the typed errors below;
  *   - callers can branch on `code` (stable) and `retryable`.
  */
-import { HindsightError } from '../vendor/hindsight-client/dist/index.mjs';
+import { HindsightError } from '../vendor/hindsight-client/runtime.mjs';
 
 export class MemoryError extends Error {
   /**

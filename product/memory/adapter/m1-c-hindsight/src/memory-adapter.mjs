@@ -22,7 +22,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { HindsightClient } from '../vendor/hindsight-client/dist/index.mjs';
+import { HindsightClient } from '../vendor/hindsight-client/runtime.mjs';
 
 import {
   MemoryUnavailableError,

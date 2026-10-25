@@ -325,9 +325,8 @@ class DSHBridgeProcessor(FrameProcessor):
                         await self._restore_duck(cand_echo)
                         logger.info(f"[dsh] barge-in candidate rejected as echo: asr={text!r} window_tail={spoken[-60:]!r}")
                         return
-                    # MVP contract: only an explicit interrupt command may barge in.
-                    # No generic "enough short ASR text" fallback.
-                    if not _is_interrupt_command(heard):
+                    # Confirm explicit commands or a distinct utterance after echo and stabilization filters.
+                    if not (_is_interrupt_command(heard) or len(heard) >= 4):
                         self.metrics["barge_noncommand_pending"] += 1
                         logger.info(f"[dsh] barge-in non-command ASR pending: asr={text!r} age={age:.2f} window_tail={spoken[-50:]!r}")
                         if age > 3.0:
@@ -484,7 +483,7 @@ class DSHBridgeProcessor(FrameProcessor):
             descriptor = self._load_descriptor()
             port = descriptor["port"]
             token = descriptor["token"]
-            url = f"http://127.0.0.1:{port}/turn"
+            url = f"http://127.0.0.1:{port}/voice/turn"
             headers = {"Authorization": f"Bearer {token}", "content-type": "application/json"}
             logger.info(f"[dsh] turn {turn_key} -> DSH: {text!r}")
             async with self._get_session().post(
@@ -509,7 +508,8 @@ class DSHBridgeProcessor(FrameProcessor):
                     event = json.loads(line)
                     await self._handle_bridge_event(current, event)
             if not current.get("cancelled"):
-                self.metrics["turns_completed"] += 1
+                if current.get("completed") and not current.get("cancelled"):
+                    self.metrics["turns_completed"] += 1
             logger.info(
                 f"[dsh] turn {turn_key} completed session={current.get('session_id')} "
                 f"request={current.get('request_id')} dsh_turn={current.get('dsh_turn')} "

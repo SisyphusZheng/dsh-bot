@@ -1,4 +1,5 @@
 /** Local Bot settings/config service for the dsh-bot desktop shell. */
+import { randomUUID, timingSafeEqual } from 'node:crypto'
 import { createServer, type IncomingMessage, type Server } from 'node:http'
 import { join } from 'node:path'
 import {
@@ -131,7 +132,8 @@ export async function startBotConfigServer(
   port = BOT_CONFIG_PORT,
   hooks: BotConfigHooks = {},
   options: BotConfigServerOptions = {},
-): Promise<{ close: () => Promise<void>; port: number }> {
+): Promise<{ close: () => Promise<void>; port: number; token: string }> {
+  const token = randomUUID()
   const configDir = join(dshHome, 'bot')
   if (options.secrets !== undefined) {
     const migration = await migratePlaintextSecrets(configDir, options.secrets)
@@ -164,17 +166,24 @@ export async function startBotConfigServer(
     const permittedHosts = new Set([`127.0.0.1:${boundPort}`, `localhost:${boundPort}`])
     const host = String(req.headers.host ?? '').toLowerCase()
     const origin = req.headers.origin
-    const permittedOrigins = new Set([...permittedHosts].map(item => `http://${item}`))
+    const permittedOrigins = new Set(['dsh-app://app', ...[...permittedHosts].map(item => `http://${item}`)])
+    const settingsDocument = req.method === 'GET' && req.url?.split('?')[0] === SETTINGS_PATH
     if (!permittedHosts.has(host)
       || (origin !== undefined && !permittedOrigins.has(origin))
-      || req.headers['sec-fetch-site'] === 'cross-site') {
+      || (req.headers['sec-fetch-site'] === 'cross-site' && origin !== 'dsh-app://app' && !settingsDocument)) {
       reply(403, { ok: false, error: 'LOCAL_ORIGIN_REQUIRED' })
       return
     }
+    if (origin !== undefined) { res.setHeader('access-control-allow-origin', origin); res.setHeader('vary', 'Origin') }
+    res.setHeader('access-control-allow-methods', 'GET, POST, PUT, OPTIONS')
+    res.setHeader('access-control-allow-headers', 'content-type, x-dsh-bot-token')
+    if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return }
     try {
       const url = new URL(req.url || '/', 'http://127.0.0.1')
       if (url.pathname === SETTINGS_PATH) {
-        const html = page()
+        const bootstrap = `<script>const originalFetch = window.fetch; window.fetch = (input, init = {}) => { const url = new URL(typeof input === 'string' ? input : input.url, location.href); if (url.origin === location.origin) { const headers = new Headers(init.headers); headers.set('x-dsh-bot-token', ${JSON.stringify(token)}); init = {...init, headers}; } return originalFetch(input, init); };</script>`
+        const html = page().replace('<head>', '<head>' + bootstrap)
+        res.setHeader('content-security-policy', "frame-ancestors 'self' dsh-app://app")
         res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'content-length': Buffer.byteLength(html) })
         res.end(html)
         return
@@ -182,6 +191,9 @@ export async function startBotConfigServer(
       if (url.pathname === '/bot/status' && req.method === 'GET') { reply(200, { ok: true, status: hooks.status?.() ?? null }); return }
       if (url.pathname === '/bot/open-settings' && req.method === 'POST') { reply(200, { ok: true, result: await hooks.onOpenSettings?.() ?? null }); return }
       if (url.pathname === '/bot/approval' && req.method === 'POST') {
+        const supplied = Buffer.from(String(req.headers['x-dsh-bot-token'] || ''))
+        const expected = Buffer.from(token)
+        if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) { reply(401, { ok: false, error: 'UNAUTHORIZED' }); return }
         const body = await readBody(req).catch(() => ({})) as { id?: string; decision?: string }
         const result = await hooks.onApproval?.(String(body.id || ''), String(body.decision || '')) ?? null
         reply(200, { ok: true, result })
@@ -365,5 +377,8 @@ export async function startBotConfigServer(
       resolve(typeof address === 'object' && address !== null ? address.port : port)
     })
   })
-  return { port: actualPort, close: () => new Promise<void>(resolve => server.close(() => resolve())) }
+  const close = (): Promise<void> => new Promise((resolve) => {
+    server.close(() => resolve()); server.closeAllConnections()
+  })
+  return { port: actualPort, token, close }
 }

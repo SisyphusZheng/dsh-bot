@@ -417,7 +417,7 @@ describe('ModelsSection', () => {
   it('waits for the current snapshot before remounting setup after a failed page load', async () => {
     const { controller, face, mirror, mutate } = await mountFirstRun()
     const oldKey = screen.getByLabelText<HTMLInputElement>(en.keyInput)
-    fireEvent.change(oldKey, { target: { value: '[REDACTED_KEY]' } })
+    fireEvent.change(oldKey, { target: { value: 'sk-discarded-on-error' } })
     face.llm.listProviders.mockResolvedValueOnce(remoteFail('directory unavailable', 'gateway/internal'))
     await act(async () => { await controller.load() })
     expect(screen.queryByLabelText(en.keyInput)).toBeNull()
@@ -466,19 +466,19 @@ describe('ModelsSection', () => {
   it('preserves a mounted setup draft while its current refresh is pending', async () => {
     const { controller, face } = await mountFirstRun()
     const key = screen.getByLabelText<HTMLInputElement>(en.keyInput)
-    fireEvent.change(key, { target: { value: '[REDACTED_KEY]' } })
+    fireEvent.change(key, { target: { value: 'sk-unsaved-setup-draft' } })
     const read = Promise.withResolvers<RemoteResult<Record<string, CredentialInfo>>>()
     face.credentials.describe.mockImplementationOnce(() => read.promise)
     let refreshing: Promise<void> | undefined
     try {
       act(() => { refreshing = controller.load() })
       expect(screen.getByLabelText(en.keyInput)).toBe(key)
-      expect(key.value).toBe('[REDACTED_KEY]')
+      expect(key.value).toBe('sk-unsaved-setup-draft')
     } finally {
       await act(async () => { read.resolve(remoteOk({})); await refreshing })
     }
     expect(screen.getByLabelText(en.keyInput)).toBe(key)
-    expect(key.value).toBe('[REDACTED_KEY]')
+    expect(key.value).toBe('sk-unsaved-setup-draft')
   })
 
   it('checks current readiness before opening an editor and preserves an open draft during refresh', async () => {
@@ -494,9 +494,9 @@ describe('ModelsSection', () => {
     }
     fireEvent.click(edit)
     const key = await screen.findByLabelText(en.keyInput)
-    fireEvent.change(key, { target: { value: '[REDACTED_KEY]' } })
+    fireEvent.change(key, { target: { value: 'sk-unsaved-draft' } })
     act(() => { controller.store.update((state) => { state.status = 'loading' }) })
-    expect((key as HTMLInputElement).value).toBe('[REDACTED_KEY]')
+    expect((key as HTMLInputElement).value).toBe('sk-unsaved-draft')
     expect((edit as HTMLButtonElement).disabled).toBe(false)
     fireEvent.click(edit)
     expect(screen.queryByLabelText(en.keyInput)).toBeNull()
@@ -547,9 +547,9 @@ describe('ModelsSection', () => {
     }
     fireEvent.click(add)
     const key = await screen.findByLabelText<HTMLInputElement>(en.keyInput)
-    fireEvent.change(key, { target: { value: '[REDACTED_KEY]' } })
+    fireEvent.change(key, { target: { value: 'sk-unsaved-add-draft' } })
     act(() => { controller.store.update((state) => { state.status = 'loading' }) })
-    expect(key.value).toBe('[REDACTED_KEY]')
+    expect(key.value).toBe('sk-unsaved-add-draft')
     fireEvent.click(screen.getByRole('button', { name: en.cancel }))
     expect(screen.queryByLabelText(en.keyInput)).toBeNull()
     expect(screen.getByRole<HTMLButtonElement>('button', { name: en.add }).disabled).toBe(true)
@@ -572,7 +572,7 @@ describe('ModelsSection', () => {
     const { controller, unset, mutate } = await mountFace(scripted)
     fireEvent.click(screen.getByRole('button', { name: openaiCopy(en.editProvider) }))
     const key = await screen.findByLabelText<HTMLInputElement>(en.keyInput)
-    fireEvent.change(key, { target: { value: '[REDACTED_KEY]' } })
+    fireEvent.change(key, { target: { value: 'sk-new-managed-key' } })
     holdJoin = true
     try {
       fireEvent.click(screen.getByRole('button', { name: en.apply }))
@@ -986,11 +986,11 @@ describe('ModelsSection', () => {
       .toBe('https://api.deepseek.com/anthropic (Default to use DEEPSEEK_BASE_URL)')
     expect(screen.queryByLabelText(en.customApi)).toBeNull()
     expect(screen.getByText(en.deepSeekEndpointHint)).toBeTruthy()
-    fireEvent.change(screen.getByLabelText(en.keyInput), { target: { value: '[REDACTED_KEY]' } })
+    fireEvent.change(screen.getByLabelText(en.keyInput), { target: { value: 'sk-messages-test' } })
     fireEvent.change(screen.getByLabelText(en.baseUrl), { target: { value: 'https://messages.example/anthropic' } })
     fireEvent.change(screen.getByLabelText(`${en.modelName} 1`), { target: { value: 'Messages Flash' } })
     fireEvent.click(screen.getByText(en.apply))
-    await waitFor(() => { expect(set).toHaveBeenCalledWith('DEEPSEEK_API_KEY', '[REDACTED_KEY]') })
+    await waitFor(() => { expect(set).toHaveBeenCalledWith('DEEPSEEK_API_KEY', 'sk-messages-test') })
     expect(mutate.mock.calls).toEqual([[
       'llm-deepseek',
       [

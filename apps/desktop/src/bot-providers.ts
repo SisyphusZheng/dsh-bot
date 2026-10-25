@@ -42,10 +42,7 @@ export const LLM_PROVIDERS: readonly LlmProviderOption[] = [
 
 /** Voice providers offered by Bot settings; the first entry is the natural-sounding default. */
 export const VOICE_PROVIDERS: readonly VoiceProviderOption[] = [
-  { id: 'dashscope', label: 'DashScope Qwen Realtime（默认）', baseUrl: 'wss://dashscope.aliyuncs.com/api-ws/v1/realtime', models: ['qwen-audio-3.0-realtime-plus'], voices: ['longanxiaoxin', 'longan'], kind: 'cloud' },
-  { id: 'stepfun', label: 'StepFun Realtime', baseUrl: 'wss://api.stepfun.com/v1/realtime', models: ['stepaudio-3-realtime-preview'], voices: [''], kind: 'cloud' },
-  { id: 'doubao-seeduplex', label: '豆包 Seeduplex', baseUrl: 'wss://openspeech.bytedance.com/api/v3/duplex/realtime/dialogue', models: ['1.2.6.1'], voices: ['zh_female_vv_jupiter_bigtts'], kind: 'cloud' },
-  { id: 'local', label: '本地 ASR（设备内识别）', baseUrl: '', models: ['SenseVoiceSmall', 'Whisper small'], voices: [''], kind: 'local' },
+  { id: 'dashscope', label: 'DashScope Qwen Realtime', baseUrl: 'wss://dashscope.aliyuncs.com/api-ws/v1/realtime', models: ['qwen3-asr-flash-realtime'], voices: ['Cherry', 'Serena'], kind: 'cloud' },
 ]
 
 /** One connection probe's closed result. Secrets never appear in it. */

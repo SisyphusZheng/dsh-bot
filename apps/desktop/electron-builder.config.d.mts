@@ -4,7 +4,7 @@ import type { AfterPackContext, BeforePackContext } from 'app-builder-lib'
 export interface DesktopElectronBuilderConfig {
   readonly appId: string
   readonly artifactName: string
-  readonly protocols: readonly [{ readonly name: 'DeepSeek Harness'; readonly schemes: readonly ['dsh'] }]
+  readonly protocols: readonly [{ readonly name: 'dsh-bot'; readonly schemes: readonly ['dsh'] }]
   readonly directories: {
     readonly output: string
   }
@@ -18,10 +18,11 @@ export interface DesktopElectronBuilderConfig {
   readonly extraResources: readonly [
     { readonly from: string, readonly to: 'runtime' },
     { readonly from: string, readonly to: 'icon.png' },
-    ...{ readonly from: string, readonly to: 'tray.ico' }[],
+    ...{ readonly from: string, readonly to: string }[],
   ]
   readonly mac: {
-    readonly extendInfo: { readonly NSMicrophoneUsageDescription: string }
+    readonly extendInfo: { readonly NSMicrophoneUsageDescription: string; readonly CFBundleLocalizations: readonly string[] }
+    readonly hardenedRuntime: boolean
     readonly entitlements: string
     readonly entitlementsInherit: string
     readonly identity: string | undefined

@@ -91,7 +91,7 @@ export interface BotConfigView extends Omit<BotConfig, 'voice' | 'llm'> {
 }
 
 export const DEFAULT_BOT_CONFIG: BotConfig = {
-  voice: { provider: 'dashscope', baseUrl: 'wss://dashscope.aliyuncs.com/api-ws/v1/realtime', apiKey: '', model: 'qwen-audio-3.0-realtime-plus', voice: 'longanxiaoxin', wakeWord: '' },
+  voice: { provider: 'dashscope', baseUrl: 'wss://dashscope.aliyuncs.com/api-ws/v1/realtime', apiKey: '', model: 'qwen3-asr-flash-realtime', voice: 'Cherry', wakeWord: '' },
   llm: { provider: 'opencode-go', model: 'deepseek-v4.1-flash', baseUrl: '', apiKey: '' },
   agent: { mode: 'dsh', workspace: '', session: '' },
   persona: {

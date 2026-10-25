@@ -3,8 +3,9 @@
  * worker is present. Voice itself runs in the Pipecat worker owned by the pet;
  * the shell owns no voice child process and no legacy gateway.
  */
-import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { createRequire } from 'node:module'
 
 /** What the shell can truthfully report about the voice runtime. */
 export interface BotRuntimeStatus {
@@ -104,7 +105,7 @@ function managedPatch(
     '- id: nisse-host-integration',
     '  name: "nisse-host-integration"',
     '  config:',
-    `    ipcDir: ${JSON.stringify(join(dshHome, 'nisse'))}`,
+    `    ipcDir: ${JSON.stringify(join(dshHome, 'bot'))}`,
     `    workspaceDir: ${JSON.stringify(workspace)}`,
     `    dshLlmEntry: ${JSON.stringify(llmEntry)}`,
     '    permissionPreset: bot-outside-write',
@@ -123,6 +124,10 @@ function managedPatch(
       `      ${JSON.stringify(provider)}:`,
       `        apiKeyEnv: ${JSON.stringify(keyEnv)}`,
       ...(config.llm?.baseUrl ? [`        baseURL: ${JSON.stringify(String(config.llm.baseUrl))}`] : []),
+      ...(['custom', 'dashscope'].includes(provider) ? [
+        '        api: openai-completions', '        models:',
+        `          - id: ${JSON.stringify(model)}`, '            contextWindow: 32768', '            maxTokens: 4096',
+      ] : []),
     )
   }
   lines.push(MANAGED_END)
@@ -145,23 +150,27 @@ function rewriteManagedBlock(existing: string, block: string): string {
 }
 
 /** Publish the LLM key the profile's route references into the Host child environment. */
-function applyLlmEnvironment(config: BotRuntimeConfig): void {
+function applyLlmEnvironment(config: BotRuntimeConfig): string | null {
   const key = String(config.llm?.apiKey || '').trim()
-  if (!key) return
+  if (!key) return null
   const provider = String(config.llm?.provider || DEFAULT_LLM.provider).trim()
   const envName = LLM_KEY_ENV[provider] ?? CUSTOM_LLM_KEY_ENV
   process.env[envName] = key
+  return envName
 }
 
 export class BotRuntime {
   private memory: BotMemoryInfo | null = null
   private lastError = ''
+  private managedKey: string | null = null
+  private readonly inheritedKeys = { ...process.env }
 
   constructor(
     private readonly dshHome: string,
     private readonly resourcesPath = process.resourcesPath,
     /** Reads provider keys from the DSH credentials document; keys never live in config.json. */
     private readonly secretReader: { get: (ref: string) => string } | undefined = undefined,
+    private readonly runtimeRoot = join(resourcesPath, 'app.asar', 'dsh'),
   ) {}
 
   /**
@@ -195,38 +204,46 @@ export class BotRuntime {
    * @param config - Bot settings to publish; omitted reads the persisted file.
    */
   prepare(config: BotRuntimeConfig = this.readConfig()): void {
+    this.lastError = ''
+    let llm: string
+    try {
+      llm = createRequire(join(this.runtimeRoot, 'package.json')).resolve('@deepseek-ai/dsh-llm')
+      if (!existsSync(llm)) throw new Error(`compiled LLM entry missing: ${llm}`)
+    } catch (error) { this.lastError = `DSH runtime preflight: ${String(error)}`; return }
+    mkdirSync(this.dshHome, { recursive: true, mode: 0o700 })
+    chmodSync(this.dshHome, 0o700)
     const profile = join(this.dshHome, 'profiles', 'desktop')
     const modules = join(profile, 'node_modules')
     mkdirSync(modules, { recursive: true })
-    const bundle = join(this.resourcesPath, 'host-integration')
+    const bundle = process.env.WHALEGIRL_HOST_INTEGRATION_DIR || join(this.resourcesPath, 'host-integration')
     if (!existsSync(bundle)) { this.lastError = 'host-integration bundle missing'; return }
     const link = join(modules, 'nisse-host-integration')
     try { rmSync(link, { recursive: true, force: true }) } catch {}
     try { symlinkSync(bundle, link, 'dir') } catch (error) { this.lastError = String((error as Error)?.message || error) }
-    const bridgeBundle = join(this.resourcesPath, 'whalegirl-g2-bridge')
-    if (existsSync(bridgeBundle)) {
-      const bridgeLink = join(modules, 'whalegirl-g2-bridge')
-      try { rmSync(bridgeLink, { recursive: true, force: true }) } catch {}
-      try { symlinkSync(bridgeBundle, bridgeLink, 'dir') } catch (error) { this.lastError = String((error as Error)?.message || error) }
-    }
     let manifest: Record<string, unknown> = { name: 'dsh-profile-desktop', private: true, dependencies: {} }
     try { manifest = JSON.parse(readFileSync(join(profile, 'package.json'), 'utf8')) } catch {}
     const dsh = (manifest.dsh && typeof manifest.dsh === 'object' ? manifest.dsh as Record<string, unknown> : {})
     const profileConfig = (dsh.profile && typeof dsh.profile === 'object' ? dsh.profile as Record<string, unknown> : {})
-    const bundles = Array.isArray(profileConfig.bundles) ? profileConfig.bundles.map(String) : ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app']
-    for (const name of ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', 'nisse-host-integration', 'whalegirl-g2-bridge']) if (!bundles.includes(name)) bundles.push(name)
+    const bundles = Array.isArray(profileConfig.bundles) ? profileConfig.bundles.map(String).filter(name => name !== 'whalegirl-g2-bridge') : ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app']
+    for (const name of ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', 'nisse-host-integration']) if (!bundles.includes(name)) bundles.push(name)
     profileConfig.bundles = bundles; dsh.profile = profileConfig; manifest.dsh = dsh
     writeFileSync(join(profile, 'package.json'), JSON.stringify(manifest, null, 2) + '\n')
-    const llm = join(this.resourcesPath, 'app.asar', 'dsh', 'node_modules', '@deepseek-ai', 'dsh-llm', 'lib', 'index.js')
     process.env.NISSE_DSH_LLM_ENTRY = llm
-    applyLlmEnvironment(config)
+    if (this.managedKey !== null) {
+      const inherited = this.inheritedKeys[this.managedKey]
+      if (inherited === undefined) Reflect.deleteProperty(process.env, this.managedKey)
+      else process.env[this.managedKey] = inherited
+    }
+    this.managedKey = applyLlmEnvironment(config)
     const patchFile = join(profile, 'cordis.patch.yml')
     let existingPatch = ''
     try { existingPatch = readFileSync(patchFile, 'utf8') } catch {}
     const userPart = existingPatch
       .replace(new RegExp(`${MANAGED_BEGIN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\\s\\S]*?${MANAGED_END.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'g'), '')
     const hasUserLlmConfig = /(^|\n)\s*-?\s*id:\s*llm-pi-ai\b/.test(userPart)
-    writeFileSync(patchFile, rewriteManagedBlock(existingPatch, managedPatch(config, this.dshHome, llm, hasUserLlmConfig, this.memory)))
+    const block = managedPatch(config, this.dshHome, llm, hasUserLlmConfig, this.memory)
+    writeFileSync(patchFile, rewriteManagedBlock(existingPatch, block), { mode: 0o600 })
+    chmodSync(patchFile, 0o600)
   }
 
   /**

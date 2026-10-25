@@ -246,7 +246,7 @@ describe('Agent Teams projection events', () => {
     expect(() => projectTeam(ROOT, [event('team/task', {
       version: 2,
       teamId: TEAM,
-      task: task({ id: TeamTaskId('ta[REDACTED_KEY]') }),
+      task: task({ id: TeamTaskId('task-9007199254740992') }),
     }, SessionSeq(0))])).toThrow(/persisted Agent Teams team\/task payload is invalid/)
   })
 

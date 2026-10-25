@@ -64,12 +64,12 @@ describe('desktop welcome presentation', () => {
     const saved = Promise.withResolvers<WelcomeSaveResult>()
     view.api.saveApiKey.mockReturnValue(saved.promise)
     fireEvent.click(view.button('#api-key'))
-    view.enterKey('  [REDACTED_KEY]  ')
+    view.enterKey('  sk-desktop-example  ')
     view.submit()
     view.submit()
     fireEvent.click(view.button('#skip-key'))
     fireEvent.click(view.button('#back-to-login'))
-    expect(view.api.saveApiKey).toHaveBeenCalledExactlyOnceWith('[REDACTED_KEY]')
+    expect(view.api.saveApiKey).toHaveBeenCalledExactlyOnceWith('sk-desktop-example')
     expect(view.api.skip).not.toHaveBeenCalled()
     expect(view.button('#save-key').disabled).toBe(true)
     expect(view.button('#save-key').textContent).toBe(view.api.messages.welcomeKeySave)
@@ -77,7 +77,7 @@ describe('desktop welcome presentation', () => {
     expect(view.document.querySelector<HTMLElement>('#key-form')!.hidden).toBe(false)
     saved.resolve({ ok: true })
     await vi.waitFor(() => { expect(view.input.value).toBe('') })
-    expect(view.document.body.textContent).not.toContain('[REDACTED_KEY]')
+    expect(view.document.body.textContent).not.toContain('sk-desktop-example')
   })
 
   it.each(['', 'bad key', '密钥', 'DEEPSEEK_API_KEY=sk-example', '"sk-example"', '`sk-example`'])(

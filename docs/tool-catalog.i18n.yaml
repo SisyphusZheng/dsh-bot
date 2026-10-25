@@ -59,7 +59,7 @@
 /tool-schema-catalog/deepseek-ai-dsh-tool-ask-user:
   en: e713a4a11a15d13c
   zh: e713a4a11a15d13c
-/tool-schema-catalog/deepseek-ai-dsh-tool-ask-user/a[REDACTED_KEY]:
+/tool-schema-catalog/deepseek-ai-dsh-tool-ask-user/ask-user-question:
   en: 055268ba4dcd32f9
   zh: a1a3c4bfcbf698ed
 /tool-schema-catalog/deepseek-ai-dsh-tools:

@@ -39,9 +39,9 @@ const ANSWERED_EXPANDED_EXPECTED = join(SNAPSHOT_DIR, 'answered-expanded.expecte
 const LATE_ANSWERED_EXPECTED = join(SNAPSHOT_DIR, 'late-answered.expected.md')
 const QUEUED_EXPECTED = join(SNAPSHOT_DIR, 'queued.expected.md')
 const MODE = webSnapshotMode()
-const CANCELLED_SEED_ID = 'a[REDACTED_KEY]'
-const LATE_ANSWERED_SEED_ID = 'a[REDACTED_KEY]'
-const QUEUED_SEED_ID = 'a[REDACTED_KEY]'
+const CANCELLED_SEED_ID = 'ask-question-cancelled-row-web-e2e'
+const LATE_ANSWERED_SEED_ID = 'ask-question-late-answered-row-web-e2e'
+const QUEUED_SEED_ID = 'ask-question-queued-row-web-e2e'
 
 // The composer's own growth cap, in text lines (QuestionComposer.module.css
 // .fieldMirror). Asserted as TEXT lines, not as a box height: the two variants
