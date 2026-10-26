@@ -316,6 +316,19 @@ async def run_dsh_pipeline(connection, session_id: str, session_state: dict) -> 
 
 
 async def _run_task(transport, task, session_id: str, session_state: dict) -> None:
+    if task.rtvi is not None and MODE == "dsh":
+        @task.rtvi.event_handler("on_client_ready")
+        async def greet_once(rtvi):
+            if session_state.get("welcomed"):
+                return
+            session_state["welcomed"] = True
+            greeting = os.environ.get("DSH_VOICE_GREETING", "你好，我在呢。想聊什么，或者有什么需要我帮忙的？")
+            if greeting:
+                await task.queue_frames([
+                    OutputTransportMessageUrgentFrame(message={"id": "welcome-" + session_id, "label": "rtvi-ai", "type": "server-message", "data": {"type": "greeting", "text": greeting}}),
+                    TTSSpeakFrame(text=greeting),
+                ])
+
     @transport.event_handler("on_client_connected")
     async def on_client_connected(transport, client):
         session_state["connected_at"] = time.time()

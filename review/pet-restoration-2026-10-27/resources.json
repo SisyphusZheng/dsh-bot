@@ -1,0 +1,167 @@
+{
+  "status": "PASS",
+  "scope": "compiled cross-platform resources, not a DMG",
+  "llmEntry": "packages/llm/llm/lib/index.js",
+  "files": [
+    {
+      "path": "apps/desktop/lib/main.js",
+      "bytes": 661927,
+      "sha256": "a559602e2a31250a9c782d1c973a97f7506d6679bdd0e59ad262d321e708f23e"
+    },
+    {
+      "path": "apps/desktop/lib/preload-app.cjs",
+      "bytes": 41634,
+      "sha256": "a4f3bb96b96afe573d8f0faf4c127f9b16075393e4a07d9f1f2bd2e63cd32bdd"
+    },
+    {
+      "path": "apps/desktop/resources/pet/pet.html",
+      "bytes": 2788,
+      "sha256": "f41be018d26da689ff259c02d75fca5d1949b4682ac26cf26d164729d1a7f366"
+    },
+    {
+      "path": "apps/desktop/resources/pet/bubble.html",
+      "bytes": 1812,
+      "sha256": "b8487e8e4b831fbc55a8841e59f050532997ff242db9563bb14e41473712c5da"
+    },
+    {
+      "path": "apps/desktop/resources/pet/bubble.css",
+      "bytes": 6684,
+      "sha256": "0cfc4bddd8a916f7a939d8bfd52f970424e73ebe6838d1140d90c4e6979d5834"
+    },
+    {
+      "path": "apps/desktop/resources/pet/bubble.js",
+      "bytes": 10168,
+      "sha256": "3c2938a0ccb3cfd3d10112a2ee543e02db3858da9f021fc3a3bcfc36a6b58721"
+    },
+    {
+      "path": "apps/desktop/resources/pet/bubble-preload.cjs",
+      "bytes": 599,
+      "sha256": "1b3cf2c83d1fb544a69e3afbd3cb4ae670aaf30717b1bb41d2ad8f7dd5d93084"
+    },
+    {
+      "path": "apps/desktop/resources/pet/companion-presentation.mjs",
+      "bytes": 7426,
+      "sha256": "61175154c0f08eb6b563a69ae8736515a1b6e5836ee46dabd2f8949b304d01b7"
+    },
+    {
+      "path": "apps/desktop/resources/pet/bubble-window.mjs",
+      "bytes": 10327,
+      "sha256": "9df3d957c1cdb9384c3bab67e30463967f2759fdecc03595775cb5dc349b0f5c"
+    },
+    {
+      "path": "apps/desktop/resources/pet/THIRD_PARTY_NOTICES.txt",
+      "bytes": 3459,
+      "sha256": "e9e51f37ee64748525d052de2fc1c1d7f51d2690b43fa60005e9da596f1f094e"
+    },
+    {
+      "path": "apps/desktop/resources/pet/pet-preload.cjs",
+      "bytes": 1399,
+      "sha256": "139bda53445ea616669cd5931364b0e8b1d048d95f35169973f53f75e471a929"
+    },
+    {
+      "path": "apps/desktop/resources/pet/voice-client.js",
+      "bytes": 619143,
+      "sha256": "0647c0b5433242cc727c9957db25d51f2065842372341e2a2ae7881c7a9865af"
+    },
+    {
+      "path": "apps/desktop/resources/pet/voice-worker-runtime.mjs",
+      "bytes": 6375,
+      "sha256": "f0b5473ec29d7417b33c40def9445f1e8cfc2d1827178cfcff6e03be7a6bf860"
+    },
+    {
+      "path": "apps/desktop/resources/pet/voice-worker-supervisor.mjs",
+      "bytes": 5212,
+      "sha256": "8bf873996746f0987a5e19486d2ef58f317707a2228b0424d7017095fc2c60a2"
+    },
+    {
+      "path": "apps/desktop/resources/whale-girl/spritesheet.webp",
+      "bytes": 908122,
+      "sha256": "5388d27a82eaabdfc05358f554dc5dad72bc49bb119fe12464e6c2a66b3b1efc"
+    },
+    {
+      "path": "nisse/packages/host-integration/lib/client.js",
+      "bytes": 1262,
+      "sha256": "e60a79b2ba5b8da5ed7d1851f4b5e0d532a21fcffa0331f7aa23594f15559e3c"
+    },
+    {
+      "path": "nisse/packages/host-integration/lib/index.js",
+      "bytes": 66262,
+      "sha256": "11cbfbe9123735cb4aae5b8376a1fa1efcf5ad45f2dffa4ef93b140b11175341"
+    },
+    {
+      "path": "nisse/packages/host-integration/lib/interactions.mjs",
+      "bytes": 5500,
+      "sha256": "51e18d7c62a665ccacc5b8fd71e18c8974fc99f3b442f5b12a54eb64ce065c61"
+    },
+    {
+      "path": "apps/desktop/resources/pet/experience-runtime.mjs",
+      "bytes": 14472,
+      "sha256": "b9921aa5451950d7616da8b5ae7d9cd98757d99b0b5b057d18c1c5cc194326da"
+    },
+    {
+      "path": "apps/desktop/resources/pet/experience-store.mjs",
+      "bytes": 3082,
+      "sha256": "054171583b266eb86533c04cde3e50d9cc909a4ebc4944e8164187b599933081"
+    },
+    {
+      "path": "apps/desktop/resources/pet/legacy-preferences.mjs",
+      "bytes": 2114,
+      "sha256": "d28b4d64fe6add8decc751a47d5a35fad79792d4d655734d50ac85f75377c852"
+    },
+    {
+      "path": "apps/desktop/resources/pet/voice-input.mjs",
+      "bytes": 12053,
+      "sha256": "dc43d8987a65d48655d27121bad1763f5b35a8c7b37ce034b89a09ba26b7871a"
+    },
+    {
+      "path": "apps/desktop/resources/pet/global-option.mjs",
+      "bytes": 7993,
+      "sha256": "9f77e9056525e2271a842e763b0960bc19f634dedbb76fc9fcab53d6b498c395"
+    },
+    {
+      "path": "apps/desktop/resources/pet/onboarding.mjs",
+      "bytes": 33500,
+      "sha256": "ca1dc21b9ef78b5bafc91f742763e9830413c3903967c07a6ac7af1ac8128196"
+    },
+    {
+      "path": "apps/desktop/resources/pet/desktop-presence.mjs",
+      "bytes": 2807,
+      "sha256": "09c12c4572e59b19a914ecaeebba1e3f7e23036f963b5eac78141a7391166979"
+    },
+    {
+      "path": "apps/desktop/resources/pet/i18n.mjs",
+      "bytes": 19353,
+      "sha256": "39955fbaa6539626e18847096f9d8956a42f8173739a6f8fb903f7ff85737887"
+    },
+    {
+      "path": "apps/desktop/resources/pet/skin-store.mjs",
+      "bytes": 11229,
+      "sha256": "17d19be42bf4fb5621a4070c40b39b1fbae84a15f8daa232d72602f6f83611f2"
+    },
+    {
+      "path": "apps/desktop/resources/pet/skin-catalog.mjs",
+      "bytes": 179,
+      "sha256": "8ef0741c74242bf70114174ff8f7e4e2101cfd81504c5d0c5eb138323e30d5b9"
+    },
+    {
+      "path": "apps/desktop/resources/pet/wake-word/runtime.mjs",
+      "bytes": 2470,
+      "sha256": "f393ef0caaf2e43daf040070c83a2d1ab47c323b736a015af567a37a261b04bc"
+    },
+    {
+      "path": "apps/desktop/resources/pet/wake-word/worker.mjs",
+      "bytes": 9521,
+      "sha256": "de1d87f97526c34b2564c5d7328a8e02b79f387f976bf0bafb59152eaed1c0e7"
+    },
+    {
+      "path": "apps/desktop/resources/pet/wake-word/keyword-phrase.mjs",
+      "bytes": 194498,
+      "sha256": "28f27721e069f83a4427daae7d5253f22defb661e017162dc3f473a5bf2a15d5"
+    },
+    {
+      "path": "apps/desktop/resources/pet/wake-model/MODEL.json",
+      "bytes": 751,
+      "sha256": "fdbb4c2ba900da15e947189141bd877bb93c6d21967f7e0f76302cb11394a0c4"
+    }
+  ]
+}

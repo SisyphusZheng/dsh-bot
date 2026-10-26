@@ -23,7 +23,7 @@
     "lock": "requirements-macos.lock",
     "nativeWorker": "rebuilt from current source; not reused",
     "lockSha256": "25f50968d35614d5b05dd404c980e8b0f370dd02b3c3d99e5fec53f8b605fa38",
-    "wakePhrase": "Optional ASR address phrase after explicit microphone activation; 30-second conversation window. Offline Sherpa is deferred."
+    "wakePhrase": "Pet activation admits ordinary speech. Offline Sherpa standby captures locally and connects Pipecat only after activation."
   },
   "memory": {
     "hindsight": "1.0.0",
@@ -40,7 +40,8 @@
     "pipecatClient": "1.14.0",
     "smallWebrtcTransport": "1.11.0",
     "compatibility": "Official Pipecat SDK + SmallWebRTC, authenticated same-origin signaling and RTVI. Native microphone acceptance pending.",
-    "pnpmLockSha256": "b42193f1f9f70315689e72b2bc3fd359513af1c150dea496ae87e4d278f8bb4c"
+    "pnpmLockSha256": "df3fa728858b532d5177ccd55f6a124dcc65312008b7b1756a3dfea254ac816b",
+    "mediaManager": "Official WavMediaManager in pinned SmallWebRTC package; local browser media and bundled Blob worklets; no Daily CDN runtime."
   },
   "pet": {
     "source": "apps/desktop/src/pet-runtime.ts + product/pet/src + apps/desktop/resources/pet",
@@ -57,7 +58,12 @@
       "license": "Apache-2.0",
       "changes": "standalone canvas entry, same-origin assets, waiting-input animation"
     },
-    "restoredPresentationCommit": "8c34e66905ffd1ac50a6ba9c0f3196b45e4823c6"
+    "restoredPresentationCommit": "8c34e66905ffd1ac50a6ba9c0f3196b45e4823c6",
+    "featureRestoreSource": "SisyphusZheng/dsh-bot@8c34e66905ffd1ac50a6ba9c0f3196b45e4823c6 product/pet/src",
+    "nativeDependencies": {
+      "sherpa-onnx-node": "1.13.8",
+      "koffi": "3.1.1"
+    }
   },
   "hostIntegration": {
     "version": "0.1.0",
@@ -67,5 +73,16 @@
     "clientSource": "src/client/index.js; built by official packages/client/tsdown.client.ts",
     "clientFormat": "classic script with window.__ModuleLoader__.load factory; generated lib/client.js",
     "navigation": "latest requested Bot Session after official sessions.list confirms membership"
+  },
+  "wakeWord": {
+    "name": "sherpa-onnx-kws-zipformer-zh-en-3M-2025-12-20",
+    "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/kws-models/sherpa-onnx-kws-zipformer-zh-en-3M-2025-12-20.tar.bz2",
+    "archiveSha256": "68447f4fbc67e70eee3a93961f36e81e98f47aef73ce7e7ca00885c6cd3616a6",
+    "files": {
+      "encoder-epoch-13-avg-2-chunk-8-left-64.int8.onnx": "2ca84d6bfe73e1ea3c9c49f600f7cad1c9ddd423c53c906b8bfe802444dd78d5",
+      "decoder-epoch-13-avg-2-chunk-8-left-64.onnx": "63a22dd60f40fff082ac3e09afa507f6787da36df76ded2fbe145fa233e22c21",
+      "joiner-epoch-13-avg-2-chunk-8-left-64.int8.onnx": "190d4067b4cc20b72a42a1916e69d92052000fb7051a427ebb1bc72a69207dc1",
+      "tokens.txt": "2d3f32311f9b692b964da3c90e830258d3e78e013cb0c992dbfb15cd5a1a71b0"
+    }
   }
 }

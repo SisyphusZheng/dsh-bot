@@ -1,0 +1,44 @@
+✔ pet selection uses official workspace navigation and unregisters at teardown (1.795208ms)
+✔ buffered cold-start navigation waits for the official Session snapshot and keeps the latest request (0.230256ms)
+✔ ordinary Web clients do not acquire a desktop capability (0.120722ms)
+✔ pet answer settles the official request and aborts the other UI (3.674613ms)
+✔ a decision from the DSH UI removes the same pet request (0.565299ms)
+✔ cancellation and disposal settle pending choices and approvals (0.793162ms)
+✔ approval timeout fails closed, with one settlement (5.855522ms)
+✔ answer validation rejects omitted ids, repeated selections and extra choices (0.442284ms)
+✔ welcome is visible, accepts a name and persists sanitized progress (11.600837ms)
+✔ voice mode, effective shortcut fallback and appearance preferences persist (1.838373ms)
+✔ listening waits for actual bot readiness; mute preserves playback transport (1.710781ms)
+✔ release during connect prevents readiness from re-enabling capture (1.87587ms)
+✔ failed client is disposed and retry creates a new one (0.621063ms)
+✔ shutdown aborts unresolved media connect (3.181812ms)
+✔ onboarding can pause/resume and yield to official pending requests (4.531031ms)
+✔ hold/toggle/mouse gestures, hide/wake shortcut and keyword control the owned pet (1.993195ms)
+✔ idle is silent; ordinary speech expires and stops leave no timers (1.661668ms)
+✔ single choice posts an official answer batch to the owning request (1.780927ms)
+✔ multi-select and multi-question batches preserve every question id (0.639532ms)
+✔ only one click is admitted while submitting; a failure remains retryable (0.727223ms)
+✔ another surface settling a request and Host replacement remove stale controls (0.296405ms)
+✔ the restored sprite policies distinguish speech, work, waiting, drag and completion (1.234846ms)
+✔ retry emits real probes and full edits retain canonical approval/config fields (4.723059ms)
+✔ legacy prefs and position migrate without credentials or original-file mutation (3.010725ms)
+✔ skin packages allow nested declared assets and reject escapes and symlinks (7.878803ms)
+✔ cards derive real turn identity, preserve completion and reset on Host replacement (0.39899ms)
+✔ recorded artifact bytes must match; same-name replacement and wrong source are rejected (383.024683ms)
+✔ actual ASAR metadata identifies a clean candidate and rejects a dirty or old app (366.657888ms)
+✔ cleanup previews first and removes only the reviewed app copy while retaining data and logs (271.87164ms)
+✔ DevTools probe reports protocol errors and disconnects without closing the App (31.0171ms)
+✔ readiness names its failed phase and stops immediately on a fatal boot report (10.406411ms)
+✔ Memory readiness requires live authenticated health instead of the descriptor (15.590764ms)
+✔ native acceptance persists failure and rejects an incomplete overall PASS (194.503913ms)
+✔ a published descriptor and healthy HTTP listener do not mean the Agent is ready (31.708414ms)
+✔ a known startup failure is reported immediately (6.81291ms)
+✔ a different process cannot satisfy readiness through a reused port (16.404767ms)
+ℹ tests 36
+ℹ suites 0
+ℹ pass 36
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 877.616735

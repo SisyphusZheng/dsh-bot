@@ -1,0 +1,90 @@
+[
+  {
+    "text": "正在连接语音…",
+    "phase": "processing",
+    "enabled": false,
+    "transportPhase": "connecting",
+    "notify": true,
+    "kind": "status"
+  },
+  {
+    "text": "我在听，你说。",
+    "phase": "listening",
+    "enabled": true,
+    "transportPhase": "listening",
+    "notify": true,
+    "kind": "status"
+  },
+  {
+    "text": "你好，我在呢。想聊什么，或者有什么需要我帮忙的？",
+    "phase": "speaking",
+    "enabled": true,
+    "transportPhase": "listening",
+    "notify": true,
+    "kind": "speech"
+  },
+  {
+    "text": "",
+    "phase": "speaking",
+    "enabled": true,
+    "transportPhase": "listening",
+    "notify": false,
+    "kind": "status"
+  },
+  {
+    "text": "你好，我在呢。想聊什么，或者有什么需要我帮忙的？",
+    "phase": "speaking",
+    "enabled": true,
+    "transportPhase": "listening",
+    "notify": true,
+    "kind": "speech"
+  },
+  {
+    "text": "请记录测试偏好",
+    "phase": "listening",
+    "enabled": true,
+    "transportPhase": "listening",
+    "notify": true,
+    "kind": "input"
+  },
+  {
+    "text": "请记录测试偏好",
+    "phase": "listening",
+    "enabled": true,
+    "transportPhase": "listening",
+    "notify": true,
+    "kind": "input"
+  },
+  {
+    "text": "好的，已收到测试请求。",
+    "phase": "speaking",
+    "enabled": true,
+    "transportPhase": "listening",
+    "notify": true,
+    "kind": "speech"
+  },
+  {
+    "text": "麦克风已暂停，回答会继续播放。",
+    "phase": "idle",
+    "enabled": false,
+    "transportPhase": "muted",
+    "notify": true,
+    "kind": "status"
+  },
+  {
+    "text": "",
+    "phase": "listening",
+    "enabled": true,
+    "transportPhase": "listening",
+    "notify": false,
+    "kind": "status"
+  },
+  {
+    "text": "语音已关闭",
+    "phase": "idle",
+    "enabled": false,
+    "transportPhase": "off",
+    "notify": true,
+    "kind": "status"
+  }
+]
