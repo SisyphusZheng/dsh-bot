@@ -19,9 +19,10 @@ export class VoiceWorkerSupervisor {
     cwd,
     env = process.env,
     healthUrl = 'http://127.0.0.1:8765/health',
-    startupTimeoutMs = 20_000,
+    startupTimeoutMs = 90_000,
     stopTimeoutMs = 5_000,
     healthIntervalMs = 200,
+    verifyPid = false,
     restart = true,
     maxRestarts = 3,
     restartDelayMs = 500,
@@ -29,8 +30,19 @@ export class VoiceWorkerSupervisor {
   } = {}) {
     if (!command) throw new Error('voice worker command is required')
     Object.assign(this, {
-      command, args, cwd, env, healthUrl, startupTimeoutMs, stopTimeoutMs,
-      healthIntervalMs, restart, maxRestarts, restartDelayMs, log,
+      command,
+      args,
+      cwd,
+      env,
+      healthUrl,
+      startupTimeoutMs,
+      stopTimeoutMs,
+      healthIntervalMs,
+      verifyPid,
+      restart,
+      maxRestarts,
+      restartDelayMs,
+      log,
     })
     this.child = null
     this.state = 'stopped'
@@ -45,7 +57,7 @@ export class VoiceWorkerSupervisor {
       const response = await fetch(this.healthUrl, { signal: AbortSignal.timeout(1200) })
       if (!response.ok) return false
       const body = await response.json().catch(() => null)
-      return body?.ok === true || body?.status === 'ok'
+      return (body?.ok === true || body?.status === 'ok') && (!this.verifyPid || body.pid === this.pid)
     } catch {
       return false
     }
@@ -53,9 +65,9 @@ export class VoiceWorkerSupervisor {
 
   async waitForHealthy(timeoutMs = this.startupTimeoutMs) {
     const deadline = Date.now() + timeoutMs
-    while (Date.now() < deadline) {
+    while (!this._stopping && Date.now() < deadline) {
       if (await this._healthy()) return true
-      if (this.child && this.child.exitCode !== null) return false
+      if (!this.child || this.child.exitCode !== null || this.child.signalCode !== null) return false
       await sleep(this.healthIntervalMs)
     }
     return false
@@ -96,9 +108,15 @@ export class VoiceWorkerSupervisor {
       env: this.env,
       stdio: ['ignore', 'pipe', 'pipe'],
     })
+    this.child.once('error', (error) => this.log('voice worker spawn failed', error.message))
     this.pid = this.child.pid
-    this.child.stdout?.on('data', (data) => this.log('voice worker stdout', String(data).trim().slice(0, 300)))
-    this.child.stderr?.on('data', (data) => this.log('voice worker stderr', String(data).trim().slice(0, 300)))
+    const safeOutput = (data) => {
+      const text = String(data)
+      const key = this.env.DASHSCOPE_API_KEY
+      return (key ? text.replaceAll(key, '[credential]') : text).trim().slice(0, 300)
+    }
+    this.child.stdout?.on('data', (data) => this.log('voice worker stdout', safeOutput(data)))
+    this.child.stderr?.on('data', (data) => this.log('voice worker stderr', safeOutput(data)))
     this._attachLifecycle(this.child)
     const healthy = await this.waitForHealthy()
     if (!healthy) {
@@ -123,11 +141,11 @@ export class VoiceWorkerSupervisor {
     this.state = 'stopping'
     child.kill('SIGTERM')
     const deadline = Date.now() + this.stopTimeoutMs
-    while (child.exitCode === null && Date.now() < deadline) await sleep(50)
-    if (child.exitCode === null) {
+    while (child.exitCode === null && child.signalCode === null && Date.now() < deadline) await sleep(50)
+    if (child.exitCode === null && child.signalCode === null) {
       child.kill('SIGKILL')
       const hardDeadline = Date.now() + 1000
-      while (child.exitCode === null && Date.now() < hardDeadline) await sleep(50)
+      while (child.exitCode === null && child.signalCode === null && Date.now() < hardDeadline) await sleep(50)
     }
     this.child = null
     this.pid = null

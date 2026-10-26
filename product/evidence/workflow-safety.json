@@ -1,11 +1,11 @@
 {
-  "branch": "mvp/rc3-closure",
-  "openPullRequestsForBranch": 0,
-  "method": "new branch only; no pull request, no tags, no dispatch; skip-ci is additional defense only",
-  "pushTriggers": [
+  "branch": "fix/rc3-live-config",
+  "workflowsInspected": 27,
+  "triggers": [
     {
       "file": "ci-master.yml",
-      "push": {
+      "event": "push",
+      "rule": {
         "branches": [
           "master"
         ]
@@ -13,7 +13,8 @@
     },
     {
       "file": "dsh-bot-regression.yml",
-      "push": {
+      "event": "push",
+      "rule": {
         "branches": [
           "fix/safety-config-and-rc3-preflight-20261025"
         ],
@@ -24,7 +25,8 @@
     },
     {
       "file": "e2e.yml",
-      "push": {
+      "event": "push",
+      "rule": {
         "branches": [
           "main",
           "master"
@@ -33,7 +35,8 @@
     },
     {
       "file": "node-addon-system.yml",
-      "push": {
+      "event": "push",
+      "rule": {
         "branches": [
           "master"
         ],
@@ -49,7 +52,8 @@
     },
     {
       "file": "rc3-upgrade-candidate.yml",
-      "push": {
+      "event": "push",
+      "rule": {
         "branches": [
           "fix/safety-config-and-rc3-preflight-20261025"
         ],
@@ -60,7 +64,8 @@
     },
     {
       "file": "release-vendor.yml",
-      "push": {
+      "event": "push",
+      "rule": {
         "branches": [
           "master"
         ]
@@ -68,7 +73,8 @@
     },
     {
       "file": "release.yml",
-      "push": {
+      "event": "push",
+      "rule": {
         "branches": [
           "master"
         ]
@@ -76,599 +82,15 @@
     },
     {
       "file": "sandbox.yml",
-      "push": {
+      "event": "push",
+      "rule": {
         "branches": [
           "master"
         ]
       }
     }
   ],
-  "allWorkflowEvents": [
-    {
-      "file": "build-exe-for-python-sdk.yml",
-      "events": {
-        "workflow_call": {
-          "inputs": {
-            "targets": {
-              "description": "Comma-separated pkg targets to build; empty builds all five.",
-              "type": "string",
-              "required": false,
-              "default": ""
-            },
-            "release": {
-              "description": "Run as the native builder for the Python release workflow.",
-              "type": "boolean",
-              "required": false,
-              "default": false
-            },
-            "ci": {
-              "description": "Run Python runtime CI validation for the selected targets.",
-              "type": "boolean",
-              "required": false,
-              "default": false
-            }
-          },
-          "secrets": {
-            "DEEPSEEK_API_KEY_EXTERNAL": {
-              "description": "Real DeepSeek API key for trusted installed-wheel pull-request tests.",
-              "required": false
-            }
-          }
-        },
-        "workflow_dispatch": {
-          "inputs": {
-            "targets": {
-              "description": "Comma-separated pkg targets to build. Any subset of: node24-linux-x64, node24-linux-arm64, node24-macos-arm64, node24-macos-x64, node24-win-x64. Empty builds all five.",
-              "type": "string",
-              "required": false,
-              "default": ""
-            }
-          }
-        }
-      }
-    },
-    {
-      "file": "build-exe-for-ssh-helper.yml",
-      "events": {
-        "workflow_call": {
-          "inputs": {
-            "targets": {
-              "description": "Comma-separated native Node 24 targets; empty builds all four.",
-              "type": "string",
-              "default": ""
-            },
-            "release": {
-              "description": "Retain a complete release build when another run starts.",
-              "type": "boolean",
-              "default": false
-            }
-          }
-        },
-        "workflow_dispatch": {
-          "inputs": {
-            "targets": {
-              "description": "Linux/macOS x64/arm64 pkg targets; empty builds all four.",
-              "type": "string",
-              "default": ""
-            }
-          }
-        }
-      }
-    },
-    {
-      "file": "build-preview-cloudflare.yml",
-      "events": {
-        "pull_request": {
-          "types": [
-            "opened",
-            "synchronize",
-            "reopened"
-          ]
-        }
-      }
-    },
-    {
-      "file": "ci-master.yml",
-      "events": {
-        "push": {
-          "branches": [
-            "master"
-          ]
-        },
-        "workflow_dispatch": {
-          "inputs": {
-            "suite": {
-              "description": "Manual CI suite to run",
-              "required": true,
-              "default": "larger-runner-benchmark",
-              "type": "choice",
-              "options": [
-                "larger-runner-benchmark",
-                "consolidated-runner-benchmark",
-                "ssh-helper"
-              ]
-            }
-          }
-        }
-      }
-    },
-    {
-      "file": "ci.yml",
-      "events": {
-        "pull_request": null
-      }
-    },
-    {
-      "file": "desktop-publish.yml",
-      "events": {
-        "workflow_dispatch": {
-          "inputs": {
-            "package_run_id": {
-              "description": "打包运行 ID：填写成功的 Package Desktop run ID；发布环境和 release ID 沿用原包",
-              "type": "string",
-              "required": true
-            },
-            "package_run_attempt": {
-              "description": "打包尝试次数：留空选择最新一次，且必须成功；失败时不会回退到旧包",
-              "type": "string",
-              "required": false,
-              "default": ""
-            }
-          }
-        }
-      }
-    },
-    {
-      "file": "docs-pages.yml",
-      "events": {
-        "workflow_dispatch": null
-      }
-    },
-    {
-      "file": "dsh-bot-regression.yml",
-      "events": {
-        "push": {
-          "branches": [
-            "fix/safety-config-and-rc3-preflight-20261025"
-          ],
-          "paths": [
-            ".github/workflows/dsh-bot-regression.yml"
-          ]
-        },
-        "pull_request": {
-          "paths": [
-            "apps/desktop/src/bot-config-server.ts",
-            "apps/desktop/src/secret-store.ts",
-            "apps/desktop/src/main.ts",
-            "apps/desktop/tests/dsh-bot-regressions.spec.ts",
-            ".github/workflows/dsh-bot-regression.yml"
-          ]
-        }
-      }
-    },
-    {
-      "file": "e2e.yml",
-      "events": {
-        "workflow_dispatch": null,
-        "push": {
-          "branches": [
-            "main",
-            "master"
-          ]
-        },
-        "pull_request": null,
-        "schedule": [
-          {
-            "cron": "17 0 * * *"
-          }
-        ]
-      }
-    },
-    {
-      "file": "expected-filenames.yml",
-      "events": {
-        "pull_request": {
-          "paths": [
-            "*[gG][oO][lL][dD][eE][nN]*",
-            "**/*[gG][oO][lL][dD][eE][nN]*",
-            "!vendor/**"
-          ]
-        }
-      }
-    },
-    {
-      "file": "issue-lifecycle.yml",
-      "events": {
-        "issues": {
-          "types": [
-            "opened",
-            "edited",
-            "labeled",
-            "unlabeled",
-            "closed",
-            "reopened",
-            "typed",
-            "untyped",
-            "field_added",
-            "field_removed"
-          ]
-        },
-        "pull_request": {
-          "types": [
-            "opened",
-            "edited",
-            "reopened",
-            "review_requested"
-          ]
-        },
-        "pull_request_review": {
-          "types": [
-            "submitted"
-          ]
-        }
-      }
-    },
-    {
-      "file": "issue-policy.yml",
-      "events": {
-        "pull_request": {
-          "types": [
-            "opened",
-            "edited",
-            "synchronize",
-            "reopened",
-            "labeled",
-            "unlabeled",
-            "ready_for_review",
-            "review_requested"
-          ]
-        },
-        "pull_request_review": {
-          "types": [
-            "submitted"
-          ]
-        }
-      }
-    },
-    {
-      "file": "macos-package.yml",
-      "events": {
-        "workflow_dispatch": {
-          "inputs": {
-            "preset": {
-              "description": "打包环境：选择机器上的 test 或 production 配置；同时决定后续发布环境",
-              "type": "choice",
-              "options": [
-                "test",
-                "production"
-              ],
-              "default": "test",
-              "required": true
-            },
-            "skip_notarization": {
-              "description": "跳过公证和 stapling：仅限内部调试，禁止发布到 test / production 或用于自动更新；需要发布请勿勾选",
-              "type": "boolean",
-              "default": false,
-              "required": true
-            },
-            "test_release_id": {
-              "description": "测试 release ID：32 位小写十六进制随机前缀（非鉴权）；留空使用机器默认值，连续升级测试须保持相同值",
-              "type": "string",
-              "default": "",
-              "required": false
-            },
-            "source_ref": {
-              "description": "打包源码：test 支持仓库内分支或 dsh-v* tag；production 仅支持 master 或 dsh-v* tag；源码须包含 CI 适配脚本",
-              "type": "string",
-              "default": "master",
-              "required": true
-            },
-            "update_channel": {
-              "description": "升级通道：nightly 或 latest（须为稳定版本）；自动更新不会切换通道",
-              "type": "choice",
-              "options": [
-                "nightly",
-                "latest"
-              ],
-              "default": "nightly",
-              "required": true
-            },
-            "version_mode": {
-              "description": "版本模式：default 为 test 自动编号、production 跟随产品；product 保留原版本，auto 自动编号，manual 手填",
-              "type": "choice",
-              "options": [
-                "default",
-                "product",
-                "auto",
-                "manual"
-              ],
-              "default": "default",
-              "required": true
-            },
-            "build_version": {
-              "description": "手动版本号：仅 manual 时填写完整版本；须为产品原版本或受支持的预发布后缀",
-              "type": "string",
-              "default": "",
-              "required": false
-            }
-          }
-        }
-      }
-    },
-    {
-      "file": "node-addon-system-release.yml",
-      "events": {
-        "workflow_dispatch": {
-          "inputs": {
-            "publish": {
-              "description": "Publish packed tarballs to npm. Must run from a node-addon-system-v* tag.",
-              "required": true,
-              "type": "boolean",
-              "default": false
-            }
-          }
-        }
-      }
-    },
-    {
-      "file": "node-addon-system.yml",
-      "events": {
-        "pull_request": {
-          "paths": [
-            ".github/workflows/node-addon-system.yml",
-            ".github/workflows/node-addon-system-release.yml",
-            "native/system/**",
-            "package.json",
-            "pnpm-lock.yaml",
-            "pnpm-workspace.yaml"
-          ]
-        },
-        "push": {
-          "branches": [
-            "master"
-          ],
-          "paths": [
-            ".github/workflows/node-addon-system.yml",
-            ".github/workflows/node-addon-system-release.yml",
-            "native/system/**",
-            "package.json",
-            "pnpm-lock.yaml",
-            "pnpm-workspace.yaml"
-          ]
-        },
-        "workflow_dispatch": null
-      }
-    },
-    {
-      "file": "pi-ai-provider-e2e.yml",
-      "events": {
-        "workflow_dispatch": {
-          "inputs": {
-            "azure_openai_model": {
-              "description": "Azure OpenAI model from pi-ai's installed catalog",
-              "required": true,
-              "default": "gpt-5.5",
-              "type": "string"
-            },
-            "anthropic_model": {
-              "description": "Anthropic model from pi-ai's installed catalog",
-              "required": true,
-              "default": "claude-opus-4-8",
-              "type": "string"
-            }
-          }
-        }
-      }
-    },
-    {
-      "file": "publish-ssh-helper.yml",
-      "events": {
-        "workflow_dispatch": {
-          "inputs": {
-            "publish": {
-              "description": "Publish verified archives to GitHub Release. Must run from the matching dsh-v<version> tag.",
-              "type": "boolean",
-              "required": true,
-              "default": false
-            }
-          }
-        }
-      }
-    },
-    {
-      "file": "python-release.yml",
-      "events": {
-        "workflow_dispatch": {
-          "inputs": {
-            "publish": {
-              "description": "Publish the validated wheels to public PyPI. Must run from a python-v* tag.",
-              "required": true,
-              "type": "boolean",
-              "default": false
-            }
-          }
-        }
-      }
-    },
-    {
-      "file": "rc3-upgrade-candidate.yml",
-      "events": {
-        "push": {
-          "branches": [
-            "fix/safety-config-and-rc3-preflight-20261025"
-          ],
-          "paths": [
-            ".github/workflows/rc3-upgrade-candidate.yml"
-          ]
-        },
-        "workflow_dispatch": null
-      }
-    },
-    {
-      "file": "release-publish.yml",
-      "events": {
-        "workflow_dispatch": null
-      }
-    },
-    {
-      "file": "release-vendor-publish.yml",
-      "events": {
-        "workflow_dispatch": {
-          "inputs": {
-            "dist-tag": {
-              "description": "Optional unused npm channel. Leave empty for latest (stable) or next (prerelease).",
-              "required": false,
-              "type": "string",
-              "default": ""
-            }
-          }
-        }
-      }
-    },
-    {
-      "file": "release-vendor.yml",
-      "events": {
-        "pull_request": null,
-        "push": {
-          "branches": [
-            "master"
-          ]
-        },
-        "workflow_dispatch": null
-      }
-    },
-    {
-      "file": "release.yml",
-      "events": {
-        "pull_request": null,
-        "push": {
-          "branches": [
-            "master"
-          ]
-        },
-        "workflow_dispatch": null
-      }
-    },
-    {
-      "file": "sandbox.yml",
-      "events": {
-        "push": {
-          "branches": [
-            "master"
-          ]
-        }
-      }
-    },
-    {
-      "file": "weighted-approval-review-event.yml",
-      "events": {
-        "pull_request_review": {
-          "types": [
-            "submitted",
-            "edited",
-            "dismissed"
-          ]
-        }
-      }
-    },
-    {
-      "file": "weighted-approval.yml",
-      "events": {
-        "pull_request_target": {
-          "types": [
-            "opened",
-            "synchronize",
-            "reopened",
-            "ready_for_review",
-            "converted_to_draft",
-            "edited"
-          ]
-        },
-        "issue_comment": {
-          "types": [
-            "created",
-            "edited",
-            "deleted"
-          ]
-        },
-        "workflow_run": {
-          "workflows": [
-            "weighted-approval-review-event"
-          ],
-          "types": [
-            "completed"
-          ]
-        }
-      }
-    },
-    {
-      "file": "windows-package.yml",
-      "events": {
-        "workflow_dispatch": {
-          "inputs": {
-            "preset": {
-              "description": "打包环境：选择机器上的 test 或 production 配置；同时决定后续发布环境",
-              "type": "choice",
-              "options": [
-                "test",
-                "production"
-              ],
-              "default": "test",
-              "required": true
-            },
-            "signing": {
-              "description": "签名方式：unsigned 仅限内部调试，禁止发布到 test / production 或用于自动更新；需要发布请选择 signed（EV 硬件令牌）",
-              "type": "choice",
-              "options": [
-                "signed",
-                "unsigned"
-              ],
-              "default": "signed",
-              "required": true
-            },
-            "test_release_id": {
-              "description": "测试 release ID：32 位小写十六进制随机前缀（非鉴权）；留空使用机器默认值，连续升级测试须保持相同值",
-              "type": "string",
-              "default": "",
-              "required": false
-            },
-            "source_ref": {
-              "description": "打包源码：test 支持仓库内分支或 dsh-v* tag；production 仅支持 master 或 dsh-v* tag；源码须包含 CI 适配脚本",
-              "type": "string",
-              "default": "master",
-              "required": true
-            },
-            "update_channel": {
-              "description": "升级通道：nightly 或 latest（须为稳定版本）；自动更新不会切换通道",
-              "type": "choice",
-              "options": [
-                "nightly",
-                "latest"
-              ],
-              "default": "nightly",
-              "required": true
-            },
-            "version_mode": {
-              "description": "版本模式：default 为 test 自动编号、production 跟随产品；product 保留原版本，auto 自动编号，manual 手填",
-              "type": "choice",
-              "options": [
-                "default",
-                "product",
-                "auto",
-                "manual"
-              ],
-              "default": "default",
-              "required": true
-            },
-            "build_version": {
-              "description": "手动版本号：仅 manual 时填写完整版本；须为产品原版本或受支持的预发布后缀",
-              "type": "string",
-              "default": "",
-              "required": false
-            }
-          }
-        }
-      }
-    }
-  ]
+  "matchingRisks": [],
+  "openPullRequestsForBranch": 0,
+  "publication": "one new branch; no PR, tag, dispatch, rerun or runner; skip-ci is additional defense only"
 }

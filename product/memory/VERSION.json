@@ -1,54 +1,16 @@
 {
-  "schema": "dsh-bot.memory-input/v2",
-  "product": {
-    "name": "dsh-bot",
-    "version": "0.0.1-beta"
-  },
-  "dshRuntime": "0.2.1-rc.3",
+  "schema": "dsh-bot.memory-source/v3",
   "dependencies": {
     "hindsight": "1.0.0",
     "client": "1.0.0",
     "pg0": "0.15.2",
     "postgres": "18.1.0",
     "embedding": "Xenova/multilingual-e5-small@761b726d",
-    "onnxModelSha256": "4d24e2bc01a447951524466ef533e52944bf48509e6552810bcee1a2711cb02c"
+    "onnxModelSha256": "4d24e2bc01a447951524466ef533e52944bf48509e6552810bcee1a2711cb02c",
+    "source": "product/memory/requirements-macos.lock + HindsightAPI.spec"
   },
-  "nativeInput": {
-    "release": "v0.0.1-beta",
-    "asset": "dsh-bot-0.0.1-beta-mac-arm64-unsigned.dmg",
-    "assetId": 674288815,
-    "bytes": 779421007,
-    "sha256": "76d13562a33d2efcc1aa6846710bcf2c2e25a7eb1b74e55277fc559780998cd2",
-    "use": "Pet native Electron/dependencies with current source overlay; voice client transport; Hindsight/ONNX/pg0 binaries only"
-  },
-  "nativeSourceComponents": [
-    {
-      "name": "hindsight-runtime",
-      "path": "runtime/hindsight",
-      "bytes": 423400273,
-      "files": 6393,
-      "fileTreeSha256": "76c6060fa9da16574f074190dc0a7ff4f1bfa7e04348df6fc29d61af4d963ea2",
-      "sources": "PyInstaller onedir build of hindsight-api 1.0.0 (slim venv, arm64, adhoc-signed)"
-    },
-    {
-      "name": "embeddings-model",
-      "path": "runtime/models",
-      "bytes": 140207642,
-      "files": 6,
-      "fileTreeSha256": "f880dc086273a19afd9f0bcd2e9a1310e16da6dce1a94efa51173a6136c21bff",
-      "sources": "Xenova/multilingual-e5-small onnx/model_int8.onnx + tokenizer files (HF cache snapshot 761b726d, symlinks dereferenced)"
-    },
-    {
-      "name": "pg0-installation",
-      "path": "runtime/pg0",
-      "bytes": 33950481,
-      "files": 1381,
-      "fileTreeSha256": "d8406f1b9e9afa037266653669489c2db4fbb3cb4089bb3a6189e34081bed3df",
-      "sources": "pg0 embedded PostgreSQL installation 18.1.0 (pre-seeded; prevents first-run download)"
-    }
-  ],
-  "adapterSource": "product/memory/adapter/m1-c-hindsight",
-  "clientRuntimeSha256": "bc1dd2f614c25f63fe217b18dfb7c306506a4cb8f7d844d9ee1e35b7d34840dd",
-  "packaging": "scripts/gen-version.mjs records every actual staged file in packaged VERSION.json",
-  "qualification": "Linux adapter lifecycle PASS; actual PostgreSQL semantic retrieval BLOCKED-ENVIRONMENT (root, setuid denied)"
+  "lock": "product/memory/requirements-macos.lock",
+  "builder": "product/tools/build-memory.sh",
+  "packaging": "Fresh wheel inputs, frozen Hindsight and pinned ONNX model; staged VERSION.json hashes every actual packaged file. No old DMG input.",
+  "qualification": "Linux freeze and CLI startup tested separately; macOS database and semantic retrieval require native acceptance."
 }

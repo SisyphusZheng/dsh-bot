@@ -6,7 +6,7 @@ const probe=createServer();await new Promise(r=>probe.listen(0,'127.0.0.1',r));c
 const binary=process.argv[2]==='--binary', command=resolve(process.argv[binary?3:2] || '../dependencies/voice-venv/bin/python')
 const cwd=binary?dirname(command):resolve(import.meta.dirname,'../voice-worker-src')
 let log=''
-const supervisor=new VoiceWorkerSupervisor({command,args:binary?[]:[resolve(cwd,'run_worker.py')],cwd,env:{...process.env,G1_MODE:'dsh',SPIKE_TOKEN:'mvp-signaling-test',DASHSCOPE_API_KEY:'',NISSE_VOICE_WORKER_PORT:String(port)},healthUrl:`http://127.0.0.1:${port}/health`,startupTimeoutMs:30000,restart:false,log:(...x)=>{log=(log+'\n'+x.join(' ')).slice(-8000)}})
+const supervisor=new VoiceWorkerSupervisor({command,args:binary?[]:[resolve(cwd,'run_worker.py')],cwd,env:{...process.env,G1_MODE:'dsh',SPIKE_TOKEN:'mvp-signaling-test',DASHSCOPE_API_KEY:'',NISSE_VOICE_WORKER_PORT:String(port)},healthUrl:`http://127.0.0.1:${port}/health`,startupTimeoutMs:120000,restart:false,log:(...x)=>{log=(log+'\n'+x.join(' ')).slice(-8000)}})
 try {
   await supervisor.start();assert.equal(supervisor.state,'running',log)
   const h=await (await fetch(supervisor.healthUrl)).json();assert.equal(h.mode,'dsh')

@@ -10,14 +10,6 @@
     "tag": "dsh-v0.2.1-rc.3",
     "commit": "1f81c047fc48fa190a683e469daa699857e9afe8"
   },
-  "nativeInput": {
-    "release": "v0.0.1-beta",
-    "asset": "dsh-bot-0.0.1-beta-mac-arm64-unsigned.dmg",
-    "assetId": 674288815,
-    "bytes": 779421007,
-    "sha256": "76d13562a33d2efcc1aa6846710bcf2c2e25a7eb1b74e55277fc559780998cd2",
-    "use": "Pet native Electron/dependencies with current source overlay; voice client transport; Hindsight/ONNX/pg0 binaries only"
-  },
   "voice": {
     "pipecat": "1.13.0",
     "python": "3.12.13",
@@ -29,7 +21,8 @@
     "voice": "Cherry",
     "source": "product/voice-worker-src",
     "lock": "requirements-macos.lock",
-    "nativeWorker": "rebuilt from current source; not reused"
+    "nativeWorker": "rebuilt from current source; not reused",
+    "lockSha256": "25f50968d35614d5b05dd404c980e8b0f370dd02b3c3d99e5fec53f8b605fa38"
   },
   "memory": {
     "hindsight": "1.0.0",
@@ -37,18 +30,21 @@
     "pg0": "0.15.2",
     "postgres": "18.1.0",
     "embedding": "Xenova/multilingual-e5-small@761b726d",
-    "onnxModelSha256": "4d24e2bc01a447951524466ef533e52944bf48509e6552810bcee1a2711cb02c"
+    "onnxModelSha256": "4d24e2bc01a447951524466ef533e52944bf48509e6552810bcee1a2711cb02c",
+    "source": "product/memory/requirements-macos.lock + HindsightAPI.spec",
+    "lockSha256": "41c85dcbf7a6879fda10166fc9fbbc6fd7cdfd3adaf1aa8a28458856d0da79bf",
+    "embeddingModelId": "intfloat/multilingual-e5-small (same local quantized weights; preserve existing bank metadata)"
   },
   "voiceClient": {
     "pipecatClient": "1.14.0",
     "smallWebrtcTransport": "1.11.0",
-    "compatibility": "Existing authenticated SmallWebRTC signaling and RTVI frames; source worker startup and protocol tests, real microphone pending"
+    "compatibility": "Official Pipecat SDK + SmallWebRTC, authenticated same-origin signaling and RTVI. Native microphone acceptance pending.",
+    "pnpmLockSha256": "b42193f1f9f70315689e72b2bc3fd359513af1c150dea496ae87e4d278f8bb4c"
   },
   "pet": {
-    "version": "2.0.1",
-    "electron": "43.6.0",
-    "source": "product/pet/src",
-    "nativeDependencies": "pinned existing release; sources overlaid and ASAR integrity refreshed"
+    "source": "apps/desktop/src/pet-runtime.ts + apps/desktop/resources/pet",
+    "animation": "apps/desktop/resources/whale-girl",
+    "electron": "44.7.0 (shared desktop process, no nested Electron)"
   },
   "hostIntegration": {
     "version": "0.1.0",

@@ -36,6 +36,15 @@ import { buildBotSettingsPage } from './bot-settings-page.ts'
 export { DEFAULT_BOT_CONFIG } from './bot-settings-model.ts'
 export type { BotConfig, BotConfigView } from './bot-settings-model.ts'
 
+function assertCredentialDestination(stored:BotConfig,input:unknown):void {
+  if(!input||typeof input!=='object')return
+  for(const section of ['llm','voice'] as const){
+    const edit=(input as Record<string,unknown>)[section];if(!edit||typeof edit!=='object')continue
+    const fields=edit as Record<string,unknown>,before=stored[section]
+    if(before.apiKey&&!String(fields['apiKey']||'').trim()&&((fields['baseUrl']!==undefined&&String(fields['baseUrl']).trim()!==before.baseUrl)||(fields['provider']!==undefined&&fields['provider']!==before.provider)))throw new Error('KEY_REQUIRED_FOR_NEW_DESTINATION')
+  }
+}
+
 export const BOT_CONFIG_PORT = 59100
 
 /** The settings page and the config service share one loopback origin; this path serves the embedded page. */
@@ -92,7 +101,7 @@ export interface BotConfigHooks {
 export interface BotConfigServerOptions {
   readonly fetchImpl?: typeof fetch
   readonly testTimeoutMs?: number
-  /** Encrypted provider-key storage; when present, keys never reach config.json. */
+  /** DSH provider-key storage; when present, keys never reach config.json. */
   readonly secrets?: SecretAccess
 }
 
@@ -178,6 +187,10 @@ export async function startBotConfigServer(
     res.setHeader('access-control-allow-methods', 'GET, POST, PUT, OPTIONS')
     res.setHeader('access-control-allow-headers', 'content-type, x-dsh-bot-token')
     if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return }
+    const requestUrl=new URL(req.url||'/','http://127.0.0.1')
+    const supplied=Buffer.from(String(req.headers['x-dsh-bot-token']||(settingsDocument?requestUrl.searchParams.get('token'):'')||'')),expected=Buffer.from(token)
+    if(supplied.length!==expected.length||!timingSafeEqual(supplied,expected)){reply(401,{ ok:false,error:'UNAUTHORIZED' });return}
+    res.setHeader('referrer-policy','no-referrer')
     try {
       const url = new URL(req.url || '/', 'http://127.0.0.1')
       if (url.pathname === SETTINGS_PATH) {
@@ -191,14 +204,12 @@ export async function startBotConfigServer(
       if (url.pathname === '/bot/status' && req.method === 'GET') { reply(200, { ok: true, status: hooks.status?.() ?? null }); return }
       if (url.pathname === '/bot/open-settings' && req.method === 'POST') { reply(200, { ok: true, result: await hooks.onOpenSettings?.() ?? null }); return }
       if (url.pathname === '/bot/approval' && req.method === 'POST') {
-        const supplied = Buffer.from(String(req.headers['x-dsh-bot-token'] || ''))
-        const expected = Buffer.from(token)
-        if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) { reply(401, { ok: false, error: 'UNAUTHORIZED' }); return }
         const body = await readBody(req).catch(() => ({})) as { id?: string; decision?: string }
         const result = await hooks.onApproval?.(String(body.id || ''), String(body.decision || '')) ?? null
         reply(200, { ok: true, result })
         return
       }
+      if(url.pathname==='/bot/restart'&&req.method==='POST'){reply(200,{ ok:true,result:await hooks.onRestart?.()??null });return}
       if (url.pathname === '/bot/toggle-main' && req.method === 'POST') { reply(200, { ok: true, result: await hooks.onToggleMain?.() ?? null }); return }
       if (url.pathname === '/bot/workspace/pick' && req.method === 'POST') {
         try {
@@ -343,7 +354,8 @@ export async function startBotConfigServer(
       if (url.pathname === '/bot/config' && req.method === 'GET') { reply(200, { ok: true, config: toBotConfigView(await readConfig()) }); return }
       if (url.pathname === '/bot/config' && (req.method === 'PUT' || req.method === 'POST')) {
         const stored = await readConfig()
-        const merged = mergeBotConfigEdit(stored, await readBody(req))
+        const input=await readBody(req);assertCredentialDestination(stored,input)
+        const merged = mergeBotConfigEdit(stored, input)
         const config = await writeConfig(merged)
         await hooks.onConfigSaved?.(config, stored)
         reply(200, { ok: true, config: toBotConfigView(config) })
@@ -352,6 +364,7 @@ export async function startBotConfigServer(
       if (url.pathname === '/bot/test/llm' && req.method === 'POST') {
         const stored = await readConfig()
         const body = await readBody(req).catch(() => ({})) as { llm?: Partial<BotConfig['llm']> }
+        assertCredentialDestination(stored,body)
         const merged = mergeBotConfigEdit(stored, { llm: { ...stored.llm, ...(body.llm || {}) } })
         const result: ProviderTestResult = await testLlmProvider(merged.llm, testDeps)
         reply(200, { ok: true, result })
@@ -360,6 +373,7 @@ export async function startBotConfigServer(
       if (url.pathname === '/bot/test/voice' && req.method === 'POST') {
         const stored = await readConfig()
         const body = await readBody(req).catch(() => ({})) as { voice?: Partial<BotConfig['voice']> }
+        assertCredentialDestination(stored,body)
         const merged = mergeBotConfigEdit(stored, { voice: { ...stored.voice, ...(body.voice || {}) } })
         const result: ProviderTestResult = await testVoiceProvider(merged.voice, testDeps)
         reply(200, { ok: true, result })
@@ -367,7 +381,7 @@ export async function startBotConfigServer(
       }
       reply(404, { ok: false, error: 'not found' })
     } catch (error) {
-      reply(500, { ok: false, error: errorMessage(error) })
+      reply(errorMessage(error)==='KEY_REQUIRED_FOR_NEW_DESTINATION'?400:500, { ok: false, error: errorMessage(error) })
     }
   })
   const actualPort = await new Promise<number>((resolve, reject) => {

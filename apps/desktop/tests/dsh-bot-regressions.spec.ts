@@ -4,9 +4,15 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { request } from 'node:http'
 import { DshCredentialStore } from '../src/secret-store.ts'
-import { startBotConfigServer } from '../src/bot-config-server.ts'
+import { startBotConfigServer as createBotConfigServer } from '../src/bot-config-server.ts'
 import type { BotConfig } from '../src/bot-settings-model.ts'
 
+const authTokens=new Map<number,string>()
+async function startBotConfigServer(...args:Parameters<typeof createBotConfigServer>){
+  const server=await createBotConfigServer(...args)
+  authTokens.set(server.port,server.token)
+  return server
+}
 const folders: string[] = []
 const servers: Array<() => Promise<void>> = []
 function folder(): string {
@@ -24,12 +30,12 @@ function http(port: number, path: string, method = 'GET', body: object | null = 
     const json = body === null ? '' : JSON.stringify(body)
     const req = request({
       host: '127.0.0.1', port, path, method,
-      headers: { ...(json ? { 'content-type': 'application/json', 'content-length': Buffer.byteLength(json) } : {}), ...headers },
-    }, res => {
+      headers: { 'x-dsh-bot-token':authTokens.get(port)||'', ...(json ? { 'content-type': 'application/json', 'content-length': Buffer.byteLength(json) } : {}), ...headers },
+    }, (res) => {
       let text = ''
-      res.on('data', chunk => { text += String(chunk) })
+      res.on('data', (chunk) => { text += String(chunk) })
       res.on('end', () => {
-        try { resolve({ status: res.statusCode ?? 0, data: JSON.parse(text) as Record<string, any> }) }
+        try { resolve({ status: res.statusCode ?? 0, data: JSON.parse(text) as Record<string, unknown> }) }
         catch (error) { reject(error) }
       })
     })

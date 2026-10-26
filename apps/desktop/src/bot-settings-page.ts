@@ -10,7 +10,7 @@
  *  - GET  `/bot/prompt/preview`                     (assembled persona prompt + voice prefix)
  *  - POST `/bot/memory/list|correct|delete|history` (memory administration)
  *  - POST `/bot/memory/search|export|forget`        (existing memory actions)
- *  - GET  `/bot/status`, POST `/bot/restart`        (existing voice gateway runtime)
+ *  - GET  `/bot/status`, POST `/bot/restart`        (owned Pipecat voice runtime)
  *
  * `catalogJson` is the provider catalog serialized by bot-config-server (never secrets).
  * The generated `<script>` body is validated with `new Function` by the node test suite, so
@@ -106,8 +106,7 @@ var SCHEMA = [
     {key:'baseUrl', label:'服务地址', type:'text'},
     {key:'model', label:'模型', type:'text'},
     {key:'voice', label:'音色', type:'text'},
-    {key:'apiKey', label:'API Key', type:'password'},
-    {key:'wakeWord', label:'唤醒词', type:'text'}
+    {key:'apiKey', label:'API Key', type:'password'}
   ]},
   {id:'llm', label:'LLM 模型', kind:'fields', test:'llm', fields:[
     {key:'provider', label:'供应商', type:'select', options:CATALOG.llm.map(function(p){return [p.id,p.label]})},
@@ -337,7 +336,7 @@ function renderPermissionsPanel(panel){
   panel.appendChild(hint('Bot 代替你操作电脑时，什么时候需要你确认。保存后由桌宠与 DSH 按此执行。'));
   var modes = [
     ['ask-each', '每次操作都问', '每个工具调用前都弹出审批气泡（最谨慎，默认）。'],
-    ['ask-before', '操作前批一次', '执行一组操作前确认一次，组内自动继续。'],
+    ['ask-before-acting', '操作前批一次', '执行一组操作前确认一次，组内自动继续。'],
     ['ask-once', '一次授权 N 分钟', '确认一次后在 N 分钟内不再询问。'],
     ['never-ask', '从不询问', '不再弹出审批（危险：Bot 可以直接改动电脑）。']
   ];
@@ -380,7 +379,7 @@ function renderPermissionsPanel(panel){
   panel.appendChild(el('div', 'divider'));
   panel.appendChild(el('div', 'panel-title', '行为'));
   var behavior = config.behavior || {pauseOnInput:true, allowScreenView:false};
-  panel.appendChild(buildCheckboxRow('碰键鼠立即暂停', '检测到你主动使用鼠标/键盘时，暂停正在进行的任务并等你指示。', 'pauseOnInput', behavior.pauseOnInput !== false));
+  var inputNote=document.createElement('p');inputNote.textContent='当前候选使用桌宠停止按钮或语音打断；全局键鼠自动暂停和唤醒词尚未接入当前桌宠。';panel.appendChild(inputNote);
   panel.appendChild(buildCheckboxRow('允许查看屏幕', '允许 Bot 截取屏幕内容（需要系统屏幕录制权限）。', 'allowScreenView', behavior.allowScreenView === true));
   panel.appendChild(hint('审批模式与行为开关保存在 Bot 配置（config.json，权限 0600）里，实际执行由 main.ts / host-integration / 桌宠接线后生效。'));
 }

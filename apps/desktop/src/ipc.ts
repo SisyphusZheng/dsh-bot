@@ -6,6 +6,7 @@ import type { DesktopBrowserBridge } from '@deepseek-ai/dsh-client-ui-sidebar-br
 
 /** IPC channel names kept private to the desktop application bundle. */
 export const DESKTOP_IPC = {
+  botSettings:'dsh-desktop:bot-settings',
   shortcutsInput: 'dsh-desktop:shortcuts-input',
   shortcutsCloseWindow: 'dsh-desktop:shortcuts-close-window',
   shortcutsGet: 'dsh-desktop:shortcuts-get',
@@ -70,6 +71,8 @@ export interface DesktopUpdatePresentation {
 
 /** Product documents cannot supply update versions, package URLs, or installation authorization. */
 export interface DshDesktopProductApi {
+  /** Authenticated settings URL for the owned main renderer. */
+  botSettingsUrl():Promise<string>
   readonly protocolVersion: 1
   readonly browser: DesktopBrowserBridge
   readonly keyboard: DesktopKeyboardApi

@@ -1,0 +1,4 @@
+/workspace/scratch/f6ba7254d459/memory-boot-home/.pg0/installation/18.1.0/bin/postgres: error while loading shared libraries: libicuuc.so.70: cannot open shared object file: No such file or directory
+no data was returned by command ""/workspace/scratch/f6ba7254d459/memory-boot-home/.pg0/installation/18.1.0/bin/postgres" -V"
+command not found
+initdb: error: program "postgres" is needed by initdb but was not found in the same directory as "/workspace/scratch/f6ba7254d459/memory-boot-home/.pg0/installation/18.1.0/bin/initdb"

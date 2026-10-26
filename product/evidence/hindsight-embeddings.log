@@ -1,0 +1,2 @@
+[transformers] PyTorch was not found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+{"ok": true, "check": "offline-embeddings", "dimensions": 384, "scores": [0.9032000073776925, 0.8288180622970148]}

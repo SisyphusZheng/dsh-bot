@@ -1,11 +1,12 @@
 /** Semantic retrieval and persistence acceptance against an actual running Hindsight service. */
 import { readFileSync, writeFileSync } from 'node:fs'
+import {randomBytes} from 'node:crypto'
 import assert from 'node:assert/strict'
 const [descriptorPath,markerPath,mode='write',bridgePath]=process.argv.slice(2),d=JSON.parse(readFileSync(descriptorPath))
 const call=async(path,body)=>{const r=await fetch(d.url+path,{method:'POST',headers:{authorization:`Bearer ${d.token}`,'content-type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(60000)});const j=await r.json();assert.equal(r.status,200,JSON.stringify(j));assert.equal(j.ok,true,JSON.stringify(j));return j}
 const health=await fetch(d.url+'/health',{headers:{authorization:`Bearer ${d.token}`}});assert.equal((await health.json()).ok,true)
 if(mode==='write'){
-  const marker='mvp-'+Date.now()
+  const marker='mvp-'+[...randomBytes(24)].map(x=>String.fromCharCode(97+x%26)).join('')
   await call('/write',{items:[{kind:'preference',namespace:'global',text:`我喜欢无糖拿铁，常去的咖啡店叫海风咖啡。记录编号 ${marker}`}],opts:{source:{sessionId:'mvp-session-1'}}})
   writeFileSync(markerPath,JSON.stringify({marker}),{mode:0o600})
   if(bridgePath){const b=JSON.parse(readFileSync(bridgePath));const base=`http://127.0.0.1:${b.port}`;const before=await (await fetch(base+'/health')).json();const r=await fetch(base+'/conversation/new',{method:'POST',headers:{authorization:`Bearer ${b.token}`,'content-type':'application/json'},body:'{}'});assert.equal(r.status,200);const after=await(await fetch(base+'/health')).json();assert.ok(before.agent?.sessionId);assert.ok(after.agent?.sessionId);assert.notEqual(after.agent.sessionId,before.agent.sessionId)}

@@ -16,13 +16,13 @@ it('allows the application origin and authenticates approval mutations', async (
   const server=await startBotConfigServer(home,0,{ onApproval:async()=>{decisions++;return { ok:true }} })
   const base=`http://127.0.0.1:${server.port}`
   try {
-    const headers={ origin:'dsh-app://app','sec-fetch-site':'cross-site' }
+    const headers={ origin:'dsh-app://app','sec-fetch-site':'cross-site','x-dsh-bot-token':server.token }
     const r=await fetch(base+'/bot/config',{ headers }); expect(r.status).toBe(200);expect(r.headers.get('access-control-allow-origin')).toBe('dsh-app://app')
     expect((await fetch(base+'/bot/config',{ headers:{ origin:'https://evil.example' } })).status).toBe(403)
-    expect((await fetch(base+'/bot/approval',{ method:'POST',headers,body:'{}' })).status).toBe(401)
+    expect((await fetch(base+'/bot/approval',{ method:'POST',headers:{ origin:'dsh-app://app' },body:'{}' })).status).toBe(401)
     expect((await fetch(base+'/bot/approval',{ method:'POST',headers:{ ...headers,'x-dsh-bot-token':server.token },body:'{}' })).status).toBe(200);expect(decisions).toBe(1)
     expect((await fetch(base+'/bot/approval',{ method:'OPTIONS',headers })).status).toBe(204)
-    const page=await fetch(base+'/bot/settings',{ headers });expect(page.status).toBe(200);expect(page.headers.get('content-security-policy')).toContain('dsh-app://app');expect(await page.text()).toContain(server.token)
+    const page=await fetch(base+'/bot/settings?token='+server.token,{ headers });expect(page.status).toBe(200);expect(page.headers.get('content-security-policy')).toContain('dsh-app://app');expect(await page.text()).toContain(server.token)
   } finally {await server.close();rmSync(home,{ recursive:true,force:true })}
 })
 it('resolves the official compiled LLM from the runtime contract and clears managed keys', () => {
