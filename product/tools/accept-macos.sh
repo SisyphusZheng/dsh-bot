@@ -19,26 +19,30 @@ node product/tools/macos-artifacts.mjs app "$RUN/dsh-bot.app"
 BIN="$RUN/dsh-bot.app/Contents/MacOS/dsh-bot"
 file "$BIN" | grep -q arm64
 PID=''
-stop_app(){ if [[ -n "$PID" ]]; then kill -TERM "$PID" 2>/dev/null || true; for i in {1..60}; do kill -0 "$PID" 2>/dev/null || break; sleep 0.5; done; if kill -0 "$PID" 2>/dev/null; then echo 'FAIL shutdown deadline'; return 1; fi; wait "$PID" || true; PID=''; fi; }
-trap stop_app EXIT
-start_app(){ env -u ELECTRON_RUN_AS_NODE -u NODE_OPTIONS HOME="$RUN/home" CFFIXED_USER_HOME="$RUN/home" "$BIN" --user-data-dir="$RUN/user-data" > "$RUN/app-$1.log" 2>&1 & PID=$!; }
-wait_ready(){ for i in {1..300}; do [[ -f "$RUN/user-data/dsh-home/memory/runtime.json" && -f "$RUN/user-data/dsh-home/bot/bridge.json" ]] && return; kill -0 "$PID" 2>/dev/null || { echo 'FAIL app exited'; return 1; }; sleep 1; done; echo 'FAIL readiness deadline'; return 1; }
+record(){ node product/tools/record-macos-acceptance.mjs "$RUN" "$MANIFEST" "$@"; }
+record initialize
+stop_app(){ if [[ -n "$PID" ]]; then kill -TERM "$PID" 2>/dev/null || true; for i in {1..60}; do kill -0 "$PID" 2>/dev/null || break; sleep 0.5; done; if kill -0 "$PID" 2>/dev/null; then echo 'FAIL shutdown deadline'; record shutdown FAIL; return 1; fi; local code=0; wait "$PID" || code=$?; PID=''; if [[ $code -ne 0 ]]; then echo "FAIL App exit status $code"; record shutdown FAIL; return 1; fi; fi; }
+cleanup(){ local result=$?; trap - EXIT; if ! stop_app; then result=1; fi; if [[ $result -ne 0 ]]; then record overall FAIL; fi; exit "$result"; }
+trap cleanup EXIT
+start_app(){ rm -f "$RUN/user-data/DevToolsActivePort"; env -u ELECTRON_RUN_AS_NODE -u NODE_OPTIONS HOME="$RUN/home" CFFIXED_USER_HOME="$RUN/home" "$BIN" --user-data-dir="$RUN/user-data" --remote-debugging-address=127.0.0.1 --remote-debugging-port=0 > "$RUN/app-$1.log" 2>&1 & PID=$!; }
+phase(){ local name=$1; shift; echo "START $name"; if "$@"; then record "$name" PASS; else record "$name" FAIL; return 1; fi; }
+wait_ready(){
+  local launch=$1
+  phase "$launch-bridge" node product/tools/wait-agent-ready.mjs "$RUN/user-data/dsh-home/bot/bridge.json"
+  phase "$launch-web-boot-and-navigation" node product/tools/desktop-web-acceptance.mjs "$RUN/user-data" "$RUN/user-data/dsh-home/bot/bridge.json" "$RUN/web-$launch.json"
+  phase "$launch-memory" node product/tools/wait-memory-ready.mjs "$RUN/user-data/dsh-home/memory/runtime.json"
+}
+descriptors_gone(){ [[ ! -f "$RUN/user-data/dsh-home/memory/runtime.json" && ! -f "$RUN/user-data/dsh-home/bot/bridge.json" ]]; }
 start_app first
-wait_ready
-node product/tools/wait-agent-ready.mjs "$RUN/user-data/dsh-home/bot/bridge.json"
-node product/tools/memory-acceptance.mjs "$RUN/user-data/dsh-home/memory/runtime.json" "$RUN/marker.json" write "$RUN/user-data/dsh-home/bot/bridge.json"
-stop_app
-[[ ! -f "$RUN/user-data/dsh-home/memory/runtime.json" && ! -f "$RUN/user-data/dsh-home/bot/bridge.json" ]]
+wait_ready first
+phase memory-write-and-cross-session node product/tools/memory-acceptance.mjs "$RUN/user-data/dsh-home/memory/runtime.json" "$RUN/marker.json" write "$RUN/user-data/dsh-home/bot/bridge.json"
+phase first-shutdown stop_app
+phase first-descriptor-cleanup descriptors_gone
 start_app restart
-wait_ready
-node product/tools/wait-agent-ready.mjs "$RUN/user-data/dsh-home/bot/bridge.json"
-node product/tools/memory-acceptance.mjs "$RUN/user-data/dsh-home/memory/runtime.json" "$RUN/marker.json" verify
-stop_app
+wait_ready restart
+phase memory-restart-recall node product/tools/memory-acceptance.mjs "$RUN/user-data/dsh-home/memory/runtime.json" "$RUN/marker.json" verify
+phase restart-shutdown stop_app
+phase restart-descriptor-cleanup descriptors_gone
 trap - EXIT
-node --input-type=module - "$RUN" "$MANIFEST" <<'JS'
-import {readFileSync,writeFileSync} from 'node:fs'
-import {join} from 'node:path'
-const [run,manifest]=process.argv.slice(2),build=JSON.parse(readFileSync(manifest))
-writeFileSync(join(run,'RESULTS.json'),JSON.stringify({sourceCommit:build.sourceCommit,dmg:build.artifact,acceptedAt:new Date().toISOString(),scope:'isolated macOS ARM64 app, Host readiness, real Hindsight paraphrase recall and restart persistence',status:'PASS',voice:'BLOCKED-EXTERNAL: real provider/microphone not exercised by this script',visual:'DEFERRED: compare native desktop interaction manually'},null,2)+'\n')
-JS
+record overall PASS
 echo "PASS macOS app start/stop/restart and Hindsight semantic persistence. Evidence: $RUN"

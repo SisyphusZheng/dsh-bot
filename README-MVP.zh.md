@@ -1,4 +1,6 @@
-# dsh-bot macOS MVP Candidate
+# dsh-bot macOS MVP — 启动修复待本机复验
+
+`28776d20` 已被本机验收判为 **FAIL**：客户端插件交付为裸 ESM，导致打包 App web boot 崩溃。本分支修复构建格式、删除错误 profile 行，并修复缓存导航早于官方 Session 列表到达的竞态。Linux 完整生产 UI 已通过；新 DMG 的 macOS 启动、Memory 和退出仍须复验，不宣称已通过本机验收。证据见 `product/evidence/web-boot-fix/RESULTS.json`。
 
 目标：Apple Silicon、macOS 14+。DSH 是唯一 Agent Runtime，固定为官方 0.2.1-rc.3；产品版本独立为 0.0.1-beta。组件来源和 SHA-256 见 `product/versions.json`。
 
@@ -20,7 +22,7 @@ Desktop、桌宠前端、VoiceWorker 和 Hindsight 都从本分支源码及锁�
 bash product/tools/accept-macos.sh /absolute/path/to/new-candidate.dmg
 ```
 
-验收脚本复制应用到独立目录、隔离 HOME 和 user-data；等待真实 Host/Memory 就绪，写入中文咖啡偏好，以不同措辞检索，切换 Agent Session、退出、重启后再次检索，并检查描述符清理。检索失败直接失败，不以 health=ready 代替记忆质量。
+验收脚本复制应用到独立目录、隔离 HOME 和 user-data；分别记录 Bridge、web boot/桌宠双击导航、Memory 的就绪结果。仅在验收启动参数中开启随机 loopback DevTools 端口，实际向桌宠画面发送双击，检查 DSH 完成启动，并以官方 `dsh.sessions.current` 对照 Bridge 的 Bot Session；正常启动不会开启该端口。随后写入中文咖啡偏好，以不同措辞检索，切换 Agent Session、退出、重启后再次检索，并检查描述符清理。失败也写入绑定源码 SHA 的 `RESULTS.json`，web 阶段尽可能保留页面截图；检索失败直接失败，不以 health=ready 代替记忆质量。物理鼠标穿透、Spaces 与 TCC 仍需手动验收。
 
 正常启动应用后，在 DSH 设置 → Bot 中填写 LLM 和 DashScope Key。当前语音由 **Pipecat 1.13.0** 编排，链路是 Qwen Realtime ASR → 同一个 DSH Agent → Qwen Realtime TTS；语音模型不承担第二套 Agent。默认 ASR `qwen3-asr-flash-realtime`、TTS `qwen3-tts-flash-realtime`、音色 Cherry。提供其他供应商选项需要真实实现后再添加。
 

@@ -23,10 +23,18 @@ test('actual ASAR metadata identifies a clean candidate and rejects a dirty or o
  const dir=mkdtempSync(join(tmpdir(),'pet-asar-')),source=join(dir,'source'),app=join(dir,'fixture.app'),resources=join(app,'Contents/Resources')
  try{
   mkdirSync(source);mkdirSync(resources,{recursive:true})
+  const plugin=join(resources,'host-integration');mkdirSync(join(plugin,'lib'),{recursive:true})
+  writeFileSync(join(plugin,'package.json'),JSON.stringify({name:'nisse-host-integration',exports:{'./client':'./lib/client.js'}}))
+  const classic='window.__ModuleLoader__.load({id:"nisse-host-integration",factory:()=>({inject:["uiWorkspace"],apply(){}})})'
+  writeFileSync(join(plugin,'lib/client.js'),classic)
   for(const [sha,dirty,valid] of [[commit,false,true],[commit,true,false],['0'.repeat(40),false,false]]){
    writeFileSync(join(source,'package.json'),JSON.stringify({name:'explicit-fixture',dshBuildCommit:sha,dshBuildDirty:dirty}))
    await createPackage(source,join(resources,'app.asar'))
    const result=call(['app',app]);assert.equal(result.status===0,valid,result.stderr)
   }
+  writeFileSync(join(source,'package.json'),JSON.stringify({name:'explicit-fixture',dshBuildCommit:commit,dshBuildDirty:false}))
+  await createPackage(source,join(resources,'app.asar'))
+  writeFileSync(join(plugin,'lib/client.js'),'export function apply() {}')
+  const invalid=call(['app',app]);assert.notEqual(invalid.status,0);assert.match(invalid.stderr,/Unexpected token 'export'/)
  }finally{rmSync(dir,{recursive:true,force:true})}
 })

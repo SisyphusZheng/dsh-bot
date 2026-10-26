@@ -26,6 +26,7 @@ npx --yes pnpm@11.28.5 install --frozen-lockfile
 node product/tools/verify-upstream.mjs
 node --test product/pet/tests/*.test.mjs nisse/packages/host-integration/tests/*.test.mjs product/tools/tests/*.test.mjs
 npx --yes pnpm@11.28.5 run build
+npx --yes pnpm@11.28.5 exec vitest run apps/desktop/tests/host-client-bundle.spec.ts
 if ! "$STAGE/voice-venv/bin/python" -c 'import sys; assert sys.version_info[:3] == (3,12,13)' >/dev/null 2>&1; then
   uv venv --clear --python 3.12.13 "$STAGE/voice-venv"
 fi

@@ -63,6 +63,9 @@
     "version": "0.1.0",
     "source": "nisse/packages/host-integration",
     "runtime": "same DSH agent and session as desktop",
-    "voiceTransport": "authenticated /voice/turn NDJSON"
+    "voiceTransport": "authenticated /voice/turn NDJSON",
+    "clientSource": "src/client/index.js; built by official packages/client/tsdown.client.ts",
+    "clientFormat": "classic script with window.__ModuleLoader__.load factory; generated lib/client.js",
+    "navigation": "latest requested Bot Session after official sessions.list confirms membership"
   }
 }

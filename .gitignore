@@ -70,6 +70,8 @@ apps/desktop/resources/pet/voice-worker-runtime.mjs
 apps/desktop/resources/pet/voice-worker-supervisor.mjs
 
 # Generated companion lifecycle modules (sources: product/pet/src)
+nisse/packages/host-integration/lib/client.js
+nisse/packages/host-integration/lib/client.js.map
 apps/desktop/resources/pet/bubble-window.mjs
 apps/desktop/resources/pet/desktop-surface-layout.mjs
 apps/desktop/resources/pet/orb-placement.mjs
