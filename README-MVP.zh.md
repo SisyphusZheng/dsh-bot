@@ -26,15 +26,15 @@ bash product/tools/accept-macos.sh /absolute/path/to/new-candidate.dmg
 
 正常启动应用后，在 DSH 设置 → Bot 中填写 LLM 和 DashScope Key。当前语音由 **Pipecat 1.13.0** 编排，链路是 Qwen Realtime ASR → 同一个 DSH Agent → Qwen Realtime TTS；语音模型不承担第二套 Agent。默认 ASR `qwen3-asr-flash-realtime`、TTS `qwen3-tts-flash-realtime`、音色 Cherry。提供其他供应商选项需要真实实现后再添加。
 
-配置完成后启动默认只留桌宠，首次未配置时显示设置/登录入口。双击打开同一个 Bot Session；关闭主窗口后桌宠继续运行。右键桌宠开启/关闭语音，任务运行时可选择“停止任务”。空闲时无常驻按钮和欢迎气泡。审批与结构化提问按请求显示“是/否”、N 个选项、多选或文本输入；回答失败可重试，一端回答后另一端同步撤销。普通反馈自动消失，等待回答的气泡保留。
+正常启动保留独立桌宠；首次显示可暂停、续接和重来的气泡引导，配置称呼、人格、模型、语音和审批。双击打开同一个 Bot Session；关闭主窗口后桌宠继续运行。悬停显示麦克风、实际监听音量和按键提示；空闲不常驻按钮，反馈气泡自动消失。右键可选择按住／切换／常听模式、说话键、语言、皮肤、隐藏和自动休眠，任务卡片可打开会话或停止任务。审批与结构化提问按请求显示“是/否”、N 个选项、多选或文本输入；回答失败可重试，一端回答后另一端同步撤销。普通反馈自动消失，等待回答的气泡保留。
 
-“操作键鼠时暂停任务”开关已恢复，采用旧版系统 idle 轮询策略，有启动宽限期，等待审批时不触发。可设置连接后的唤醒短语：麦克风开启时音频仍会送到 ASR，识别到短语后开放 30 秒连续对话；留空即直接对话。这不是旧版独立离线 Sherpa 唤醒器，后者仍为 DEFERRED。允许麦克风权限；按实际工具需要，在系统设置中允许辅助功能/屏幕录制。连续对话 10 轮，播放中说“等一下”或自然提出新问题，确认旧播报停止、旧文本不再送入 TTS。让它创建工作区外临时文件，分别验证批准、拒绝和取消；重启后确认长期记忆仍可检索。
+“操作键鼠时暂停任务”继续采用系统 idle 轮询策略，有启动宽限期，等待审批时不触发。全局 Option 在 macOS 通过随包 koffi 读取，其他系统回退到明确显示的组合快捷键；鼠标侧键在悬停桌宠时使用。离线 Sherpa 唤醒已移回，构建时校验并打包模型，待机音频仅在本机检测，唤醒后才连接 Pipecat。右键可修改唤醒词及显示桌宠快捷键；麦克风手动开启后直接对话。旧 Nisse／NissePet 偏好、引导断点、位置和合法皮肤只读迁移到 dsh-bot/pet，原文件保留，凭据不复制进偏好。
 
 ## 在线设置与清理
 
 保存人格、权限和模型配置不会刷新主窗口、重启 Host 或更换 Agent Session，变更从下一次 Agent 步骤生效。只改语音配置时，单独重启 Pipecat Worker 并重连音频；Memory 开关只管理 Memory 服务。保存失败会显示错误，避免把落盘误报为应用成功。
 
-保留统一 Electron 与 Pipecat 链路，选择性恢复旧桌宠呈现代码；不恢复 Gateway 或旧 DMG 提取依赖。首次运行新构建前需退出旧版应用，避免旧 Worker 占用 8765；不会自动结束未知进程或删除个人数据库。新安装体积仍需 Mac 实测。`node product/tools/clean-builds.mjs` 默认只预览验收目录大小；确认后通过 `acceptance-<编号> --apply` 清理指定 app 副本和缓存，保留日志与个人数据库。
+保留统一 Electron 与 Pipecat 链路，恢复旧桌宠的手势、引导、皮肤、唤醒和呈现代码；不恢复 Gateway 或旧 DMG 提取依赖。首次运行新构建前需退出旧版应用，避免旧 Worker 占用 8765；不会自动结束未知进程或删除个人数据库。新安装体积仍需 Mac 实测。`node product/tools/clean-builds.mjs` 默认只预览验收目录大小；确认后通过 `acceptance-<编号> --apply` 清理指定 app 副本和缓存，保留日志与个人数据库。
 
 ## 已修复的运行契约
 
@@ -51,3 +51,5 @@ bash product/tools/accept-macos.sh /absolute/path/to/new-candidate.dmg
 Memory 的 Linux 单元/进程测试使用真实 adapter + 明确的 HTTP backend fixture，不能证明真实 Hindsight 数据库检索。当前源码冻结的 Hindsight 已通过固定 ONNX 模型的离线中文相关性检查。同一 Bot Agent 的语音与 DSH 文字请求都会检索相关记忆；生产 Host 的跨 Session 注入使用明确的 HTTP fixture 验证。当前 Work 的 PostgreSQL Linux 二进制缺少 libicuuc.so.70，进程又以 root 运行且 setuid 返回 EINVAL，G4 的数据库/跨重启检索需运行上述 Mac 验收脚本。没有将它标记为 PASS。
 
 所有验证在 Work 本地运行；未调用 GitHub Actions。仅新建无 PR 的 MVP 分支，避免仓库的 PR 工作流。不要为验收本候选版本随意创建 PR，否则已有工作流会运行。
+
+本轮恢复范围、测试证据与原生限制见 [恢复交付记录](review/pet-restoration-2026-10-27/RESULTS.json)。Mac 构建命令保持 `bash product/tools/build-macos.sh`。

@@ -477,6 +477,16 @@ async function main(): Promise<void> {
   app.on('will-quit', () => { void memoryRuntime.stop(); void botConfigServer?.close() })
   const pet = new ProductPet({ resources:development ? join(app.getAppPath(),'resources') : process.resourcesPath,
     home:app.getPath('userData'),development,appPath:app.getAppPath(),
+    settingsRequest: async (path, body, method) => {
+      if (!botConfigServer) throw new Error('Bot 设置服务尚未就绪')
+      const response = await net.fetch(`http://127.0.0.1:${botConfigServer.port}${path}`, {
+        method: method ?? (body ? 'POST' : 'GET'), headers: { 'x-dsh-bot-token': botConfigServer.token, 'content-type': 'application/json' },
+        ...(body ? { body: JSON.stringify(body) } : {}), signal: AbortSignal.timeout(20000),
+      })
+      const reply = await response.json() as Record<string, unknown>
+      if (!response.ok) throw new Error(`Bot 设置请求失败：${response.status}`)
+      return reply
+    },
     toggleMain:(reveal = false)=>{
       const window=mainWindow ?? createMainWindow()
       if(!reveal&&window.isVisible()&&window.isFocused())window.hide()

@@ -44,6 +44,8 @@ vi.mock('electron', () => ({
   Menu: { buildFromTemplate: () => ({ popup() {} }) },
   session: { fromPartition: () => ({ setPermissionCheckHandler: () => {}, setPermissionRequestHandler: () => {} }) },
   systemPreferences: {},
+  globalShortcut: { register: () => true, unregister() {} },
+  dialog: { showOpenDialog: async () => ({ filePaths: [] }) },
 }))
 import { ProductPet } from '../src/pet-runtime.ts'
 it('reconnects speech without reloading the pet document and authenticates signaling', async () => {

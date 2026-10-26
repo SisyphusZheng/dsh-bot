@@ -202,6 +202,7 @@ function renderFieldsPanel(panel, spec){
     else if (field.type === 'select'){
       input = document.createElement('select');
       for (var o = 0; o < field.options.length; o++){ var opt = document.createElement('option'); opt.value = field.options[o][0]; opt.textContent = field.options[o][1]; input.appendChild(opt); }
+      if (section[field.key] && !field.options.some(function(item){return item[0] === section[field.key]})){ var previous = document.createElement('option'); previous.value = section[field.key]; previous.textContent = section[field.key] + '（保留的旧配置；请检查兼容性）'; input.appendChild(previous); }
       input.value = section[field.key] || field.options[0][0];
     }
     else if (field.type === 'checkbox'){ input = document.createElement('input'); input.type = 'checkbox'; input.checked = section[field.key] !== false; }

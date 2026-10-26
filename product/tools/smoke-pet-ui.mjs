@@ -1,7 +1,9 @@
 /** Real Chromium rendering of shipped pet/bubble pages with an explicit IPC fixture. */
 import { createServer } from 'node:http'
-import { readFileSync, mkdirSync } from 'node:fs'
+import { readFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import { resolve, join } from 'node:path'
+import { tmpdir } from 'node:os'
+import { createPetExperience } from '../pet/src/experience-runtime.mjs'
 import { createRequire } from 'node:module'
 import assert from 'node:assert/strict'
 import { createCompanionPresentation } from '../pet/src/companion-presentation.mjs'
@@ -16,11 +18,12 @@ const server=createServer((req,res)=>{
  res.setHeader('content-type',file.endsWith('.html')?'text/html':file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':file.endsWith('.json')?'application/json':'image/webp');res.end(readFileSync(file))
 })
 await new Promise(r=>server.listen(0,'127.0.0.1',r))
-let browser,presentation,renders=Promise.resolve()
+const home=mkdtempSync(join(tmpdir(),'pet-ui-'))
+let experience;let browser,presentation,renders=Promise.resolve()
 try {
  browser=await chromium.launch({headless:true,...(process.env.DSH_CHROMIUM_EXECUTABLE?{executablePath:process.env.DSH_CHROMIUM_EXECUTABLE}:{}),args:process.platform==='linux'?['--no-sandbox','--single-process','--no-zygote','--disable-gpu','--disable-dev-shm-usage']:[]})
  const context=await browser.newContext({viewport:{width:420,height:470},deviceScaleFactor:2,reducedMotion:'reduce'}),errors=[],calls=[]
- await context.exposeBinding('bubbleAction',async(_source,action)=>presentation.action(action))
+ await context.exposeBinding('bubbleAction',async(_source,action)=>{if(!await experience?.action(action))return presentation.action(action)})
  await context.addInitScript(()=>{
   window.petBridge={state:async()=>({phase:'unconfigured'}),voiceStatus(){},onVoice(){},onVoiceCommand(){},onPresentation:fn=>{window.receivePresentation=fn},hit(){},dragStart(){},dragMove(){},dragEnd(){},openMain(){},menu(){}}
   window.petBubble={onUpdate:fn=>{window.receiveBubble=fn},action:value=>window.bubbleAction(value),setInteractive(){},requestInputFocus(){},openDsh(){}}
@@ -31,7 +34,10 @@ try {
  assert.ok(pet&&bubble)
  await pet.waitForSelector('canvas')
  await pet.waitForFunction(()=>document.querySelector('canvas')?.getContext('2d').getImageData(0,0,192,208).data.some((value,index)=>index%4===3&&value>0))
- assert.equal(await pet.locator('button').count(),0)
+ assert.equal(await pet.locator('#microphone').count(),1)
+ await page.mouse.move(0,0);assert.equal(await pet.locator('#controls').evaluate(el=>getComputedStyle(el).opacity),'0')
+ await pet.locator('#pet').hover();await pet.waitForFunction(()=>getComputedStyle(document.getElementById('controls')).opacity==='1')
+ assert.ok(await pet.locator('#microphone').isEnabled());await page.mouse.move(0,0)
  await bubble.waitForFunction(()=>getComputedStyle(document.getElementById('bubble')).opacity==='0')
  renders=Promise.resolve()
  presentation=createCompanionPresentation({show:payload=>{renders=renders.then(()=>bubble.evaluate(p=>window.receiveBubble(p),payload))},hide:()=>{renders=renders.then(()=>bubble.evaluate(()=>window.receiveBubble({visible:false})))},animate:payload=>{renders=renders.then(()=>pet.evaluate(p=>window.receivePresentation(p),payload))},send:async(...args)=>calls.push(args)})
@@ -49,8 +55,16 @@ try {
  assert.equal(calls.at(-1)[1].decision,'reject')
  presentation.sync(snapshot([]));await renders
  await bubble.waitForFunction(()=>getComputedStyle(document.getElementById('bubble')).opacity==='0')
+ experience=createPetExperience({home,window:{isDestroyed:()=>false,webContents:{send(){}}},emit(){},show:payload=>{renders=renders.then(()=>bubble.evaluate(p=>window.receiveBubble(p),payload))},hide:()=>{renders=renders.then(()=>bubble.evaluate(()=>window.receiveBubble({visible:false})))},shortcuts:{register:()=>true,unregister(){}},request:async()=>({ok:true,config:{}})})
+ experience.start();await renders
+ await bubble.getByPlaceholder('输入称呼，回车或点「好」').waitFor()
+ await page.screenshot({path:join(output,'welcome.png')})
+ await bubble.getByPlaceholder('输入称呼，回车或点「好」').fill('朋友')
+ await bubble.getByRole('button',{name:'好',exact:true}).click();await renders
+ await bubble.getByText('你希望我是什么性格？选一个，或者自己写。',{exact:true}).waitFor()
+ await bubble.locator('#bubble-close').click();await renders;assert.equal(experience.state().onboarding,false)
  assert.deepEqual(errors,[])
- console.log('PASS actual Chromium sprite rendering; silent idle; 5 dynamic choices; bound answer and approval clicks; hidden settled bubble. IPC is an explicit fixture, not native macOS acceptance.')
+ console.log('PASS actual Chromium sprite rendering; silent idle; 5 dynamic choices; bound answer and approval clicks; hidden settled bubble; real pet welcome/name/persona flow and pause. IPC is an explicit fixture, not native macOS acceptance.')
 } finally {
- presentation?.stop();await renders.catch(()=>{});await browser?.close();await new Promise(r=>{server.close(r);server.closeAllConnections()})
+ await experience?.stop();rmSync(home,{recursive:true,force:true});presentation?.stop();await renders.catch(()=>{});await browser?.close();await new Promise(r=>{server.close(r);server.closeAllConnections()})
 }

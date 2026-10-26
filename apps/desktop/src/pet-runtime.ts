@@ -1,12 +1,14 @@
 /** Own the pet window and Pipecat worker within the desktop Electron process. */
-import { BrowserWindow, ipcMain, screen, session, systemPreferences, Menu, powerMonitor } from 'electron'
+import { BrowserWindow, ipcMain, screen, session, systemPreferences, Menu, powerMonitor, globalShortcut, dialog } from 'electron'
 import { createServer, request as httpRequest, type Server } from 'node:http'
 import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { pathToFileURL } from 'node:url'
+import { createRequire } from 'node:module'
+import { resolvePetVoiceRoute } from './pet-voice-route.ts'
 import type { BotRuntimeConfig } from './bot-runtime.ts'
-type VoiceState = { phase: string; error?: string; offerUrl?: string }
+type VoiceState = { phase: string; error?: string; offerUrl?: string; notice?: string }
 type Worker = { start(): Promise<{ state: string; lastError?: string }>; stop(): Promise<unknown> }
 type WorkerModule = {
   createVoiceWorkerRuntime(options: {
@@ -38,6 +40,25 @@ type PetModules = {
   createBubbleWindowController(options: { BrowserWindow: typeof BrowserWindow; preloadPath: string; pageUrl: string }): BubbleController
   orbBubbleWindowBounds(options: { orbBounds: Electron.Rectangle; workArea: Electron.Rectangle }): Electron.Rectangle
 }
+type ExperienceState = { onboarding?: boolean; wakeWordEnabled: boolean; wakeWordPhrase: string }
+type Experience = {
+  state(): ExperienceState
+  menu(): Electron.MenuItemConstructorOptions[]
+  start(): void
+  action(value: object): Promise<boolean>
+  sync(snapshot: { requests: PendingInteraction[] }): void
+  voice(status: object): void
+  gesture(phase: string): void
+  wake(): void
+  stop(): Promise<void>
+  skinPath(id: string, name: string): string
+}
+type WakeRuntime = {
+  setEnabled(value: boolean): void
+  setKeywords(value: string): void
+  accept(audio: string, rate: number): boolean
+  stop(): Promise<void>
+}
 export class ProductPet {
   private window: BrowserWindow | null = null
   private server: Server | null = null
@@ -58,7 +79,8 @@ export class ProductPet {
   private presentation: Presentation | null = null
   private pause: { start(): void; stop(): void } | null = null
   private config: BotRuntimeConfig = {}
-  private microphone = false
+  private experience: Experience | null = null
+  private wake: WakeRuntime | null = null
   private drag: { x: number; y: number; wx: number; wy: number } | null = null
   private readonly channels = [
     'state',
@@ -68,7 +90,7 @@ export class ProductPet {
     'voice-status',
     'drag-start',
     'drag-move',
-    'drag-end', 'menu', 'hit', 'bubble-action', 'bubble-interactive', 'bubble-focus', 'bubble-open',
+    'drag-end', 'menu', 'hit', 'bubble-action', 'bubble-interactive', 'bubble-focus', 'bubble-open', 'experience', 'gesture', 'wake-audio',
   ]
   constructor(
     private readonly options: {
@@ -77,6 +99,7 @@ export class ProductPet {
       development: boolean
       appPath: string
       voicePort?: number
+      settingsRequest?(path: string, body?: object, method?: string): Promise<Record<string, unknown>>
       toggleMain(reveal?: boolean): void
     },
   ) {}
@@ -156,6 +179,12 @@ export class ProductPet {
         req.pipe(upstream)
         return
       }
+      const skinMatch = path.match(new RegExp(`^/${nonce}/skins/([a-z0-9_-]+)/(.+)$`))
+      const skinId = skinMatch?.[1], skinName = skinMatch?.[2]
+      if (skinId && skinName && skinId !== 'whale-girl' && this.experience) {
+        try { const file = this.experience.skinPath(skinId, decodeURIComponent(skinName)); res.setHeader('content-type', skinName.endsWith('.json') ? 'application/json' : 'image/webp'); res.end(readFileSync(file)); return }
+        catch { res.writeHead(404); res.end(); return }
+      }
       const item = path.startsWith(`/${nonce}/`) ? files.get(path.slice(nonce.length + 2)) : undefined
       if (!item) {
         res.writeHead(404)
@@ -166,7 +195,7 @@ export class ProductPet {
       res.setHeader('referrer-policy', 'no-referrer')
       res.setHeader(
         'content-security-policy',
-        "default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; media-src 'self' blob:",
+        "default-src 'self'; script-src 'self' 'unsafe-inline' blob:; worker-src 'self' blob:; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; media-src 'self' blob:",
       )
       res.end(readFileSync(item[0]))
     })
@@ -247,14 +276,32 @@ export class ProductPet {
       }): Presentation
     }
     this.presentation = presenter.createCompanionPresentation({
-      show: (payload) => { this.positionBubble(); this.bubble?.show(payload) },
-      hide: () => this.bubble?.hide(),
+      show: (payload) => { if (this.experience?.state().onboarding) return; this.positionBubble(); this.bubble?.show(payload) },
+      hide: () => { if (!this.experience?.state().onboarding) this.bubble?.hide() },
       animate: payload => this.window?.webContents.send('pet:presentation', payload),
       send: async (path, body) => {
         if (path === 'open') { this.options.toggleMain(true); return }
         const response = await this.request(path, body)
         if (!response.ok) throw Object.assign(new Error(`DSH request failed: ${response.status}`), { stale: response.status === 409 })
       },
+    })
+    const experienceModule = await import(pathToFileURL(join(root, 'pet/experience-runtime.mjs')).href) as {
+      createPetExperience(options: object): Experience
+    }
+    this.experience = experienceModule.createPetExperience({
+      home: this.options.home, window, emit: (channel: string, value: object) => window.webContents.send(`pet:${channel}`, value),
+      show: (payload: object) => { this.positionBubble(); this.bubble?.show(payload) }, hide: () => this.bubble?.hide(),
+      shortcuts: globalShortcut, idle: () => powerMonitor.getSystemIdleTime(), systemLanguage: process.env.LANG,
+      notice: (text: string) => this.presentation?.notice(text), openMain: () => this.options.toggleMain(true),
+      openSettings: () => {
+        if (this.options.settingsRequest) void this.options.settingsRequest('/bot/open-settings', {}).catch(() => this.presentation?.notice('打开设置失败，请双击桌宠后进入 DSH 设置。', 'error'))
+        else this.options.toggleMain(true)
+      }, nativeRequire: createRequire(join(this.options.appPath, 'package.json')),
+      request: this.options.settingsRequest ?? (async () => { throw new Error('DSH 设置服务尚未就绪，请稍后继续引导。') }),
+      dialogs: {
+        pickSkin: async () => (await dialog.showOpenDialog(window, { properties: ['openFile', 'openDirectory'], filters: [{ name: 'Pet skin', extensions: ['zip', 'json'] }] })).filePaths[0],
+        pickPreferences: async () => (await dialog.showOpenDialog(window, { properties: ['openFile'], filters: [{ name: 'Pet preferences', extensions: ['json'] }] })).filePaths[0],
+      }, onPreferences: (state: ExperienceState) => { void this.configureWake(state) },
     })
     const placement = await import(pathToFileURL(join(root, 'pet/orb-placement.mjs')).href) as {
       createOrbPlacement(options: {
@@ -301,7 +348,7 @@ export class ProductPet {
       if (sender !== this.window?.webContents) throw new Error('Unowned pet renderer')
     }
     const assertBubble = (sender: Electron.WebContents): void => { if (!this.bubble?.owns(sender)) throw new Error('Unowned bubble renderer') }
-    ipcMain.handle('pet:bubble-action', (e, value: unknown) => { assertBubble(e.sender); if (!value || typeof value !== 'object') throw new Error('Invalid action'); return this.presentation?.action(value) })
+    ipcMain.handle('pet:bubble-action', (e, value: unknown) => { assertBubble(e.sender); if (!value || typeof value !== 'object') throw new Error('Invalid action'); if ('type' in value && value.type === 'cancel' && 'id' in value && value.id === 'cancel-voice') { window.webContents.send('pet:voice-command', { action: 'disable' }); if (this.presentation?.state().working) void this.request('/cancel', {}); return } return this.experience?.action(value).then(handled => handled ? undefined : this.presentation?.action(value)) })
     ipcMain.handle('pet:bubble-interactive', (e, value: unknown) => { assertBubble(e.sender); this.bubble?.setInteractive(value === true) })
     ipcMain.handle('pet:bubble-focus', (e, value: unknown) => { assertBubble(e.sender); this.bubble?.setInputMode(value === true) })
     ipcMain.handle('pet:bubble-open', (e) => { assertBubble(e.sender); this.options.toggleMain(true) })
@@ -310,11 +357,13 @@ export class ProductPet {
       assertOwner(e.sender)
       const active = this.presentation?.state().working === true
       Menu.buildFromTemplate([
-        { label: '打开 DSH', click: () => this.options.toggleMain(true) },
-        { label: this.microphone ? '关闭语音' : '开启语音', click: () => window.webContents.send('pet:voice-command', { action: 'toggle' }) },
+        ...(this.experience?.menu() ?? []),
         ...(active ? [{ label: '停止任务', click: () => { void this.request('/cancel', {}).catch(() => this.presentation?.notice('停止失败，请打开 DSH 查看。', 'error')) } }] : []),
       ]).popup({ window })
     })
+    ipcMain.handle('pet:experience', (e) => { assertOwner(e.sender); return this.experience?.state() })
+    ipcMain.handle('pet:gesture', (e, phase: unknown) => { assertOwner(e.sender); if (phase === 'down' || phase === 'up') this.experience?.gesture(phase) })
+    ipcMain.handle('pet:wake-audio', (e, audio: unknown, rate: unknown) => { assertOwner(e.sender); if (typeof audio === 'string' && audio.length <= 100000 && rate === 16000) this.wake?.accept(audio, rate) })
     ipcMain.handle('pet:state', (e) => {
       assertOwner(e.sender)
       return this.voice
@@ -335,10 +384,10 @@ export class ProductPet {
     ipcMain.handle('pet:voice-status', (e, message: unknown) => {
       assertOwner(e.sender)
       if (message && typeof message === 'object') {
-        const status = message as { text?: string; phase?: string; enabled?: boolean; notify?: boolean }
-        if (typeof status.enabled === 'boolean') this.microphone = status.enabled
+        const status = message as { text?: string; phase?: string; enabled?: boolean; notify?: boolean; kind?: string }
+        this.experience?.voice(status)
         if (['idle', 'listening', 'speaking', 'processing'].includes(status.phase || '')) this.presentation?.voice(status.phase || 'idle')
-        if (status.notify && status.text) this.presentation?.notice(status.text)
+        if (status.notify && status.text) this.presentation?.notice(status.text, status.kind)
         this.log('voice-client', String(status.text || status.phase || '').slice(0, 400))
       } else this.log('voice-client', String(message).slice(0, 400))
     })
@@ -362,6 +411,8 @@ export class ProductPet {
       const [x, y] = window.getPosition(); position.recordPosition({ x: x || 0, y: y || 0 })
       this.positionBubble()
     })
+    let experienceStarted = false
+    this.window.webContents.on('did-finish-load', () => { if (experienceStarted) return; experienceStarted = true; this.experience?.start(); if (this.experience) void this.configureWake(this.experience.state()) })
     await this.window.loadURL(`${origin}/${nonce}/index.html`)
     this.poll = setInterval(() => {
       if (!this.pollTask) this.pollTask = this.pollEvents().finally(() => { this.pollTask = null })
@@ -378,6 +429,7 @@ export class ProductPet {
       if (changedOwner) {
         this.lastSeq = 0
         this.identity = identity
+        this.window?.webContents.send('pet:agent-event', { type: 'runtime.owner' })
       }
       const response = await this.request(`/events?after=${this.lastSeq}`)
       if (!response.ok) return
@@ -385,7 +437,7 @@ export class ProductPet {
       const pending = await this.request('/interactions')
       if (pending.ok) {
         const snapshot = await pending.json() as { pid: number; sessionId: string; requests: PendingInteraction[] }
-        if (Array.isArray(snapshot.requests)) this.presentation?.sync(snapshot)
+        if (Array.isArray(snapshot.requests)) { this.experience?.sync(snapshot); this.presentation?.sync(snapshot) }
       }
       for (const event of payload.events || []) {
         if (event.ioSeq <= this.lastSeq) continue
@@ -404,6 +456,26 @@ export class ProductPet {
     this.bubble?.reposition(this.bubbleModule.orbBubbleWindowBounds({ orbBounds, workArea: screen.getDisplayMatching(orbBounds).workArea }))
   }
   updateBehavior(config: BotRuntimeConfig): void { this.config = config }
+  private async configureWake(state: ExperienceState): Promise<void> {
+    if (this.stopped) return
+    try {
+      if (!state.wakeWordEnabled) { await this.wake?.stop(); this.window?.webContents.send('pet:wake-state', { ready: false, enabled: false }); return }
+      const module = await import(pathToFileURL(join(this.options.resources, 'pet/wake-word/runtime.mjs')).href) as {
+        DesktopWakeWordRuntime: new (options: object) => WakeRuntime
+      }
+      const phrase = await import(pathToFileURL(join(this.options.resources, 'pet/wake-word/keyword-phrase.mjs')).href) as {
+        wakeWordKeywordsLine(text: string): string
+      }
+      if (!this.wake) this.wake = new module.DesktopWakeWordRuntime({
+        modelRoot: join(this.options.home, 'pet/cache/models/wake-word'), bundledRoot: join(this.options.resources, 'pet/wake-model'),
+        engineEntry: createRequire(join(this.options.appPath, 'package.json')).resolve('sherpa-onnx-node'),
+        onDetected: () => this.experience?.wake(),
+        onReady: () => this.window?.webContents.send('pet:wake-state', { ready: true, enabled: true }),
+        onError: (error: Error) => { this.presentation?.notice(`离线唤醒失败：${error.message}`, 'error'); this.window?.webContents.send('pet:wake-state', { ready: false, enabled: true, error: error.message }) },
+      })
+      this.wake.setKeywords(phrase.wakeWordKeywordsLine(state.wakeWordPhrase || '你好小鲸')); this.wake.setEnabled(true)
+    } catch (error) { const detail = error instanceof Error ? error.message : String(error); this.log('wake-word.failed', detail); this.presentation?.notice(`离线唤醒失败：${detail}`, 'error'); this.window?.webContents.send('pet:wake-state', { ready: false, enabled: state.wakeWordEnabled, error: detail }) }
+  }
   configure(config: BotRuntimeConfig): Promise<void> {
     this.config = config
     const apply = async (): Promise<void> => {
@@ -418,6 +490,8 @@ export class ProductPet {
       const mod = (await import(
         pathToFileURL(join(this.options.resources, 'pet/voice-worker-runtime.mjs')).href,
       )) as WorkerModule
+      const route = resolvePetVoiceRoute(config.voice)
+      if (!route.ok) { this.worker = null; this.publish({ phase: 'failed', error: route.error }); return }
       const key = config.voice?.apiKey || ''
       if (!key) {
         this.worker = null
@@ -439,11 +513,11 @@ export class ProductPet {
           NISSE_PIPECAT_BRIDGE_DESCRIPTOR: join(this.options.home, 'dsh-home/bot/bridge.json'),
           NISSE_PIPECAT_TOKEN: this.token,
           DASHSCOPE_API_KEY: key,
-          DSH_WAKE_PHRASE: config.voice?.wakeWord || '',
+          DSH_WAKE_PHRASE: '',
           DASHSCOPE_REALTIME_URL: config.voice?.baseUrl || 'wss://dashscope.aliyuncs.com/api-ws/v1/realtime',
-          DASHSCOPE_ASR_MODEL: config.voice?.model || 'qwen3-asr-flash-realtime',
+          DASHSCOPE_ASR_MODEL: route.model,
           DASHSCOPE_TTS_MODEL: 'qwen3-tts-flash-realtime',
-          DASHSCOPE_TTS_VOICE: config.voice?.voice || 'Cherry',
+          DASHSCOPE_TTS_VOICE: route.voice,
         },
         logger: {
           info: (message, detail) => {
@@ -459,7 +533,7 @@ export class ProductPet {
       }
       this.publish(
         state.state === 'running'
-          ? { phase: 'available', offerUrl: this.offerUrl }
+          ? { phase: 'available', offerUrl: this.offerUrl, ...(route.notice ? { notice: route.notice } : {}) }
           : { phase: 'failed', error: state.lastError || state.state },
       )
     }
@@ -469,6 +543,8 @@ export class ProductPet {
   }
   async stop(): Promise<void> {
     this.stopped = true
+    await this.experience?.stop()
+    await this.wake?.stop()
     this.requests.abort()
     if (this.poll) clearInterval(this.poll)
     this.pause?.stop()

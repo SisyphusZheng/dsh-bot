@@ -1,8 +1,8 @@
 {
   ".gitignore": {
-    "sha": "40977dbd91fcb0b82d1444555ab344b62d7ad1be",
+    "sha": "05563c79b3de41cef2281543071c304ea254ca74",
     "mode": "100644",
-    "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
+    "reason": "Restore pet presentation, native wake/shortcut dependencies and owned Electron integration; DSH core unchanged"
   },
   "apps/desktop/electron-builder.config.d.mts": {
     "sha": "3ffa7f7724fe9f1b022c695d45b0a2400c81a0db",
@@ -10,9 +10,9 @@
     "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
   },
   "apps/desktop/package.json": {
-    "sha": "214ebf6b48fd690bca61a87fbab104cb583a1a8d",
+    "sha": "927e4bc8b5c07afffe2889f8e4d9c28818361569",
     "mode": "100644",
-    "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
+    "reason": "Restore pet presentation, native wake/shortcut dependencies and owned Electron integration; DSH core unchanged"
   },
   "apps/desktop/scripts/desktop-package-environment.mjs": {
     "sha": "52dfc9d748429440c53b1db735847223e01b88bb",
@@ -30,9 +30,9 @@
     "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
   },
   "apps/desktop/scripts/electron-builder-config.mjs": {
-    "sha": "391c495910208f6bc1a6f210143c8aa75b7e17f7",
+    "sha": "11af3884c9381dde284ea52f233056dd95d7b89b",
     "mode": "100644",
-    "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
+    "reason": "Restore pet presentation, native wake/shortcut dependencies and owned Electron integration; DSH core unchanged"
   },
   "apps/desktop/scripts/package-macos.ts": {
     "sha": "e2bfef9f57265cab5471e3785759aa9b66c66aff",
@@ -65,9 +65,9 @@
     "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
   },
   "apps/desktop/src/main.ts": {
-    "sha": "55f0f781fa50ab4b26aa7e25b4f6f46753268fe8",
+    "sha": "d9a79b0eb71e7c1b3512e41865ea837f735ac887",
     "mode": "100644",
-    "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
+    "reason": "Restore pet presentation, native wake/shortcut dependencies and owned Electron integration; DSH core unchanged"
   },
   "apps/desktop/src/welcome-api.ts": {
     "sha": "3f45fb89db50547313105d68cd607d4667aedb2d",
@@ -110,9 +110,9 @@
     "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
   },
   "pnpm-lock.yaml": {
-    "sha": "cad5fb1200e1f2ba6b56c9d27ba7fc508d26f850",
+    "sha": "b3c0daea0347658f89616922464165b8f1821faf",
     "mode": "100644",
-    "reason": "Owned desktop settings IPC and pinned Pipecat browser build inputs"
+    "reason": "Restore pet presentation, native wake/shortcut dependencies and owned Electron integration; DSH core unchanged"
   },
   "apps/desktop/src/ipc.ts": {
     "sha": "4952bb6eda1a2aac4a022f3d465c920117211473",

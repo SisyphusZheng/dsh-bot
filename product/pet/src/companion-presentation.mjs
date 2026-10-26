@@ -37,7 +37,7 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
   function notice(value, kind = 'status', duration = 4500) {
     if (stopped || requests.length) return
     cancelTimer()
-    show({ visible: true, kind, text: value, clickThrough: true })
+    show({ visible: true, kind, text: value, clickThrough: kind !== 'input', ...(kind === 'input' ? { cancel: { id: 'cancel-voice', label: '取消' }, inputLabel: '你说' } : {}) })
     timer = setTimer(() => { if (!requests.length && !stopped) hide() }, duration)
   }
   async function submit(request, body) {

@@ -10,4 +10,11 @@ body{display:grid;place-items:center}
 #pet[data-state=speaking]:not(.dragging) .sprite-orb-canvas{animation:speak .52s ease-in-out infinite alternate}
 @keyframes speak{from{transform:translateY(0) scale(1)}to{transform:translateY(-2px) scale(1.025)}}
 @media(prefers-reduced-motion:reduce){.sprite-orb-canvas{animation:none!important}}
-</style></head><body><div id="pet" role="img" aria-label="桌宠；双击打开 DSH，右键显示操作菜单"></div><audio id="speaker" autoplay></audio><script src="voice-client.js"></script></body></html>
+#controls{position:absolute;bottom:17px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:5px;opacity:0;pointer-events:none;transition:opacity .15s}
+body:hover #controls,body:focus-within #controls,body[data-microphone=on] #controls,body[data-voice=connecting] #controls,body[data-voice=failed] #controls{opacity:1;pointer-events:auto}
+#microphone{border:0;border-radius:50%;width:27px;height:27px;background:#202833dc;color:white;cursor:pointer;display:grid;place-items:center}
+body[data-microphone=on] #microphone{background:#186944}body[data-voice=failed] #microphone{background:#9b352f}
+#level{width:27px;height:14px;display:flex;align-items:center;gap:2px}#level i{height:3px;width:3px;border-radius:2px;background:#52dc9a;transform:scaleY(var(--level,1))}
+#hint{position:absolute;bottom:0;left:0;right:0;text-align:center;font:10px -apple-system,sans-serif;color:#39444e;opacity:0;pointer-events:none}body:hover #hint,body[data-hint=show] #hint{opacity:1}
+#tasks{position:absolute;top:0;left:8px;right:8px;font:10px -apple-system,sans-serif;background:#ffffffed;color:#273441;border-radius:7px;padding:5px;display:none}body:hover #tasks:not(:empty){display:block}#tasks button{font:inherit;border:0;background:transparent;color:inherit;cursor:pointer}#tasks .task-open{max-width:105px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}#tasks>div{display:flex;justify-content:space-between}
+</style></head><body><div id="pet" role="img" aria-label="桌宠；双击打开 DSH，右键显示操作菜单"></div><div id="tasks" aria-live="polite"></div><div id="controls"><button id="microphone" aria-label="开启语音" title="开启语音">🎙</button><span id="level" aria-label="麦克风输入音量"><i></i><i></i><i></i><i></i><i></i></span></div><div id="hint"></div><audio id="speaker" autoplay></audio><script src="voice-client.js"></script></body></html>

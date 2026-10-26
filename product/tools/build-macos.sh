@@ -25,6 +25,7 @@ export DSH_GATE_CONCURRENCY=${DSH_GATE_CONCURRENCY:-1}
 npx --yes pnpm@11.28.5 install --frozen-lockfile
 node product/tools/verify-upstream.mjs
 node --test product/pet/tests/*.test.mjs nisse/packages/host-integration/tests/*.test.mjs product/tools/tests/*.test.mjs
+node product/tools/prepare-wake-model.mjs
 npx --yes pnpm@11.28.5 run build
 npx --yes pnpm@11.28.5 exec vitest run apps/desktop/tests/host-client-bundle.spec.ts
 if ! "$STAGE/voice-venv/bin/python" -c 'import sys; assert sys.version_info[:3] == (3,12,13)' >/dev/null 2>&1; then
@@ -36,6 +37,7 @@ node product/tools/smoke-voice.mjs "$STAGE/voice-venv/bin/python"
 (cd product/voice-worker-src && "$STAGE/voice-venv/bin/pyinstaller" VoiceWorker.spec --distpath "$STAGE/voice-dist" --workpath "$STAGE/voice-build" --noconfirm)
 export NISSE_VOICE_WORKER_DIR="$STAGE/voice-dist/VoiceWorker"
 node product/tools/smoke-voice.mjs --binary "$NISSE_VOICE_WORKER_DIR/VoiceWorker"
+node product/tools/smoke-wake-word.mjs
 node product/tools/check-built-resources.mjs > "$STAGE/evidence/built-resources.json"
 node product/tools/smoke-host.mjs
 node product/tools/smoke-host.mjs --default-provider

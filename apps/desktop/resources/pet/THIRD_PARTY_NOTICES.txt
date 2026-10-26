@@ -62,3 +62,5 @@ Source commit: a73bcbc2e1278bf664df38bdd169ffba1fb2451f
 Copyright 2026 qwen-audio-agent contributors
 DesktopSpriteOrb.jsx and sprite-orb.js are adapted under Apache-2.0.
 See the accompanying APACHE-2.0.txt. Changes: local asset routes, DSH pending-input animation and standalone pet entry.
+
+Pet experience modules restored/adapted from this repository at 8c34e66905ffd1ac50a6ba9c0f3196b45e4823c6. Native wake model and dependency versions are recorded in product/versions.json.

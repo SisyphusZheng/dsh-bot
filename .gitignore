@@ -79,3 +79,17 @@ apps/desktop/resources/pet/companion-presentation.mjs
 apps/desktop/resources/pet/activity-bubble.mjs
 apps/desktop/resources/pet/pause-on-input.mjs
 apps/desktop/resources/pet/APACHE-2.0.txt
+
+# Generated restored pet resources
+apps/desktop/resources/pet/experience-runtime.mjs
+apps/desktop/resources/pet/experience-store.mjs
+apps/desktop/resources/pet/voice-input.mjs
+apps/desktop/resources/pet/global-option.mjs
+apps/desktop/resources/pet/onboarding.mjs
+apps/desktop/resources/pet/desktop-presence.mjs
+apps/desktop/resources/pet/i18n.mjs
+apps/desktop/resources/pet/skin-store.mjs
+apps/desktop/resources/pet/skin-catalog.mjs
+apps/desktop/resources/pet/legacy-preferences.mjs
+apps/desktop/resources/pet/wake-word/
+apps/desktop/resources/pet/wake-model/

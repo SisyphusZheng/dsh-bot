@@ -22,6 +22,7 @@ const cancelBtn = document.getElementById('bubble-cancel')
 const closeBtn = document.getElementById('bubble-close')
 
 let approvalId = ''
+let dismissible = false
 let requestId = ''
 let submitting = false
 let lastKey = ''
@@ -184,7 +185,8 @@ function render(payload) {
   actionButtons[1].textContent = '否'
   actions.classList.toggle('hidden', !approvalId)
 
-  closeBtn.hidden = Boolean(requestId)
+  dismissible = payload.dismissible === true
+  closeBtn.hidden = Boolean(requestId) && !dismissible
   for (const button of card.querySelectorAll('button')) button.disabled = submitting
   inputEl.disabled = submitting
 
@@ -250,7 +252,7 @@ bubble.addEventListener('mouseleave', () => {
   setInteractive(false)
 })
 document.addEventListener('keydown', event => {
-  if (event.key !== 'Escape' || requestId) return
+  if (event.key !== 'Escape' || requestId && !dismissible) return
   if (cancelAction) {
     ui({ type: 'cancel', id: cancelAction.id })
     hide()
