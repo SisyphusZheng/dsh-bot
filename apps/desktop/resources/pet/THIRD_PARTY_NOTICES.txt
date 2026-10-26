@@ -56,3 +56,9 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 Additional bundled licenses and copyright notices are retained at the end of voice-client.js.
+
+Companion renderer: QwenAudio/qwen-audio-agent v2.0.1
+Source commit: a73bcbc2e1278bf664df38bdd169ffba1fb2451f
+Copyright 2026 qwen-audio-agent contributors
+DesktopSpriteOrb.jsx and sprite-orb.js are adapted under Apache-2.0.
+See the accompanying APACHE-2.0.txt. Changes: local asset routes, DSH pending-input animation and standalone pet entry.

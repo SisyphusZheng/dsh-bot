@@ -1,6 +1,6 @@
 {
   ".gitignore": {
-    "sha": "1f6cc47d1b4935b7d8bc68f902fb81768290e688",
+    "sha": "999aadeb6cdbb8e7191b94046491316b995d6a6e",
     "mode": "100644",
     "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
   },
@@ -30,7 +30,7 @@
     "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
   },
   "apps/desktop/scripts/electron-builder-config.mjs": {
-    "sha": "ed05ad0a5cec1ab4623b73cd0683ca2808f2e3a9",
+    "sha": "391c495910208f6bc1a6f210143c8aa75b7e17f7",
     "mode": "100644",
     "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
   },
@@ -40,7 +40,7 @@
     "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
   },
   "apps/desktop/scripts/package-target.ts": {
-    "sha": "aada845c288a60d037d9138cfee5b8b53d7faa14",
+    "sha": "39d4c075224defa74eda5f94933c459dd2f33005",
     "mode": "100644",
     "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
   },
@@ -65,7 +65,7 @@
     "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
   },
   "apps/desktop/src/main.ts": {
-    "sha": "e5c00ac9a424a8994513dc513fd4ee272042ddfd",
+    "sha": "55f0f781fa50ab4b26aa7e25b4f6f46753268fe8",
     "mode": "100644",
     "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
   },
@@ -115,13 +115,18 @@
     "reason": "Owned desktop settings IPC and pinned Pipecat browser build inputs"
   },
   "apps/desktop/src/ipc.ts": {
-    "sha": "556385781f7df0494239d9035b6dfddcae7962f9",
+    "sha": "4952bb6eda1a2aac4a022f3d465c920117211473",
     "mode": "100644",
     "reason": "Owned desktop settings IPC and pinned Pipecat browser build inputs"
   },
   "apps/desktop/src/preload-app.ts": {
-    "sha": "bde8e10cfb2f13744903311d86842a307ed47dac",
+    "sha": "b417ec95354366d92610183a0257dea668d7dd55",
     "mode": "100644",
     "reason": "Owned desktop settings IPC and pinned Pipecat browser build inputs"
+  },
+  "apps/desktop/tests/preload-app.spec.ts": {
+    "sha": "f7038cd0e5579f5017560e70bdbc694dc1c9be41",
+    "mode": "100644",
+    "reason": "dsh-bot product companion: owned Session navigation, renderer lifecycle or product regression evidence"
   }
 }

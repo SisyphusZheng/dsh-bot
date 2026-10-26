@@ -68,3 +68,12 @@ product/memory/runtime/
 apps/desktop/resources/pet/voice-client.js
 apps/desktop/resources/pet/voice-worker-runtime.mjs
 apps/desktop/resources/pet/voice-worker-supervisor.mjs
+
+# Generated companion lifecycle modules (sources: product/pet/src)
+apps/desktop/resources/pet/bubble-window.mjs
+apps/desktop/resources/pet/desktop-surface-layout.mjs
+apps/desktop/resources/pet/orb-placement.mjs
+apps/desktop/resources/pet/companion-presentation.mjs
+apps/desktop/resources/pet/activity-bubble.mjs
+apps/desktop/resources/pet/pause-on-input.mjs
+apps/desktop/resources/pet/APACHE-2.0.txt

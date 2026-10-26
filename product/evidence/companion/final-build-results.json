@@ -1,0 +1,96 @@
+[
+  {
+    "scope": "typecheck",
+    "gates": [
+      {
+        "id": "host-src",
+        "label": "host compiler",
+        "status": "passed",
+        "exitCode": 0
+      },
+      {
+        "id": "host-typert",
+        "label": "Host Typert",
+        "status": "passed",
+        "exitCode": 0
+      },
+      {
+        "id": "client-src",
+        "label": "client compiler",
+        "status": "passed",
+        "exitCode": 0
+      },
+      {
+        "id": "host-check",
+        "label": "host aggregate check",
+        "status": "passed",
+        "exitCode": 0
+      },
+      {
+        "id": "client-check",
+        "label": "client aggregate check",
+        "status": "passed",
+        "exitCode": 0
+      }
+    ]
+  },
+  {
+    "scope": "complete",
+    "gates": [
+      {
+        "id": "native",
+        "label": "native addon",
+        "status": "passed",
+        "exitCode": 0
+      },
+      {
+        "id": "host-src",
+        "label": "host compiler",
+        "status": "passed",
+        "exitCode": 0
+      },
+      {
+        "id": "host-bundle",
+        "label": "Host bundle",
+        "status": "passed",
+        "exitCode": 0
+      },
+      {
+        "id": "desktop-bundle",
+        "label": "Desktop bundle",
+        "status": "passed",
+        "exitCode": 0
+      },
+      {
+        "id": "client-src",
+        "label": "client compiler",
+        "status": "passed",
+        "exitCode": 0
+      },
+      {
+        "id": "client-bundle",
+        "label": "Client bundle",
+        "status": "passed",
+        "exitCode": 0
+      },
+      {
+        "id": "web",
+        "label": "Web build",
+        "status": "passed",
+        "exitCode": 0
+      },
+      {
+        "id": "host-check",
+        "label": "host aggregate check",
+        "status": "passed",
+        "exitCode": 0
+      },
+      {
+        "id": "client-check",
+        "label": "client aggregate check",
+        "status": "passed",
+        "exitCode": 0
+      }
+    ]
+  }
+]

@@ -254,3 +254,19 @@ it('forwards browser guest input only for the focused live webview lease', async
   expect(listener).toHaveBeenCalledOnce()
   off()
 })
+
+it('buffers pet Session selection until its Client plugin subscribes and releases its listener', async () => {
+  vi.stubGlobal('location', new URL('dsh-app://app/index.html'))
+  await import('../src/preload-app.ts')
+  const api = electron.contextBridge.exposeInMainWorld.mock.calls.find(([name]) => name === 'dshDesktop')?.[1] as DshDesktopProductApi
+  const receive = electron.ipcRenderer.on.mock.calls.find(([channel]) => channel === DESKTOP_IPC.petSession)?.[1] as
+    (event: unknown, value: unknown) => void
+  receive({}, 'bot-session')
+  const listener = vi.fn(), dispose = api.onPetSession(listener)
+  expect(listener).toHaveBeenCalledExactlyOnceWith('bot-session')
+  receive({}, 'next-bot-session')
+  expect(listener).toHaveBeenLastCalledWith('next-bot-session')
+  dispose()
+  receive({}, 'later-session')
+  expect(listener).toHaveBeenCalledTimes(2)
+})

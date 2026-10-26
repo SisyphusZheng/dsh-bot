@@ -400,7 +400,7 @@ async function main(): Promise<void> {
   if (success && target.platform === 'darwin' && !invocation.directory && !invocation.prepareOnly) {
     const paths = desktopTargetBuildPaths(target.name)
     const output = desktopArtifactOutput(paths, invocation)
-    const filename = `dsh-bot-${buildVersion}-mac-${target.arch}${output.suffix}.dmg`
+    const filename = `dsh-bot-${buildVersion}-${invocation.unsigned ? packaged.commit.slice(0, 8) + '-' : ''}mac-${target.arch}${output.suffix}.dmg`
     console.log(`DMG: ${join(output.directory, filename)}`)
   }
 }

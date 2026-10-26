@@ -1,0 +1,146 @@
+native/system/packages/darwin-arm64      | [WARN] Unsupported platform: wanted: {"cpu":["arm64"],"os":["darwin"],"libc":["any"]} (current: {"os":"linux","cpu":"x64","libc":"glibc"})
+native/system/packages/darwin-x64        | [WARN] Unsupported platform: wanted: {"cpu":["x64"],"os":["darwin"],"libc":["any"]} (current: {"os":"linux","cpu":"x64","libc":"glibc"})
+native/system/packages/linux-arm64       | [WARN] Unsupported platform: wanted: {"cpu":["arm64"],"os":["linux"],"libc":["any"]} (current: {"os":"linux","cpu":"x64","libc":"glibc"})
+Scope: all 367 workspace projects
+[WARN] There are cyclic workspace dependencies: /workspace/scratch/f6ba7254d459/dsh-bot/apps/cli, /workspace/scratch/f6ba7254d459/dsh-bot/packages/sdk/client; /workspace/scratch/f6ba7254d459/dsh-bot/apps/web, /workspace/scratch/f6ba7254d459/dsh-bot/packages/test-support/client-runtime, /workspace/scratch/f6ba7254d459/dsh-bot/packages/bundle/web-app; /workspace/scratch/f6ba7254d459/dsh-bot/packages/api/gateway, /workspace/scratch/f6ba7254d459/dsh-bot/packages/api/remote-access; /workspace/scratch/f6ba7254d459/dsh-bot/packages/api/remotes, /workspace/scratch/f6ba7254d459/dsh-bot/packages/client/ui-plugin-manager, /workspace/scratch/f6ba7254d459/dsh-bot/packages/client/ui-sidebar, /workspace/scratch/f6ba7254d459/dsh-bot/packages/client/ui-workspace, /workspace/scratch/f6ba7254d459/dsh-bot/packages/client/ui-conversation; /workspace/scratch/f6ba7254d459/dsh-bot/packages/compaction/compaction-basic, /workspace/scratch/f6ba7254d459/dsh-bot/packages/compaction/compaction-image-offload; /workspace/scratch/f6ba7254d459/dsh-bot/packages/compaction/compaction-tool-result-pruner, /workspace/scratch/f6ba7254d459/dsh-bot/packages/llm/token-meter, /workspace/scratch/f6ba7254d459/dsh-bot/packages/llm/llm-retry, /workspace/scratch/f6ba7254d459/dsh-bot/packages/llm/llm-deepseek, /workspace/scratch/f6ba7254d459/dsh-bot/packages/llm/plugin-package-inventory-deepseek, /workspace/scratch/f6ba7254d459/dsh-bot/packages/preset/agent-preset-registry, /workspace/scratch/f6ba7254d459/dsh-bot/packages/preset/agent-preset; /workspace/scratch/f6ba7254d459/dsh-bot/packages/core/agent-default-model, /workspace/scratch/f6ba7254d459/dsh-bot/packages/settings/settings; /workspace/scratch/f6ba7254d459/dsh-bot/packages/core/agent-loop, /workspace/scratch/f6ba7254d459/dsh-bot/packages/core/tools, /workspace/scratch/f6ba7254d459/dsh-bot/packages/session/working-directory, /workspace/scratch/f6ba7254d459/dsh-bot/packages/session/tool-working-directory; /workspace/scratch/f6ba7254d459/dsh-bot/packages/sandbox/sandbox-local, /workspace/scratch/f6ba7254d459/dsh-bot/packages/sandbox/sandbox-windows-acl; /workspace/scratch/f6ba7254d459/dsh-bot/packages/ssh/fs-ssh, /workspace/scratch/f6ba7254d459/dsh-bot/packages/ssh/ssh; /workspace/scratch/f6ba7254d459/dsh-bot/packages/subagent/subagent-spawn-in-process, /workspace/scratch/f6ba7254d459/dsh-bot/packages/subagent/tool-subagent; /workspace/scratch/f6ba7254d459/dsh-bot/vendor/cordis, /workspace/scratch/f6ba7254d459/dsh-bot/vendor/include
+? Verifying lockfile against supply-chain policies (1743 entries)...
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Packages: +1418
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 1418, reused 0, downloaded 0, added 0
+Progress: resolved 1418, reused 0, downloaded 1, added 0
+Packages are hard linked from the content-addressable store to the virtual store.
+  Content-addressable store is at: /root/.local/share/pnpm/store/v11
+  Virtual store is at:             node_modules/.pnpm
+
+   ╭──────────────────────────────────────────────────────────────────────╮
+   │                                                                      │
+   │                 Update available! 11.25.0 → 12.15.0.                 │
+   │                 Changelog: https://pnpm.io/v/12.15.0                 │
+   │   To update, run: curl -fsSL https://get.pnpm.io/install.sh | sh -   │
+   │                                                                      │
+   ╰──────────────────────────────────────────────────────────────────────╯
+
+Progress: resolved 1418, reused 0, downloaded 183, added 184
+Progress: resolved 1418, reused 0, downloaded 351, added 353
+Progress: resolved 1418, reused 0, downloaded 534, added 538
+Progress: resolved 1418, reused 0, downloaded 643, added 647
+Progress: resolved 1418, reused 0, downloaded 826, added 830
+Progress: resolved 1418, reused 0, downloaded 999, added 1003
+Progress: resolved 1418, reused 0, downloaded 1185, added 1189
+Progress: resolved 1418, reused 0, downloaded 1383, added 1385
+Progress: resolved 1418, reused 0, downloaded 1411, added 1415
+✓ Lockfile passes supply-chain policies (1743 entries in 13.2s)
+Progress: resolved 1418, reused 0, downloaded 1412, added 1415
+Progress: resolved 1418, reused 0, downloaded 1413, added 1417
+Progress: resolved 1418, reused 0, downloaded 1414, added 1417
+Progress: resolved 1418, reused 0, downloaded 1414, added 1418, done
+.../.pnpm/koffi@3.1.1/node_modules/koffi install$ node ./cnoke.cjs -P . -D src/koffi --prebuild --release
+.../node_modules/lefthook postinstall$ node postinstall.js
+.../esbuild@0.28.2/node_modules/esbuild postinstall$ node install.js
+.../esbuild@0.28.1/node_modules/esbuild postinstall$ node install.js
+.../esbuild@0.25.12/node_modules/esbuild postinstall$ node install.js
+.../node_modules/lefthook postinstall: sync hooks: ✔️(pre-commit, pre-push, pre-merge-commit)
+.../node_modules/lefthook postinstall: Done
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: Done
+.../esbuild@0.25.12/node_modules/esbuild postinstall: Done
+.../esbuild@0.28.2/node_modules/esbuild postinstall: Done
+.../esbuild@0.28.1/node_modules/esbuild postinstall: Done
+.../node_modules/node-pty install$ node scripts/prebuild.js || node-gyp rebuild
+.../esbuild@0.21.5/node_modules/esbuild postinstall$ node install.js
+.../node_modules/node-pty install: > Checking prebuilds...
+.../node_modules/node-pty install: Done
+.../node_modules/node-pty postinstall$ node scripts/post-install.js
+.../esbuild@0.21.5/node_modules/esbuild postinstall: Done
+.../node_modules/node-pty postinstall: > Cleaning release folder...
+.../node_modules/node-pty postinstall: > Moving conpty.dll...
+.../node_modules/node-pty postinstall:   SKIPPED (not Windows)
+.../node_modules/node-pty postinstall: Done
+[WARN] Failed to create bin at /workspace/scratch/f6ba7254d459/dsh-bot/apps/desktop-host/node_modules/.bin/dsh. ENOENT: no such file or directory, open '/workspace/scratch/f6ba7254d459/dsh-bot/apps/cli/lib/bin.js'
+[WARN] Failed to create bin at /workspace/scratch/f6ba7254d459/dsh-bot/packages/sdk/client/node_modules/.bin/dsh. ENOENT: no such file or directory, open '/workspace/scratch/f6ba7254d459/dsh-bot/apps/cli/lib/bin.js'
+[WARN] Failed to create bin at /workspace/scratch/f6ba7254d459/dsh-bot/python/sdk-runtime/node_modules/.bin/dsh. ENOENT: no such file or directory, open '/workspace/scratch/f6ba7254d459/dsh-bot/apps/cli/lib/bin.js'
+
+devDependencies:
++ @deepseek-ai/dsh-agent 0.2.1-rc.3 <- packages/core/agent
++ @deepseek-ai/dsh-browser-use 0.2.1-rc.3 <- packages/browser-use/browser-use
++ @deepseek-ai/dsh-computer-use 0.2.1-rc.3 <- packages/computer-use/computer-use
++ @deepseek-ai/dsh-cua 0.2.1-rc.3 <- packages/experimental/cua
++ @deepseek-ai/dsh-experimental-browser-use-chrome-devtools-mcp 0.2.1-rc.3 <- packages/experimental/browser-use-chrome-devtools-mcp
++ @deepseek-ai/dsh-experimental-browser-use-playwright-mcp 0.2.1-rc.3 <- packages/experimental/browser-use-playwright-mcp
++ @deepseek-ai/dsh-experimental-browser-use-runtime 0.2.1-rc.3 <- packages/experimental/browser-use-runtime
++ @deepseek-ai/dsh-experimental-browser-use-stagehand-native 0.2.1-rc.3 <- packages/experimental/browser-use-stagehand-native
++ @deepseek-ai/dsh-experimental-claude-code-mods 0.2.1-rc.3 <- packages/experimental/claude-code-mods
++ @deepseek-ai/dsh-experimental-computer-use-cua-driver-mcp 0.2.1-rc.3 <- packages/experimental/computer-use-cua-driver-mcp
++ @deepseek-ai/dsh-experimental-computer-use-cua-driver-native 0.2.1-rc.3 <- packages/experimental/computer-use-cua-driver-native
++ @deepseek-ai/dsh-experimental-cua-macos 0.2.1-rc.3 <- packages/experimental/cua-macos
++ @deepseek-ai/dsh-experimental-tool-worktree 0.2.1-rc.3 <- packages/experimental/tool-worktree
++ @deepseek-ai/dsh-experimental-worktree 0.2.1-rc.3 <- packages/experimental/worktree
++ @deepseek-ai/dsh-hooks-claude-code 0.2.1-rc.3 <- packages/experimental/hooks-claude-code
++ @deepseek-ai/dsh-hooks-codex 0.2.1-rc.3 <- packages/experimental/hooks-codex
++ @deepseek-ai/dsh-llm-replay 0.2.1-rc.3 <- packages/test-support/llm-replay
++ @deepseek-ai/dsh-mcp-client 0.2.1-rc.3 <- packages/mcp/mcp-client
++ @deepseek-ai/dsh-skill-office 0.2.1-rc.3 <- packages/skill/skill-office
++ @deepseek-ai/dsh-tool-ralph 0.2.1-rc.3 <- packages/experimental/tool-ralph
++ @deepseek-ai/dsh-tool-session-query 0.2.1-rc.3 <- packages/experimental/tool-session-query
++ @deepseek-ai/dsh-tool-terminal 0.2.1-rc.3 <- packages/experimental/tool-terminal
++ @deepseek-ai/dsh-tool-working-directory 0.2.1-rc.3 <- packages/session/tool-working-directory
++ @deepseek-ai/dsh-tool-workspace-dependencies 0.2.1-rc.3 <- packages/skill/tool-workspace-dependencies
++ @deepseek-ai/dsh-web-fetch-http 0.2.1-rc.3 <- packages/web/web-fetch-http
++ @deepseek-ai/dsh-working-directory 0.2.1-rc.3 <- packages/session/working-directory
++ @stylistic/eslint-plugin 5.10.0
++ @testing-library/dom 10.4.2
++ @testing-library/react 16.3.3
++ @types/js-yaml 4.0.9
++ @types/jsdom 28.0.3
++ @types/mdast 4.0.4
++ @types/node 22.20.1
++ @types/papaparse 5.5.2
++ @types/react 18.3.31
++ @types/react-dom 18.3.7
++ @types/semver 7.8.0
++ @types/spdx-expression-parse 4.0.0
++ @vitest/coverage-v8 4.1.11
++ @yao-pkg/pkg 6.21.0
++ @yarnpkg/cli-dist 4.18.0
++ eslint-plugin-sonarjs 4.2.0
++ execa 10.0.1
++ extract-zip 2.0.1
++ fast-check 4.9.0
++ fflate 0.8.3
++ istanbul-lib-report 3.0.1
++ js-yaml 4.3.2
++ jscpd 5.1.2
++ jsdom 29.1.1
++ lefthook 2.1.12
++ lightningcss 1.33.0
++ mdast-util-from-markdown 2.0.3
++ mdast-util-gfm 3.1.0
++ mermaid 11.17.2
++ micromark-extension-gfm 3.0.0
++ oxlint 1.81.0
++ oxlint-tsgolint 7.0.2001
++ papaparse 5.5.3
++ pnpm 11.28.5
++ publint 0.3.24
++ semver 7.8.5
++ smol-toml 1.9.0
++ spdx-expression-parse 5.0.0
++ tar 7.5.22
++ tsdown 0.22.2
++ tsx 4.23.13
++ typescript 6.0.3
++ vite 8.2.2
++ vite-tsconfig-paths 6.1.1
++ vitest 4.1.11
++ zod 4.4.3
+
+[WARN] Failed to create bin at /workspace/scratch/f6ba7254d459/dsh-bot/packages/sdk/client/node_modules/.bin/dsh. ENOENT: no such file or directory, open '/workspace/scratch/f6ba7254d459/dsh-bot/packages/sdk/client/node_modules/@deepseek-ai/dsh/lib/bin.js'
+packages/subprocess/subprocess-local postinstall$ node scripts/ensure-spawn-helper.mjs
+packages/subprocess/subprocess-local postinstall: Done
+[WARN] Failed to create bin at /workspace/scratch/f6ba7254d459/dsh-bot/apps/desktop-host/node_modules/.bin/dsh. ENOENT: no such file or directory, open '/workspace/scratch/f6ba7254d459/dsh-bot/apps/desktop-host/node_modules/@deepseek-ai/dsh/lib/bin.js'
+. postinstall$ node scripts/install-lefthook.mjs
+[WARN] Failed to create bin at /workspace/scratch/f6ba7254d459/dsh-bot/python/sdk-runtime/node_modules/.bin/dsh. ENOENT: no such file or directory, open '/workspace/scratch/f6ba7254d459/dsh-bot/python/sdk-runtime/node_modules/@deepseek-ai/dsh/lib/bin.js'
+. postinstall: sync hooks: ✔️(pre-commit, pre-merge-commit, pre-push)
+. postinstall: Done
+Done in 21.4s using pnpm v11.25.0

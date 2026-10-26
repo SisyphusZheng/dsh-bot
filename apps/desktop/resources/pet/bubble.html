@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>dsh-bot</title>
+    <link rel="stylesheet" href="./bubble.css" />
+  </head>
+  <body>
+    <div id="bubble" class="bubble hidden" role="status" aria-live="polite" data-kind="speech">
+      <div class="card" id="bubble-card">
+        <div class="head">
+          <span id="bubble-icon" class="icon hidden" aria-hidden="true"></span>
+          <span id="bubble-title" class="title hidden"></span>
+          <span id="bubble-progress" class="progress hidden"></span>
+          <button id="bubble-close" class="close" tabindex="-1" aria-label="关闭">✕</button>
+        </div>
+        <p id="bubble-text" class="bubble-text"></p>
+        <p id="bubble-hint" class="hint hidden"></p>
+        <form id="bubble-input-row" class="input-row hidden">
+          <label id="bubble-input-label" class="input-label hidden" for="bubble-input"></label>
+          <input id="bubble-input" class="input" type="text" autocomplete="off" spellcheck="false" tabindex="0" />
+          <button id="bubble-input-submit" class="btn primary small" type="submit" tabindex="0">发送</button>
+        </form>
+        <div id="bubble-choices" class="choices hidden"></div>
+        <div id="bubble-secondary" class="secondary hidden"></div>
+        <div id="bubble-actions" class="actions hidden">
+          <button class="btn primary" tabindex="0">是</button>
+          <button class="btn secondary" tabindex="0">否</button>
+        </div>
+        <button id="bubble-cancel" class="cancel-link hidden" type="button" tabindex="0">取消</button>
+      </div>
+      <div class="tail" aria-hidden="true"></div>
+    </div>
+    <script src="./bubble.js"></script>
+  </body>
+</html>

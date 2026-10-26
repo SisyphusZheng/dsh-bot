@@ -1,0 +1,1485 @@
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+
+ RUN  v4.1.11 /workspace/scratch/f6ba7254d459/dsh-bot
+
+(node:44) PromiseRejectionHandledWarning: Promise rejection was handled asynchronously (rejection id: 79)
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |thread-safe| apps/desktop/tests/main-startup.spec.ts (125 tests | 125 failed) 3352ms
+     × selects the package manager before Host startup (packaged=true) 908ms
+     × selects the package manager before Host startup (packaged=false) 30ms
+     × starts the Host with authentication popups disabled when local settings are invalid 19ms
+     × routes shell update documents and assets through the registered main protocol handler 52ms
+     × serves shell dialogs and their assets without forwarding them to the Host 14ms
+     × installs hidden native DevTools shortcuts in the macOS application menu 10ms
+     × offers the About command before other commands on darwin (packaged=true, locale=en-US) 19ms
+     × offers the About command before other commands on darwin (packaged=false, locale=zh-CN) 13ms
+     × offers the About command before other commands on win32 (packaged=true, locale=zh-CN) 13ms
+     × offers the About command before other commands on win32 (packaged=false, locale=en-US) 15ms
+     × suppresses every test auth dialog for missing-file while continuing update checks 15ms
+     × suppresses every test auth dialog for missing-field while continuing update checks 18ms
+     × suppresses every test auth dialog for disabled while continuing update checks 12ms
+     × checks updates from the application menu without offering disabled test authentication 12ms
+     × retains anonymous production checks with popup permission false 13ms
+     × retains anonymous production checks with popup permission true 15ms
+     × keeps a received mandatory decision when test cookies expire with popups disabled 22ms
+     × shows one explained startup login before Host readiness and joins concurrent checks without reopening it 11ms
+     × requires explicit test login and handles returned without downloading 13ms
+     × requires explicit test login and handles cancelled without downloading 11ms
+     × requires explicit test login and handles failed without downloading 16ms
+     × does not open Feishu when the user declines test login 21ms
+     × does not require gateway login to download an already available ordinary update 11ms
+     × retains the embedded block and running Host after expired test login is cancelled 10ms
+     × persists opt-in update evidence from the real main entry without private diagnostics 10ms
+     × accepts product IPC only from the current application top frame in the owned main window 12ms
+     × limits native titlebar styling to macOS on darwin 14ms
+     × limits native titlebar styling to macOS on win32 12ms
+     × limits native titlebar styling to macOS on linux 9ms
+     × serves packaged shell documents instead of rejecting the shell origin 9ms
+     × relays the darwin fullscreen state on transitions and after each load 9ms
+     × relays the win32 fullscreen state on transitions and after each load 12ms
+     × registers no fullscreen relay on linux 12ms
+     × covers the macOS vibrancy reattach gap with an opaque base while minimized or hidden 8ms
+     × registers no backdrop swap on win32 10ms
+     × registers no backdrop swap on linux 12ms
+     × follows the Windows primary document language and palette without trusting other frames 17ms
+     × maps Windows caption menus to localized native commands and rejects foreign popup requests 9ms
+     × adds the product File menu and standard window commands only on macOS (darwin) 9ms
+     × adds the product File menu and standard window commands only on macOS (linux) 9ms
+     × localizes macOS application commands without changing the application name (en-US) 9ms
+     × localizes macOS application commands without changing the application name (zh-CN) 12ms
+     × attaches http: Host socket credentials only to the owned application origin and window 8ms
+     × attaches https: Host socket credentials only to the owned application origin and window 8ms
+     × shares login key discovery with onboarding and rejects foreign renderers 9ms
+     × enlarges only an active onboarding window and keeps its size after completion 8ms
+     × registers the window-owned directory picker during startup and rejects foreign callers 13ms
+     × holds boot injections until the Host is ready and rejects foreign boot callers 10ms
+     × retains macOS native editing actions on right-click and only copy for selected read-only text 10ms
+     × opens message links externally while retaining same-origin application navigation 9ms
+     × raises the first workspace only for a Windows installer restart (win32, ["--updated"]) 9ms
+     × raises the first workspace only for a Windows installer restart (win32, []) 13ms
+     × raises the first workspace only for a Windows installer restart (darwin, ["--updated"]) 8ms
+     × raises the first workspace only for a Windows installer restart (linux, ["--updated"]) 8ms
+     × records the restart confirmation on win32 in zh-CN 8ms
+     × records the restart confirmation on win32 in en-US 8ms
+     × records the restart confirmation on darwin in zh-CN 9ms
+     × records the restart confirmation on darwin in en-US 11ms
+     × hides the workspace before intentional Host shutdown can look like reconnection 11ms
+     × routes closing through the tray confirmation and keeps the Host running 16ms
+     × keeps the workspace visible while acknowledgement is pending and ignores a destroyed window 11ms
+     × focuses an existing shell dialog instead of replacing it with a close confirmation 15ms
+     × leaves macOS fullscreen before hiding on close and reopens the hidden window on activate 9ms
+     × skips the confirmation during a macOS shutdown but asks again once a cancelled shutdown returns focus 8ms
+     × drops a pending confirmation when a bypassing quit starts first 8ms
+     × asks before quitting when the Host reports interruptible work and cancels without stopping anything 8ms
+     × warns about running tasks when the inspection fails and quits directly on session end or a development restart 9ms
+     × does not block a Windows session end on the quit confirmation 27ms
+     × defers the downloaded-update confirmation until the hidden window is shown again 13ms
+     × waits for Platform view storage cleanup before an ordinary quit completes 13ms
+     × reports a Platform cleanup failure without ending the Host shutdown early 12ms
+     × finishes quitting when the native window is destroyed before its closed listener clears ownership 18ms
+     × shares the failed-check deadline across focus and resume, while explicit checks reset polling 9ms
+     × blocks subsequent product operations without stopping the Host and clears only on a fresh no-force policy 8ms
+     × keeps one checking dialog open until the manual check settles, then reports the current version 9ms
+     × reports a manual check failure without offering a download 9ms
+     × reports a stale download confirmation as a download failure 10ms
+     × keeps policy failures silent while an ordinary update proceeds 9ms
+     × does not wait for a pending policy request before proceeding with an ordinary update 1003ms
+     × lets a confirmed mandatory policy preempt an ordinary result dialog 14ms
+     × handles a deferred authentication failure with popup permission false 9ms
+     × handles a deferred authentication failure with popup permission true 15ms
+     × downloads on the first click and opens installation confirmation only after readiness 9ms
+     × does not lock or stop tasks when restart confirmation is dismissed 9ms
+     × rechecks admission after approval and rejects work that started during confirmation 8ms
+     × warns about active tasks and waits for a graceful Host exit after approval 10ms
+     × unlocks admission without stopping the Host when request draining fails 9ms
+     × waits for Platform storage cleanup before the installer takes over 9ms
+     × settles analytics intake before locking API admission and continues after intake failure: accepted 9ms
+     × settles analytics intake before locking API admission and continues after intake failure: failed 22ms
+     × reports a Platform storage cleanup failure as preparation failure without stopping the Host 10ms
+     × closes the main window and cancels the pending quit inspection when the installer quits Electron 18ms
+     × closes the main window and cancels the pending quit dialog when the installer quits Electron 9ms
+     × restores a cleanly stopped Host after installer failure and retains mandatory blocking: false 9ms
+     × restores a cleanly stopped Host after installer failure and retains mandatory blocking: true 9ms
+     × restores a confirmed non-graceful exit without approving installation, mandatory: false 9ms
+     × restores a confirmed non-graceful exit without approving installation, mandatory: true 10ms
+     × does not replace a Host whose failed stop has not confirmed process exit 9ms
+     × reports replacement startup failure without authorizing installation or retrying automatically 8ms
+     × opens fatal recovery when the replacement page cannot reload 10ms
+     × reports a window construction failure without requiring a window 9ms
+     × accepts Web fatal reports only from the primary application frame 14ms
+     × ignores subresource failures and navigation cancellation but reports a failed main document 9ms
+     × offers all recovery choices when resources fail before the Host starts 10ms
+     × retains the document after a fatal preload failure and reports only the first error 9ms
+     × retains the document after a fatal renderer failure and reports only the first error 9ms
+     × ignores clean renderer exits and exits of a destroyed window 10ms
+     × reports a rejected document load without navigating to a recovery page 11ms
+     × writes the Host's own diagnostic into a startup-phase crash report when the Host reports a fatal error before ready 11ms
+     × attaches the primary window's error-level console output to a running-phase Host crash report 13ms
+     × waits for Host exit before recovery action 0 12ms
+     × waits for Host exit before recovery action 1 14ms
+     × waits for Host exit before recovery action 2 9ms
+     × creates the Host only after the login-shell read and ends the read on quit 10ms
+     × prepares recovery offscreen and starts one Host before choosing the first visible window 9ms
+     × prepares an independent plugin profile for the unpackaged Host 10ms
+     × fails an unpackaged launch that receives no primary runtime directory 10ms
+     × keeps startup errors in the existing window without a retry handler 9ms
+     × keeps recovery visible when the backend fails during the welcome preference read 9ms
+     × waits for a pending child to exit on quit without late window navigation 8ms
+   × focuses DSH once when browser authorization becomes failed 9ms
+   × focuses DSH once when browser authorization becomes expired 16ms
+   × opens Platform authorization in the effective light palette 9ms
+   × opens Platform authorization in the effective dark palette 9ms
+   × disables native product events for a disabled Desktop launch 9ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 125 ⎯⎯⎯⎯⎯⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > selects the package manager before Host startup (packaged=true)
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:448:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > selects the package manager before Host startup (packaged=false)
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:448:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > starts the Host with authentication popups disabled when local settings are invalid
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:466:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > routes shell update documents and assets through the registered main protocol handler
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:481:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > serves shell dialogs and their assets without forwarding them to the Host
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:509:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > installs hidden native DevTools shortcuts in the macOS application menu
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:523:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > offers the About command before other commands on darwin (packaged=true, locale=en-US)
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > offers the About command before other commands on darwin (packaged=false, locale=zh-CN)
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > offers the About command before other commands on win32 (packaged=true, locale=zh-CN)
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > offers the About command before other commands on win32 (packaged=false, locale=en-US)
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:542:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > suppresses every test auth dialog for missing-file while continuing update checks
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > suppresses every test auth dialog for missing-field while continuing update checks
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > suppresses every test auth dialog for disabled while continuing update checks
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:579:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > checks updates from the application menu without offering disabled test authentication
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:605:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > retains anonymous production checks with popup permission false
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > retains anonymous production checks with popup permission true
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:626:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > keeps a received mandatory decision when test cookies expire with popups disabled
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:643:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > shows one explained startup login before Host readiness and joins concurrent checks without reopening it
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:672:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > requires explicit test login and handles returned without downloading
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > requires explicit test login and handles cancelled without downloading
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > requires explicit test login and handles failed without downloading
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:708:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > does not open Feishu when the user declines test login
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:735:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > does not require gateway login to download an already available ordinary update
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:746:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > retains the embedded block and running Host after expired test login is cancelled
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:763:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > persists opt-in update evidence from the real main entry without private diagnostics
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:784:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > accepts product IPC only from the current application top frame in the owned main window
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:807:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > limits native titlebar styling to macOS on darwin
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > limits native titlebar styling to macOS on win32
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > limits native titlebar styling to macOS on linux
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:826:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > serves packaged shell documents instead of rejecting the shell origin
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:849:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[20/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > relays the darwin fullscreen state on transitions and after each load
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > relays the win32 fullscreen state on transitions and after each load
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:860:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[21/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > registers no fullscreen relay on linux
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:883:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > covers the macOS vibrancy reattach gap with an opaque base while minimized or hidden
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:893:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[23/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > registers no backdrop swap on win32
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > registers no backdrop swap on linux
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:924:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[24/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > follows the Windows primary document language and palette without trusting other frames
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:935:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[25/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > maps Windows caption menus to localized native commands and rejects foreign popup requests
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:963:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[26/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > adds the product File menu and standard window commands only on macOS (darwin)
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > adds the product File menu and standard window commands only on macOS (linux)
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:1000:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[27/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > localizes macOS application commands without changing the application name (en-US)
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > localizes macOS application commands without changing the application name (zh-CN)
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:1025:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[28/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > attaches http: Host socket credentials only to the owned application origin and window
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > attaches https: Host socket credentials only to the owned application origin and window
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:1038:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[29/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > shares login key discovery with onboarding and rejects foreign renderers
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:1067:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[30/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > enlarges only an active onboarding window and keeps its size after completion
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:1078:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[31/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > registers the window-owned directory picker during startup and rejects foreign callers
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:1100:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[32/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > holds boot injections until the Host is ready and rejects foreign boot callers
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:1114:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[33/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > retains macOS native editing actions on right-click and only copy for selected read-only text
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:1133:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[34/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > opens message links externally while retaining same-origin application navigation
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:1158:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[35/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > raises the first workspace only for a Windows installer restart (win32, ["--updated"])
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > raises the first workspace only for a Windows installer restart (win32, [])
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > raises the first workspace only for a Windows installer restart (darwin, ["--updated"])
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > raises the first workspace only for a Windows installer restart (linux, ["--updated"])
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:1194:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[36/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > records the restart confirmation on win32 in zh-CN
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > records the restart confirmation on win32 in en-US
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > records the restart confirmation on darwin in zh-CN
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > records the restart confirmation on darwin in en-US
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:1223:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[37/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > hides the workspace before intentional Host shutdown can look like reconnection
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ readyWorkspace apps/desktop/tests/main-startup.spec.ts:1234:18
+ ❯ apps/desktop/tests/main-startup.spec.ts:1240:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[38/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > routes closing through the tray confirmation and keeps the Host running
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ readyWorkspace apps/desktop/tests/main-startup.spec.ts:1234:18
+ ❯ apps/desktop/tests/main-startup.spec.ts:1260:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[39/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > keeps the workspace visible while acknowledgement is pending and ignores a destroyed window
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ readyWorkspace apps/desktop/tests/main-startup.spec.ts:1234:18
+ ❯ apps/desktop/tests/main-startup.spec.ts:1284:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[40/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > focuses an existing shell dialog instead of replacing it with a close confirmation
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ readyWorkspace apps/desktop/tests/main-startup.spec.ts:1234:18
+ ❯ apps/desktop/tests/main-startup.spec.ts:1297:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[41/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > leaves macOS fullscreen before hiding on close and reopens the hidden window on activate
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ readyWorkspace apps/desktop/tests/main-startup.spec.ts:1234:18
+ ❯ apps/desktop/tests/main-startup.spec.ts:1308:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[42/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > skips the confirmation during a macOS shutdown but asks again once a cancelled shutdown returns focus
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ readyWorkspace apps/desktop/tests/main-startup.spec.ts:1234:18
+ ❯ apps/desktop/tests/main-startup.spec.ts:1325:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[43/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > drops a pending confirmation when a bypassing quit starts first
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ readyWorkspace apps/desktop/tests/main-startup.spec.ts:1234:18
+ ❯ apps/desktop/tests/main-startup.spec.ts:1349:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[44/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > asks before quitting when the Host reports interruptible work and cancels without stopping anything
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ readyWorkspace apps/desktop/tests/main-startup.spec.ts:1234:18
+ ❯ apps/desktop/tests/main-startup.spec.ts:1366:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[45/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > warns about running tasks when the inspection fails and quits directly on session end or a development restart
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ readyWorkspace apps/desktop/tests/main-startup.spec.ts:1234:18
+ ❯ apps/desktop/tests/main-startup.spec.ts:1397:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[46/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > does not block a Windows session end on the quit confirmation
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ readyWorkspace apps/desktop/tests/main-startup.spec.ts:1234:18
+ ❯ apps/desktop/tests/main-startup.spec.ts:1416:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[47/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > defers the downloaded-update confirmation until the hidden window is shown again
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ readyWorkspace apps/desktop/tests/main-startup.spec.ts:1234:18
+ ❯ apps/desktop/tests/main-startup.spec.ts:1438:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[48/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > waits for Platform view storage cleanup before an ordinary quit completes
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:1455:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[49/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > reports a Platform cleanup failure without ending the Host shutdown early
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:1468:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[50/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > finishes quitting when the native window is destroyed before its closed listener clears ownership
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:1482:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[51/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > shares the failed-check deadline across focus and resume, while explicit checks reset polling
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:1499:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[52/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > blocks subsequent product operations without stopping the Host and clears only on a fresh no-force policy
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:1530:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[53/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > keeps one checking dialog open until the manual check settles, then reports the current version
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:1576:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[54/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > reports a manual check failure without offering a download
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:1608:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[55/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > reports a stale download confirmation as a download failure
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:1619:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[56/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > keeps policy failures silent while an ordinary update proceeds
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:1632:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[57/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > does not wait for a pending policy request before proceeding with an ordinary update
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:1649:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[58/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > lets a confirmed mandatory policy preempt an ordinary result dialog
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:1672:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[59/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > handles a deferred authentication failure with popup permission false
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > handles a deferred authentication failure with popup permission true
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:1700:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[60/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > downloads on the first click and opens installation confirmation only after readiness
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:1727:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[61/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > does not lock or stop tasks when restart confirmation is dismissed
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:1750:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[62/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > rechecks admission after approval and rejects work that started during confirmation
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:1758:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[63/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > warns about active tasks and waits for a graceful Host exit after approval
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:1767:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[64/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > unlocks admission without stopping the Host when request draining fails
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:1781:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[65/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > waits for Platform storage cleanup before the installer takes over
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:1790:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[66/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > settles analytics intake before locking API admission and continues after intake failure: accepted
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > settles analytics intake before locking API admission and continues after intake failure: failed
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:1805:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[67/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > reports a Platform storage cleanup failure as preparation failure without stopping the Host
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:1822:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[68/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > closes the main window and cancels the pending quit inspection when the installer quits Electron
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > closes the main window and cancels the pending quit dialog when the installer quits Electron
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ readyWorkspace apps/desktop/tests/main-startup.spec.ts:1234:18
+ ❯ apps/desktop/tests/main-startup.spec.ts:1848:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[69/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > restores a cleanly stopped Host after installer failure and retains mandatory blocking: false
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > restores a cleanly stopped Host after installer failure and retains mandatory blocking: true
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:1892:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[70/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > restores a confirmed non-graceful exit without approving installation, mandatory: false
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > restores a confirmed non-graceful exit without approving installation, mandatory: true
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:1929:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[71/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > does not replace a Host whose failed stop has not confirmed process exit
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:1960:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[72/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > reports replacement startup failure without authorizing installation or retrying automatically
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:1975:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[73/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > opens fatal recovery when the replacement page cannot reload
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:1998:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[74/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > reports a window construction failure without requiring a window
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:2026:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[75/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > accepts Web fatal reports only from the primary application frame
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:2033:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[76/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > ignores subresource failures and navigation cancellation but reports a failed main document
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:2053:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[77/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > offers all recovery choices when resources fail before the Host starts
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:2066:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[78/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > retains the document after a fatal preload failure and reports only the first error
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > retains the document after a fatal renderer failure and reports only the first error
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:2076:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[79/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > ignores clean renderer exits and exits of a destroyed window
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:2090:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[80/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > reports a rejected document load without navigating to a recovery page
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:2104:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[81/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > writes the Host's own diagnostic into a startup-phase crash report when the Host reports a fatal error before ready
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:2112:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[82/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > attaches the primary window's error-level console output to a running-phase Host crash report
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:2136:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[83/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > waits for Host exit before recovery action 0
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > waits for Host exit before recovery action 1
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > waits for Host exit before recovery action 2
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:2167:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[84/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > creates the Host only after the login-shell read and ends the read on quit
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:2197:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[85/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > prepares recovery offscreen and starts one Host before choosing the first visible window
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:2215:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[86/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > prepares an independent plugin profile for the unpackaged Host
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:2251:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[87/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > fails an unpackaged launch that receives no primary runtime directory
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:2267:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[88/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > keeps startup errors in the existing window without a retry handler
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:2275:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[89/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > keeps recovery visible when the backend fails during the welcome preference read
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:2291:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[90/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > desktop main startup > waits for a pending child to exit on quit without late window navigation
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:2312:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[91/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > focuses DSH once when browser authorization becomes failed
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > focuses DSH once when browser authorization becomes expired
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:2333:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[92/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > opens Platform authorization in the effective light palette
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > opens Platform authorization in the effective dark palette
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:2351:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[93/125]⎯
+
+ FAIL  |thread-safe| apps/desktop/tests/main-startup.spec.ts > disables native product events for a disabled Desktop launch
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+    1557| // DSH app, so Electron would derive the same userData directory and s…
+    1558| // lock. Give WhaleGirl Bot its own identity before any path or lock i…
+    1559| app.setName('dsh-bot')
+       |     ^
+    1560| const explicitUserData = app.commandLine.getSwitchValue('user-data-dir…
+    1561| app.setPath('userData', explicitUserData ? resolve(explicitUserData) :…
+ ❯ apps/desktop/tests/main-startup.spec.ts:2370:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[94/125]⎯
+
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 1 unhandled error during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
+TypeError: app.setName is not a function
+ ❯ apps/desktop/src/main.ts:1559:5
+ ❯ VitestModuleEvaluator._runInlinedModule node_modules/.pnpm/vitest@4.1.11_@opentelemetry+api@1.9.1_@types+node@22.20.1_@vitest+coverage-v8@4.1.11_h_414bc0208e52c7af02d5d6ed839cd439/node_modules/vitest/dist/module-evaluator.js:206:4
+ ❯ VitestModuleRunner.directRequest node_modules/.pnpm/vite@8.2.2_@types+node@22.20.1_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.13_yaml@2.9.0/node_modules/vite/dist/node/module-runner.js:1273:59
+ ❯ VitestModuleRunner.cachedRequest node_modules/.pnpm/vite@8.2.2_@types+node@22.20.1_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.13_yaml@2.9.0/node_modules/vite/dist/node/module-runner.js:1180:73
+ ❯ readyForUpdate apps/desktop/tests/main-startup.spec.ts:1178:5
+ ❯ apps/desktop/tests/main-startup.spec.ts:1649:7
+
+This error originated in "apps/desktop/tests/main-startup.spec.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "does not wait for a pending policy request before proceeding with an ordinary update". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files  1 failed (1)
+      Tests  125 failed (125)
+     Errors  1 error
+   Start at  10:08:33
+   Duration  3.81s (transform 1.02s, setup 61ms, import 256ms, tests 3.35s, environment 0ms)

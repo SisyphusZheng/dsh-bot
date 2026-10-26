@@ -1,0 +1,405 @@
+{
+  "branch": "fix/desktop-companion",
+  "candidateWorkflows": 27,
+  "defaultWorkflows": 25,
+  "openPullRequests": 0,
+  "triggers": [
+    {
+      "source": "candidate",
+      "path": ".github/workflows/build-preview-cloudflare.yml",
+      "event": "pull_request",
+      "rule": {
+        "types": [
+          "opened",
+          "synchronize",
+          "reopened"
+        ]
+      }
+    },
+    {
+      "source": "candidate",
+      "path": ".github/workflows/ci-master.yml",
+      "event": "push",
+      "rule": {
+        "branches": [
+          "master"
+        ]
+      }
+    },
+    {
+      "source": "candidate",
+      "path": ".github/workflows/ci.yml",
+      "event": "pull_request",
+      "rule": null
+    },
+    {
+      "source": "candidate",
+      "path": ".github/workflows/dsh-bot-regression.yml",
+      "event": "push",
+      "rule": {
+        "branches": [
+          "fix/safety-config-and-rc3-preflight-20261025"
+        ],
+        "paths": [
+          ".github/workflows/dsh-bot-regression.yml"
+        ]
+      }
+    },
+    {
+      "source": "candidate",
+      "path": ".github/workflows/dsh-bot-regression.yml",
+      "event": "pull_request",
+      "rule": {
+        "paths": [
+          "apps/desktop/src/bot-config-server.ts",
+          "apps/desktop/src/secret-store.ts",
+          "apps/desktop/src/main.ts",
+          "apps/desktop/tests/dsh-bot-regressions.spec.ts",
+          ".github/workflows/dsh-bot-regression.yml"
+        ]
+      }
+    },
+    {
+      "source": "candidate",
+      "path": ".github/workflows/e2e.yml",
+      "event": "push",
+      "rule": {
+        "branches": [
+          "main",
+          "master"
+        ]
+      }
+    },
+    {
+      "source": "candidate",
+      "path": ".github/workflows/e2e.yml",
+      "event": "pull_request",
+      "rule": null
+    },
+    {
+      "source": "candidate",
+      "path": ".github/workflows/expected-filenames.yml",
+      "event": "pull_request",
+      "rule": {
+        "paths": [
+          "*[gG][oO][lL][dD][eE][nN]*",
+          "**/*[gG][oO][lL][dD][eE][nN]*",
+          "!vendor/**"
+        ]
+      }
+    },
+    {
+      "source": "candidate",
+      "path": ".github/workflows/issue-lifecycle.yml",
+      "event": "pull_request",
+      "rule": {
+        "types": [
+          "opened",
+          "edited",
+          "reopened",
+          "review_requested"
+        ]
+      }
+    },
+    {
+      "source": "candidate",
+      "path": ".github/workflows/issue-policy.yml",
+      "event": "pull_request",
+      "rule": {
+        "types": [
+          "opened",
+          "edited",
+          "synchronize",
+          "reopened",
+          "labeled",
+          "unlabeled",
+          "ready_for_review",
+          "review_requested"
+        ]
+      }
+    },
+    {
+      "source": "candidate",
+      "path": ".github/workflows/node-addon-system.yml",
+      "event": "pull_request",
+      "rule": {
+        "paths": [
+          ".github/workflows/node-addon-system.yml",
+          ".github/workflows/node-addon-system-release.yml",
+          "native/system/**",
+          "package.json",
+          "pnpm-lock.yaml",
+          "pnpm-workspace.yaml"
+        ]
+      }
+    },
+    {
+      "source": "candidate",
+      "path": ".github/workflows/node-addon-system.yml",
+      "event": "push",
+      "rule": {
+        "branches": [
+          "master"
+        ],
+        "paths": [
+          ".github/workflows/node-addon-system.yml",
+          ".github/workflows/node-addon-system-release.yml",
+          "native/system/**",
+          "package.json",
+          "pnpm-lock.yaml",
+          "pnpm-workspace.yaml"
+        ]
+      }
+    },
+    {
+      "source": "candidate",
+      "path": ".github/workflows/rc3-upgrade-candidate.yml",
+      "event": "push",
+      "rule": {
+        "branches": [
+          "fix/safety-config-and-rc3-preflight-20261025"
+        ],
+        "paths": [
+          ".github/workflows/rc3-upgrade-candidate.yml"
+        ]
+      }
+    },
+    {
+      "source": "candidate",
+      "path": ".github/workflows/release-vendor.yml",
+      "event": "pull_request",
+      "rule": null
+    },
+    {
+      "source": "candidate",
+      "path": ".github/workflows/release-vendor.yml",
+      "event": "push",
+      "rule": {
+        "branches": [
+          "master"
+        ]
+      }
+    },
+    {
+      "source": "candidate",
+      "path": ".github/workflows/release.yml",
+      "event": "pull_request",
+      "rule": null
+    },
+    {
+      "source": "candidate",
+      "path": ".github/workflows/release.yml",
+      "event": "push",
+      "rule": {
+        "branches": [
+          "master"
+        ]
+      }
+    },
+    {
+      "source": "candidate",
+      "path": ".github/workflows/sandbox.yml",
+      "event": "push",
+      "rule": {
+        "branches": [
+          "master"
+        ]
+      }
+    },
+    {
+      "source": "candidate",
+      "path": ".github/workflows/weighted-approval.yml",
+      "event": "pull_request_target",
+      "rule": {
+        "types": [
+          "opened",
+          "synchronize",
+          "reopened",
+          "ready_for_review",
+          "converted_to_draft",
+          "edited"
+        ]
+      }
+    },
+    {
+      "source": "default-main",
+      "path": ".github/workflows/build-preview-cloudflare.yml",
+      "event": "pull_request",
+      "rule": {
+        "types": [
+          "opened",
+          "synchronize",
+          "reopened"
+        ]
+      }
+    },
+    {
+      "source": "default-main",
+      "path": ".github/workflows/ci-master.yml",
+      "event": "push",
+      "rule": {
+        "branches": [
+          "master"
+        ]
+      }
+    },
+    {
+      "source": "default-main",
+      "path": ".github/workflows/ci.yml",
+      "event": "pull_request",
+      "rule": null
+    },
+    {
+      "source": "default-main",
+      "path": ".github/workflows/e2e.yml",
+      "event": "push",
+      "rule": {
+        "branches": [
+          "main",
+          "master"
+        ]
+      }
+    },
+    {
+      "source": "default-main",
+      "path": ".github/workflows/e2e.yml",
+      "event": "pull_request",
+      "rule": null
+    },
+    {
+      "source": "default-main",
+      "path": ".github/workflows/expected-filenames.yml",
+      "event": "pull_request",
+      "rule": {
+        "paths": [
+          "*[gG][oO][lL][dD][eE][nN]*",
+          "**/*[gG][oO][lL][dD][eE][nN]*",
+          "!vendor/**"
+        ]
+      }
+    },
+    {
+      "source": "default-main",
+      "path": ".github/workflows/issue-lifecycle.yml",
+      "event": "pull_request",
+      "rule": {
+        "types": [
+          "opened",
+          "edited",
+          "reopened",
+          "review_requested"
+        ]
+      }
+    },
+    {
+      "source": "default-main",
+      "path": ".github/workflows/issue-policy.yml",
+      "event": "pull_request",
+      "rule": {
+        "types": [
+          "opened",
+          "edited",
+          "synchronize",
+          "reopened",
+          "labeled",
+          "unlabeled",
+          "ready_for_review",
+          "review_requested"
+        ]
+      }
+    },
+    {
+      "source": "default-main",
+      "path": ".github/workflows/node-addon-system.yml",
+      "event": "pull_request",
+      "rule": {
+        "paths": [
+          ".github/workflows/node-addon-system.yml",
+          ".github/workflows/node-addon-system-release.yml",
+          "native/system/**",
+          "package.json",
+          "pnpm-lock.yaml",
+          "pnpm-workspace.yaml"
+        ]
+      }
+    },
+    {
+      "source": "default-main",
+      "path": ".github/workflows/node-addon-system.yml",
+      "event": "push",
+      "rule": {
+        "branches": [
+          "master"
+        ],
+        "paths": [
+          ".github/workflows/node-addon-system.yml",
+          ".github/workflows/node-addon-system-release.yml",
+          "native/system/**",
+          "package.json",
+          "pnpm-lock.yaml",
+          "pnpm-workspace.yaml"
+        ]
+      }
+    },
+    {
+      "source": "default-main",
+      "path": ".github/workflows/release-vendor.yml",
+      "event": "pull_request",
+      "rule": null
+    },
+    {
+      "source": "default-main",
+      "path": ".github/workflows/release-vendor.yml",
+      "event": "push",
+      "rule": {
+        "branches": [
+          "master"
+        ]
+      }
+    },
+    {
+      "source": "default-main",
+      "path": ".github/workflows/release.yml",
+      "event": "pull_request",
+      "rule": null
+    },
+    {
+      "source": "default-main",
+      "path": ".github/workflows/release.yml",
+      "event": "push",
+      "rule": {
+        "branches": [
+          "master"
+        ]
+      }
+    },
+    {
+      "source": "default-main",
+      "path": ".github/workflows/sandbox.yml",
+      "event": "push",
+      "rule": {
+        "branches": [
+          "master"
+        ]
+      }
+    },
+    {
+      "source": "default-main",
+      "path": ".github/workflows/weighted-approval.yml",
+      "event": "pull_request_target",
+      "rule": {
+        "types": [
+          "opened",
+          "synchronize",
+          "reopened",
+          "ready_for_review",
+          "converted_to_draft",
+          "edited"
+        ]
+      }
+    }
+  ],
+  "status": "PASS",
+  "publication": "New branch only; no matching push branch and no create event, no open PR; no Actions invocation.",
+  "defaultMainCommit": "5418caecad7beda062daedc848376ba805c8cda3"
+}

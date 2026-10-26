@@ -438,6 +438,7 @@ async function main(): Promise<void> {
             ...(memoryChanged ? { memory:{ url:memoryRuntime.url,token:memoryRuntime.token } } : {}),
           }) })
         if (!response.ok) throw new Error(`Live configuration failed: HTTP ${response.status}`)
+        pet.updateBehavior(config)
         if (JSON.stringify(previous.voice) !== JSON.stringify(config.voice)) await pet.configure(config)
       }
       const pending = configUpdates.then(update)
@@ -476,10 +477,22 @@ async function main(): Promise<void> {
   app.on('will-quit', () => { void memoryRuntime.stop(); void botConfigServer?.close() })
   const pet = new ProductPet({ resources:development ? join(app.getAppPath(),'resources') : process.resourcesPath,
     home:app.getPath('userData'),development,appPath:app.getAppPath(),
-    toggleMain:()=>{
+    toggleMain:(reveal = false)=>{
       const window=mainWindow ?? createMainWindow()
-      if(window.isVisible()&&window.isFocused())window.hide()
-      else{window.show();window.focus()}
+      if(!reveal&&window.isVisible()&&window.isFocused())window.hide()
+      else {
+        if (!enteredWorkspace) void enterWorkspace().catch((error: unknown) => reportFatal(error, 'main'))
+        else { window.show(); window.focus() }
+        void readyBridge().then(async (descriptor) => {
+          const response = await net.fetch(`http://127.0.0.1:${descriptor.port}/health`)
+          const health = await response.json() as { agent?: { ready?: boolean; sessionId?: string } }
+          const sessionId = health.agent?.sessionId
+          if (!sessionId || window.isDestroyed()) return
+          const select = (): void => { if (!window.isDestroyed()) window.webContents.send(DESKTOP_IPC.petSession, sessionId) }
+          if (window.webContents.isLoadingMainFrame()) window.webContents.once('did-finish-load', select)
+          else select()
+        }).catch((error: unknown) => console.warn('pet Session navigation:', error))
+      }
     },
   })
   // Dock and Finder launches inherit only launchd's environment; every Host shares one login-shell read.
@@ -1295,12 +1308,13 @@ async function main(): Promise<void> {
     })
     return window
   }
-  const enterWorkspace = async ({ activate = true }: { activate?: boolean } = {}): Promise<void> => {
+  const enterWorkspace = async ({ activate = true, petOnly = false }: { activate?: boolean; petOnly?: boolean } = {}): Promise<void> => {
     if (quitting) return
     const window = mainWindow ?? createMainWindow()
     await navigateMain(applicationUrl)
     if (isQuitting() || recovery.active || window.isDestroyed()) return
-    if (activate) window.show()
+    if (petOnly) window.hide()
+    else if (activate) window.show()
     else window.showInactive()
     enteredWorkspace = true
     if (welcomeWindow !== undefined) {
@@ -1386,12 +1400,13 @@ async function main(): Promise<void> {
     locale = resolveDesktopStartupLocale(state.localePreference, systemLanguages)
     windowsLanguage = locale.id
     refreshApplicationMenu()
-    if (!enteredWorkspace && needsWelcome({ loggedIn: state.loggedIn, hasApiKey: state.hasApiKey })) {
+    if (!enteredWorkspace && !startupConfig.llm?.apiKey && needsWelcome({ loggedIn: state.loggedIn, hasApiKey: state.hasApiKey })) {
       // A later login must retain its own activation policy instead of replaying startup focus.
       raiseAfterUpdate = false
       await showWelcome()
     } else {
-      await enterWorkspace()
+      const petOnly = !enteredWorkspace
+      await enterWorkspace({ activate: !petOnly, petOnly })
     }
   }
   focusPrimaryWindow = () => {
