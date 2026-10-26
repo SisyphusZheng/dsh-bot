@@ -2,9 +2,12 @@
 import { build } from 'esbuild'
 import { mkdirSync, copyFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { build as buildClient } from 'tsdown'
 const root = resolve(import.meta.dirname, '../../..'),
   dest = resolve(root, 'apps/desktop/resources/pet')
 mkdirSync(dest, { recursive: true })
+// The Host package's ./client is consumed as a classic script, never as Node ESM.
+await buildClient({ config: resolve(root, 'nisse/packages/host-integration/tsdown.config.ts'), configLoader: 'native' })
 await build({
   entryPoints: [resolve(root, 'product/pet/src/voice-client.mjs')],
   outfile: resolve(dest, 'voice-client.js'),

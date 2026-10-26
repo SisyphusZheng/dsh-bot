@@ -1,0 +1,64 @@
+{
+  "status": "BLOCKED-ENVIRONMENT",
+  "description": "Web boot repair verified on Linux; new packaged macOS acceptance required",
+  "branch": "fix/companion-web-boot",
+  "baseCommit": "28776d20e1694b773fd5f9af40569aff801d2589",
+  "testedSourceTreeExcludingEvidence": "80484fd63c97ba43f6c42d2d643cae073d0f8e3a",
+  "sourceTreeMethod": "Git index tree excluding the entire product/evidence directory",
+  "baseMacAcceptance": {
+    "status": "FAIL",
+    "source": "User-provided local report; underlying Mac evidence files not available in this Work environment",
+    "findings": [
+      "Unexpected token export: raw ESM in browser classic-script plugin",
+      "Readiness and shutdown deadlines failed",
+      "Memory and main DSH interactions blocked"
+    ]
+  },
+  "fixes": [
+    "Build the Client from src/client/index.js with the official clientBundle preset, never ship the raw source as ./client",
+    "Remove the nonexistent dsh.client Loader row; the existing Host row and package metadata own discovery",
+    "Wait for official sessions.list membership before selecting a buffered Bot Session; latest request wins and both subscriptions dispose",
+    "Check the actual packaged Host client bytes in addition to ASAR/DMG identity",
+    "Native acceptance records Bridge, web boot/double-click/actual Session, Memory, exit status and descriptor cleanup separately; failed phases persist and prevent overall PASS"
+  ],
+  "checks": {
+    "frozenInstall": "PASS: pnpm 11.28.5, frozen lockfile unchanged",
+    "productionBuild": "PASS: 9 official gates, 0 failed/skipped",
+    "latestAggregateChecks": "PASS: 2/2 after the latest typed changes",
+    "vitest": "PASS: 6 files, 37 tests",
+    "node": "PASS: 24 tests",
+    "productionWeb": "PASS: complete real production Host, official loader and UI, buffered navigation to actual Bot Session in Chromium 149; only Electron preload callback is a fixture",
+    "negativeControl": "PASS: substituting the previous raw ESM into the same actual HTTP bundle fails web boot",
+    "productionHost": "PASS: real write allow/reject/cancel; official single/multi questions; invalid/duplicate/cancel; live config; memory HTTP fixture and cross-Session injection; graceful exit",
+    "defaultProvider": "PASS: OpenCodeGo/Anthropic mock protocol; no real model credentials",
+    "upstreamIntegrity": "PASS: 16347 official files / 26 explicit overrides",
+    "packagedClientAndHashFixtures": "PASS: original ESM and wrong ASAR/source/hash are rejected",
+    "nativeProbeProtocol": "PASS: real loopback WebSocket protocol fixture; not a macOS launch test",
+    "shellSyntax": "PASS: build-macos.sh, accept-macos.sh"
+  },
+  "gates": {
+    "G1": "BLOCKED-ENVIRONMENT",
+    "G2": "PASS",
+    "G3": "DEFERRED",
+    "G4": "BLOCKED-ENVIRONMENT",
+    "G5": "BLOCKED-ENVIRONMENT",
+    "G6": "PASS",
+    "G7": "BLOCKED-ENVIRONMENT"
+  },
+  "remaining": [
+    "No new DMG built in Linux; macOS packaged launch, true pet double-click, SIGTERM/restart and Memory must be rerun",
+    "Real Hindsight semantic database persistence is not newly qualified; HTTP adapter fixtures are not database acceptance",
+    "Microphone, TCC, acoustic interruption and live Provider credentials remain untested",
+    "A5: voice Providers remain Qwen-only through Pipecat; multi-provider migration is not implemented in this startup repair",
+    "Offline Sherpa wake-word detection remains deferred",
+    "Inherited main-startup Electron mock setName failure is unchanged and not included in 37 passing tests"
+  ],
+  "actions": "No GitHub Actions used; live default and candidate workflow triggers inspected before one final new branch creation; no PR/merge/tag/release",
+  "environment": {
+    "os": "Linux x64",
+    "node": "24.22.1",
+    "pnpm": "11.28.5",
+    "chromium": "149.0.7827.55"
+  },
+  "logNormalization": "Trailing whitespace and blank EOF lines removed to satisfy the repository whitespace hook; no test output or outcome changed."
+}

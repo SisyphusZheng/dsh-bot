@@ -155,5 +155,16 @@
   "frozenVoiceExecutable": {
     "platform": "Linux x86_64, not macOS",
     "sha256": "573c0f3c0b6aa36f6926292455491c4e32fdfa8060c34da78a342c2013fd4955"
+  },
+  "subsequentMacAcceptance": {
+    "status": "FAIL",
+    "sourceCommit": "28776d20e1694b773fd5f9af40569aff801d2589",
+    "source": "User-provided local acceptance report pasted into this conversation; underlying Mac files are not present in this Work workspace",
+    "findings": [
+      "Packaged web boot: Unexpected token export in nisse-host-integration/client.js",
+      "accept-macos.sh readiness and shutdown deadlines failed in three reported runs",
+      "Bridge Agent was ready; memory/runtime.json was absent; real DSH UI and Hindsight acceptance were blocked"
+    ],
+    "supersedesCandidateAcceptance": true
   }
 }

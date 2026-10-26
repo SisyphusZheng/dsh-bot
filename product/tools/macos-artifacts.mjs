@@ -4,6 +4,7 @@ import { createReadStream, readFileSync, writeFileSync } from 'node:fs'
 import { resolve, join } from 'node:path'
 import { createRequire } from 'node:module'
 import { execFileSync } from 'node:child_process'
+import { verifyHostClient } from './verify-host-client.mjs'
 const root = resolve(import.meta.dirname, '../..')
 const requireDesktop = createRequire(join(root, 'apps/desktop/package.json'))
 const { readAsar } = requireDesktop('app-builder-lib/out/asar/asar.js')
@@ -27,5 +28,6 @@ if (mode === 'record') {
   const archive = await readAsar(join(path, 'Contents/Resources/app.asar'))
   const metadata = await archive.readJson('package.json')
   if (metadata.dshBuildCommit !== sourceCommit || metadata.dshBuildDirty !== false) throw new Error('Packaged app is not the clean candidate source commit')
+  verifyHostClient(join(path, 'Contents/Resources/host-integration'))
   console.log(`PASS packaged source identity: ${metadata.dshBuildCommit}`)
 } else throw new Error('Usage: macos-artifacts.mjs record|verify <dmg> <manifest> | app <app>')

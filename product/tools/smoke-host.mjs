@@ -63,6 +63,10 @@ try {
     await new Promise(r=>setTimeout(r,100))
   }
   assert.ok(descriptor, 'Host not ready: '+output.slice(-6000))
+  if(process.argv.includes('--web')) {
+    const {smokeHostBrowser}=await import('./smoke-host-browser.mjs')
+    await smokeHostBrowser({root,descriptor,webUrl:output.match(/dsh web: (http[^\s]+)/)?.[1]})
+  }
   const response=await fetch(`http://127.0.0.1:${descriptor.port}/voice/turn`,{method:'POST',headers:{authorization:`Bearer ${descriptor.token}`,'content-type':'application/json'},body:JSON.stringify({text:'Please say the smoke result.'}),signal:AbortSignal.timeout(30000)})
   assert.equal(response.status,200)
   const frames=(await response.text()).trim().split('\n').map(x=>JSON.parse(x))
@@ -138,5 +142,6 @@ try {
   child.kill('SIGTERM'); await Promise.race([new Promise(r=>child.once('exit',r)),new Promise((_,r)=>setTimeout(()=>r(new Error('Host shutdown timeout')),10000).unref())]); assert.equal(code,0,output.slice(-3000)); child=null
   console.log(`PASS real Host startup, ${llm.provider}, voice NDJSON, session completion and graceful exit`)
 } catch(error) {throw new Error(String(error)+'\n'+output.slice(-14000))} finally {
-  child?.kill('SIGKILL'); await new Promise(r=>{mock.close(r);mock.closeAllConnections()}); rmSync(home,{recursive:true,force:true})
+  if(child){const exited=code===undefined?new Promise(resolve=>child.once('exit',resolve)):Promise.resolve();child.kill('SIGKILL');await exited}
+  await new Promise(r=>{mock.close(r);mock.closeAllConnections()}); rmSync(home,{recursive:true,force:true})
 }
