@@ -22,7 +22,8 @@
     "source": "product/voice-worker-src",
     "lock": "requirements-macos.lock",
     "nativeWorker": "rebuilt from current source; not reused",
-    "lockSha256": "25f50968d35614d5b05dd404c980e8b0f370dd02b3c3d99e5fec53f8b605fa38"
+    "lockSha256": "25f50968d35614d5b05dd404c980e8b0f370dd02b3c3d99e5fec53f8b605fa38",
+    "wakePhrase": "Optional ASR address phrase after explicit microphone activation; 30-second conversation window. Offline Sherpa is deferred."
   },
   "memory": {
     "hindsight": "1.0.0",
@@ -42,9 +43,21 @@
     "pnpmLockSha256": "b42193f1f9f70315689e72b2bc3fd359513af1c150dea496ae87e4d278f8bb4c"
   },
   "pet": {
-    "source": "apps/desktop/src/pet-runtime.ts + apps/desktop/resources/pet",
+    "source": "apps/desktop/src/pet-runtime.ts + product/pet/src + apps/desktop/resources/pet",
     "animation": "apps/desktop/resources/whale-girl",
-    "electron": "44.7.0 (shared desktop process, no nested Electron)"
+    "electron": "44.7.0 (shared desktop process, no nested Electron)",
+    "rendererSource": {
+      "repository": "https://github.com/QwenAudio/qwen-audio-agent",
+      "version": "2.0.1",
+      "commit": "a73bcbc2e1278bf664df38bdd169ffba1fb2451f",
+      "files": [
+        "web/src/desktop/DesktopSpriteOrb.jsx",
+        "web/src/desktop/sprite-orb.js"
+      ],
+      "license": "Apache-2.0",
+      "changes": "standalone canvas entry, same-origin assets, waiting-input animation"
+    },
+    "restoredPresentationCommit": "8c34e66905ffd1ac50a6ba9c0f3196b45e4823c6"
   },
   "hostIntegration": {
     "version": "0.1.0",

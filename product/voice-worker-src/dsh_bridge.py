@@ -30,6 +30,7 @@ from collections import deque
 from difflib import SequenceMatcher
 
 import aiohttp
+from wake_phrase import WakePhrase
 from loguru import logger
 
 from pipecat.frames.frames import (
@@ -74,6 +75,7 @@ def _is_interrupt_command(text: str) -> bool:
 class DSHBridgeProcessor(FrameProcessor):
     def __init__(self, descriptor_path: str = ""):
         super().__init__(name="DSHBridgeProcessor")
+        self._wake_phrase = WakePhrase(os.environ.get("DSH_WAKE_PHRASE", ""))
         self._descriptor_path = descriptor_path or os.environ.get("DSH_BRIDGE_DESCRIPTOR", DEFAULT_DESCRIPTOR)
         self._session: aiohttp.ClientSession | None = None
         self._current: dict | None = None
@@ -423,6 +425,13 @@ class DSHBridgeProcessor(FrameProcessor):
                 # an explicit new request (side effects may already have happened).
                 await self.push_frame(TTSSpeakFrame(text="会话已恢复。请重新说一次你的请求。"))
                 return
+            admitted = self._wake_phrase.admit(text, active=self._current is not None)
+            if admitted is None:
+                return
+            if not admitted:
+                await self.push_frame(TTSSpeakFrame(text="在呢，你说。"))
+                return
+            text = admitted
             self._pending.append(text)
             if self._current is None:
                 await self._start_next_turn()

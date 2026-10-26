@@ -2,8 +2,10 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import {randomBytes} from 'node:crypto'
 import assert from 'node:assert/strict'
+import { waitAgentReady } from './wait-agent-ready.mjs'
 const [descriptorPath,markerPath,mode='write',bridgePath]=process.argv.slice(2),d=JSON.parse(readFileSync(descriptorPath))
 const call=async(path,body)=>{const r=await fetch(d.url+path,{method:'POST',headers:{authorization:`Bearer ${d.token}`,'content-type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(60000)});const j=await r.json();assert.equal(r.status,200,JSON.stringify(j));assert.equal(j.ok,true,JSON.stringify(j));return j}
+if(bridgePath) await waitAgentReady(bridgePath)
 const health=await fetch(d.url+'/health',{headers:{authorization:`Bearer ${d.token}`}});assert.equal((await health.json()).ok,true)
 if(mode==='write'){
   const marker='mvp-'+[...randomBytes(24)].map(x=>String.fromCharCode(97+x%26)).join('')

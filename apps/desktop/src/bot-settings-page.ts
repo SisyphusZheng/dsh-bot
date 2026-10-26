@@ -106,6 +106,7 @@ var SCHEMA = [
     {key:'baseUrl', label:'服务地址', type:'text'},
     {key:'model', label:'模型', type:'text'},
     {key:'voice', label:'音色', type:'text'},
+    {key:'wakeWord', label:'连接后的唤醒短语（留空直接对话）', type:'text'},
     {key:'apiKey', label:'API Key', type:'password'}
   ]},
   {id:'llm', label:'LLM 模型', kind:'fields', test:'llm', fields:[
@@ -379,7 +380,8 @@ function renderPermissionsPanel(panel){
   panel.appendChild(el('div', 'divider'));
   panel.appendChild(el('div', 'panel-title', '行为'));
   var behavior = config.behavior || {pauseOnInput:true, allowScreenView:false};
-  var inputNote=document.createElement('p');inputNote.textContent='当前候选使用桌宠停止按钮或语音打断；全局键鼠自动暂停和唤醒词尚未接入当前桌宠。';panel.appendChild(inputNote);
+  panel.appendChild(buildCheckboxRow('操作键鼠时暂停任务', '你操作电脑时暂停正在运行的任务；等待审批时不会自动暂停。', 'pauseOnInput', behavior.pauseOnInput !== false));
+  var inputNote=document.createElement('p');inputNote.textContent='右键桌宠可开启语音或停止任务。唤醒短语在语音连接后通过 ASR 识别，麦克风开启期间音频仍发送给语音供应商；唤醒后 30 秒内可连续对话。键鼠自动暂停不打断待处理审批。';panel.appendChild(inputNote);
   panel.appendChild(buildCheckboxRow('允许查看屏幕', '允许 Bot 截取屏幕内容（需要系统屏幕录制权限）。', 'allowScreenView', behavior.allowScreenView === true));
   panel.appendChild(hint('审批模式与行为开关保存在 Bot 配置（config.json，权限 0600）里，实际执行由 main.ts / host-integration / 桌宠接线后生效。'));
 }

@@ -138,7 +138,7 @@ export function createElectronBuilderConfig(
     },
     productName: 'dsh-bot',
     // Unsigned builds carry their own suffix so a shared file can never pass for a release artifact.
-    artifactName: `dsh-bot-\${version}-\${os}-\${arch}${output.suffix}.\${ext}`,
+    artifactName: `dsh-bot-\${version}-${unsigned && resolvedPlatform === "darwin" ? (packaged?.commit.slice(0, 8) ?? "local") + "-" : ""}\${os}-\${arch}${output.suffix}.\${ext}`,
     directories: { output: output.directory },
     asar: true,
     electronDist: buildPaths.electron,

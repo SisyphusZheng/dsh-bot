@@ -29,9 +29,19 @@ vi.mock('electron', () => ({
       return [0, 0]
     }
     setPosition() {}
+    on() {}
+    setVisibleOnAllWorkspaces() {}
+    setIgnoreMouseEvents() {}
+    getBounds() { return { x:0,y:0,width:172,height:204 } }
   },
   ipcMain: { handle: () => {}, removeHandler: () => {} },
-  screen: { getPrimaryDisplay: () => ({ workArea: { x: 0, y: 0, width: 1000, height: 800 } }) },
+  screen: {
+    getPrimaryDisplay: () => ({ workArea: { x: 0, y: 0, width: 1000, height: 800 } }),
+    getAllDisplays: () => [{ id: 1, workArea: { x: 0, y: 0, width: 1000, height: 800 } }],
+    getDisplayMatching: () => ({ workArea: { x: 0, y: 0, width: 1000, height: 800 } }),
+  },
+  powerMonitor: { getSystemIdleTime: () => 100 },
+  Menu: { buildFromTemplate: () => ({ popup() {} }) },
   session: { fromPartition: () => ({ setPermissionCheckHandler: () => {}, setPermissionRequestHandler: () => {} }) },
   systemPreferences: {},
 }))

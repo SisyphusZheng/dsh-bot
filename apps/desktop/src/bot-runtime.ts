@@ -103,6 +103,10 @@ function managedPatch(
       `    memoryUrl: ${JSON.stringify(memory.url)}`,
       `    memoryToken: ${JSON.stringify(memory.token)}`,
     ]),
+    '- id: nisse-pet-session-ui',
+    '  name: dsh.client',
+    '  config:',
+    '    package: nisse-host-integration',
   ]
   if (!hasUserLlmConfig) {
     const keyEnv = CUSTOM_LLM_KEY_ENV

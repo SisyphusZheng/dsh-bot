@@ -11,7 +11,19 @@ import { installMandatoryUpdateOverlay } from './preload-mandatory-overlay.ts'
 import { createDesktopBrowserBridge } from './preload-browser.ts'
 
 function createProductApi(): DshDesktopProductApi {
+  let petSession: string | undefined
+  const petListeners = new Set<(sessionId: string) => void>()
+  ipcRenderer.on(DESKTOP_IPC.petSession, (_event, value: unknown) => {
+    if (typeof value !== 'string' || value.length > 200) return
+    petSession = value
+    for (const listener of petListeners) listener(value)
+  })
   return {
+    onPetSession(listener) {
+      petListeners.add(listener)
+      if (petSession !== undefined) listener(petSession)
+      return () => { petListeners.delete(listener) }
+    },
     protocolVersion: 1,
     botSettingsUrl:()=>ipcRenderer.invoke(DESKTOP_IPC.botSettings) as Promise<string>,
     browser: createDesktopBrowserBridge(),

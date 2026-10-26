@@ -24,9 +24,9 @@ const mock = createServer(async (req, res) => {
   res.writeHead(200, {'content-type':'text/event-stream'})
   const event = (name, data) => res.write(`event: ${name}\ndata: ${JSON.stringify(data)}\n\n`)
   if(nextTool){
-    const args=nextTool;nextTool=null
+    const args=nextTool.arguments||nextTool;const toolName=nextTool.name||'write';nextTool=null
     const event=delta=>res.write('data: '+JSON.stringify({id:'chatcmpl-tool',object:'chat.completion.chunk',created:1,model:'mvp-local',choices:[{index:0,delta,finish_reason:Object.keys(delta).length?null:'tool_calls'}]})+'\n\n')
-    event({role:'assistant',tool_calls:[{index:0,id:'call_write',type:'function',function:{name:'write',arguments:JSON.stringify(args)}}]});event({});res.end('data: [DONE]\n\n');return
+    event({role:'assistant',tool_calls:[{index:0,id:'call_write',type:'function',function:{name:toolName,arguments:JSON.stringify(args)}}]});event({});res.end('data: [DONE]\n\n');return
   }
   if (req.url?.includes('/messages')) {
     event('message_start',{type:'message_start', message:{id:'msg_mvp',type:'message',role:'assistant',model:'deepseek-v4.1-flash',content:[],stop_reason:null,stop_sequence:null,usage:{input_tokens:1,output_tokens:0}}})
@@ -84,6 +84,28 @@ try {
       }}
       assert.ok(approved,JSON.stringify(all));assert.equal(existsSync(target),decision==='allow',JSON.stringify(all));assert.ok(all.some(x=>x.type==='turn-end'))
     }
+    for (const kind of ['single','multi','cancel']) {
+      const questions = [{id:'place',question:'去哪里？',options:[{label:'杭州'},{label:'苏州'},{label:'上海'}],...(kind==='multi'?{multi_select:true}:{})}]
+      nextTool={name:'ask_user_question',arguments:{questions}}
+      const response=await post('/voice/turn',{text:'Ask me to choose a destination.'});assert.equal(response.status,200)
+      const finished=response.text()
+      let request
+      const deadline=Date.now()+15000
+      while(Date.now()<deadline){const snapshot=await(await fetch(`http://127.0.0.1:${descriptor.port}/interactions`,{headers})).json();request=snapshot.requests.find(item=>item.kind==='question');if(request)break;await new Promise(r=>setTimeout(r,20))}
+      assert.ok(request,'official ask_user_question was not mirrored')
+      assert.equal(request.questions[0].id,'place')
+      assert.equal((await post('/questions/answer',{id:request.id,sessionId:request.sessionId,answer:{answers:[{id:'place',selected:['unknown']}]}})).status,400)
+      if(kind==='cancel')assert.equal((await post('/cancel',{})).status,200)
+      else {
+        const selected=kind==='multi'?['杭州','苏州']:['苏州']
+        const body={id:request.id,sessionId:request.sessionId,answer:{answers:[{id:'place',selected}]}}
+        assert.equal((await post('/questions/answer',body)).status,200)
+        assert.equal((await post('/questions/answer',body)).status,409)
+      }
+      const frames=(await finished).trim().split('\n').map(x=>JSON.parse(x));assert.ok(frames.some(x=>x.type==='turn-end'))
+      const snapshot=await(await fetch(`http://127.0.0.1:${descriptor.port}/interactions`,{headers})).json();assert.equal(snapshot.requests.length,0)
+    }
+    console.log('PASS official ask_user_question single/multi-select, invalid answer, duplicate answer and cancellation through real production Host')
     const original=JSON.parse(readFileSync(join(home,'bot/bridge.json'),'utf8')),updated={...llm,model:'mvp-updated',apiKey:'mvp-updated-key'}
     writeFileSync(join(home,'bot/config.json'),JSON.stringify({llm:{...updated,apiKey:''},persona:{name:'LivePersona'},approval:{mode:'ask-before-acting'}}))
     const applied=await post('/config',{llm:updated});assert.equal(applied.status,200,await applied.clone().text())
