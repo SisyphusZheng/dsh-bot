@@ -44,18 +44,8 @@ import {
  * @param {string | undefined} preparedRuntimeVersion - Version that private tree declares, which qualification rewrites away from the product version.
  * @returns {object} electron-builder configuration.
  */
-/**
- * Workspace inputs that live outside this repository (desk-pet bundle, voice
- * worker/client, G2 bridge). The product build receives them explicitly so the
- * packaging configuration never embeds a developer's absolute path; the wrapper
- * `nisse/tools/build-product.sh` derives them from the WhaleGirl workspace.
- */
-const NISSE_WORKSPACE_INPUTS = {
-  petBundle: process.env.NISSE_PET_BUNDLE?.trim(),
-  voiceWorker: process.env.NISSE_VOICE_WORKER_DIR?.trim(),
-  voiceClient: process.env.NISSE_VOICE_CLIENT_BUNDLE?.trim(),
-  bridgePlugin: process.env.NISSE_BRIDGE_PLUGIN_DIR?.trim(),
-}
+/** Freshly built worker; the pet frontend is built in this repository. */
+const VOICE_WORKER_DIR=process.env.NISSE_VOICE_WORKER_DIR?.trim()
 
 function requiredWorkspaceInput(label, value) {
   if (value === undefined || value === '' || !existsSync(value)) {
@@ -184,12 +174,11 @@ export function createElectronBuilderConfig(
     ],
     asarUnpack: unpack,
     extraResources: [
+      {from:fileURLToPath(new URL('../resources/pet',import.meta.url)),to:'pet'},
       { from: buildPaths.runtime, to: 'runtime' },
       { from: fileURLToPath(new URL('../resources/icon-whalegirl.png', import.meta.url)), to: 'icon.png' },
       { from: fileURLToPath(new URL('../resources/licenses.html', import.meta.url)), to: 'licenses.html' },
-      { from: requiredWorkspaceInput('NISSE_PET_BUNDLE (NissePet.app)', NISSE_WORKSPACE_INPUTS.petBundle), to: 'pet/NissePet.app' },
-      { from: requiredWorkspaceInput('NISSE_VOICE_WORKER_DIR (PyInstaller onedir)', NISSE_WORKSPACE_INPUTS.voiceWorker), to: 'voice-worker' },
-      { from: requiredWorkspaceInput('NISSE_VOICE_CLIENT_BUNDLE (inject-bundle.js)', NISSE_WORKSPACE_INPUTS.voiceClient), to: 'voice-client/inject-bundle.js' },
+      { from: requiredWorkspaceInput('NISSE_VOICE_WORKER_DIR (PyInstaller onedir)', VOICE_WORKER_DIR), to: 'voice-worker' },
       // Bundled memory runtime (Hindsight + int8 ONNX model + pg0 installation) and the
       // adapter sidecar. All inputs are explicit NISSE_MEMORY_DIR paths; the wrapper
       // stages them and the memory runtime starts asynchronously.
@@ -200,8 +189,6 @@ export function createElectronBuilderConfig(
       { from: memoryInput('scripts'), to: 'memory/scripts' },
       { from: memoryInput('adapter/m1-c-hindsight'), to: 'memory/adapter/m1-c-hindsight', filter: ['**/*'] },
       { from: memoryInput('VERSION.json'), to: 'memory/VERSION.json' },
-      { from: fileURLToPath(new URL('../resources/pet.html', import.meta.url)), to: 'pet.html' },
-      { from: fileURLToPath(new URL('../resources/pet-preload.cjs', import.meta.url)), to: 'pet-preload.cjs' },
       { from: fileURLToPath(new URL('../resources/whale-girl', import.meta.url)), to: 'whale-girl' },
       { from: fileURLToPath(new URL('../../../nisse/packages/host-integration', import.meta.url)), to: 'host-integration' },
       // Windows tray bitmaps; macOS keeps the Dock and ships no menu bar icon.

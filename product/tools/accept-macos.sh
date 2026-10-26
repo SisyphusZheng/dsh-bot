@@ -17,7 +17,7 @@ file "$BIN" | grep -q arm64
 PID=''
 stop_app(){ if [[ -n "$PID" ]]; then kill -TERM "$PID" 2>/dev/null || true; for i in {1..60}; do kill -0 "$PID" 2>/dev/null || break; sleep 0.5; done; if kill -0 "$PID" 2>/dev/null; then echo 'FAIL shutdown deadline'; return 1; fi; wait "$PID" || true; PID=''; fi; }
 trap stop_app EXIT
-start_app(){ HOME="$RUN/home" CFFIXED_USER_HOME="$RUN/home" "$BIN" --user-data-dir="$RUN/user-data" > "$RUN/app-$1.log" 2>&1 & PID=$!; }
+start_app(){ env -u ELECTRON_RUN_AS_NODE -u NODE_OPTIONS HOME="$RUN/home" CFFIXED_USER_HOME="$RUN/home" "$BIN" --user-data-dir="$RUN/user-data" > "$RUN/app-$1.log" 2>&1 & PID=$!; }
 wait_ready(){ for i in {1..300}; do [[ -f "$RUN/user-data/dsh-home/memory/runtime.json" && -f "$RUN/user-data/dsh-home/bot/bridge.json" ]] && return; kill -0 "$PID" 2>/dev/null || { echo 'FAIL app exited'; return 1; }; sleep 1; done; echo 'FAIL readiness deadline'; return 1; }
 start_app first
 wait_ready

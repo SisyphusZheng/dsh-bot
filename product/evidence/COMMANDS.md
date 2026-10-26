@@ -1,19 +1,21 @@
-# Work-local verification
+# Work-local qualification
 
-See RESULTS.json and per-command logs. No Actions workflow was invoked.
+Base: `8c34e66905ffd1ac50a6ba9c0f3196b45e4823c6`. No GitHub Actions used.
 
-- `pnpm install --frozen-lockfile`
-- `DSH_GATE_CONCURRENCY=1 pnpm run typecheck`
-- `DSH_GATE_CONCURRENCY=1 pnpm run build`
-- `pnpm exec vitest run --maxWorkers=1` with the nine files in `product/tools/verify-local.sh`
-- Python 3.12.13 + `product/voice-worker-src/requirements.in`, three real processor contract tests
-- `node product/tools/smoke-host.mjs` and `--default-provider`
-- `node product/tools/smoke-voice.mjs ../dependencies/voice-venv/bin/python`
-- `node product/tools/verify-upstream.mjs`, plus a temporary unallowlisted source mutation rejected and restored
-- `DSH_ARCHIVE_BASE_REF=1f81c047fc48fa190a683e469daa699857e9afe8 pnpm exec lefthook run pre-commit`
-- `bash -n` for Mac build, Mac acceptance and Hindsight wrapper; Node syntax checks for bridge/tools
-- Actual `hindsight_api.pg0.EmbeddedPostgres.start(max_retries=1)` with hindsight-api-slim 1.0.0, pg0-embedded 0.15.2: PostgreSQL root rejection, recorded without faking retrieval success.
+Executed in the Linux Work workspace:
 
-Work environment adaptations (not tracked runtime changes): `NODE_USE_ENV_PROXY=0` for loopback tests; Node v24.22.1 copied alongside official verified headers to compile native addons; tsx CLI's UNIX IPC unavailable, so local node_modules bin wrappers use its supported `node --import tsx` loader. Header archive SHA-256: 322e0a27db9088093ab8347bdc8c7e0aaa21dc9ed548390bf06b394494c09267.
+- `node node_modules/pnpm/bin/pnpm.mjs install --frozen-lockfile` (11.28.5).
+- `DSH_GATE_CONCURRENCY=1 pnpm run build` and `pnpm run typecheck`, using official Node 24.22.1 headers and cloud-only untracked tsx launch shims.
+- Vitest: host-integration-mvp, mvp-closure, product-resources, dsh-bot-regressions, bot-settings-secrets, host-process, live-config, pet-runtime; credentials-local/local, llm/api-key, session-telemetry/redact. 11 files / 122 tests.
+- `node product/tools/smoke-host.mjs` and `--default-provider`: real compiled Host and real standard tools, explicit local model/memory fixtures.
+- Python unittest discovery in `product/voice-worker-src`: 3 tests.
+- `node product/tools/smoke-voice.mjs <python>` and `--binary <fresh Linux VoiceWorker>`: real worker startup/auth/shutdown.
+- Fresh Linux PyInstaller builds of `VoiceWorker.spec` and `HindsightAPI.spec`; Hindsight CLI and `--check-embeddings <pinned local model>`.
+- `node product/tools/check-built-resources.mjs`; upstream blob integrity plus an intentional source mutation negative control.
+- Local pre-commit hook, `git diff --check` and shell syntax for build/acceptance/server scripts.
 
-Log whitespace and ANSI escape sequences normalized for Git. RESULTS.json retains both raw and saved SHA-256. The final commit adds only evidence to the tested source tree.
+`RESULTS.json` distinguishes fixtures, actual frozen executables, and unexecuted native/provider gates. `built-resources.json` records emitted cross-platform resource hashes.
+
+To reconstruct the tested source tree: create a temporary Git index, `git read-tree HEAD`, remove `product/evidence` from that index, then `git write-tree`; compare with `testedSourceTreeExcludingEvidence`. The final evidence directory is excluded to avoid a self-referential hash.
+
+On Apple Silicon macOS (not executed here): `bash product/tools/build-macos.sh`, then `bash product/tools/accept-macos.sh /absolute/path/to/new.dmg`. Native build writes signed Memory payload hashes externally and records DMG SHA-256.

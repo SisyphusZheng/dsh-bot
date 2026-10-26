@@ -1,7 +1,7 @@
 /**
  * Prepares the Bot's DSH profile layer and reports whether the bundled voice
- * worker is present. Voice itself runs in the Pipecat worker owned by the pet;
- * the shell owns no voice child process and no legacy gateway.
+ * worker is present. The main Electron process owns the Pipecat worker and pet window;
+ * no legacy gateway or nested Electron process is used.
  */
 import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -42,14 +42,6 @@ export interface BotMemoryInfo {
   token: string
 }
 
-/** Environment variable names each supported LLM provider route reads its key from. */
-const LLM_KEY_ENV: Record<string, string> = {
-  'opencode-go': 'OPENCODE_GO_API_KEY',
-  deepseek: 'DEEPSEEK_API_KEY',
-  dashscope: 'DASHSCOPE_API_KEY',
-  openai: 'OPENAI_API_KEY',
-}
-
 /** Environment variable a custom OpenAI-compatible route reads its key from. */
 const CUSTOM_LLM_KEY_ENV = 'WHALEGIRL_LLM_API_KEY'
 
@@ -69,7 +61,6 @@ const DEFAULT_LLM = { provider: 'opencode-go', model: 'deepseek-v4.1-flash' }
 function managedPatch(
   config: BotRuntimeConfig,
   dshHome: string,
-  llmEntry: string,
   hasUserLlmConfig: boolean,
   memory: BotMemoryInfo | null,
 ): string {
@@ -78,7 +69,7 @@ function managedPatch(
   const workspace = join(dshHome, 'workspace')
   const lines = [
     MANAGED_BEGIN,
-    '# Regenerated on every start and every Bot settings save. Do not edit by hand.',
+    '# Regenerated on cold start; live settings use the authenticated bridge. Do not edit by hand.',
     '- id: agent-default-model',
     '  name: "@deepseek-ai/dsh-agent-default-model"',
     '  config:',
@@ -107,7 +98,6 @@ function managedPatch(
     '  config:',
     `    ipcDir: ${JSON.stringify(join(dshHome, 'bot'))}`,
     `    workspaceDir: ${JSON.stringify(workspace)}`,
-    `    dshLlmEntry: ${JSON.stringify(llmEntry)}`,
     '    permissionPreset: bot-outside-write',
     ...(memory === null ? [] : [
       `    memoryUrl: ${JSON.stringify(memory.url)}`,
@@ -115,7 +105,7 @@ function managedPatch(
     ]),
   ]
   if (!hasUserLlmConfig) {
-    const keyEnv = LLM_KEY_ENV[provider] ?? CUSTOM_LLM_KEY_ENV
+    const keyEnv = CUSTOM_LLM_KEY_ENV
     lines.push(
       '- id: llm-pi-ai',
       '  name: "@deepseek-ai/dsh-llm-pi-ai"',
@@ -153,8 +143,7 @@ function rewriteManagedBlock(existing: string, block: string): string {
 function applyLlmEnvironment(config: BotRuntimeConfig): string | null {
   const key = String(config.llm?.apiKey || '').trim()
   if (!key) return null
-  const provider = String(config.llm?.provider || DEFAULT_LLM.provider).trim()
-  const envName = LLM_KEY_ENV[provider] ?? CUSTOM_LLM_KEY_ENV
+  const envName = CUSTOM_LLM_KEY_ENV
   process.env[envName] = key
   return envName
 }
@@ -228,6 +217,7 @@ export class BotRuntime {
     for (const name of ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', 'nisse-host-integration']) if (!bundles.includes(name)) bundles.push(name)
     profileConfig.bundles = bundles; dsh.profile = profileConfig; manifest.dsh = dsh
     writeFileSync(join(profile, 'package.json'), JSON.stringify(manifest, null, 2) + '\n')
+    process.env.DSH_BOT_RUNTIME_ROOT = this.runtimeRoot
     process.env.NISSE_DSH_LLM_ENTRY = llm
     if (this.managedKey !== null) {
       const inherited = this.inheritedKeys[this.managedKey]
@@ -241,20 +231,9 @@ export class BotRuntime {
     const userPart = existingPatch
       .replace(new RegExp(`${MANAGED_BEGIN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\\s\\S]*?${MANAGED_END.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'g'), '')
     const hasUserLlmConfig = /(^|\n)\s*-?\s*id:\s*llm-pi-ai\b/.test(userPart)
-    const block = managedPatch(config, this.dshHome, llm, hasUserLlmConfig, this.memory)
+    const block = managedPatch(config, this.dshHome, hasUserLlmConfig, this.memory)
     writeFileSync(patchFile, rewriteManagedBlock(existingPatch, block), { mode: 0o600 })
     chmodSync(patchFile, 0o600)
-  }
-
-  /**
-   * Republish a saved Bot settings document: regenerate the managed profile
-   * layer now (the running Host hot-reloads the profile patch).
-   * @param config - the freshly saved Bot settings.
-   * @returns the voice runtime status.
-   */
-  applyConfig(config: BotRuntimeConfig): BotRuntimeStatus {
-    this.prepare(config)
-    return this.status()
   }
 
   status(): BotRuntimeStatus {

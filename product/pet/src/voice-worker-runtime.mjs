@@ -1,14 +1,5 @@
-// Pipecat Voice Worker runtime for the Nisse/pet shell.
-//
-// Feature-flag only: when NISSE_PIPECAT_WORKER=1 (or WG_VOICE_RUNTIME=pipecat)
-// the shell owns the Python worker lifecycle. When off, the legacy Qwen gateway
-// remains the product default and this module never spawns anything.
-//
-// Worker health and DSH bridge health are reported separately: a healthy
-// /health endpoint does not prove the DSH bridge descriptor/session is alive.
-
+// Pipecat ASR/TTS worker; owned by the main Electron process.
 import { existsSync, readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { VoiceWorkerSupervisor } from './voice-worker-supervisor.mjs'
 
 function asJsonArray(value) {
@@ -22,21 +13,15 @@ function asJsonArray(value) {
 }
 
 export function resolveVoiceWorkerConfig({ env = process.env, projectRoot } = {}) {
-  const enabled = env.NISSE_PIPECAT_WORKER === '1' || env.WG_VOICE_RUNTIME === 'pipecat'
-  const spikeRoot = resolve(projectRoot, 'm5/voice-spike')
-  const workerDir = env.NISSE_PIPECAT_WORKER_DIR || resolve(spikeRoot, 'worker')
-  const command = env.NISSE_PIPECAT_WORKER_COMMAND || resolve(spikeRoot, '.venv/bin/python')
-  const port = Number(env.NISSE_PIPECAT_PORT || 8765)
-  const mode = env.NISSE_PIPECAT_MODE || 'dsh'
-  const descriptor = env.NISSE_PIPECAT_BRIDGE_DESCRIPTOR || env.DSH_BRIDGE_DESCRIPTOR || ''
-  const token = env.NISSE_PIPECAT_TOKEN || env.SPIKE_TOKEN || 'dev-token'
-  const apiKey = env.NISSE_PIPECAT_DASHSCOPE_API_KEY || env.DASHSCOPE_API_KEY || ''
-  const args = asJsonArray(env.NISSE_PIPECAT_WORKER_ARGS_JSON)
-    || ['-m', 'uvicorn', 'server:app', '--host', '127.0.0.1', '--port', String(port)]
+  const enabled=env.NISSE_PIPECAT_WORKER==='1'
+  const workerDir=env.NISSE_PIPECAT_WORKER_DIR||projectRoot
+  const command=env.NISSE_PIPECAT_WORKER_COMMAND||''
+  const port=Number(env.NISSE_PIPECAT_PORT||8765),mode='dsh'
+  const descriptor=env.NISSE_PIPECAT_BRIDGE_DESCRIPTOR||'',token=env.NISSE_PIPECAT_TOKEN||'',apiKey=env.DASHSCOPE_API_KEY||''
+  const args=asJsonArray(env.NISSE_PIPECAT_WORKER_ARGS_JSON)||[]
   return {
     enabled, command, args, cwd: workerDir, port, mode, descriptor, token, apiKey,
     healthUrl: env.NISSE_PIPECAT_HEALTH_URL || `http://127.0.0.1:${port}/health`,
-    spikeRoot,
   }
 }
 
@@ -56,6 +41,7 @@ export function createVoiceWorkerRuntime({ env = process.env, projectRoot, logge
 
   function validate() {
     const problems = []
+    if(!config.token)problems.push('voice signaling token is required')
     if (!existsSync(config.command)) problems.push(`worker command not found: ${config.command}`)
     if (!existsSync(config.cwd)) problems.push(`worker cwd not found: ${config.cwd}`)
     if (config.mode === 'dsh' && !config.descriptor) problems.push('DSH bridge descriptor is required in dsh mode')
@@ -115,7 +101,7 @@ export function createVoiceWorkerRuntime({ env = process.env, projectRoot, logge
   async function waitForBridge(timeoutMs = 30_000) {
     const deadline = Date.now() + timeoutMs
     let last = null
-    while (Date.now() < deadline) {
+    while (!stopRequested && Date.now() < deadline) {
       last = await checkBridge()
       if (last.ok) return last
       await new Promise((resolve) => setTimeout(resolve, 500))
@@ -126,6 +112,7 @@ export function createVoiceWorkerRuntime({ env = process.env, projectRoot, logge
   async function start() {
     if (!config.enabled) return snapshot()
     if (stopRequested) return snapshot()
+    if(config.apiKey&&config.descriptor){const bridge=await waitForBridge(60000);if(stopRequested)return snapshot();if(!bridge.ok){state='failed';lastError=bridge.error||'Host readiness timeout';return snapshot()}}
     if (state === 'starting' || state === 'running') return snapshot()
     const problems = validate()
     if (problems.length) {
@@ -152,6 +139,7 @@ export function createVoiceWorkerRuntime({ env = process.env, projectRoot, logge
       env: childEnv,
       healthUrl: config.healthUrl,
       restart: true,
+      verifyPid: true,
       maxRestarts: 3,
       log: (message, detail) => log(`voice_worker.${message}`, detail),
     })

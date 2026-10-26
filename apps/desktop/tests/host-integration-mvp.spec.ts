@@ -17,13 +17,13 @@ import { pathToFileURL } from 'node:url'
 const wait=async(test:()=>boolean):Promise<void>=>{const deadline=Date.now()+8000;while(!test()){if(Date.now()>deadline)throw new Error('condition timeout');await new Promise(r=>setTimeout(r,20))}}
 for (const decision of ['allow','reject','cancel']) it(`runs DSH Session/Tool/Approval through voice: ${decision}`,async()=>{
   const home=mkdtempSync(join(tmpdir(),'mvp-agent-')),target=join(home,'outside.txt'),ctx=new Context()
-  vi.stubEnv('DSH_HOME',home);vi.stubEnv('NISSE_DSH_LLM_ENTRY',resolve('packages/llm/llm/lib/index.js'))
+  vi.stubEnv('DSH_BOT_RUNTIME_ROOT',resolve('apps/cli'));vi.stubEnv('DSH_HOME',home);vi.stubEnv('NISSE_DSH_LLM_ENTRY',resolve('packages/llm/llm/lib/index.js'))
   try {
     await ctx.plugin(LlmRuntime);await ctx.plugin(SessionStore);await ctx.plugin(SessionProjectionRegistry);await ctx.plugin(SystemPrompt);await ctx.plugin(ToolRuntime);await ctx.plugin(AgentRegistry);await ctx.plugin(AgentLoop,{ agents:[] });await ctx.plugin(ApprovalService);ctx.provide('shell',{ sandboxMode:'danger-full-access',resolve(){throw new Error('unused')},run(){throw new Error('unused')},start(){throw new Error('unused')} });await ctx.plugin(PermissionPresets,{ presets:{ 'bot-outside-write':{ sandbox:'danger-full-access',approval:'ask' } },defaultPreset:'bot-outside-write' })
     ctx.llm.registerAdapter(['mock'],new MockAdapter([toolCallResponse('write-1','write',{ path:target }),textResponse('finished')]))
     ctx.tools.register(defineContentToolFixture({ name:'write',description:'write a file',parameters:{ path:{ type:'string' } },execute:async()=>{writeFileSync(target,'approved');return [{ type:'text',text:'written' }]} }))
     const integration=await import(pathToFileURL(resolve('nisse/packages/host-integration/lib/index.js')).href)
-    await ctx.plugin(integration,{ provider:'mock',model:'mock',permissionPreset:'bot-outside-write',workspaceDir:join(home,'workspace') })
+    await ctx.plugin(integration,{ provider:'mock',model:'mock',requirePreset:false,permissionPreset:'bot-outside-write',workspaceDir:join(home,'workspace') })
     const file=join(home,'bot/bridge.json');await wait(()=>existsSync(file));const d=JSON.parse(readFileSync(file,'utf8'));const base=`http://127.0.0.1:${d.port}`,headers={ authorization:`Bearer ${d.token}`,'content-type':'application/json' }
     const post=(path:string,body:object)=>fetch(base+path,{ method:'POST',headers,body:JSON.stringify(body) })
     expect((await post('/sessions/create',{})).status).toBe(200)

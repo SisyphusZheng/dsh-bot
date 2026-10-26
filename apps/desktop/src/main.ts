@@ -1,18 +1,18 @@
+import { resolveLlmDefaults } from './bot-providers.ts'
+import { ProductPet } from './pet-runtime.ts'
 import type { ProductEventMap, ProductEvent } from '@deepseek-ai/dsh-client-product-analytics/types'
 import { WINDOWS_TITLEBAR_HEIGHT } from './windows-layout.ts'
 /** Electron shell: desktop project ownership, custom protocol, windows, and lifecycle. */
 
 import { readFile, writeFile } from 'node:fs/promises'
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
-import { BOT_CONFIG_PORT, startBotConfigServer } from './bot-config-server.ts'
-import { spawn } from 'node:child_process'
-import { BotRuntime, type BotRuntimeConfig } from './bot-runtime.ts'
+import { startBotConfigServer } from './bot-config-server.ts'
+import { BotRuntime } from './bot-runtime.ts'
 import { botHostEnvironment } from './bot-host-environment.ts'
-import { MemoryRuntime, stopProductProcess } from './memory-runtime.ts'
+import { MemoryRuntime } from './memory-runtime.ts'
 import { DshCredentialStore } from './secret-store.ts'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { fileURLToPath } from 'node:url'
 import {
   app,
   BrowserWindow,
@@ -355,24 +355,20 @@ async function main(): Promise<void> {
     // points at the same first-party sources so dev behaves like the product.
     const repositoryRoot = join(app.getAppPath(), '..', '..')
     process.env.WHALEGIRL_HOST_INTEGRATION_DIR ||= join(repositoryRoot, 'nisse', 'packages', 'host-integration')
-    process.env.WHALEGIRL_LLM_ENTRY_PATH ||= join(repositoryRoot, 'packages', 'llm', 'llm', 'lib', 'index.js')
-    // The Body Runtime, the Hindsight spike and the memory sidecar live in the
-    // product project beside the fork during development.
-    process.env.WHALEGIRL_PROJECT_ROOT ||= join(repositoryRoot, '..', 'nisse')
-    process.env.WHALEGIRL_VOICE_PERSONA_MODULE ||= join(process.env.WHALEGIRL_PROJECT_ROOT, 'research', 'qwen-audio-agent', 'server', 'src', 'voice', 'nisse-voice-persona.mjs')
+
   }
   // Provider keys use DSH .credentials.yaml with mode 0600 (not Keychain);
   // config.json does not store provider keys.
   const secretStore = new DshCredentialStore(resolveDshHome())
   const botRuntime = new BotRuntime(resolveDshHome(), process.resourcesPath, secretStore, resources.dsh)
   // Built-in long-term memory: start the local Hindsight server + adapter sidecar
-  // before the Host profile is composed, then publish its loopback endpoints into
-  // the managed profile layer. Fail-soft: the Bot runs without memory on failure.
+  // in the background and attach its loopback endpoints through the live bridge.
+  // The Bot can run without memory while initialization is pending.
   const memoryRuntime = new MemoryRuntime(resolveDshHome(), process.resourcesPath, app.getAppPath(), development)
   const startupConfig = botRuntime.readConfig()
   // Memory starts asynchronously and must never block the voice/chat path. The Host
-  // profile is composed without memory first; when Hindsight becomes ready the managed
-  // block is refreshed and a running Host is reconnected once (see the background start
+  // profile is composed without memory first; when Hindsight becomes ready the
+  // adapter is attached through the authenticated bridge (see the background start
   // before reconcileBackend at the end of main).
   botRuntime.setMemory(null)
   botRuntime.prepare(startupConfig)
@@ -386,7 +382,15 @@ async function main(): Promise<void> {
       return await response.json().catch(() => null) as Record<string, unknown> | null
     } catch { return null }
   }
-  let hostRestartPending = false
+  const readyBridge = async (): Promise<{ port:number;token:string }> => {
+    const deadline=Date.now()+60000
+    while(Date.now()<deadline&&!isQuitting()){
+      try{const d=JSON.parse(await readFile(join(resolveDshHome(),'bot/bridge.json'),'utf8')) as { port:number;token:string };const h=await net.fetch(`http://127.0.0.1:${d.port}/health`,{ signal:AbortSignal.timeout(2000) });if(h.ok)return d}catch{/* Host may still be starting. */}
+      await new Promise(resolve=>setTimeout(resolve,250))
+    }
+    throw new Error('Host not ready; configuration is saved, retry after startup.')
+  }
+  let configUpdates:Promise<unknown>=Promise.resolve()
   const botConfigServer = await startBotConfigServer(resolveDshHome(), undefined, {
     status: () => botRuntime.status(),
     onMemoryStatus: () => memoryRuntime.status(),
@@ -414,73 +418,33 @@ async function main(): Promise<void> {
     onMemoryHistory: async query => (await memoryRuntime.request('/history', { id: query.id ?? '' })).json,
     onPromptPreview: async (config) => {
       const preview = await callBridge('/persona/preview') ?? {}
-      const modulePath = String(process.env.WHALEGIRL_VOICE_PERSONA_MODULE || '').trim()
-      let voicePrefix = ''
-      if (modulePath !== '') {
-        try {
-          const mod = await import(pathToFileURL(modulePath).href) as { voicePersonaPrefixFromEnv?: (env: NodeJS.ProcessEnv) => string }
-          voicePrefix = String(mod.voicePersonaPrefixFromEnv?.({
-            ...process.env,
-            NISSE_BOT_PROMPT_OVERRIDE: String(config.persona?.promptOverride || ''),
-            NISSE_BOT_PERSONA_JSON: JSON.stringify(config.persona || {}),
-          }) ?? '')
-        } catch { /* preview stays partial */ }
-      }
+      const voicePrefix = ''
       return {
         personaPrompt: typeof preview.dshPrompt === 'string' ? preview.dshPrompt : '',
         voicePrefix,
         promptOverride: String(config.persona?.promptOverride || ''),
-        sources: { personaPrompt: 'host-integration /persona/preview', voicePrefix: modulePath || 'unavailable' },
+        sources: { personaPrompt: 'host-integration /persona/preview', voicePrefix: 'Pipecat ASR/TTS; persona belongs to DSH' },
       }
     },
     onConfigSaved: (config, previous) => {
-      // The LLM route and the Bot workspace are composed into the DSH profile at
-      // Host start, so a change to either needs one Host restart. Voice-only edits
-      // just restart the gateway. Relaunch once instead of leaving a stale Host.
-      if (JSON.stringify(previous.voice) !== JSON.stringify(config.voice)) {
-        void stopProductProcess(petProcess).then(() => { petProcess = null; startDeskPet(config) })
+      const update = async (): Promise<void> => {
+        const memoryChanged = previous.memory.enabled !== config.memory.enabled
+        if (memoryChanged) await memoryRuntime.restart(config)
+        const d = await readyBridge()
+        const response = await net.fetch(`http://127.0.0.1:${d.port}/config`, {
+          method:'POST',headers:{ authorization:`Bearer ${d.token}`,'content-type':'application/json' },body:JSON.stringify({
+            ...(JSON.stringify(previous.llm) !== JSON.stringify(config.llm)
+              ? { llm:{ ...config.llm,...resolveLlmDefaults(config.llm.provider,config.llm) } } : {}),
+            ...(memoryChanged ? { memory:{ url:memoryRuntime.url,token:memoryRuntime.token } } : {}),
+          }) })
+        if (!response.ok) throw new Error(`Live configuration failed: HTTP ${response.status}`)
+        if (JSON.stringify(previous.voice) !== JSON.stringify(config.voice)) await pet.configure(config)
       }
-      const memoryChanged = previous.memory?.enabled !== config.memory.enabled
-      const hostRestart = memoryChanged
-        || previous.llm?.provider !== config.llm.provider
-        || previous.llm?.model !== config.llm.model
-        || previous.llm?.baseUrl !== config.llm.baseUrl
-        || previous.llm?.apiKey !== config.llm.apiKey
-        || JSON.stringify(previous.persona || {}) !== JSON.stringify({
-          name: config.persona.name,
-          personality: config.persona.personality,
-          tone: config.persona.tone,
-          promptOverride: config.persona.promptOverride,
-          background: config.persona.background,
-          quirks: config.persona.quirks,
-          addressUser: config.persona.addressUser,
-          boundaries: config.persona.boundaries,
-          instructions: config.persona.instructions,
-        })
-      void (memoryChanged ? memoryRuntime.restart(config) : Promise.resolve(memoryRuntime.status())).then(() => {
-        botRuntime.setMemory(memoryRuntime.url !== null && memoryRuntime.token !== null
-          ? { url: memoryRuntime.url, token: memoryRuntime.token }
-          : null)
-        return botRuntime.applyConfig(config)
-      }).then(() => {
-        if (!hostRestart || process.env.WHALEGIRL_NO_RELAUNCH === '1') return
-        // Settings saves can arrive in bursts (onboarding). Restart the bundled Host
-        // in-process instead of relaunching the whole app, which used to loop.
-        if (hostRestartPending) return
-        hostRestartPending = true
-        void (async () => {
-          try {
-            await backend.stop()
-            await reconcileBackend()
-            reloadMainAfterHostRestart()
-          } catch (error) { console.error(error) } finally { hostRestartPending = false }
-        })()
-      })
+      const pending = configUpdates.then(update)
+      configUpdates = pending.catch((error:unknown) => {console.error(error)})
+      return pending
     },
-    onRestart: async () => {
-      await stopProductProcess(petProcess); petProcess = null
-      startDeskPet(botRuntime.readConfig()); return botRuntime.status()
-    },
+    onRestart: async () => {await pet.configure(botRuntime.readConfig());return botRuntime.status()},
     onPickDirectory: async () => {
       const pick = { title: '选择 Bot 工作区', properties: ['openDirectory', 'createDirectory'] } as const
       const result = mainWindow === undefined
@@ -510,135 +474,14 @@ async function main(): Promise<void> {
     return undefined
   })
   app.on('will-quit', () => { void memoryRuntime.stop(); void botConfigServer?.close() })
-  const bundledPetRoot = app.isPackaged ? join(process.resourcesPath, 'pet') : ''
-  const bundledPetBinary = bundledPetRoot
-    ? join(bundledPetRoot, 'NissePet.app', 'Contents', 'MacOS', 'NissePet')
-    : ''
-  // Packaged builds always carry the pet bundle. A development launch must pass
-  // explicit paths; no developer absolute path is embedded in the product.
-  const petApp = process.env.WHALEGIRL_PET_APP
-    || (bundledPetRoot && existsSync(bundledPetRoot) ? bundledPetRoot : '')
-  const petElectron = process.env.WHALEGIRL_PET_ELECTRON
-    || (app.isPackaged && existsSync(bundledPetBinary) ? bundledPetBinary : '')
-  const packagedVoiceRoot = app.isPackaged ? join(app.getPath('userData'), 'pet-voice') : '/tmp/nisse-m1/voice'
-  const voiceHome = process.env.WHALEGIRL_VOICE_HOME || packagedVoiceRoot
-  const petUserData = process.env.WHALEGIRL_PET_USER_DATA
-    || (app.isPackaged ? join(app.getPath('userData'), 'pet') : '/tmp/nisse-pet2/userdata')
-  const petDebugPort = process.env.WHALEGIRL_PET_DEBUG_PORT || ''
-  const botConfigPort = String(BOT_CONFIG_PORT)
-  /**
-   * Publish the Bot settings the Body Runtime consumes (wake word) into the pet's
-   * client-settings file. The pet has no settings window of its own any more, so
-   * this is the only writer and it must not clobber unrelated peer-owned keys.
-   */
-  const applyPetWakeWord = (config: BotRuntimeConfig): void => {
-    const wakeWord = String(config.voice?.wakeWord || '').trim()
-    if (wakeWord === '') return
-    mkdirSync(petUserData, { recursive: true, mode: 0o700 })
-    const settingsFile = join(petUserData, 'settings.env')
-    let current = ''
-    try { current = readFileSync(settingsFile, 'utf8') } catch {}
-    const managed = new Map([
-      ['QWEN_AUDIO_WAKE_WORD_ENABLED', 'true'],
-      ['QWEN_AUDIO_WAKE_WORD_PHRASE', wakeWord],
-    ])
-    const kept = current.split('\n').filter((line) => {
-      const key = line.split('=')[0]?.trim() ?? ''
-      return key !== '' && !managed.has(key) && !line.startsWith('# Whalegirl Bot')
-    })
-    const next = [
-      '# Whalegirl Bot: written from DSH Settings -> Bot voice.wakeWord before each launch.',
-      ...[...managed].map(([key, value]) => `${key}=${value}`),
-      ...kept,
-    ].filter(line => line !== '')
-    writeFileSync(settingsFile, next.join('\n') + '\n', { mode: 0o600 })
-  }
-  let petProcess: ReturnType<typeof spawn> | null = null
-  const startDeskPet = (config: BotRuntimeConfig): void => {
-    // Recursion guard: if this process is already the pet child, never spawn
-    // another body runtime (packaged Electron may ignore an external app path).
-    if (process.env.NISSE_PET_CHILD === '1') return
-    if (petProcess) return
-    if (petElectron === '' || petApp === '') {
-      console.warn('deskpet skipped: set WHALEGIRL_PET_APP / WHALEGIRL_PET_ELECTRON for a development launch, or build with the bundled pet')
-      return
-    }
-    const thisConfig = config
-    for (const name of ['SingletonLock', 'SingletonSocket', 'SingletonCookie']) {
-      try { rmSync(join(petUserData, name), { force: true }) } catch {}
-    }
-    applyPetWakeWord(config)
-    const petEnvironment: NodeJS.ProcessEnv = {
-      ...process.env,
-      HOME: join(app.getPath('userData'), 'pet-home'),
-      XDG_CONFIG_HOME: `${voiceHome}/config`,
-      XDG_DATA_HOME: `${voiceHome}/data`,
-      XDG_STATE_HOME: `${voiceHome}/state`,
-      AGENT_PROTOCOL: 'none',
-      NISSE_BRIDGE_ONLY: '1',
-      NISSE_BRIDGE_FILE: join(resolveDshHome(), 'bot', 'bridge.json'),
-      NISSE_SHELL_CONTROL_URL: `http://127.0.0.1:${botConfigPort}`,
-      NISSE_SHELL_CONTROL_TOKEN: botConfigServer?.token ?? '',
-      NISSE_BUBBLE_PORT: '59102',
-      NISSE_APPROVAL_MODE: String(thisConfig?.approval?.mode || 'ask-each'),
-      NISSE_PAUSE_ON_INPUT: (thisConfig?.behavior?.pauseOnInput ?? true) ? '1' : '0',
-      NISSE_ALLOW_SCREEN_VIEW: (thisConfig?.behavior?.allowScreenView ?? true) ? '1' : '0',
-      NISSE_PET_CHILD: '1',
-    }
-    const voiceWorkerRoot = join(process.resourcesPath, 'voice-worker')
-    if (app.isPackaged && existsSync(join(voiceWorkerRoot, 'VoiceWorker'))) {
-      Object.assign(petEnvironment, {
-        NISSE_PIPECAT_WORKER: '1',
-        NISSE_PIPECAT_WORKER_COMMAND: join(voiceWorkerRoot, 'VoiceWorker'),
-        NISSE_PIPECAT_WORKER_DIR: voiceWorkerRoot,
-        NISSE_PIPECAT_WORKER_ARGS_JSON: '[]',
-        NISSE_VOICE_WORKER_PORT: '8765',
-        NISSE_PIPECAT_PORT: '8765',
-        NISSE_PIPECAT_HEALTH_URL: 'http://127.0.0.1:8765/health',
-        NISSE_PIPECAT_BRIDGE_DESCRIPTOR: join(resolveDshHome(), 'bot', 'bridge.json'),
-        NISSE_PIPECAT_TOKEN: botConfigServer?.token ?? '',
-        DASHSCOPE_ASR_MODEL: config.voice?.model?.startsWith('qwen3-asr') ? config.voice.model : 'qwen3-asr-flash-realtime',
-        DASHSCOPE_TTS_MODEL: 'qwen3-tts-flash-realtime',
-        DASHSCOPE_TTS_VOICE: !config.voice?.voice || config.voice.voice.startsWith('longan') ? 'Cherry' : config.voice.voice,
-        DASHSCOPE_REALTIME_URL: config.voice?.baseUrl || 'wss://dashscope.aliyuncs.com/api-ws/v1/realtime',
-        DASHSCOPE_API_KEY: String(config.voice?.apiKey || process.env.DASHSCOPE_API_KEY || ''),
-        WG_G0_VOICE_BUNDLE: join(process.resourcesPath, 'voice-client', 'inject-bundle.js'),
-      })
-    }
-    // A pet Electron must run as an application, never as this shell's Node child.
-    delete petEnvironment.ELECTRON_RUN_AS_NODE
-    delete petEnvironment.ELECTRON_NO_ATTACH_CONSOLE
-    try {
-      const petArgs = app.isPackaged && existsSync(bundledPetBinary)
-        ? [
-          `--user-data-dir=${petUserData}`,
-          ...(petDebugPort === '' ? [] : [`--remote-debugging-port=${petDebugPort}`]),
-        ]
-        : [
-          petApp,
-          `--user-data-dir=${petUserData}`,
-          ...(petDebugPort === '' ? [] : [`--remote-debugging-port=${petDebugPort}`]),
-        ]
-      petProcess = spawn(petElectron, petArgs, {
-        env: petEnvironment,
-        detached: process.platform !== 'win32',
-        cwd: process.env.WHALEGIRL_PET_CWD || (app.isPackaged ? app.getPath('userData') : process.cwd()),
-        stdio: ['ignore', 'ignore', 'ignore'],
-      })
-      petProcess.once('exit', () => { petProcess = null })
-      petProcess.once('error', (error) => { console.warn('deskpet spawn failed:', error); petProcess = null })
-      app.on('will-quit', () => {
-        const pid = petProcess?.pid
-        if (!pid) return
-        const signalGroup = (signal: NodeJS.Signals) => {
-          try { process.kill(process.platform === 'win32' ? pid : -pid, signal) } catch {}
-        }
-        signalGroup('SIGTERM')
-        // pet is a separate process group; do not depend on a post-quit timer.
-        signalGroup('SIGKILL')
-      })
-    } catch (error) { console.warn('deskpet spawn:', error) }
-  }
+  const pet = new ProductPet({ resources:development ? join(app.getAppPath(),'resources') : process.resourcesPath,
+    home:app.getPath('userData'),development,appPath:app.getAppPath(),
+    toggleMain:()=>{
+      const window=mainWindow ?? createMainWindow()
+      if(window.isVisible()&&window.isFocused())window.hide()
+      else{window.show();window.focus()}
+    },
+  })
   // Dock and Finder launches inherit only launchd's environment; every Host shares one login-shell read.
   const loginShellRead = new AbortController()
   // The probe runs in its own process group, which outlives Desktop unless the read is aborted.
@@ -662,8 +505,6 @@ async function main(): Promise<void> {
   let mainWindow: BrowserWindow | undefined
   let welcomeWindow: BrowserWindow | undefined
   let enteredWorkspace = false
-  // The companion effect is provided by the vlln/whale-girl DSH client bundle in the
-  // desktop profile; the shell no longer creates a hand-rolled pet window.
   // NSIS passes --updated when it launches the application after installation.
   let raiseAfterUpdate = process.platform === 'win32' && process.argv.includes('--updated')
   let shellInstallerOwnsQuit = false
@@ -775,11 +616,7 @@ async function main(): Promise<void> {
     navigation = next
     return next.promise
   }
-  /** Reload the workspace document after the Host restarts on a new loopback port. */
-  const reloadMainAfterHostRestart = (): void => {
-    if (isQuitting() || mainWindow === undefined || mainWindow.isDestroyed()) return
-    mainWindow.webContents.reload()
-  }
+  ipcMain.handle(DESKTOP_IPC.botSettings, (event)=>{assertProductSender(event);if(!botConfigServer)throw new Error('Bot settings unavailable');return `http://127.0.0.1:${botConfigServer.port}/bot/settings?token=${botConfigServer.token}`})
   const platformView = new DesktopPlatformView(join(app.getAppPath(), 'lib', 'preload-platform-account.cjs'),
     () => locale.id === 'zh-CN' ? 'zh_CN' : 'en_US', process.platform === 'win32' ? 'win32' : 'darwin')
   const backend = new DesktopBackendController((onFailure) => {
@@ -1600,7 +1437,7 @@ async function main(): Promise<void> {
     updateDialog.dispose()
     mandatoryUI?.dispose()
     void Promise.all([Promise.resolve(mandatoryPolicy?.dispose()).then(() => policyAuth?.dispose()), backend.close(),
-      memoryRuntime.stop(), botConfigServer?.close(), stopProductProcess(petProcess),
+      memoryRuntime.stop(), botConfigServer?.close(), pet.stop(),
       // A Platform cleanup failure is logged without cutting the remaining Host shutdown short.
       platformView.dispose().catch((error: unknown) => { console.error(error) })])
       .catch((error: unknown) => { console.error(error) }).finally(() => { app.quit() })
@@ -1682,23 +1519,15 @@ async function main(): Promise<void> {
     }
     memoryRuntime.publishDescriptor()
     botRuntime.setMemory({ url: memoryRuntime.url, token: memoryRuntime.token })
-    botRuntime.prepare(botRuntime.readConfig())
-    // The Host may have started before memory was ready; reconnect it once so the
-    // Host Integration profile picks up the adapter endpoints.
-    if (backend.state.phase === 'ready' && !isQuitting()) {
-      await backend.stop().catch((error: unknown) => { console.error(error) })
-      await reconcileBackend().catch((error: unknown) => { console.error(error) })
-      // The Host came back on a new loopback port; the loaded document still points
-      // its remote.mux WebSocket at the old one and stays blank. Reload it so the
-      // boot IPC resolves against the restarted Host.
-      reloadMainAfterHostRestart()
-    }
+    const d=await readyBridge()
+    const response=await net.fetch(`http://127.0.0.1:${d.port}/config`,{ method:'POST',headers:{ authorization:`Bearer ${d.token}`,'content-type':'application/json' },body:JSON.stringify({ memory:{ url:memoryRuntime.url,token:memoryRuntime.token } }) })
+    if(!response.ok)throw new Error(`Memory live configuration failed: HTTP ${response.status}`)
   }).catch((error: unknown) => { console.error(error) })
   await reconcileBackend().catch(() => undefined)
-  if (app.isPackaged && !isQuitting()) {
+  if (!isQuitting()) {
     // Host Integration owns bot/bridge.json and republishes it on every Host start.
     // Both the pet and Voice Worker read that same descriptor before connecting.
-    startDeskPet(botRuntime.readConfig())
+    await pet.start(botRuntime.readConfig())
   }
   // Window lifecycle callbacks run while backend startup is pending.
   if (isQuitting()) return

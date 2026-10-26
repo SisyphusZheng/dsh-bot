@@ -382,7 +382,8 @@ def _session_stats(session_state: dict) -> dict:
 async def health():
     return {
         "ok": True,
-        "service": "whalegirl-voice-spike",
+        "service": "dsh-bot-voice",
+        "pid": os.getpid(),
         "mode": MODE,
         "pipecat": "1.13.0",
         "asr_model": ASR_MODEL if MODE in ("asr", "loop", "dsh") else None,

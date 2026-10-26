@@ -7,12 +7,12 @@ it('packages the runtime, adapter and foreground wrapper under one memory contra
   try {
     for(const p of ['pet','voice','memory/runtime/hindsight','memory/runtime/models','memory/runtime/pg0','memory/adapter/m1-c-hindsight','memory/scripts'])mkdirSync(join(dir,p),{ recursive:true })
     for(const p of ['inject-bundle.js','memory/sidecar.mjs','memory/VERSION.json'])writeFileSync(join(dir,p),'')
-    vi.stubEnv('NISSE_PET_BUNDLE',join(dir,'pet'));vi.stubEnv('NISSE_VOICE_WORKER_DIR',join(dir,'voice'));vi.stubEnv('NISSE_VOICE_CLIENT_BUNDLE',join(dir,'inject-bundle.js'));vi.stubEnv('NISSE_MEMORY_DIR',join(dir,'memory'))
+    vi.stubEnv('NISSE_VOICE_WORKER_DIR',join(dir,'voice'));vi.stubEnv('NISSE_MEMORY_DIR',join(dir,'memory'))
     vi.stubEnv('DSH_DESKTOP_APP_ID','ai.dshbot.app');vi.stubEnv('DSH_DESKTOP_UNSIGNED','1');vi.stubEnv('DSH_DESKTOP_TARGET_PLATFORM','darwin')
     const { createElectronBuilderConfig }=await import('../electron-builder.config.mjs')
     const config=createElectronBuilderConfig({ ...process.env,DSH_DESKTOP_UNSIGNED:'1' },'darwin','arm64')
     const paths=config.extraResources.map(x=>x.to)
     expect(paths).toEqual(expect.arrayContaining(['memory/runtime/hindsight','memory/runtime/models','memory/runtime/pg0','memory/scripts','memory/adapter/m1-c-hindsight','memory/sidecar.mjs','host-integration']))
-    expect(paths).not.toContain('whalegirl-g2-bridge');expect(config.mac.extendInfo.CFBundleLocalizations).toContain('zh_CN');expect(config.mac.hardenedRuntime).toBe(false)
+    expect(paths).toContain('pet');expect(paths).not.toContain('pet/NissePet.app');expect(paths).not.toContain('voice-client/inject-bundle.js');expect(paths).not.toContain('whalegirl-g2-bridge');expect(config.mac.extendInfo.CFBundleLocalizations).toContain('zh_CN');expect(config.mac.hardenedRuntime).toBe(false)
   }finally{vi.unstubAllEnvs();rmSync(dir,{ recursive:true,force:true })}
 })

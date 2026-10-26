@@ -1,6 +1,6 @@
 {
   ".gitignore": {
-    "sha": "90de82a4d787f70b99d26b676708c54e26eca8d9",
+    "sha": "1f6cc47d1b4935b7d8bc68f902fb81768290e688",
     "mode": "100644",
     "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
   },
@@ -10,7 +10,7 @@
     "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
   },
   "apps/desktop/package.json": {
-    "sha": "d3f45df3a8196be54b490143acc28af7c0b8b68e",
+    "sha": "214ebf6b48fd690bca61a87fbab104cb583a1a8d",
     "mode": "100644",
     "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
   },
@@ -30,7 +30,7 @@
     "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
   },
   "apps/desktop/scripts/electron-builder-config.mjs": {
-    "sha": "b28af8b8c5e72228afa5e4766d6591e717a5be97",
+    "sha": "ed05ad0a5cec1ab4623b73cd0683ca2808f2e3a9",
     "mode": "100644",
     "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
   },
@@ -65,7 +65,7 @@
     "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
   },
   "apps/desktop/src/main.ts": {
-    "sha": "880598bf668a4d4a596b845c1dd0b20fa97e38d7",
+    "sha": "e5c00ac9a424a8994513dc513fd4ee272042ddfd",
     "mode": "100644",
     "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
   },
@@ -108,5 +108,20 @@
     "sha": "5ee0c595ca8c380eca0c9940e4c0bbfaf1ddb7b0",
     "mode": "100644",
     "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
+  },
+  "pnpm-lock.yaml": {
+    "sha": "cad5fb1200e1f2ba6b56c9d27ba7fc508d26f850",
+    "mode": "100644",
+    "reason": "Owned desktop settings IPC and pinned Pipecat browser build inputs"
+  },
+  "apps/desktop/src/ipc.ts": {
+    "sha": "556385781f7df0494239d9035b6dfddcae7962f9",
+    "mode": "100644",
+    "reason": "Owned desktop settings IPC and pinned Pipecat browser build inputs"
+  },
+  "apps/desktop/src/preload-app.ts": {
+    "sha": "bde8e10cfb2f13744903311d86842a307ed47dac",
+    "mode": "100644",
+    "reason": "Owned desktop settings IPC and pinned Pipecat browser build inputs"
   }
 }

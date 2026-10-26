@@ -22,8 +22,8 @@ export const LLM_KEY_REF = 'WHALEGIRL_LLM_API_KEY'
 export const VOICE_KEY_REF = 'WHALEGIRL_DASHSCOPE_API_KEY'
 
 /**
- * Minimal secret-storage seam. The product implements it with Electron safeStorage
- * (macOS Keychain); node tests may omit it and keep the legacy in-config behaviour.
+ * Minimal secret-storage seam. The product uses the DSH credentials document with private filesystem permissions;
+ * node tests may omit it and keep the legacy in-config behaviour.
  */
 export interface SecretAccess {
   available(): boolean
@@ -34,10 +34,10 @@ export interface SecretAccess {
 }
 
 /** How often the Bot asks the user before acting. */
-export type BotApprovalMode = 'ask-each' | 'ask-before' | 'ask-once' | 'never-ask'
+export type BotApprovalMode = 'ask-each' | 'ask-before-acting' | 'ask-once' | 'never-ask'
 
 /** Approval granularity choices offered by the settings page. */
-export const BOT_APPROVAL_MODES: readonly BotApprovalMode[] = ['ask-each', 'ask-before', 'ask-once', 'never-ask']
+export const BOT_APPROVAL_MODES: readonly BotApprovalMode[] = ['ask-each', 'ask-before-acting', 'ask-once', 'never-ask']
 
 /** Default approval mode: matches the shipped `bot-outside-write` preset (approval: ask per action). */
 export const DEFAULT_APPROVAL_MODE: BotApprovalMode = 'ask-each'
@@ -135,8 +135,8 @@ function textOf(value: unknown): string {
 export function normalizeApprovalMode(value: unknown): BotApprovalMode {
   const raw = typeof value === 'string' ? value.trim().toLowerCase() : ''
   if (raw === 'ask-each' || raw === 'each' || raw === 'every-time' || raw === 'always') return 'ask-each'
-  if (raw === 'ask-before' || raw === 'before-acting' || raw === 'before_action' || raw === 'act') return 'ask-before'
-  if (raw === 'ask-once' || raw === 'once') return 'ask-once'
+  if (raw === 'ask-before' || raw === 'ask-before-acting' || raw === 'before-acting' || raw === 'before_action' || raw === 'act') return 'ask-before-acting'
+  if (raw === 'ask-once-minutes' || raw === 'ask-once' || raw === 'once') return 'ask-once'
   if (raw === 'never-ask' || raw === 'never' || raw === 'none') return 'never-ask'
   return DEFAULT_APPROVAL_MODE
 }

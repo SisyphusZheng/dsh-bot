@@ -1,3 +1,0 @@
-hindsight-api-slim 1.0.0 pg0-embedded 0.15.2 euid 0
-RuntimeError: Failed to start embedded PostgreSQL after 1 attempts. Last error: Error: PostgreSQL error: Command error: stdout=; stderr=initdb: error: cannot be run as root
-initdb: hint: Please log in (using, e.g., "su") as the (unprivileged) user that will own the server process.

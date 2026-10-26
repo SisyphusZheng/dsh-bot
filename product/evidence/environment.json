@@ -1,0 +1,10 @@
+{
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.39",
+  "euid": 0,
+  "node": "v24.22.1",
+  "pnpm": "11.28.5",
+  "uidMap": "0          0          1",
+  "nativeMacOS": false,
+  "cloudLauncher": "Untracked tsx shims use node --import tsx because the Work kernel rejects tsx CLI Unix IPC. Official Node 24.22.1 headers were SHA-256 verified for the addon build.",
+  "setuidProbe": "OSError(22, 'Invalid argument')"
+}
