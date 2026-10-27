@@ -1,6 +1,6 @@
-# dsh-bot macOS MVP — 启动修复待本机复验
+# dsh-bot 0.0.1-beta — 版本计划与本地验收
 
-`28776d20` 已被本机验收判为 **FAIL**：客户端插件交付为裸 ESM，导致打包 App web boot 崩溃。本分支修复构建格式、删除错误 profile 行，并修复缓存导航早于官方 Session 列表到达的竞态。Linux 完整生产 UI 已通过；新 DMG 的 macOS 启动、Memory 和退出仍须复验，不宣称已通过本机验收。证据见 `product/evidence/web-boot-fix/RESULTS.json`。
+当前仍为 beta。已批准的 0.0.1—0.0.4 范围见 [版本任务书](docs/roadmap/README.zh.md)，本地修复与发布步骤见 [0.0.1 执行计划](docs/roadmap/LOCAL-0.0.1.zh.md)。本次整合保留当前修复分支的完整代码与历史，新增任务书并关闭真实 API E2E 的自动触发；没有在云端重新构建或验收 Mac 安装包，也没有宣布稳定版。此前用户报告的本机结果与仓库历史证据分别记录在 [基线](docs/roadmap/baseline.json)。
 
 目标：Apple Silicon、macOS 14+。DSH 是唯一 Agent Runtime，固定为官方 0.2.1-rc.3；产品版本独立为 0.0.1-beta。组件来源和 SHA-256 见 `product/versions.json`。
 
