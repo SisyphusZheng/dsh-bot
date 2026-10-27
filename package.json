@@ -252,7 +252,7 @@
     "@types/spdx-expression-parse": "^4.0.0",
     "@vitest/coverage-v8": "^4.1.11",
     "@yao-pkg/pkg": "6.21.0",
-    "@yarnpkg/cli-dist": "4.18.0",
+    "@yarnpkg/cli-dist": "4.18.1",
     "eslint-plugin-sonarjs": "^4.2.0",
     "execa": "^10.0.1",
     "zod": "^4.4.3",
