@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-10-27",
+  "productVersion": "0.0.1-beta",
+  "runtimeVersion": "0.2.1-rc.3",
+  "candidateBranch": "fix/voice-task-lifecycle-20261027",
+  "candidateCommit": "fde627fb86b1e2701f6af373163e9a2a2fd4be70",
+  "candidateTree": "c941263c0d140be1922c8170ebd0a613d8b87976",
+  "mainBeforeIntegration": "5418caecad7beda062daedc848376ba805c8cda3",
+  "integrationScope": "Preserve complete candidate history and tree; add approved taskbooks and make e2e workflow manual-only. No product implementation or release-version bump.",
+  "historicalEvidence": {
+    "directory": "review/voice-task-lifecycle-2026-10-27",
+    "scope": "Historical Linux-executable closure at candidateCommit; not a new test run",
+    "typecheckGates": 5,
+    "productionBuildGates": 9,
+    "vitestFiles": 12,
+    "vitestTests": 74,
+    "nodeTests": 44,
+    "pythonTests": 15,
+    "recordedNativeMacOS": "BLOCKED-ENVIRONMENT",
+    "recordedRealProvider": "BLOCKED-EXTERNAL",
+    "warning": "The historical verifier binds its own HEAD tree. Run only at candidateCommit; do not rewrite expected hashes for this documentation integration."
+  },
+  "userReportedNativeEvidence": {
+    "source": "User's fde627f evaluation in this conversation",
+    "hindsightWriteRestartCrossSession": "PASS reported by user; raw native evidence has not been imported and bound in this roadmap commit",
+    "packagedCandidate": "User reports native packaged acceptance; do not claim this turn rebuilt or independently reran it",
+    "remaining": [
+      "physical microphone/TCC",
+      "room echo and self-listening",
+      "real-provider long conversation and barge-in",
+      "spoken wake quality",
+      "physical click-through"
+    ]
+  },
+  "remainingProductWork": [
+    "actionable voice errors and proxy/NO_PROXY handling",
+    "settings update-scope audit and repair where reproduced",
+    "supported voice provider presentation and old config preservation",
+    "safe defaults and remaining health/approval handling",
+    "old-artifact and startup-entry inventory",
+    "Mac acceptance and candidate-bound evidence",
+    "product-only stable version closeout"
+  ],
+  "approvedVersions": {
+    "0.0.1": "stabilization",
+    "0.0.2": "selective DS-Bot adaptation, Hindsight integration and macOS CUA",
+    "0.0.3": "companion interaction and optional local TTS",
+    "0.0.4": "standalone App and original-DSH plugin companion delivery"
+  }
+}
