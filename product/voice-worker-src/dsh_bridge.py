@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import asyncio
 import os
 import re
 import time
@@ -32,6 +31,7 @@ from difflib import SequenceMatcher
 import aiohttp
 from wake_phrase import WakePhrase
 from loguru import logger
+
 
 from pipecat.frames.frames import (
     ErrorFrame,
@@ -48,13 +48,18 @@ from pipecat.frames.frames import (
 )
 from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 
+def probe_log(message):
+    if os.environ.get("DSH_VOICE_DEBUG_PROBES") == "1":
+        logger.info(message)
+
+
 DEFAULT_DESCRIPTOR = "/tmp/whalegirl-g2/home/whalegirl-g2/descriptor.json"
 CANCEL_PHRASES = ("取消", "停止", "停下", "别说了", "不用了", "stop", "cancel")
 
 
 def _is_cancel(text: str) -> bool:
     lowered = text.strip().lower()
-    return any(phrase in lowered for phrase in CANCEL_PHRASES)
+    return re.sub(r"[\s，。！？,.!?]", "", lowered) in CANCEL_PHRASES
 
 
 INTERRUPT_COMMANDS = ("停一下", "停下", "停止", "暂停", "取消", "等一下", "别说了", "别播", "打断", "先停")
@@ -80,6 +85,8 @@ class DSHBridgeProcessor(FrameProcessor):
         self._session: aiohttp.ClientSession | None = None
         self._current: dict | None = None
         self._pending: deque[str] = deque()
+        self._greeting = ""
+        self._greeting_until = 0.0
         self._turn_seq = 0
         self._last_session_id: str | None = None
         self._quarantined = False
@@ -122,6 +129,26 @@ class DSHBridgeProcessor(FrameProcessor):
             "errors": 0,
             "recent_turns": [],
         }
+
+    def set_greeting(self, text):
+        self._greeting = text
+        self._greeting_until = time.monotonic() + max(8.0, len(text) / 3.0 + 3.0)
+        self._last_barge_context = {"turn_key": "welcome", "reply_text": text, "audible": True, "ended_mono": time.monotonic()}
+
+    def _input_noise(self, text):
+        heard = re.sub(r"[^0-9A-Za-z\u4e00-\u9fff]", "", text or "").lower()
+        if not heard or re.fullmatch(r"[嗯啊哦呃额唔]+", heard):
+            return True
+        greeting = re.sub(r"[^0-9A-Za-z\u4e00-\u9fff]", "", self._greeting).lower()
+        if time.monotonic() < self._greeting_until and len(heard) >= 2 and heard in greeting:
+            return True
+        ctx = self._current or self._last_barge_context or {}
+        recent = "".join(e.get("text", "") for e in ctx.get("text_events", []) if time.monotonic() - e.get("at_mono", 0) <= 6.0)
+        # The completed reply is relevant only during its bounded playback tail.
+        if ctx is self._last_barge_context and time.monotonic() - ctx.get("ended_mono", 0) > 30:
+            return False
+        spoken = re.sub(r"[^0-9A-Za-z\u4e00-\u9fff]", "", recent or ctx.get("reply_text", "")).lower()
+        return len(heard) >= 2 and bool(spoken) and (heard in spoken or SequenceMatcher(None, heard[-40:], spoken[-120:]).ratio() >= 0.8)
 
     # ---- lifecycle -----------------------------------------------------
     async def cleanup(self):
@@ -201,7 +228,7 @@ class DSHBridgeProcessor(FrameProcessor):
 
         if isinstance(frame, VADUserStartedSpeakingFrame):
             cur = self._current
-            logger.info(
+            probe_log(
                 f"[g3-probe] vad_started_bridge turn={cur.get('turn_key') if cur else None} "
                 f"request={cur.get('request_id') if cur else None} dsh_turn={cur.get('dsh_turn') if cur else None} "
                 f"audible={cur.get('audible') if cur else None} text_started={cur.get('text_started') if cur else None} "
@@ -290,6 +317,15 @@ class DSHBridgeProcessor(FrameProcessor):
             if self._barge_candidate is not None and not self._barge_candidate.get("confirmed"):
                 self._barge_candidate["vad_stopped_mono"] = time.monotonic()
             return
+
+        if isinstance(frame, (InterimTranscriptionFrame, TranscriptionFrame)):
+            if self._input_noise(frame.text):
+                if isinstance(frame, TranscriptionFrame) and frame.metadata.get("capture_id"):
+                    await self._send_rtvi({"type":"capture-rejected", "captureId":frame.metadata["capture_id"], "utteranceId":frame.metadata.get("utterance_id")})
+                return
+            capture_id = frame.metadata.get("capture_id")
+            if capture_id:
+                await self._send_rtvi({"type": "capture-transcript", "text": frame.text, "final": isinstance(frame, TranscriptionFrame), "captureId": capture_id, "utteranceId": frame.metadata.get("utterance_id", capture_id)})
 
         if isinstance(frame, InterimTranscriptionFrame):
             cand = self._barge_candidate
@@ -543,7 +579,7 @@ class DSHBridgeProcessor(FrameProcessor):
                 except Exception:
                     pass
         finally:
-            if current.get("text_started") and current.get("audible"):
+            if current.get("response_open") and current.get("audible"):
                 try:
                     await self.push_frame(LLMFullResponseEndFrame())
                 except Exception:
@@ -616,9 +652,10 @@ class DSHBridgeProcessor(FrameProcessor):
             if not current.get("audible"):
                 self.metrics["late_text_dropped"] += 1
                 return
-            if not current.get("text_started"):
+            if not current.get("response_open"):
                 current["text_started"] = True
-                logger.info(
+                current["response_open"] = True
+                probe_log(
                     f"[g3-probe] playback-identity SEND request={current.get('request_id')} "
                     f"turn={current.get('dsh_turn')} key={current.get('turn_key')} epoch_ms={round(time.time()*1000)}"
                 )
@@ -634,7 +671,7 @@ class DSHBridgeProcessor(FrameProcessor):
                         "epochMs": round(time.time()*1000),
                     },
                 }))
-                if current.get("submitted_at"):
+                if current.get("submitted_at") and not current.get("first_text_ms"):
                     current["first_text_ms"] = round((time.monotonic() - current["submitted_at"]) * 1000)
                     current["first_text_epoch_ms"] = round(time.time() * 1000)
                     self.metrics["dsh_first_text_samples"].append(current["first_text_ms"])
@@ -644,6 +681,9 @@ class DSHBridgeProcessor(FrameProcessor):
             self.metrics["chars_streamed"] += len(delta)
             await self.push_frame(TextFrame(text=delta))
         elif kind == "assistant-end":
+            if current.get("response_open") and current.get("audible"):
+                current["response_open"] = False
+                await self.push_frame(LLMFullResponseEndFrame())
             logger.info(f"[dsh] {current['turn_key']} assistant-end outcome={event.get('outcome')}")
         elif kind == "cancel-requested":
             current["cancel_state"] = "requested"
@@ -753,7 +793,7 @@ class DSHBridgeProcessor(FrameProcessor):
             headers = {"Authorization": f"Bearer {descriptor['token']}", "content-type": "application/json"}
             async with self._get_session().post(
                 f"http://127.0.0.1:{descriptor['port']}/cancel",
-                json={"sessionId": session_id},
+                json={"sessionId": session_id, "source": "voice-command"},
                 headers=headers,
                 timeout=aiohttp.ClientTimeout(total=10),
             ) as response:

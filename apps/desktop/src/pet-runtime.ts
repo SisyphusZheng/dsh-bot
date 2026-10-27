@@ -22,9 +22,11 @@ type Presentation = {
   sync(snapshot: { pid: number; sessionId: string; requests: PendingInteraction[] }): void
   event(event: { ioSeq: number; type: string }): void
   notice(text: string, kind?: string): void
+  capture(status: object): void
+  cancelCapture(id: string): boolean
   voice(state: string): void
   action(value: object): Promise<void>
-  state(): { working: boolean; startedAt: number; waiting: boolean }
+  state(): { working: boolean; startedAt: number; inputSource: string; waiting: boolean }
   stop(): void
 }
 type BubbleController = {
@@ -49,6 +51,7 @@ type Experience = {
   sync(snapshot: { requests: PendingInteraction[] }): void
   voice(status: object): void
   gesture(phase: string): void
+  inputActive(): boolean
   wake(): void
   stop(): Promise<void>
   skinPath(id: string, name: string): string
@@ -324,6 +327,7 @@ export class ProductPet {
     window.setPosition(initial.x, initial.y)
     window.on('move', () => this.positionBubble())
     const pauseModule = await import(pathToFileURL(join(root, 'pet/pause-on-input.mjs')).href) as {
+      canPauseDesktopTurn(options: { behavior: BotRuntimeConfig['behavior']; turn: ReturnType<Presentation['state']> | undefined; inputActive: boolean | undefined }): boolean
       createPauseOnInputMonitor(options: {
         getIdleSeconds(): number
         isTurnActive(): boolean
@@ -336,8 +340,10 @@ export class ProductPet {
       getIdleSeconds: () => powerMonitor.getSystemIdleTime(),
       isTurnActive: () => this.presentation?.state().working === true,
       getTurnStartedAt: () => this.presentation?.state().startedAt || 0,
-      shouldPause: () => this.config.behavior?.pauseOnInput !== false && !this.presentation?.state().waiting,
-      onPause: () => { void this.request('/cancel', {}).then(response => this.presentation?.notice(response.ok ? '已暂停，等你。' : '暂停失败，请打开 DSH 查看。'), () => this.presentation?.notice('暂停失败，请打开 DSH 查看。', 'error')) },
+      shouldPause: () => pauseModule.canPauseDesktopTurn({
+        behavior: this.config.behavior, turn: this.presentation?.state(), inputActive: this.experience?.inputActive(),
+      }),
+      onPause: () => { void this.request('/cancel', { source: 'idle-pause' }).then(response => this.presentation?.notice(response.ok ? '已停止当前任务，等你。' : '暂停失败，请打开 DSH 查看。'), () => this.presentation?.notice('暂停失败，请打开 DSH 查看。', 'error')) },
     })
     this.pause.start()
     this.window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
@@ -348,7 +354,7 @@ export class ProductPet {
       if (sender !== this.window?.webContents) throw new Error('Unowned pet renderer')
     }
     const assertBubble = (sender: Electron.WebContents): void => { if (!this.bubble?.owns(sender)) throw new Error('Unowned bubble renderer') }
-    ipcMain.handle('pet:bubble-action', (e, value: unknown) => { assertBubble(e.sender); if (!value || typeof value !== 'object') throw new Error('Invalid action'); if ('type' in value && value.type === 'cancel' && 'id' in value && value.id === 'cancel-voice') { window.webContents.send('pet:voice-command', { action: 'disable' }); if (this.presentation?.state().working) void this.request('/cancel', {}); return } return this.experience?.action(value).then(handled => handled ? undefined : this.presentation?.action(value)) })
+    ipcMain.handle('pet:bubble-action', (e, value: unknown) => { assertBubble(e.sender); if (!value || typeof value !== 'object') throw new Error('Invalid action'); if ('type' in value && value.type === 'cancel' && 'id' in value && value.id === 'cancel-capture') { if ('requestId' in value && typeof value.requestId === 'string' && this.presentation?.cancelCapture(value.requestId)) window.webContents.send('pet:voice-command', { action: 'discard', captureId: value.requestId }); return } return this.experience?.action(value).then(handled => handled ? undefined : this.presentation?.action(value)) })
     ipcMain.handle('pet:bubble-interactive', (e, value: unknown) => { assertBubble(e.sender); this.bubble?.setInteractive(value === true) })
     ipcMain.handle('pet:bubble-focus', (e, value: unknown) => { assertBubble(e.sender); this.bubble?.setInputMode(value === true) })
     ipcMain.handle('pet:bubble-open', (e) => { assertBubble(e.sender); this.options.toggleMain(true) })
@@ -358,7 +364,7 @@ export class ProductPet {
       const active = this.presentation?.state().working === true
       Menu.buildFromTemplate([
         ...(this.experience?.menu() ?? []),
-        ...(active ? [{ label: '停止任务', click: () => { void this.request('/cancel', {}).catch(() => this.presentation?.notice('停止失败，请打开 DSH 查看。', 'error')) } }] : []),
+        ...(active ? [{ label: '停止任务', click: () => { void this.request('/cancel', { source: 'task-stop' }).catch(() => this.presentation?.notice('停止失败，请打开 DSH 查看。', 'error')) } }] : []),
       ]).popup({ window })
     })
     ipcMain.handle('pet:experience', (e) => { assertOwner(e.sender); return this.experience?.state() })
@@ -379,15 +385,24 @@ export class ProductPet {
     })
     ipcMain.handle('pet:cancel', async (e) => {
       assertOwner(e.sender)
-      if (!(await this.request('/cancel', {})).ok) throw new Error('Cancellation failed')
+      if (!(await this.request('/cancel', { source: 'task-stop' })).ok) throw new Error('Cancellation failed')
     })
     ipcMain.handle('pet:voice-status', (e, message: unknown) => {
       assertOwner(e.sender)
       if (message && typeof message === 'object') {
-        const status = message as { text?: string; phase?: string; enabled?: boolean; notify?: boolean; kind?: string }
+        const status = message as {
+          text?: string
+          phase?: string
+          enabled?: boolean
+          notify?: boolean
+          kind?: string
+          captureId?: string
+          utteranceId?: string
+        }
         this.experience?.voice(status)
         if (['idle', 'listening', 'speaking', 'processing'].includes(status.phase || '')) this.presentation?.voice(status.phase || 'idle')
-        if (status.notify && status.text) this.presentation?.notice(status.text, status.kind)
+        if (['input', 'transcript', 'capture-end'].includes(status.kind || '')) this.presentation?.capture(status)
+        else if (status.notify && status.text) this.presentation?.notice(status.text, status.kind)
         this.log('voice-client', String(status.text || status.phase || '').slice(0, 400))
       } else this.log('voice-client', String(message).slice(0, 400))
     })
@@ -493,6 +508,11 @@ export class ProductPet {
       const route = resolvePetVoiceRoute(config.voice)
       if (!route.ok) { this.worker = null; this.publish({ phase: 'failed', error: route.error }); return }
       const key = config.voice?.apiKey || ''
+      if (!config.llm?.apiKey) {
+        this.worker = null
+        this.publish({ phase: 'unconfigured', error: '请先在 DSH → Bot 设置中保存主模型 API Key，再开启语音。' })
+        return
+      }
       if (!key) {
         this.worker = null
         this.publish({ phase: 'unconfigured', error: '请先在 Bot 设置中填写语音 API Key' })
@@ -514,6 +534,7 @@ export class ProductPet {
           NISSE_PIPECAT_TOKEN: this.token,
           DASHSCOPE_API_KEY: key,
           DSH_WAKE_PHRASE: '',
+          DSH_CAPTURE_CONTROL: '1',
           DASHSCOPE_REALTIME_URL: config.voice?.baseUrl || 'wss://dashscope.aliyuncs.com/api-ws/v1/realtime',
           DASHSCOPE_ASR_MODEL: route.model,
           DASHSCOPE_TTS_MODEL: 'qwen3-tts-flash-realtime',

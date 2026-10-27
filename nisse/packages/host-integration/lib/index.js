@@ -53,12 +53,14 @@ function normalizePersona(input) {
   }
 }
 function personaText(persona, override) {
+  const environment = '运行环境事实：你属于 dsh-bot Electron 桌面应用，桌宠是独立的透明桌面窗口，双击桌宠可打开 DSH 会话。DSH 是唯一任务执行器，语音由 Pipecat 连接 ASR/TTS，个人记忆由 Hindsight 提供。localhost 地址是内部服务，不能据此判断用户在浏览器中使用应用。除非工具返回了屏幕或窗口证据，不得声称看到了用户的桌面；执行操作前使用实际可用的 DSH 工具。'
   const custom = String(override || '').trim()
   if (custom !== '') {
-    return custom + '\n只根据 DSH 提供的事实与执行结果说话；不虚构工具执行、文件内容或任务结果。'
+    return environment + '\n' + custom + '\n只根据 DSH 提供的事实与执行结果说话；不虚构工具执行、文件内容或任务结果。'
   }
   const p = persona || DEFAULT_PERSONA
   const lines = [
+    environment,
     '你是 Nisse（家灵），一个桌面个人 Agent。',
     '名字：' + p.name,
     '性格：' + p.personality,
@@ -293,6 +295,7 @@ export function apply(ctx, config = {}) {
   let turnAssistantText = ''
   // W2 bridge subset: the voice client scopes a turn with its own client turn id.
   let activeClientTurnId = ''
+  let inputSource = 'desktop', cancellationSource = null
   const bridgeFrames = []
   let bridgeSeq = 0
   const sseSubscribers = new Set()
@@ -544,7 +547,7 @@ export function apply(ctx, config = {}) {
         currentTurn = data.turn
         turnAssistantText = ''
         turnCount = Math.max(turnCount, data.turn || 0)
-        push('turn.started', { ...base, data: { durableSeq: event.seq } })
+        push('turn.started', { ...base, data: { durableSeq: event.seq, inputSource } })
         break
       case 'turn/end': {
         const reason = data.reason || {}
@@ -553,9 +556,11 @@ export function apply(ctx, config = {}) {
         rememberTurn(base.turnId)
         push('turn.ended', {
           ...base,
-          data: { durableSeq: event.seq, terminal: String(reason.kind || 'unknown'), reason },
+          data: { durableSeq: event.seq, terminal: String(reason.kind || 'unknown'), reason, cancellationSource },
         })
         currentTurn = null
+    inputSource = 'desktop'
+    cancellationSource = null
         break
       }
       case 'step/start':
@@ -819,6 +824,8 @@ export function apply(ctx, config = {}) {
     seenDurable.clear()
     durableSeq = 0
     currentTurn = null
+    inputSource = 'desktop'
+    cancellationSource = null
     turnCount = 0
     turnAssistantText = ''
     turnMemory = ''
@@ -982,13 +989,15 @@ export function apply(ctx, config = {}) {
     return agent
   }
 
-  async function submitTurn(text, { clientTurnId = '' } = {}) {
+  async function submitTurn(text, { clientTurnId = '', source = 'desktop' } = {}) {
     const trimmed = String(text || '').trim()
     if (!trimmed) throw new Error('text required')
     await ensureConversationForTurn()
     lastTurn = null
     submitted += 1
     submittedText = trimmed
+    inputSource = source
+    cancellationSource = null
     activeClientTurnId = String(clientTurnId || '').trim().slice(0, 200)
     const message = createUserMessage({
       content: [{ type: 'text', text: trimmed }],
@@ -996,14 +1005,14 @@ export function apply(ctx, config = {}) {
     })
     push('turn.accepted', {
       sessionId,
-      data: { chars: trimmed.length, messageId: message.id, constructor: 'createUserMessage', clientTurnId: activeClientTurnId || null },
+      data: { chars: trimmed.length, messageId: message.id, constructor: 'createUserMessage', clientTurnId: activeClientTurnId || null, inputSource },
     })
     const submission = {cancelled:false}
     pendingSubmission = submission
     try {
       await recallForTurn(trimmed)
       if (submission.cancelled) {
-        push('turn.ended', {data:{reason:{kind:'cancelled',cause:{kind:'user'}}}})
+        push('turn.ended', {data:{reason:{kind:'cancelled',cause:{kind:'user'}},cancellationSource}})
         return {sessionId,messageId:message.id,cancelled:true}
       }
       bridgeMessageId = message.id
@@ -1012,7 +1021,9 @@ export function apply(ctx, config = {}) {
     return { sessionId, messageId: message.id }
   }
 
-  async function cancelTurn() {
+  async function cancelTurn(source = 'task-stop') {
+    cancellationSource = source
+    auditEvent('session.cancel.requested', { sessionId: sessionId || null, turn: currentTurn, clientTurnId: activeClientTurnId || null, source })
     const preparing = pendingSubmission
     if(preparing)preparing.cancelled=true
     if (!agent) return { ok: true, cancelled: Boolean(preparing), sessionId: sessionId || '', settledApprovals: 0 }
@@ -1289,9 +1300,12 @@ export function apply(ctx, config = {}) {
         } catch (error) { return json(res, 400, { error: messageOf(error) }) }
       }
       if (url.pathname === '/cancel' && req.method === 'POST') {
-        await readBody(req).catch(() => ({}))
-        const result = await cancelTurn()
-        auditEvent('session.cancelled', { sessionId: sessionId || null, cancelled: Boolean(result?.cancelled) })
+        const body = await readBody(req)
+        const allowed = ['idle-pause', 'task-stop', 'voice-command', 'voice-disconnect']
+        const source = body.source === undefined ? 'task-stop' : body.source
+        if (!allowed.includes(source)) return json(res, 400, { error: 'invalid cancellation source' })
+        const result = await cancelTurn(source)
+        auditEvent('session.cancelled', { sessionId: sessionId || null, cancelled: Boolean(result?.cancelled), source, turn: currentTurn, clientTurnId: activeClientTurnId || null })
         return json(res, 200, result)
       }
 
@@ -1323,10 +1337,10 @@ export function apply(ctx, config = {}) {
         res.writeHead(200, { 'content-type': 'application/x-ndjson', 'cache-control': 'no-cache' })
         res.once('close', () => {
           const owned = voiceSubscribers.delete(subscriber)
-          if(owned && !res.writableEnded)void cancelTurn().catch(error=>log('disconnected turn cancellation failed: '+messageOf(error)))
+          if(owned && !res.writableEnded)void cancelTurn('voice-disconnect').catch(error=>log('disconnected turn cancellation failed: '+messageOf(error)))
         })
         voiceSubscribers.add(subscriber)
-        try { await submitTurn(body.text, { clientTurnId: requestId }) }
+        try { await submitTurn(body.text, { clientTurnId: requestId, source: 'voice' }) }
         catch (error) { frame({ type: 'error', message: messageOf(error) }); voiceSubscribers.delete(subscriber); res.end() }
         return
       }

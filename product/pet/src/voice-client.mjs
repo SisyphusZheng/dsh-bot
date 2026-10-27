@@ -1,6 +1,7 @@
 /** Official Pipecat media in the independent sprite document. */
 import { PipecatClient } from '@pipecat-ai/client-js'
 import { SmallWebRTCTransport, WavMediaManager } from '@pipecat-ai/small-webrtc-transport'
+import { createCaptureClient } from './capture-client.mjs'
 import { createVoiceSession } from './voice-session.mjs'
 import { createPetView } from './pet-view.jsx'
 import { createTaskCards } from './task-cards.mjs'
@@ -9,10 +10,10 @@ const bridge = window.petBridge, audio = document.getElementById('speaker'), pet
 const view = createPetView(pet, () => report('桌宠素材加载失败，请打开 DSH 查看。'))
 const micButton = document.getElementById('microphone'), hint = document.getElementById('hint'), taskCard = document.getElementById('tasks')
 let preferences = { voiceInput: { mode: 'hold', keyId: 'alt' }, hint: '按住 Option/Alt 说话', language: 'zh', orbSkin: 'whale-girl' }
-let current, hintTimer, localMic, localContext, localProcessor, wakeReady = false, localStarting = false
+let capture, current, hintTimer, localMic, localContext, localProcessor, wakeReady = false, localStarting = false
 const text = (zh, en) => preferences.language === 'en' ? en : zh
 function showHint() { hint.textContent = preferences.hint || ''; document.body.dataset.hint = 'show'; clearTimeout(hintTimer); hintTimer = setTimeout(() => { delete document.body.dataset.hint }, 4500) }
-function report(message, phase = 'idle', notify = true, kind = 'status') { void bridge.voiceStatus({ text: kind === 'status' ? desktopTranslator(preferences.language)(message) : message, phase, enabled: session.snapshot().enabled, transportPhase: session.snapshot().phase, notify, kind }) }
+function report(message, phase = 'idle', notify = true, kind = 'status', captureId = '', utteranceId = '') { void bridge.voiceStatus({ text: kind === 'status' ? desktopTranslator(preferences.language)(message) : message, phase, enabled: session.snapshot().enabled, transportPhase: session.snapshot().phase, notify, kind, captureId, utteranceId }) }
 function level(value) { const amount = Math.min(1, Math.max(0, Number(value) || 0)); document.getElementById('level').style.setProperty('--level', String(1 + amount * 3)); document.getElementById('level').setAttribute('aria-valuenow', String(Math.round(amount * 100))) }
 function stopLocal() { localProcessor?.disconnect(); localProcessor = undefined; localMic?.getTracks().forEach(track => track.stop()); localMic = undefined; void localContext?.close().catch(() => {}); localContext = undefined }
 async function localWake() {
@@ -41,7 +42,7 @@ const session = createVoiceSession({
     let mediaQueue = Promise.resolve(); const setMic = mediaManager.enableMic.bind(mediaManager)
     mediaManager.enableMic = enabled => { const operation = mediaQueue.then(() => { if (mediaManager.isMicEnabled !== enabled) return setMic(enabled) }); mediaQueue = operation.catch(callbacks.error); return operation }
     mediaManager.setUserAudioCallback(buffer => { const samples = new Int16Array(buffer); let energy = 0; for (const sample of samples) energy += (sample / 32768) ** 2; level(Math.sqrt(energy / Math.max(1, samples.length))) })
-    const own = new PipecatClient({ transport: new SmallWebRTCTransport({ mediaManager, iceServers: [], waitForICEGathering: true }), enableMic: true, enableCam: false, callbacks: {
+    const own = new PipecatClient({ transport: new SmallWebRTCTransport({ mediaManager, iceServers: [], waitForICEGathering: true }), enableMic: false, enableCam: false, callbacks: {
       onTrackStarted(track, participant) { if (participant?.local || track.kind !== 'audio') return; audio.muted = false; audio.volume = 1; audio.srcObject = new MediaStream([track]); void audio.play().catch(() => report('声音播放失败，请重新连接。')) },
       onBotReady: callbacks.ready, onDisconnected: callbacks.disconnected, onError: callbacks.error,
       onDeviceError: error => callbacks.error(new Error(error?.error?.message || '麦克风设备不可用或权限被拒绝')),
@@ -49,16 +50,23 @@ const session = createVoiceSession({
       onLocalAudioLevel: level,
       onUserStartedSpeaking: () => report('', 'listening', false), onUserStoppedSpeaking: () => report('', 'processing', false),
       onBotStartedSpeaking: () => report('', 'speaking', false), onBotStoppedSpeaking: () => report('', session.snapshot().enabled ? 'listening' : 'idle', false),
-      onUserInput: data => { if (data.text) report(data.text, 'listening', true, 'input') },
-      onSttRawText: data => { if (data.text) report(data.text, 'listening', true, 'input') },
+      // Raw SDK transcripts precede the application capture/echo filter.
+      onUserInput: () => {}, onSttRawText: () => {},
       onBotTtsText: data => { if (data.text) report(data.text, 'speaking', true, 'speech') },
-      onServerMessage(data) { if (data.type === 'duck-playback') audio.volume = 0.3; if (data.type === 'restore-playback') audio.volume = 1; if (data.type === 'barge-in-confirmed') { audio.muted = true; report('', 'listening', false) }; if (data.type === 'playback-identity') { audio.muted = false; audio.volume = 1 }; if (data.type === 'greeting') report(data.text, 'speaking', true, 'speech') },
+      onServerMessage(data) { capture?.message(data); if (data.type === 'duck-playback') audio.volume = 0.3; if (data.type === 'restore-playback') audio.volume = 1; if (data.type === 'barge-in-confirmed') { audio.muted = true; report('', 'listening', false) }; if (data.type === 'playback-identity') { audio.muted = false; audio.volume = 1 }; if (data.type === 'greeting') report(data.text, 'speaking', true, 'speech') },
     } })
-    return { connect: endpoint => own.connect({ webrtcRequestParams: { endpoint } }), disconnect: async () => { const tracks = Object.values(own.tracks()?.local || {}).filter(Boolean); try { await own.disconnect() } finally { for (const track of tracks) track.stop(); audio.srcObject = null; level(0) } }, enableMic: enabled => { const track = own.tracks()?.local?.audio; if (!enabled && track) track.enabled = false; own.enableMic(enabled); return mediaQueue } }
+    capture = createCaptureClient({
+      send: (type, data) => own.sendClientMessage(type, data),
+      setMic: enabled => { const track = own.tracks()?.local?.audio; if (!enabled && track) track.enabled = false; own.enableMic(enabled); return mediaQueue },
+      configure: async () => { const track = own.tracks()?.local?.audio; if (!track) throw new Error('麦克风音轨尚未就绪'); await track.applyConstraints({ echoCancellation: true, noiseSuppression: true, autoGainControl: true }); const settings = track.getSettings(); void bridge.voiceStatus({notify:false,kind:'media',mediaSettings:{echoCancellation:settings.echoCancellation,noiseSuppression:settings.noiseSuppression,autoGainControl:settings.autoGainControl}}); report(settings.echoCancellation === false ? '当前麦克风未启用回声消除，建议使用耳机。' : '', 'idle', settings.echoCancellation === false) },
+      publish: value => report(value.text, value.kind === 'input' ? 'listening' : 'processing', true, value.kind, value.captureId, value.utteranceId),
+    })
+    const ownCapture = capture
+    return { connect: endpoint => own.connect({ webrtcRequestParams: { endpoint } }), disconnect: async () => { ownCapture.stop(); const tracks = Object.values(own.tracks()?.local || {}).filter(Boolean); try { await own.disconnect() } finally { for (const track of tracks) track.stop(); audio.srcObject = null; level(0) } }, enableMic: enabled => ownCapture.enable(enabled) }
   },
 })
 async function apply(state) { if (state.notice && state.notice !== current?.notice) report(state.notice); current = state; await session.update(state.phase === 'available' ? state.offerUrl : undefined); if (['failed', 'unconfigured'].includes(state.phase) && session.snapshot().wanted) report(state.error || '语音服务尚未就绪。') }
-function command(value) { if (value.action === 'enable' || value.action === 'toggle') stopLocal(); void session.command(value.action || 'toggle'); if (current?.phase === 'unconfigured') report(current.error || '请先配置语音。') }
+function command(value) { if (value.action === 'discard') { if (capture?.discard(value.captureId)) void session.command('mute'); return }; if (value.action === 'enable' || value.action === 'toggle') stopLocal(); void session.command(value.action || 'toggle'); if (current?.phase === 'unconfigured') report(current.error || '请先配置语音。') }
 micButton.addEventListener('click', event => { event.stopPropagation(); command({ action: 'toggle' }) }); micButton.addEventListener('mousedown', event => event.stopPropagation())
 bridge.onVoice(state => { void apply(state) }); bridge.onVoiceCommand(command)
 function settings(value) { preferences = { ...preferences, ...value }; hint.textContent = preferences.hint || ''; view.update({ skin: preferences.orbSkin || 'whale-girl' }); document.documentElement.lang = preferences.language === 'en' ? 'en' : 'zh-CN'; if (!preferences.voiceInput?.hintSeen) showHint(); if (preferences.voiceInput?.mode === 'always') command({ action: 'enable' }); if (!preferences.wakeWordEnabled) stopLocal(); else void localWake() }

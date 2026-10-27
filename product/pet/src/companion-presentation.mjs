@@ -4,7 +4,8 @@ import { activityBubblePayload } from './activity-bubble.mjs'
 export function createCompanionPresentation({ show, hide, animate, send, setTimer = setTimeout, clearTimer = clearTimeout }) {
   let requests = [], identity = '', text = '', timer, busy = false, stopped = false
   let questionIndex = 0, answers = [], selected = [], customInput = false
-  let voice = 'idle', working = false, startedAt = 0
+  let voice = 'idle', working = false, startedAt = 0, inputSource = 'desktop', captureId = '', captureIdentity = '', captureTimer
+  const expiredInputs = new Set()
   const cancelTimer = () => { clearTimer(timer); timer = undefined }
   const animation = (cue = null) => animate({ state: requests.length ? 'awaiting-input' : voice !== 'idle' ? voice : working ? 'working' : 'idle', baseWorking: working, cue })
   const resetDraft = () => { questionIndex = 0; answers = []; selected = []; customInput = false; busy = false }
@@ -34,10 +35,10 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
       ],
     })
   }
-  function notice(value, kind = 'status', duration = 4500) {
+  function notice(value, kind = 'status', duration = 4500, capture = '') {
     if (stopped || requests.length) return
     cancelTimer()
-    show({ visible: true, kind, text: value, clickThrough: kind !== 'input', ...(kind === 'input' ? { cancel: { id: 'cancel-voice', label: '取消' }, inputLabel: '你说' } : {}) })
+    show({ visible: true, kind, text: value, clickThrough: kind !== 'input', ...(kind === 'input' ? { requestId: capture, cancel: { id: 'cancel-capture', label: '取消录音' }, inputLabel: '你说' } : {}) })
     timer = setTimer(() => { if (!requests.length && !stopped) hide() }, duration)
   }
   async function submit(request, body) {
@@ -67,6 +68,19 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
   }
   return {
     notice,
+    capture(status) {
+      const identity = `${status.captureId}:${status.utteranceId || ''}`
+      if (status.kind === 'input' && expiredInputs.has(identity)) return
+      if (status.kind === 'input' && status.captureId && identity !== captureIdentity) {
+        captureIdentity = identity
+        captureId = status.captureId
+        clearTimer(captureTimer); const own = captureId
+        captureTimer = setTimer(() => { if (captureId === own) { captureId = ''; expiredInputs.add(identity); if (expiredInputs.size > 64) expiredInputs.delete(expiredInputs.values().next().value); if (!requests.length) hide() } }, 15000)
+      }
+      if (status.kind === 'input' && status.captureId === captureId) notice(status.text, 'input', 4500, captureId)
+      else if (status.kind === 'transcript' || status.kind === 'capture-end') { captureId = ''; clearTimer(captureTimer); if (status.text) notice(status.text, 'transcript', 2200); else if (!requests.length) hide() }
+    },
+    cancelCapture(id) { if (!id || id !== captureId) return false; captureId = ''; clearTimer(captureTimer); cancelTimer(); if (!requests.length) hide(); return true },
     sync(snapshot) {
       if (stopped) return
       const nextIdentity = `${snapshot.pid}:${snapshot.sessionId}`
@@ -83,7 +97,7 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
     },
     event(event) {
       if (stopped) return
-      if (event.type === 'turn.started' || event.type === 'turn.accepted') { text = ''; working = true; startedAt = Date.now(); animation() }
+      if (event.type === 'turn.started' || event.type === 'turn.accepted') { text = ''; if (!working) startedAt = Date.now(); working = true; inputSource = event.data?.inputSource || (event.type === 'turn.accepted' ? 'desktop' : inputSource); captureId = ''; clearTimer(captureTimer); animation() }
       if (event.type === 'assistant.delta') { text += event.data?.text || ''; notice(text.slice(-400), 'speech', 6500) }
       if (event.type === 'assistant.message' && event.data?.text) notice(event.data.text.slice(-400), 'speech', 6500)
       if (event.type === 'tool.call') { const payload = activityBubblePayload(event); if (payload) notice(payload.text, 'activity') }
@@ -96,7 +110,7 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
       if (event.type === 'error') { working = false; animation({ id: `error:${event.ioSeq}`, name: 'failed' }); notice(event.data?.message || '任务执行失败，请打开 DSH 查看。', 'error', 7000) }
     },
     voice(state) { voice = state; animation() },
-    state: () => ({ working, startedAt, waiting: requests.length > 0 }),
+    state: () => ({ working, startedAt, inputSource, waiting: requests.length > 0 }),
     async action(action) {
       if (stopped) return
       if (action.type === 'open') return send('open')
@@ -121,6 +135,6 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
         if (action.id === 'back' && questionIndex > 0) { questionIndex--; selected = answers[questionIndex]?.selected || []; render() }
       }
     },
-    stop() { stopped = true; cancelTimer(); requests = []; hide() },
+    stop() { stopped = true; cancelTimer(); clearTimer(captureTimer); requests = []; hide() },
   }
 }

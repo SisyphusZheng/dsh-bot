@@ -41,7 +41,9 @@
     "smallWebrtcTransport": "1.11.0",
     "compatibility": "Official Pipecat SDK + SmallWebRTC, authenticated same-origin signaling and RTVI. Native microphone acceptance pending.",
     "pnpmLockSha256": "df3fa728858b532d5177ccd55f6a124dcc65312008b7b1756a3dfea254ac816b",
-    "mediaManager": "Official WavMediaManager in pinned SmallWebRTC package; local browser media and bundled Blob worklets; no Daily CDN runtime."
+    "mediaManager": "Official WavMediaManager in pinned SmallWebRTC package; local browser media and bundled Blob worklets; no Daily CDN runtime.",
+    "captureProtocol": "RTVI capture-state/capture-ack with per-connection capture ids and provider utterance ids; default closed until acknowledged; discard never cancels Agent",
+    "audioProcessing": "Official WavMediaManager input track applies echoCancellation/noiseSuppression/autoGainControl before enabling capture; full-duplex playback and barge-in retained"
   },
   "pet": {
     "source": "apps/desktop/src/pet-runtime.ts + product/pet/src + apps/desktop/resources/pet",

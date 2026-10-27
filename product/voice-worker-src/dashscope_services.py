@@ -34,6 +34,8 @@ import uuid
 from collections.abc import AsyncGenerator
 
 from loguru import logger
+
+from capture_policy import CapturePolicy
 from websockets.protocol import State
 
 from pipecat.frames.frames import (
@@ -50,6 +52,11 @@ from pipecat.services.stt_service import WebsocketSTTService
 from pipecat.services.settings import STTSettings, TTSSettings
 from pipecat.services.tts_service import WebsocketTTSService
 from pipecat.utils.time import time_now_iso8601
+
+def probe_log(message):
+    if os.environ.get("DSH_VOICE_DEBUG_PROBES") == "1":
+        logger.info(message)
+
 
 DASHSCOPE_REALTIME_URL = os.getenv("DASHSCOPE_REALTIME_URL", "wss://dashscope.aliyuncs.com/api-ws/v1/realtime")
 
@@ -80,6 +87,8 @@ class DashScopeASRService(WebsocketSTTService):
             settings=STTSettings(model=model, language=None),
             **kwargs,
         )
+        self.capture = CapturePolicy(os.environ.get("DSH_CAPTURE_CONTROL") == "1")
+        self._utterance_seq = 0
         self._receive_task = None
         self._api_key = api_key
         self._model = model
@@ -185,7 +194,8 @@ class DashScopeASRService(WebsocketSTTService):
             event = msg.get("type")
             if event == "conversation.item.input_audio_transcription.text":
                 partial = (msg.get("text") or "") + (msg.get("stash") or "")
-                if partial:
+                capture_id = self.capture.transcript(msg.get("item_id"))
+                if partial and capture_id:
                     if self.metrics["first_partial_ms"] is None and self._commit_at_ms is not None:
                         self.metrics["first_partial_ms"] = round(_now_ms() - self._commit_at_ms, 1)
                     self.metrics["partial"] += 1
@@ -193,12 +203,16 @@ class DashScopeASRService(WebsocketSTTService):
                         self.metrics["last_partial"] = partial
                         if self.metrics["partial"] % 10 == 1:
                             logger.info(f"[dashscope-asr] partial: {partial}")
-                    await self.push_frame(
-                        InterimTranscriptionFrame(partial, self._user_id, time_now_iso8601())
-                    )
+                    frame = InterimTranscriptionFrame(partial, self._user_id, time_now_iso8601())
+                    frame.metadata["capture_id"] = capture_id
+                    frame.metadata["utterance_id"] = msg.get("item_id") or f"{capture_id}:{self._utterance_seq}"
+                    await self.push_frame(frame)
             elif event == "conversation.item.input_audio_transcription.completed":
                 self.confirm_finalize()
                 transcript = msg.get("transcript") or ""
+                capture_id = self.capture.transcript(msg.get("item_id"), final=True)
+                utterance_id = msg.get("item_id") or f"{capture_id}:{self._utterance_seq}"
+                self._utterance_seq += 1
                 if self._commit_at_ms is not None:
                     self.metrics["final_ms"] = round(_now_ms() - self._commit_at_ms, 1)
                     self.metrics["final_ms_samples"].append(self.metrics["final_ms"])
@@ -207,14 +221,15 @@ class DashScopeASRService(WebsocketSTTService):
                 if transcript and os.environ.get("WG_TEST_ASR_SUPPRESS_FINAL") == "1":
                     logger.warning("[dashscope-asr] TEST injected suppression of final transcript")
                     continue
-                if transcript:
+                if transcript and capture_id:
                     self.metrics["final"] += 1
                     if self._debug_transcripts:
                         self.metrics.setdefault("transcripts", []).append(transcript)
                         logger.info(f"[dashscope-asr] final: {transcript}")
-                    await self.push_frame(
-                        TranscriptionFrame(transcript, self._user_id, time_now_iso8601())
-                    )
+                    frame = TranscriptionFrame(transcript, self._user_id, time_now_iso8601())
+                    frame.metadata["capture_id"] = capture_id
+                    frame.metadata["utterance_id"] = utterance_id
+                    await self.push_frame(frame)
             elif event == "error":
                 self.metrics["errors"] += 1
                 await self.push_error_frame(ErrorFrame(error=f"DashScope ASR error: {msg.get('error')}"))
@@ -222,6 +237,9 @@ class DashScopeASRService(WebsocketSTTService):
                 return
 
     async def run_stt(self, audio: bytes) -> AsyncGenerator[Frame | None, None]:
+        if not self.capture.append():
+            yield None
+            return
         ws = self._websocket
         if ws is None or ws.state is not State.OPEN:
             yield ErrorFrame(error="DashScope ASR websocket is not connected")
@@ -246,7 +264,7 @@ class DashScopeASRService(WebsocketSTTService):
 
     async def process_frame(self, frame: Frame, direction):
         await super().process_frame(frame, direction)
-        if isinstance(frame, VADUserStoppedSpeakingFrame):
+        if isinstance(frame, VADUserStoppedSpeakingFrame) and self.capture.commit():
             self.request_finalize()
             self._commit_at_ms = _now_ms()
             ws = self._websocket
@@ -417,7 +435,7 @@ class DashScopeTTSService(WebsocketTTSService):
                 if self._reply is not None:
                     if self._reply["first_chunk_ms"] is None and self._reply["start_ms"] is not None:
                         self._reply["first_chunk_ms"] = round(_now_ms() - self._reply["start_ms"], 1)
-                        logger.info(f"[g3-probe] tts_first_chunk reply#{self._reply.get('index')} epoch_ms={round(time.time()*1000)} mono={time.monotonic():.3f}")
+                        probe_log(f"[g3-probe] tts_first_chunk reply#{self._reply.get('index')} epoch_ms={round(time.time()*1000)} mono={time.monotonic():.3f}")
                     self._reply["chunks"] += 1
                     self._reply["audio_bytes"] += len(audio)
                 self.metrics["first_chunk_ms"] = self.metrics["first_chunk_ms"] or (self._reply or {}).get("first_chunk_ms")

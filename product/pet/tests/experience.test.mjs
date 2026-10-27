@@ -27,20 +27,20 @@ test('listening waits for actual bot readiness; mute preserves playback transpor
  let callbacks,disconnects=0;const mic=[]
  const session=createVoiceSession({publish(){},createClient:c=>{callbacks=c;return{connect:async()=>{},disconnect:async()=>{disconnects++},enableMic:v=>mic.push(v)}}})
  await session.update('/offer');await session.command('enable');assert.equal(session.snapshot().enabled,false);assert.equal(session.snapshot().phase,'connecting')
- callbacks.ready();assert.equal(session.snapshot().enabled,true);await session.command('mute');assert.equal(session.snapshot().enabled,false);assert.equal(disconnects,0)
+ await callbacks.ready();assert.equal(session.snapshot().enabled,true);await session.command('mute');assert.equal(session.snapshot().enabled,false);assert.equal(disconnects,0)
  await session.command('enable');assert.equal(session.snapshot().enabled,true);await session.stop();assert.equal(disconnects,1);assert.deepEqual(mic,[true,false,true])
 })
 test('release during connect prevents readiness from re-enabling capture',async()=>{
  let callbacks,connected;const mic=[]
  const session=createVoiceSession({publish(){},createClient:c=>{callbacks=c;return{connect:()=>new Promise(r=>connected=r),disconnect:async()=>{},enableMic:v=>mic.push(v)}}})
- await session.update('/offer');const opening=session.command('enable');await new Promise(r=>setImmediate(r));const muting=session.command('mute');callbacks.ready();assert.equal(session.snapshot().enabled,false)
+ await session.update('/offer');const opening=session.command('enable');await new Promise(r=>setImmediate(r));const muting=session.command('mute');await callbacks.ready();assert.equal(session.snapshot().enabled,false)
  connected();await Promise.all([opening,muting]);assert.ok(mic.every(v=>v===false));await session.stop()
 })
 test('failed client is disposed and retry creates a new one',async()=>{
  let callbacks,created=0,closed=0
  const session=createVoiceSession({publish(){},createClient:c=>{created++;callbacks=c;return{connect:async()=>{},disconnect:async()=>{closed++},enableMic(){}}}})
  await session.update('/offer');await session.command('enable');callbacks.error(new Error('lost'));assert.equal(session.snapshot().enabled,false)
- await session.command('enable');assert.equal(created,2);assert.equal(closed,1);callbacks.ready();assert.equal(session.snapshot().enabled,true);await session.stop()
+ await session.command('enable');assert.equal(created,2);assert.equal(closed,1);await callbacks.ready();assert.equal(session.snapshot().enabled,true);await session.stop()
 })
 test('shutdown aborts unresolved media connect',async()=>{
  let closed=0;const session=createVoiceSession({publish(){},createClient:()=>({connect:()=>new Promise(()=>{}),enableMic(){},disconnect:async()=>{closed++}})})
@@ -52,7 +52,7 @@ test('onboarding can pause/resume and yield to official pending requests',()=>fi
  experience.sync({requests:[{id:'approval'}]});assert.equal(experience.state().onboarding,false);experience.sync({requests:[]});assert.equal(experience.state().onboarding,true);assert.match(shown.at(-1).text,/称呼/)
 }))
 test('hold/toggle/mouse gestures, hide/wake shortcut and keyword control the owned pet',()=>fixture(async({experience,events,keys})=>{
- experience.gesture('down');experience.gesture('up');assert.equal(events.at(-1).value.action,'enable');experience.gesture('down');experience.gesture('up');assert.equal(events.at(-1).value.action,'toggle')
+ experience.gesture('down');experience.gesture('up');assert.equal(events.at(-1).value.action,'mute');experience.gesture('down');experience.gesture('up');assert.equal(events.at(-1).value.action,'mute')
  experience.update({voiceInput:{mode:'toggle',keyId:'mouse4'}});experience.gesture('down');experience.gesture('up');assert.equal(events.at(-1).value.action,'toggle')
  experience.menu().find(x=>x.label==='隐藏桌宠').click();assert.equal(events.at(-1).value.state,'hidden');keys.get('CommandOrControl+Shift+Space')();assert.equal(events.at(-1).value.state,'active')
  experience.update({wakeWordEnabled:true,wakeWordPhrase:'你好小鲸'});experience.wake();assert.equal(events.at(-1).value.source,'wake-word')

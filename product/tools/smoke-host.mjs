@@ -127,11 +127,17 @@ try {
   const waitDeadline=Date.now()+3000
   while(!releaseRecall&&Date.now()<waitDeadline)await new Promise(r=>setTimeout(r,10))
   assert.ok(releaseRecall,'recall barrier not entered')
-  const cancelled=await post('/cancel',{});assert.equal((await cancelled.json()).cancelled,true)
+  assert.equal((await post('/cancel',{source:'invalid-source'})).status,400)
+  const cancelled=await post('/cancel',{source:'voice-command'});assert.equal((await cancelled.json()).cancelled,true)
   releaseRecall();releaseRecall=null
   const cancelledFrames=(await pendingRecall.text()).trim().split('\n').map(x=>JSON.parse(x))
   assert.ok(cancelledFrames.some(x=>x.type==='turn-end'&&x.reason?.kind==='cancelled'))
   assert.equal(requests.length,beforeRecallCancel,'cancelled admission reached LLM')
+  const audit=readFileSync(join(home,'bot/audit.jsonl'),'utf8').trim().split('\n').map(line=>JSON.parse(line))
+  assert.ok(audit.some(row=>JSON.stringify(row).includes('voice-command')&&JSON.stringify(row).includes('session.cancel.requested')))
+  const sourceEvents=await (await fetch(`http://127.0.0.1:${descriptor.port}/events`,{headers})).json()
+  assert.ok(sourceEvents.events.some(row=>row.type==='turn.started'&&row.data.inputSource==='voice'))
+  assert.match(JSON.stringify(requests[0].messages??requests[0].system),/Electron.*Pipecat/s)
   const rotated=await post('/conversation/new',{});assert.equal(rotated.status,200)
   const recalled=await post('/voice/turn',{text:'我喜欢什么咖啡？'})
   const recalledFrames=(await recalled.text()).trim().split('\n').map(x=>JSON.parse(x))

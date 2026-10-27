@@ -1,4 +1,4 @@
-// 用户碰键鼠 → 立即暂停正在运行的 DSH turn。
+// 用户键鼠接管：仅由产品策略许可的桌面 turn 可停止；语音 turn 不参与。
 //
 // 实现约束（本机可用的 Electron API）：没有全局键鼠事件回调，但
 // `powerMonitor.getSystemIdleTime()` 给出「系统空闲秒数」——用户按下键/移动
@@ -41,6 +41,14 @@ export function detectUserInputActivity({
   return previous <= threshold
 }
 
+/** Voice turns and talk gestures never participate in keyboard/mouse takeover.
+ * @param {object} options Current preferences, turn origin and gesture activity.
+ * @returns {boolean} Whether idle monitoring may stop this turn.
+ */
+export function canPauseDesktopTurn({ behavior, turn, inputActive = false }) {
+  return behavior?.pauseOnInput !== false && turn?.inputSource !== 'voice' && !turn?.waiting && !inputActive
+}
+
 /**
  * Idle-pause monitor. Injected deps keep it deterministic:
  * @param {object} options
@@ -75,9 +83,11 @@ export function createPauseOnInputMonitor(options = {}) {
   let previousIdle = null
   let pauses = 0
   let lastPause = null
+  let observedTurn = null, fired = false
 
   function reset() {
     previousIdle = null
+    observedTurn = null; fired = false
   }
 
   function tick(nowMs = now()) {
@@ -86,6 +96,8 @@ export function createPauseOnInputMonitor(options = {}) {
       return { paused: false, reason: 'no-turn' }
     }
     const startedAt = Number(getTurnStartedAt()) || 0
+    if (observedTurn !== startedAt) { observedTurn = startedAt; previousIdle = null; fired = false }
+    if (fired) return { paused: false, reason: 'already-stopped' }
     const withinGrace = startedAt > 0 && nowMs - startedAt < graceMs
     const idle = Number(getIdleSeconds())
     if (!Number.isFinite(idle) || idle < 0) {
@@ -107,6 +119,7 @@ export function createPauseOnInputMonitor(options = {}) {
       previousIdle = idle
       return { paused: false, reason: 'disabled' }
     }
+    fired = true
     pauses += 1
     lastPause = { at: nowMs, idleSeconds: idle }
     try {
@@ -148,7 +161,7 @@ export function pausedBubble() {
   return {
     kind: 'status',
     icon: '⏸️',
-    text: '已暂停，等你。想做别的直接说。',
+    text: '已停止当前任务，等你。想做别的直接说。',
   }
 }
 

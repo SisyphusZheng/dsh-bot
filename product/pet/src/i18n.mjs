@@ -1,4 +1,8 @@
 const ENGLISH = {
+  '取消录音': 'Discard recording',
+  '已停止当前任务，等你。': 'Task stopped. Waiting for you.',
+  '录音控制未就绪，请重新连接语音。': 'Recording control is not ready. Reconnect voice.',
+  '当前麦克风未启用回声消除，建议使用耳机。': 'Echo cancellation is unavailable. Please use headphones.',
   '打开 DSH': 'Open DSH', 'Bot 设置…': 'Bot settings…', '开始收听': 'Start listening', '停止收听': 'Stop listening',
   '语音输入': 'Voice input', '按住说话': 'Hold to talk', '按一下切换': 'Toggle listening', '一直听': 'Always listen',
   '离线语音唤醒': 'Offline wake word', '设置唤醒词…': 'Set wake word…', '显示桌宠快捷键…': 'Show-pet shortcut…',
@@ -179,7 +183,7 @@ const ENGLISH = {
   '自动管理 Nisse 专用会话': 'Manage a dedicated Nisse session automatically',
   '自动模式会复用 Nisse 专用会话；也可以绑定一个正在运行的 DSH 会话。': 'Automatic mode reuses the dedicated Nisse session. You can also bind a running DSH session.',
   '角色信息': 'Persona',
-  '称呼': 'Name',
+
   '性格': 'Personality',
   '语气': 'Tone',
   '补充要求': 'Additional instructions',

@@ -65,9 +65,9 @@
     "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
   },
   "apps/desktop/src/main.ts": {
-    "sha": "d9a79b0eb71e7c1b3512e41865ea837f735ac887",
+    "sha": "3ce916dfadc63c89c763255f94b1c6f24236a077",
     "mode": "100644",
-    "reason": "Restore pet presentation, native wake/shortcut dependencies and owned Electron integration; DSH core unchanged"
+    "reason": "Preserve product desktop integration and resume voice after main-model credential preflight; live key rotation does not restart media"
   },
   "apps/desktop/src/welcome-api.ts": {
     "sha": "3f45fb89db50547313105d68cd607d4667aedb2d",
@@ -128,5 +128,20 @@
     "sha": "f7038cd0e5579f5017560e70bdbc694dc1c9be41",
     "mode": "100644",
     "reason": "dsh-bot product companion: owned Session navigation, renderer lifecycle or product regression evidence"
+  },
+  "apps/desktop/scripts/dev.ts": {
+    "sha": "d55b57f578b5508ac02c441b6ea7851ddada3826",
+    "mode": "100644",
+    "reason": "Product dev launcher uses official Runtime version independently of desktop product version; no runtime code changes"
+  },
+  "apps/desktop/scripts/development-project.ts": {
+    "sha": "03610c221f9afab2b8879528a252356eb6dc4b3a",
+    "mode": "100644",
+    "reason": "Expose validated DSH runtime identity to product dev launcher"
+  },
+  "apps/desktop/tests/development-project.spec.ts": {
+    "sha": "0455975f25b266f090a232d0cd7d2c291a7ad624",
+    "mode": "100644",
+    "reason": "Regression for separate desktop product and DSH runtime versions"
   }
 }
