@@ -1,0 +1,14 @@
+$ tsx scripts/build.ts --scope typecheck
+run-gates: typecheck running 5 gate(s) with 5 worker(s) from 8 local default worker(s) of 8 CPU(s).
+run-gates: start host compiler
+run-gates: start Host Typert
+run-gates: PASS host compiler (1.85s)
+run-gates: start host aggregate check
+run-gates: PASS host aggregate check (5.59s)
+run-gates: PASS Host Typert (21.07s)
+run-gates: start client compiler
+run-gates: PASS client compiler (1.11s)
+run-gates: start client aggregate check
+run-gates: PASS client aggregate check (1.20s)
+
+run-gates: 5 passed, 0 failed, 0 skipped in 23.40s.

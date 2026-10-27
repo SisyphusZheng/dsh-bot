@@ -117,6 +117,18 @@ function mirrorWorkspaceDependencies(roots: readonly string[], destinationRoot: 
   return names
 }
 
+/** Read the runtime identity independently of the desktop product version.
+ * @param cliDir - Official CLI package directory.
+ * @returns The DSH runtime version used by the development profile.
+ */
+export function developmentRuntimeVersion(cliDir: string): string {
+  const manifest = readManifest(join(cliDir, 'package.json'))
+  if (manifest.name !== '@deepseek-ai/dsh' || typeof manifest.version !== 'string') {
+    throw new Error('desktop development: invalid DSH runtime package')
+  }
+  return manifest.version
+}
+
 /**
  * Replace one disposable project with links to the current built workspace.
  * @param options - Project destination, CLI package, release identity, and build target.

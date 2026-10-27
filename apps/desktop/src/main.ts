@@ -439,7 +439,9 @@ async function main(): Promise<void> {
           }) })
         if (!response.ok) throw new Error(`Live configuration failed: HTTP ${response.status}`)
         pet.updateBehavior(config)
-        if (JSON.stringify(previous.voice) !== JSON.stringify(config.voice)) await pet.configure(config)
+        const voiceChanged = JSON.stringify(previous.voice) !== JSON.stringify(config.voice)
+        const modelCredentialPresenceChanged = Boolean(previous.llm?.apiKey) !== Boolean(config.llm?.apiKey)
+        if (voiceChanged || modelCredentialPresenceChanged) await pet.configure(config)
       }
       const pending = configUpdates.then(update)
       configUpdates = pending.catch((error:unknown) => {console.error(error)})

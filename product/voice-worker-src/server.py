@@ -65,6 +65,7 @@ TTS_VOICE = os.environ.get("DASHSCOPE_TTS_VOICE", "Cherry")
 FIXED_REPLY = os.environ.get("G1_FIXED_TEXT", "您好，我是鲸鱼娘，这是一次语音链路测试。")
 DSH_BRIDGE_DESCRIPTOR = os.environ.get("DSH_BRIDGE_DESCRIPTOR", "/tmp/whalegirl-g2/home/whalegirl-g2/descriptor.json")
 DSH_TEST_PREFIX = os.environ.get("DSH_TEST_PREFIX", "")
+DEBUG_PROBES = os.environ.get("DSH_VOICE_DEBUG_PROBES") == "1"
 DEBUG_TRANSCRIPTS = os.environ.get("SPIKE_DEBUG_TRANSCRIPTS") == "1"
 STARTED_AT = time.time()
 
@@ -285,6 +286,18 @@ async def run_loop_pipeline(connection, session_id: str, session_state: dict) ->
     await _run_task(transport, task, session_id, session_state)
 
 
+class CaptureAudioGate(FrameProcessor):
+    def __init__(self, capture):
+        super().__init__()
+        self.capture = capture
+
+    async def process_frame(self, frame, direction):
+        await super().process_frame(frame, direction)
+        if isinstance(frame, InputAudioRawFrame) and not self.capture.enabled:
+            frame = InputAudioRawFrame(bytes(len(frame.audio)), frame.sample_rate, frame.num_channels)
+        await self.push_frame(frame, direction)
+
+
 async def run_dsh_pipeline(connection, session_id: str, session_state: dict) -> None:
     if not API_KEY:
         raise RuntimeError("DASHSCOPE_API_KEY is required for G1 dsh mode")
@@ -302,9 +315,10 @@ async def run_dsh_pipeline(connection, session_id: str, session_state: dict) -> 
         middle.append(TranscriptGate(DSH_TEST_PREFIX))
     pipeline = Pipeline([
         transport.input(),
-        AudioEnergyProbe(),
+        CaptureAudioGate(asr.capture),
+        *([AudioEnergyProbe()] if DEBUG_PROBES else []),
         VADProcessor(vad_analyzer=SileroVADAnalyzer(sample_rate=16000)),
-        VADObserver(),
+        *([VADObserver()] if DEBUG_PROBES else []),
         asr,
         *middle,
         bridge,
@@ -317,6 +331,19 @@ async def run_dsh_pipeline(connection, session_id: str, session_state: dict) -> 
 
 async def _run_task(transport, task, session_id: str, session_state: dict) -> None:
     if task.rtvi is not None and MODE == "dsh":
+        @task.rtvi.event_handler("on_client_message")
+        async def capture_control(rtvi, message):
+            if message.type != "capture-state":
+                return
+            data = message.data if isinstance(message.data, dict) else {}
+            capture = session_state["asr"].capture
+            action, capture_id = data.get("action"), data.get("captureId")
+            if not capture.control(action, capture_id):
+                return
+            if action in ("finish", "discard"):
+                await task.queue_frames([VADUserStoppedSpeakingFrame()])
+            await rtvi.send_server_message({"type": "capture-ack", "action": action, "captureId": capture_id})
+
         @task.rtvi.event_handler("on_client_ready")
         async def greet_once(rtvi):
             if session_state.get("welcomed"):
@@ -324,6 +351,7 @@ async def _run_task(transport, task, session_id: str, session_state: dict) -> No
             session_state["welcomed"] = True
             greeting = os.environ.get("DSH_VOICE_GREETING", "你好，我在呢。想聊什么，或者有什么需要我帮忙的？")
             if greeting:
+                session_state["dsh"].set_greeting(greeting)
                 await task.queue_frames([
                     OutputTransportMessageUrgentFrame(message={"id": "welcome-" + session_id, "label": "rtvi-ai", "type": "server-message", "data": {"type": "greeting", "text": greeting}}),
                     TTSSpeakFrame(text=greeting),

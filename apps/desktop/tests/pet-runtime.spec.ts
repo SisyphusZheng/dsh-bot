@@ -7,13 +7,17 @@ const state = vi.hoisted(() => ({
   urls: [] as string[],
   events: [] as { channel: string; data: { phase?: string; offerUrl?: string } }[],
   destroyed: false,
+  owners: [] as object[],
+  handlers: new Map<string, (event: { sender: object }, value?: unknown) => unknown>(),
 }))
 vi.mock('electron', () => ({
   BrowserWindow: class {
+    constructor() { state.owners.push(this.webContents) }
     webContents = {
       send: (channel: string, data: object) => state.events.push({ channel, data }),
       setWindowOpenHandler: () => {},
       on: () => {},
+      once: () => {},
     }
     loadURL(url: string) {
       state.urls.push(url)
@@ -29,12 +33,20 @@ vi.mock('electron', () => ({
       return [0, 0]
     }
     setPosition() {}
+    setBounds() {}
+    setAlwaysOnTop() {}
+    setFocusable() {}
+    showInactive() {}
+    hide() {}
     on() {}
     setVisibleOnAllWorkspaces() {}
     setIgnoreMouseEvents() {}
     getBounds() { return { x:0,y:0,width:172,height:204 } }
   },
-  ipcMain: { handle: () => {}, removeHandler: () => {} },
+  ipcMain: {
+    handle: (name: string, handle: (event: { sender: object }, value?: unknown) => unknown) => state.handlers.set(name, handle),
+    removeHandler: (name: string) => state.handlers.delete(name),
+  },
   screen: {
     getPrimaryDisplay: () => ({ workArea: { x: 0, y: 0, width: 1000, height: 800 } }),
     getAllDisplays: () => [{ id: 1, workArea: { x: 0, y: 0, width: 1000, height: 800 } }],
@@ -52,7 +64,9 @@ it('reconnects speech without reloading the pet document and authenticates signa
   const root = mkdtempSync(join(tmpdir(), 'pet-live-')),
     resources = join(root, 'resources'),
     home = join(root, 'user')
-  const host = createServer((_req, res) => {
+  const paths: string[] = []
+  const host = createServer((req, res) => {
+    paths.push(req.url || '')
     res.setHeader('content-type', 'application/json')
     res.end(JSON.stringify({ ok: true, events: [] }))
   })
@@ -64,6 +78,8 @@ it('reconnects speech without reloading the pet document and authenticates signa
     join(home, 'dsh-home/bot/bridge.json'),
     JSON.stringify({ port: address.port, pid: process.pid, token: 'fixture-bridge' }),
   )
+  mkdirSync(join(home,'pet'), { recursive:true })
+  writeFileSync(join(home,'pet/pet-experience.json'),JSON.stringify({ onboarding:{ completed:true } }))
   mkdirSync(resources, { recursive: true })
   cpSync(resolve('apps/desktop/resources/pet'), join(resources, 'pet'), { recursive: true })
   cpSync(resolve('apps/desktop/resources/whale-girl'), join(resources, 'whale-girl'), { recursive: true })
@@ -90,13 +106,32 @@ it('reconnects speech without reloading the pet document and authenticates signa
   })
   try {
     await pet.start({ voice: { apiKey: 'fake-key' } })
-    await pet.configure({ voice: { apiKey: 'fake-key', voice: 'Serena' } })
+    await pet.configure({ voice: { apiKey: 'fake-key' } })
+    expect(state.events.filter(x => x.channel === 'pet:voice-state').at(-1)?.data.phase).toBe('unconfigured')
+    await pet.configure({ llm: { apiKey: 'fixture-model-key' }, voice: { apiKey: 'fake-key', voice: 'Serena' } })
     expect(state.urls).toHaveLength(1)
     const firstUrl = state.urls[0]
     if (!firstUrl) throw new Error('Pet document unavailable')
     const voice = state.events.filter(x => x.channel === 'pet:voice-state').at(-1)?.data
     expect(voice?.phase).toBe('available')
     if (!voice?.offerUrl) throw new Error('No signaling URL')
+    const petOwner = state.owners[0]
+    if (!petOwner) throw new Error('Missing owned pet')
+    const status = state.handlers.get('pet:voice-status'), action = state.handlers.get('pet:bubble-action')
+    status?.({ sender:petOwner }, { kind:'input',captureId:'capture-a',text:'打开浏览器' })
+    const bubbleOwner=state.owners[1]
+    if (!bubbleOwner) throw new Error('Missing owned bubble')
+    action?.({ sender:bubbleOwner }, { type:'cancel',id:'cancel-capture',requestId:'capture-a' })
+    expect(state.events.at(-1)).toMatchObject({ channel:'pet:voice-command',data:{ action:'discard',captureId:'capture-a' } })
+    const count = state.events.length
+    action?.({ sender:bubbleOwner }, { type:'cancel',id:'cancel-capture',requestId:'capture-a' })
+    expect(state.events.length).toBe(count)
+    status?.({ sender:petOwner }, { kind:'input',captureId:'capture-b',text:'打开窗口' })
+    status?.({ sender:petOwner }, { kind:'transcript',captureId:'capture-b',text:'打开窗口' })
+    action?.({ sender:bubbleOwner }, { type:'cancel',id:'cancel-capture',requestId:'capture-b' })
+    expect(state.events.filter(x=>x.channel==='pet:voice-command')).toHaveLength(1)
+    expect(paths.some(path=>path.startsWith('/cancel'))).toBe(false)
+    expect(() => action?.({ sender:{} },{ type:'cancel',id:'cancel-capture',requestId:'capture-a' })).toThrow('Unowned bubble')
     const document = await fetch(firstUrl)
     expect(document.status).toBe(200)
     expect(await document.text()).not.toContain('fake-key')

@@ -14,7 +14,17 @@ export function createVoiceSession({ createClient, publish, handshakeTimeoutMs =
     let own
     try {
       own = createClient({
-        ready() { if (client !== own || stopped) return; ready = true; enabled = wanted; own.enableMic(wanted); report(wanted ? 'listening' : 'muted', wanted ? '我在听，你说。' : '麦克风已暂停') },
+        async ready() {
+          if (client !== own || stopped) return
+          ready = true
+          const intent = wanted
+          try {
+            await own.enableMic(intent)
+            if (client !== own || stopped || wanted !== intent) return
+            enabled = intent
+            report(intent ? 'listening' : 'muted', intent ? '我在听，你说。' : '')
+          } catch (error) { if (client === own) { wanted = false; enabled = false; report('failed', error.message) } }
+        },
         disconnected() { if (client !== own) return; void close().catch(() => {}); report(wanted ? 'failed' : 'off', wanted ? '语音断开，请重新连接。' : '') },
         error(error) { if (client !== own) return; void close().catch(() => {}); report('failed', `语音连接失败：${error?.message || error?.error || '请检查权限和配置'}`) },
       })
@@ -33,9 +43,9 @@ export function createVoiceSession({ createClient, publish, handshakeTimeoutMs =
     command(action) {
       if (stopped) return Promise.resolve()
       wanted = action === 'toggle' ? !wanted : action === 'enable'
-      if (!wanted) { client?.enableMic(false); enabled = false }
+      if (!wanted) { Promise.resolve(client?.enableMic(false)).catch(error => report('failed', error.message)); enabled = false }
       if (action === 'disable') { const closing = close(); return schedule(async () => { await closing; report('off', '语音已关闭') }) }
-      return schedule(async () => { if (stopped) return; if (wanted) await open(); else report(client ? 'muted' : 'off', '麦克风已暂停，回答会继续播放。') })
+      return schedule(async () => { if (stopped) return; if (wanted) await open(); else report(client ? 'muted' : 'off') })
     },
     snapshot: () => ({ phase, enabled, wanted }),
     async stop() { stopped = true; wanted = false; await close(); await queue },

@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { prepareDevelopmentProject } from '../scripts/development-project.ts'
+import { prepareDevelopmentProject, developmentRuntimeVersion } from '../scripts/development-project.ts'
 import { DESKTOP_HOST_PROTOCOL_VERSION } from '../src/host-protocol.ts'
 import { DesktopProjectManager } from '../src/project-manager.ts'
 import { resolveDesktopPaths } from '../src/paths.ts'
@@ -31,6 +31,13 @@ afterEach(() => {
 })
 
 describe('desktop development project', () => {
+  it('uses rc.3 runtime metadata when the desktop has a separate product version', () => {
+    const runtime = developmentRuntimeVersion(join(import.meta.dirname, '../../cli'))
+    const product = JSON.parse(readFileSync(join(import.meta.dirname, '../package.json'), 'utf8')) as { version: string }
+    expect(runtime).toBe('0.2.1-rc.3')
+    expect(product.version).toBe('0.0.1-beta')
+    expect(runtime).not.toBe(product.version)
+  })
   it('includes declared workspace packages missing from the hoist directory in the runtime inventory', () => {
     const root = temporaryRoot()
     const cli = join(root, 'cli')

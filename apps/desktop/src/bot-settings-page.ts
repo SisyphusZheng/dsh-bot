@@ -381,8 +381,8 @@ function renderPermissionsPanel(panel){
   panel.appendChild(el('div', 'divider'));
   panel.appendChild(el('div', 'panel-title', '行为'));
   var behavior = config.behavior || {pauseOnInput:true, allowScreenView:false};
-  panel.appendChild(buildCheckboxRow('操作键鼠时暂停任务', '你操作电脑时暂停正在运行的任务；等待审批时不会自动暂停。', 'pauseOnInput', behavior.pauseOnInput !== false));
-  var inputNote=document.createElement('p');inputNote.textContent='右键桌宠可开启语音或停止任务。唤醒短语在语音连接后通过 ASR 识别，麦克风开启期间音频仍发送给语音供应商；唤醒后 30 秒内可连续对话。键鼠自动暂停不打断待处理审批。';panel.appendChild(inputNote);
+  panel.appendChild(buildCheckboxRow('操作键鼠时停止桌面任务', '键鼠接管会停止当前桌面任务；语音发起的任务、说话键操作和等待审批不触发自动停止。', 'pauseOnInput', behavior.pauseOnInput !== false));
+  var inputNote=document.createElement('p');inputNote.textContent='右键桌宠可开启语音或停止任务。离线唤醒在本机检测；开启语音后，收音期间音频发送给语音供应商。按住说话松键即结束收音；气泡取消只取消录音，停止任务请用任务卡或菜单。';panel.appendChild(inputNote);
   panel.appendChild(buildCheckboxRow('允许查看屏幕', '允许 Bot 截取屏幕内容（需要系统屏幕录制权限）。', 'allowScreenView', behavior.allowScreenView === true));
   panel.appendChild(hint('审批模式与行为开关保存在 Bot 配置（config.json，权限 0600）里，实际执行由 main.ts / host-integration / 桌宠接线后生效。'));
 }

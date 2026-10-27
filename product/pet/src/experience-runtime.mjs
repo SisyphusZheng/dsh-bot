@@ -22,7 +22,7 @@ export function createPetExperience(options) {
   }
   const saved = store.load(); let preferences = { ...defaults, ...saved.localConfig }, voice = normalizeVoiceInput(saved.voiceInput)
   let editor, progress = saved.onboarding, busy = false, pending = false, stopped = false, mic = false, opening = false, baseConfig = {}
-  const registered = new Set(); let watcher, holdTimer, native = { available: false }, lastDown = 0, held = false, latched = false
+  const registered = new Set(); let watcher, holdTimer, native = { available: false }, held = false, lastGestureAt = 0
   const translate = text => desktopTranslator(preferences.language, options.systemLanguage || 'zh')(text)
   const presence = new DesktopPresence({ getWindow: () => window, globalShortcut: {} })
   const state = () => ({ ...preferences, language: effectiveDesktopLanguage(preferences.language, options.systemLanguage || 'zh') === 'en' ? 'en' : 'zh', configuredLanguage: preferences.language, orbSkin: effectiveOrbSkin(preferences.orbSkin, { skinsRoot }), voiceInput: voice, globalOption: native.available, hint: talkKeyHint({ settings: voice, globalOption: native }).text, onboarding: !pending && !!progress && !progress.completed && !progress.paused })
@@ -38,8 +38,8 @@ export function createPetExperience(options) {
   }
   function gesture(phase) {
     if (stopped || state().onboarding || voice.mode === 'always') return
-    if (phase === 'down') { if (held) return; held = true; lastDown = Date.now(); if (voice.mode === 'toggle' || latched) { latched = false; command('toggle'); return }; command('enable') }
-    else if (held) { held = false; if (voice.mode === 'hold') { if (Date.now() - lastDown < 650) latched = true; else command('mute') } }
+    if (phase === 'down') { if (held) return; held = true; lastGestureAt = Date.now(); if (voice.mode === 'toggle') { command('toggle'); return }; command('enable') }
+    else if (held) { held = false; if (voice.mode === 'hold') { lastGestureAt = Date.now(); command('mute') } }
   }
   const saveProgress = () => store.saveOnboarding(progress)
   function localize(value) { if (Array.isArray(value)) return value.map(localize); if (!value || typeof value !== 'object') return value; return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, ['text', 'title', 'label', 'placeholder', 'submitLabel', 'description', 'hint'].includes(key) && typeof item === 'string' ? translate(item) : localize(item)])) }
@@ -89,7 +89,7 @@ export function createPetExperience(options) {
   ] }
   native = loadGlobalOptionKeyState({ requireImpl: nativeRequire, candidates: ['koffi'] }); rebuildKeys()
   const interval = setInterval(() => { if (preferences.autoHideSeconds && !pending && !mic && !state().onboarding && idle() >= preferences.autoHideSeconds && presence.state === 'active') { presence.hide(); hide(); emit('lifecycle', { state: 'hidden' }) } }, 1000); interval.unref?.()
-  return { state, menu, update, action, gesture,
+  return { state, menu, update, action, gesture, inputActive: () => held || Date.now() - lastGestureAt < 3000,
     start() { publish(); if (!progress || (!progress.completed && !progress.paused)) onboarding(); if (voice.mode === 'always') command('enable', 'restored-preference') },
     sync(snapshot) { const was = pending; pending = !!snapshot.requests?.length; if (was && !pending) render() },
     voice(status) { mic = status.enabled === true; opening = status.transportPhase === 'connecting'; if (mic && !voice.hintSeen) { voice = normalizeVoiceInput({ ...voice, hintSeen: true }); persist() } },
