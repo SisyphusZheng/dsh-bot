@@ -40,12 +40,148 @@
     "safe defaults and remaining health/approval handling",
     "old-artifact and startup-entry inventory",
     "Mac acceptance and candidate-bound evidence",
-    "product-only stable version closeout"
+    "product-only stable version closeout",
+    "full redacted diagnostic errors instead of 300-character truncation",
+    "greeting substring false positives on valid short speech",
+    "unified verification entry and startup mock repair",
+    "explicit security residual decisions and legacy tag/Release/App inventory",
+    "administrator-verified publication freeze and delayed all-event Actions audit",
+    "code/artifact freeze and non-regression performance comparison"
   ],
   "approvedVersions": {
     "0.0.1": "stabilization",
     "0.0.2": "selective DS-Bot adaptation, Hindsight integration and macOS CUA",
     "0.0.3": "companion interaction and optional local TTS",
     "0.0.4": "standalone App and original-DSH plugin companion delivery"
+  },
+  "revisionDate": "2026-10-28",
+  "timeZone": "Asia/Shanghai",
+  "planParentCommit": "ba15fc90ced14ba1c6e029151384c24e6bebd829",
+  "actionsCorrection": {
+    "status": "FAIL",
+    "retractedConclusion": "Actions 573 -> 573, no new runs",
+    "reason": "Immediate sampling missed delayed dynamic dependency jobs and Dependabot PR rebases after the main update.",
+    "mainUpdateCommit": "ba15fc90ced14ba1c6e029151384c24e6bebd829",
+    "mainUpdateUTC": "2026-10-27T17:42:42Z",
+    "mainUpdateShanghai": "2026-10-28T01:42:42+08:00",
+    "beforeTotal": 573,
+    "immediateSampleTotal": 573,
+    "delayedRepositoryTotal": 641,
+    "confirmedRunsCreatedAtOrAfterUpdate": 68,
+    "events": {
+      "dynamic": 8,
+      "pull_request": 40,
+      "pull_request_target": 20
+    },
+    "firstRelatedRunCreatedUTC": "2026-10-27T17:43:43Z",
+    "lastObservedRelatedRunCreatedUTC": "2026-10-27T17:47:58Z",
+    "query": "GET /repos/SisyphusZheng/dsh-bot/actions/runs?per_page=100&created=>=2026-10-27T17:42:42Z",
+    "pushWorkflowRunsObserved": 0,
+    "warning": "68 is the independently rechecked delayed sample, not a claim that this count cannot grow. The prior no-Actions conclusion is invalid.",
+    "freezeGate": "Before default/PR branch changes: administrator-verified repository Actions disablement, Dependabot and managed-job freeze, existing-PR audit, pre-push count/IDs/SHA/time, then paginated all-event checks at +10 and +15 minutes. No admin verification means no default/PR ref update.",
+    "dependabotCaveat": "rebase-strategy: disabled does not immediately stop rebasing PRs already open; GitHub documents a 30-day exception.",
+    "currentRevisionPublication": "New unprotected docs-only branch without PR after branch-trigger audit; no main/tag/Release or existing-PR update. This is not a release freeze or a zero-runs declaration."
+  },
+  "preciseRegressions": {
+    "providerProxy": {
+      "source": "product/voice-worker-src/requirements-macos.lock + dashscope_services.py; user's native SOCKS reproduction",
+      "websockets": "16.1.1",
+      "failure": "connecting through a SOCKS proxy requires python-socks",
+      "productDecision": "For 0.0.1 explicitly pass proxy=None for provider WebSocket; do not silently use system SOCKS or add an unconfigured SOCKS transport.",
+      "requiredCase": "macOS system SOCKS enabled; no NO_PROXY; python-socks absent; provider direct path available."
+    },
+    "diagnostics": {
+      "source": "product/pet/src/voice-worker-supervisor.mjs safeOutput",
+      "finding": "trim().slice(0, 300) truncates the provider error",
+      "requirement": "Complete redacted original error in bounded rotating diagnostics, classified UI summary with diagnostic ID, chunk-safe redaction, in-place retry."
+    },
+    "greetingFilter": {
+      "source": "product/voice-worker-src/dsh_bridge.py _input_noise",
+      "finding": "len(heard)>=2 and substring matching against greeting/recent speech can reject valid user input.",
+      "requiredPositiveCases": [
+        "你好",
+        "我在",
+        "想聊什么",
+        "是",
+        "否"
+      ],
+      "timing": "Immediately after greeting and during the 8-11 second tail; include active-reply barge-in.",
+      "negativeCase": "Actual playback echo must remain filtered; length alone is not an acoustic oracle."
+    },
+    "startupMocks": {
+      "source": [
+        "apps/desktop/tests/main-startup.spec.ts",
+        "apps/desktop/tests/welcome-startup.spec.ts",
+        "apps/desktop/src/main.ts"
+      ],
+      "finding": "Production app.setName exists while Electron test mocks lack setName; user reports full-suite failure.",
+      "disposition": "Fix mocks and assert startup/name behavior; include both tests and all new desktop regressions in verify-local.sh. No skip or production optional-call workaround.",
+      "verification": "Static mismatch confirmed; tests were not rerun in this documentation-only revision."
+    }
+  },
+  "riskRegister": [
+    {
+      "id": "R001-HTTP-AUTH",
+      "status": "IMPLEMENTED",
+      "acceptance": "NOT-ACCEPTED-IN-0.0.1-IF-TOKENLESS-CONTROL-OR-SENSITIVE-READ-EXISTS",
+      "evidence": "Current Bot config server validates x-dsh-bot-token; Host Integration validates Bearer except health. PR #11's broad no-auth wording is historical, not a current all-route finding.",
+      "requiredFor001": "Enumerate and dynamically verify all shipped control/sensitive routes; minimal health; exact Origin checks."
+    },
+    {
+      "id": "R002-SAME-UID",
+      "status": "DEFERRED",
+      "targetVersion": "0.0.4",
+      "acceptance": "Accepted only as a documented personal-internal 0.0.1 limitation: same-UID processes able to read token files are not isolated.",
+      "requiredFor001": "0700 directories, 0600 descriptors, token rotation, no token in logs, no claim of protection from malicious same-user code.",
+      "future": "Evaluate native peer identity/credential access together with plugin companion delivery."
+    },
+    {
+      "id": "R003-PLAINTEXT-CREDENTIALS",
+      "status": "DEFERRED",
+      "targetVersion": "0.0.4",
+      "acceptance": "0.0.1 retains upstream permission-protected plaintext for personal internal use; encryption-at-rest/Keychain is not claimed.",
+      "evidence": "apps/desktop/src/secret-store.ts uses .credentials.yaml, atomic 0600 writes.",
+      "requiredFor001": "Owner-only directory/file modes, corruption preservation, no credential echo/logging or silent migration.",
+      "future": "Keychain-backed integration requires a compatibility and migration plan; do not implement custom cryptography."
+    },
+    {
+      "id": "R004-HISTORICAL-PROFILE",
+      "status": "NOT-STARTED",
+      "targetVersion": "0.0.1",
+      "acceptance": "No new writes to the user's separate main DSH Profile are accepted. Existing residue is not assumed cleaned.",
+      "requiredFor001": "Read-only inventory and backup; remove only entries positively attributed to old product with a restore path. Ambiguous files remain intact and are disclosed; blanket cleanup is forbidden.",
+      "ambiguousResidueFollowupVersion": "0.0.2"
+    },
+    {
+      "id": "R005-SIGNING-NOTARIZATION",
+      "status": "DEFERRED",
+      "targetVersion": "0.1.0",
+      "acceptance": "Personal-internal 0.0.1 may remain ad-hoc signed and unnotarized, with an explicit limitation and verified first-open procedure.",
+      "requiredFor001": "Verify the new artifact through the OS-supported opening path; never require disabling Gatekeeper; do not claim consumer-ready installation."
+    },
+    {
+      "id": "R006-PERFORMANCE",
+      "status": "NOT-STARTED",
+      "targetVersion": "0.0.1",
+      "acceptance": "Baseline recording alone is insufficient; do not silently accept beta regressions.",
+      "requiredFor001": "Same Mac/configuration/cache policy; record DMG/app bytes and at least three cold/warm starts; agree measurement tolerance before comparison; fix or explicitly obtain owner acceptance for over-budget regression."
+    }
+  ],
+  "legacyArtifacts": {
+    "status": "NOT-STARTED",
+    "targetVersion": "0.0.1",
+    "tag": "v0.0.1-beta",
+    "tagCommit": "5418caecad7beda062daedc848376ba805c8cda3",
+    "releaseId": 423189662,
+    "prerelease": true,
+    "releaseAsset": "dsh-bot-0.0.1-beta-mac-arm64-unsigned.dmg",
+    "releaseAssetBytes": 779421007,
+    "required": "Inventory tags/releases/assets, /Applications apps, mounted volumes, local DMGs and caches with versions/source/SHA/signature/rollback. Preserve historical identity; v0.0.1 must not reuse the beta tag or overwrite its assets.",
+    "localApplications": "Not inspected in Work; user must inventory on the Mac."
+  },
+  "freezeGates": {
+    "code": "All fixes, test-entry repairs and release version/name metadata are committed before freezing. Only acceptance-found local fixes reopen the candidate.",
+    "artifact": "One DMG hash and app.asar identity for automatic plus manual acceptance. Any rebuild creates a new candidate and invalidates unqualified reuse of prior artifact evidence.",
+    "publication": "Repository/Dependabot freeze before main/PR updates; +10/+15 minute paginated all-event observation; cannot infer final absence from an immediate count."
   }
 }
