@@ -10,6 +10,8 @@ const titleEl = document.getElementById('bubble-title')
 const progressEl = document.getElementById('bubble-progress')
 const textEl = document.getElementById('bubble-text')
 const hintEl = document.getElementById('bubble-hint')
+const detailsToggle = document.getElementById('bubble-details-toggle')
+const detailsEl = document.getElementById('bubble-details')
 const inputRow = document.getElementById('bubble-input-row')
 const inputLabel = document.getElementById('bubble-input-label')
 const inputEl = document.getElementById('bubble-input')
@@ -31,6 +33,8 @@ let clickThrough = false
 let cancelAction = null
 let hasInput = false
 let inputOwner = ''
+let lastRequestedHeight = 0
+let resizeFrame = 0
 
 function setInteractive(next) {
   if (next === interactive) return
@@ -46,6 +50,19 @@ function ui(payload) {
   return window.petBubble?.action?.({ ...payload, requestId })
 }
 
+/** Ask the shell window to fit the card instead of keeping a fixed 420px hole. */
+function scheduleSizing() {
+  if (resizeFrame) cancelAnimationFrame(resizeFrame)
+  resizeFrame = requestAnimationFrame(() => {
+    resizeFrame = 0
+    if (bubble.classList.contains('hidden')) return
+    const measured = Math.ceil(bubble.getBoundingClientRect().height + 2)
+    if (measured < 1 || Math.abs(measured - lastRequestedHeight) < 3) return
+    lastRequestedHeight = measured
+    window.petBubble?.resize?.(measured)
+  })
+}
+
 function hide() {
   lastKey = ''
   bubble.classList.add('hidden')
@@ -54,6 +71,7 @@ function hide() {
   cancelAction = null
   hasInput = false
   clickThrough = false
+  lastRequestedHeight = 0
   setInteractive(false)
   requestInputFocus(false)
 }
@@ -131,6 +149,25 @@ function render(payload) {
   setText(iconEl, payload?.icon || '', 'icon')
   setText(progressEl, payload?.progress || '', 'progress')
   setText(hintEl, payload?.hint || '', 'hint')
+  clearChildren(detailsEl)
+  const details = Array.isArray(payload?.details) ? payload.details.filter(line => typeof line === 'string' && line.trim()) : []
+  detailsEl.classList.toggle('hidden', details.length === 0)
+  detailsToggle.classList.toggle('hidden', details.length === 0)
+  detailsToggle.setAttribute('aria-expanded', 'false')
+  detailsEl.classList.add('hidden')
+  detailsToggle.onclick = details.length === 0 ? null : event => {
+    event.stopPropagation()
+    const open = detailsEl.classList.contains('hidden')
+    detailsEl.classList.toggle('hidden', !open)
+    detailsToggle.setAttribute('aria-expanded', String(open))
+    scheduleSizing()
+  }
+  for (const line of details) {
+    const row = document.createElement('div')
+    row.className = 'details-line'
+    row.textContent = line
+    detailsEl.appendChild(row)
+  }
   hintEl.classList.toggle('ok', String(payload?.hint || '').startsWith('✓'))
   hintEl.classList.toggle('fail', String(payload?.hint || '').startsWith('✗'))
 
@@ -171,9 +208,10 @@ function render(payload) {
   clearChildren(secondaryEl)
   if (Array.isArray(payload?.secondary) && payload.secondary.length) {
     for (const item of payload.secondary) {
-      secondaryEl.appendChild(makeButton(item.label, 'link', () => {
+      const button = makeButton(item.label, item.id === 'skip' ? 'link subtle' : 'link', () => {
         ui({ type: 'secondary', id: item.id })
-      }))
+      })
+      secondaryEl.appendChild(button)
     }
     secondaryEl.classList.remove('hidden')
   } else {
@@ -182,8 +220,8 @@ function render(payload) {
 
   // 审批气泡：是/否
   approvalId = String(payload?.approval?.id || '')
-  actionButtons[0].textContent = '是'
-  actionButtons[1].textContent = '否'
+  actionButtons[0].textContent = '允许一次'
+  actionButtons[1].textContent = '拒绝'
   actions.classList.toggle('hidden', !approvalId)
 
   dismissible = payload.dismissible === true
@@ -204,6 +242,7 @@ function render(payload) {
     void bubble.offsetWidth
     bubble.classList.add('entering')
   }
+  scheduleSizing()
 }
 
 // The Host acknowledgement and pending snapshot own removal; failed submits remain retryable.

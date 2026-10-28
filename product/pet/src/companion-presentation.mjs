@@ -1,4 +1,42 @@
 /** Desktop presentation of official DSH events and pending requests; owns no Agent. */
+const WRITE_TOOLS = new Set(['write', 'edit', 'apply_patch', 'multi_edit', 'write_file'])
+const READ_TOOLS = new Set(['read', 'list', 'glob', 'grep'])
+const SHELL_TOOLS = /terminal|bash|shell|exec/i
+
+/** Turn an approval request into a Chinese summary plus expandable technical details.
+ *  Only the tool name and the Host-provided reason are treated as facts: `read` is
+ *  described as reading, `bash` only as running a command, anything else as an
+ *  unspecified operation. No risk inference is made from the command text. */
+export function approvalView(request) {
+  const tool = String(request?.toolName || '')
+  const reason = String(request?.reason || '')
+  const outside = reason.match(/outside workspace:\s*(.+)$/i)
+  const target = outside ? outside[1].trim() : ''
+  const action = WRITE_TOOLS.has(tool) ? '写入或修改工作区外的文件'
+    : READ_TOOLS.has(tool) ? '读取工作区外的文件'
+      : SHELL_TOOLS.test(tool) ? '在工作区外运行命令'
+        : '执行一个需要你批准的操作'
+  const text = target
+    ? `Nisse 想${action}：\n${target}`
+    : `Nisse 想${action}${tool ? `（工具：${tool}）` : ''}。`
+  const details = [
+    `工具：${tool || '未知'}`,
+    ...(target ? [`目标：${target}`] : []),
+    ...(reason ? [`原始原因：${reason}`] : []),
+    '范围：仅本次请求；不会复用为后续操作的授权',
+  ]
+  return { text, details }
+}
+
+/** Replace upstream failure prose with a user-facing summary where we know the case. */
+export function humanizeFailure(message) {
+  const raw = String(message || '').trim()
+  if (/DSH 进程在本轮完成前退出|DSH process .*before .*completed|interrupted/i.test(raw)) {
+    return '上次任务被中断，可能还有未完成的工具调用，结果未知。请双击桌宠打开主窗口确认状态，再决定是否重试。'
+  }
+  return raw || '任务执行失败。'
+}
+
 import { activityBubblePayload } from './activity-bubble.mjs'
 
 export function createCompanionPresentation({ show, hide, animate, send, setTimer = setTimeout, clearTimer = clearTimeout }) {
@@ -17,21 +55,24 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
     const base = { visible: true, kind: 'action', requestId: request.id, busy, clickThrough: false, hint,
       title: `${request.kind === 'approval' ? '需要批准' : '请你选择'}${requests.length > 1 ? ` · 还有 ${requests.length - 1} 项` : ''}` }
     if (request.kind === 'approval') {
-      show({ ...base, text: request.reason || `允许执行 ${request.toolName}？`, approval: { id: request.id }, secondary: [{ id: 'open', label: '在 DSH 中查看' }] })
+      const approval = approvalView(request)
+      show({ ...base, text: approval.text, details: approval.details, approval: { id: request.id } })
       return
     }
     const question = request.questions[questionIndex]
+    const multiQuestion = request.questions.length > 1
+    const needsSubmit = question.multiSelect === true
+    const showInput = customInput || !question.options?.length
     show({ ...base, title: question.header || base.title,
       text: [question.question, question.detail].filter(Boolean).join('\n\n'),
-      progress: `${questionIndex + 1} / ${request.questions.length}`,
+      progress: multiQuestion ? `${questionIndex + 1} / ${request.questions.length}` : '',
       choices: (question.options || []).map((option, index) => ({ id: String(index), label: option.label, description: option.description || '', selected: selected.includes(option.label) })),
-      input: customInput || !question.options?.length ? { placeholder: '输入你的回答', submitLabel: questionIndex + 1 < request.questions.length ? '下一项' : '提交' } : null,
+      input: showInput ? { placeholder: '输入你的回答', submitLabel: questionIndex + 1 < request.questions.length ? '下一项' : '提交' } : null,
       secondary: [
-        ...(question.multiSelect ? [{ id: 'submit', label: '确认选择' }] : []),
-        ...(question.options?.length ? [{ id: 'other', label: '其他回答' }] : []),
+        ...(needsSubmit && !showInput ? [{ id: 'submit', label: '提交' }] : []),
+        ...(question.options?.length && !customInput ? [{ id: 'other', label: '其他回答' }] : []),
         ...(questionIndex ? [{ id: 'back', label: '上一项' }] : []),
-        { id: 'skip', label: '跳过这一项' },
-        { id: 'open', label: '在 DSH 中查看' },
+        ...(needsSubmit ? [] : [{ id: 'skip', label: '跳过' }]),
       ],
     })
   }
@@ -55,7 +96,7 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
     } catch (error) {
       if (requests[0]?.id !== request.id) return
       busy = false
-      render(error?.stale ? '这个请求已结束，正在同步…' : '提交失败，请重试或打开 DSH。')
+      render(error?.stale ? '这个请求已结束，正在同步…' : '提交失败，请重试；仍失败可双击桌宠打开主窗口查看。')
     }
   }
   async function completeQuestion(request, custom, skipped = false) {
@@ -115,13 +156,18 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
         animation({ id: `turn:${event.ioSeq}`, name: failed ? 'failed' : 'jumping' })
         if (!requests.length) { cancelTimer(); timer = setTimer(hide, 1800) }
       }
-      if (event.type === 'error') { working = false; animation({ id: `error:${event.ioSeq}`, name: 'failed' }); notice(event.data?.message || '任务执行失败，请打开 DSH 查看。', 'error', 7000) }
+      if (event.type === 'error') {
+        working = false
+        animation({ id: `error:${event.ioSeq}`, name: 'failed' })
+        notice(humanizeFailure(event.data?.message), 'error', 9000, '', { secondary: [{ id: 'open', label: '打开主窗口' }] })
+      }
     },
     voice(state) { voice = state; animation() },
     state: () => ({ working, startedAt, inputSource, waiting: requests.length > 0 }),
     async action(action) {
       if (stopped) return
       if (action.type === 'open') return send('open')
+      if (action.type === 'secondary' && action.id === 'open') return send('open')
       const request = requests[0]
       if (!request || busy || action.requestId !== request.id) return
       if (action.type === 'approval' && request.kind === 'approval') return submit(request, { decision: action.decision })
@@ -136,7 +182,6 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
         } else { selected = [option.label]; await completeQuestion(request) }
       } else if (action.type === 'input') await completeQuestion(request, action.value)
       else if (action.type === 'secondary') {
-        if (action.id === 'open') return send('open')
         if (action.id === 'other') { customInput = true; render() }
         if (action.id === 'submit') await completeQuestion(request)
         if (action.id === 'skip') { selected = []; await completeQuestion(request, undefined, true) }

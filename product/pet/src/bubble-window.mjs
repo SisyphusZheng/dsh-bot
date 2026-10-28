@@ -25,6 +25,8 @@ const here = dirname(fileURLToPath(import.meta.url))
 // 一些；卡片刻意底部对齐，所以窗口变高只向上扩透明区域。
 export const ORB_BUBBLE_WINDOW_WIDTH = 380
 export const ORB_BUBBLE_WINDOW_HEIGHT = 420
+/** 短回复时窗口可以收拢到的最小高度；内容测量值由渲染层上报。 */
+export const ORB_BUBBLE_WINDOW_MIN_HEIGHT = 118
 const ORB_BUBBLE_TAIL_TIP_OFFSET = 42
 export const ORB_BUBBLE_TAIL_OVERLAP = ORB_BUBBLE_TAIL_TIP_OFFSET
 /** 气泡正文最多 3 行（与 bubble.css 的 line-clamp 保持一致）。 */
@@ -123,6 +125,28 @@ export function createBubbleWindowController({
   let inputMode = false
   let lastPayload = null
   let bounds = null
+  let baseBounds = null
+  let contentHeight = null
+
+  function fittedBounds() {
+    if (!baseBounds) return null
+    const height = clamp(Math.round(contentHeight ?? baseBounds.height), ORB_BUBBLE_WINDOW_MIN_HEIGHT, baseBounds.height)
+    return {
+      x: baseBounds.x,
+      y: baseBounds.y + baseBounds.height - height,
+      width: baseBounds.width,
+      height,
+    }
+  }
+
+  function applyFittedBounds() {
+    const next = fittedBounds()
+    if (!next) return
+    bounds = next
+    if (window && !window.isDestroyed()) {
+      try { window.setBounds(next, false) } catch {}
+    }
+  }
 
   function applyMouseMode() {
     if (!window || window.isDestroyed()) return
@@ -231,9 +255,7 @@ export function createBubbleWindowController({
     visible = true
     setInputMode(Boolean(payload?.input))
     if (!ensure()) return
-    if (bounds) {
-      try { window.setBounds(bounds, false) } catch {}
-    }
+    applyFittedBounds()
     send(payload)
     if (ready) {
       if (inputMode) focusWindow()
@@ -267,14 +289,25 @@ export function createBubbleWindowController({
   }
 
   function reposition(nextBounds) {
-    bounds = nextBounds
-    if (!visible || !window || window.isDestroyed()) return
-    try { window.setBounds(nextBounds, false) } catch {}
+    baseBounds = nextBounds
+    applyFittedBounds()
+  }
+
+  /** The renderer measured its card; keep the bottom anchor and shrink/grow the window. */
+  function resize(height) {
+    const value = Number(height)
+    if (!Number.isFinite(value) || value <= 0) return
+    const clamped = clamp(Math.round(value), ORB_BUBBLE_WINDOW_MIN_HEIGHT, ORB_BUBBLE_WINDOW_HEIGHT)
+    if (contentHeight !== null && Math.abs(clamped - contentHeight) < 2) return
+    contentHeight = clamped
+    applyFittedBounds()
   }
 
   function destroy() {
     visible = false
     lastPayload = null
+    baseBounds = null
+    contentHeight = null
     interactive = false
     inputMode = false
     if (window && !window.isDestroyed()) window.destroy()
@@ -286,6 +319,7 @@ export function createBubbleWindowController({
     show,
     hide,
     reposition,
+    resize,
     destroy,
     setInteractive,
     setInputMode,
@@ -296,7 +330,7 @@ export function createBubbleWindowController({
     isInputMode: () => inputMode,
     lastPayload: () => lastPayload,
     // 测试/诊断用
-    _state: () => ({ visible, ready, interactive, inputMode, bounds, hasWindow: Boolean(window) }),
+    _state: () => ({ visible, ready, interactive, inputMode, bounds, baseBounds, contentHeight, hasWindow: Boolean(window) }),
     _webContents: () => (
       window && !window.isDestroyed() ? window.webContents : null
     ),

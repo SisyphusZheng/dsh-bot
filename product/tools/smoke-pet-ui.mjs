@@ -61,10 +61,13 @@ try {
  await page.screenshot({path:join(output,'markdown.png')})
  const longOptions=['允许只读检查当前工作区的配置与日志','保持现有设置并暂时跳过本次操作','先解释这几个选项之间的差异']
  presentation.sync(snapshot([{id:'layout',kind:'question',sessionId:'ui-session',questions:[{id:'long',multiSelect:true,question:'**下一步怎么处理？**\n\n请确认范围；可以多选，也可以填写其他回答。',options:longOptions.map(label=>({label,description:'完整说明需要换行显示，不应把文字裁切成省略号。'}))}]}]));await renders
- const footer=bubble.getByRole('button',{name:'确认选择',exact:true})
+ await bubble.getByRole('button',{name:'提交',exact:true}).waitFor({state:'visible'})
+ assert.equal(await bubble.locator('#bubble-progress').isHidden(),true,'single question must not show 1 / 1')
+ assert.equal(await bubble.getByRole('button',{name:'在 DSH 中查看',exact:true}).count(),0)
+ const footer=bubble.getByRole('button',{name:'提交',exact:true})
  await footer.waitFor({state:'visible'})
  const geometry=await bubble.evaluate(()=>{
-  const card=document.getElementById('bubble-card'), footer=[...document.querySelectorAll('#bubble-secondary button')].find(el=>el.textContent==='确认选择'), r=card.getBoundingClientRect(), f=footer.getBoundingClientRect()
+  const card=document.getElementById('bubble-card'), footer=[...document.querySelectorAll('#bubble-secondary button')].find(el=>el.textContent==='提交'), r=card.getBoundingClientRect(), f=footer.getBoundingClientRect()
   return {top:r.top,bottom:r.bottom,viewport:innerHeight,footerTop:f.top,footerBottom:f.bottom,cardOverflow:card.scrollHeight>card.clientHeight+1,labels:[...document.querySelectorAll('.choice')].every(el=>el.scrollHeight<=el.clientHeight+1)}
  })
  assert.ok(geometry.top>=0&&geometry.bottom<=geometry.viewport,JSON.stringify(geometry))
@@ -87,12 +90,20 @@ try {
  const sentBeforeCancel=calls.length
  await bubble.getByRole('button',{name:'取消录音',exact:true}).click();await renders
  assert.equal(calls.length,sentBeforeCancel,'Recording cancellation reached the Agent')
- presentation.sync(snapshot([{id:'approval',kind:'approval',sessionId:'ui-session',toolName:'write',reason:'允许将整理结果写入你指定的下载目录吗？'}]));await renders
+ presentation.sync(snapshot([{id:'approval',kind:'approval',sessionId:'ui-session',toolName:'write',reason:'write outside workspace: /Users/example/Downloads/report.md'}]));await renders
+ assert.equal(await bubble.getByRole('button',{name:'在 DSH 中查看',exact:true}).count(),0)
+ assert.match(await bubble.locator('#bubble-text').textContent(),/工作区外/)
+ const detailsToggle=bubble.locator('#bubble-details-toggle')
+ await detailsToggle.waitFor({state:'visible'})
+ await detailsToggle.click();await renders
+ const detailsText=await bubble.locator('#bubble-details').innerText()
+ assert.match(detailsText,/工具：write/);assert.match(detailsText,/原始原因：write outside workspace/);assert.match(detailsText,/范围：仅本次请求/)
  await page.screenshot({path:join(output,'approval.png')})
- await bubble.getByRole('button',{name:'是',exact:true}).click();await renders
+ await bubble.getByRole('button',{name:'允许一次',exact:true}).click();await renders
  assert.equal(calls.at(-1)[1].decision,'allow')
- presentation.sync(snapshot([{id:'approval-deny',kind:'approval',sessionId:'ui-session',toolName:'write',reason:'拒绝路径独立验证'}]));await renders
- await bubble.getByRole('button',{name:'否',exact:true}).click();await renders
+ presentation.sync(snapshot([{id:'approval-deny',kind:'approval',sessionId:'ui-session',toolName:'bash',reason:'bash outside workspace: /Users/example'}]));await renders
+ assert.match(await bubble.locator('#bubble-text').textContent(),/运行命令/)
+ await bubble.getByRole('button',{name:'拒绝',exact:true}).click();await renders
  assert.equal(calls.at(-1)[1].decision,'reject')
  presentation.sync(snapshot([]));await renders
  await bubble.waitForFunction(()=>getComputedStyle(document.getElementById('bubble')).opacity==='0')

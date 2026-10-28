@@ -8,5 +8,6 @@ contextBridge.exposeInMainWorld('petBubble', {
   action: value => ipcRenderer.invoke('pet:bubble-action', value),
   setInteractive: value => ipcRenderer.invoke('pet:bubble-interactive', value),
   requestInputFocus: value => ipcRenderer.invoke('pet:bubble-focus', value),
+  resize: value => ipcRenderer.invoke('pet:bubble-resize', value),
   openDsh: () => ipcRenderer.invoke('pet:bubble-open'),
 })

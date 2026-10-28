@@ -34,6 +34,7 @@ type BubbleController = {
   hide(): void
   destroy(): void
   reposition(bounds: Electron.Rectangle): void
+  resize(height: number): void
   owns(contents: Electron.WebContents): boolean
   setInteractive(value: boolean): void
   setInputMode(value: boolean): void
@@ -376,6 +377,7 @@ export class ProductPet {
     ipcMain.handle('pet:bubble-action', (e, value: unknown) => { assertBubble(e.sender); if (!value || typeof value !== 'object') throw new Error('Invalid action'); if ('type' in value && value.type === 'cancel' && 'id' in value && value.id === 'cancel-capture') { if ('requestId' in value && typeof value.requestId === 'string' && this.presentation?.cancelCapture(value.requestId)) window.webContents.send('pet:voice-command', { action: 'discard', captureId: value.requestId }); return } if ('type' in value && value.type === 'secondary' && 'id' in value && value.id === 'retry-voice') { window.webContents.send('pet:voice-command', { action: 'retry' }); this.presentation?.notice('正在重新连接语音…'); return } return this.experience?.action(value).then(handled => handled ? undefined : this.presentation?.action(value)) })
     ipcMain.handle('pet:bubble-interactive', (e, value: unknown) => { assertBubble(e.sender); this.bubble?.setInteractive(value === true) })
     ipcMain.handle('pet:bubble-focus', (e, value: unknown) => { assertBubble(e.sender); this.bubble?.setInputMode(value === true) })
+    ipcMain.handle('pet:bubble-resize', (e, value: unknown) => { assertBubble(e.sender); if (typeof value === 'number') this.bubble?.resize(value) })
     ipcMain.handle('pet:bubble-open', (e) => { assertBubble(e.sender); this.options.toggleMain(true) })
     ipcMain.handle('pet:hit', (e, value: unknown) => { assertOwner(e.sender); window.setIgnoreMouseEvents(value !== true, { forward: true }) })
     ipcMain.handle('pet:menu', (e) => {
