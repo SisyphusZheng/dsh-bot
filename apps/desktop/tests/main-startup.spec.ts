@@ -58,7 +58,7 @@ const harness = await vi.hoisted(async () => {
   let platformCloseDeferred: ReturnType<typeof deferred> | undefined
   const platformCloseAndWait = vi.fn(() => platformCloseDeferred?.promise ?? Promise.resolve())
   const readLoginShell = async (base: NodeJS.ProcessEnv) => ({
-    environment: { ...base, DSH_TEST_LOGIN_SHELL: 'login' }, failures: [{ shell: '/account/shell', reason: 'timeout' }],
+    environment: { ...base, TEST_LOGIN_SHELL: 'login' }, failures: [{ shell: '/account/shell', reason: 'timeout' }],
   })
   const loginShell = vi.fn((base: NodeJS.ProcessEnv, _config: unknown, _options: { signal?: AbortSignal }) => readLoginShell(base))
   const updateCheck = vi.fn(async (_manual?: boolean): Promise<DesktopUpdateState> => updateState)
@@ -378,7 +378,7 @@ vi.mock('../src/welcome-backend.ts', () => ({
 // orchestration, not the WhaleGirl Bot runtime added on top of it.
 vi.mock('../src/bot-runtime.ts', () => ({
   BotRuntime: class {
-    readConfig() { return {} }
+    readConfig() { return { llm: { apiKey: 'test-key' } } }
     setMemory() {}
     prepare() {}
     status() { return { ok: true, state: 'ready' } }
@@ -407,7 +407,9 @@ vi.mock('../src/pet-runtime.ts', () => ({
 vi.mock('../src/bot-config-server.ts', () => ({
   startBotConfigServer: async () => ({ port: 0, token: 'test-token', close: async () => {} }),
 }))
-vi.mock('../src/bot-host-environment.ts', () => ({ botHostEnvironment: () => ({}) }))
+vi.mock('../src/bot-host-environment.ts', async importOriginal => ({
+  ...await importOriginal<typeof import('../src/bot-host-environment.ts')>(),
+}))
 vi.mock('../src/secret-store.ts', () => ({ DshCredentialStore: class { get() { return '' } } }))
 
 
@@ -595,7 +597,8 @@ describe('desktop main startup', () => {
     const submenu = applicationMenuItems()
     const options = harness.app.setAboutPanelOptions.mock.calls[0]![0]
     const expected = JSON.parse(readFileSync(new URL('./expected/about-panel.json', import.meta.url), 'utf8')) as Record<string, unknown>
-    const [about, separator] = submenu
+    const [about, licenses, separator] = submenu
+    expect(licenses!.label).toBe(locale === 'zh-CN' ? zh.licensesMenu : en.licensesMenu)
     expect({ menu: [{ label: about!.label, role: about!.role }, separator], options: { ...options, iconPath: '<app icon>' } })
       .toEqual(expected[`${platform}:${locale}`])
     expect(options.iconPath).toBe(packaged ? join('desktop-test-resources', 'icon.png')
@@ -605,10 +608,10 @@ describe('desktop main startup', () => {
     harness.dialog.showMessageBox.mockResolvedValueOnce({ response: 0 })
     ;(about!.click as () => void)()
     await vi.advanceTimersByTimeAsync(0)
-    const zh = locale === 'zh-CN'
+    const zhLocale = locale === 'zh-CN'
     expect(harness.dialog.showMessageBox).toHaveBeenLastCalledWith(expect.objectContaining({
-      type: 'info', title: zh ? '关于 DeepSeek Harness' : 'About DeepSeek Harness', message: 'DeepSeek Harness',
-      detail: zh ? '版本 V1.0.0' : 'Version V1.0.0', buttons: [zh ? '确定' : 'OK'], cancelId: 0,
+      type: 'info', title: zhLocale ? zh.aboutMenu : en.aboutMenu, message: zhLocale ? zh.aboutProduct : en.aboutProduct,
+      detail: (zhLocale ? zh.aboutVersion : en.aboutVersion).replace('{version}', '1.0.0'), buttons: [zhLocale ? '确定' : 'OK'], cancelId: 0,
     }))
     // A dialog that cannot open is logged, not surfaced as an unhandled rejection.
     harness.dialog.showMessageBox.mockRejectedValueOnce(new Error('overlay unavailable'))
@@ -1025,7 +1028,7 @@ describe('desktop main startup', () => {
     expect(() => handler(event, 'application', NaN, 34)).toThrow('invalid popup request')
     const application = handler(event, 'application', 48, 34)
     expect(harness.menu.buildFromTemplate.mock.lastCall![0].map(item => item.label ?? item.type)).toEqual([
-      '关于 DeepSeek Harness', 'separator', '检查更新…', '管理 dsh 命令…', 'separator', '退出',
+      zh.aboutMenu, zh.licensesMenu, 'separator', zh.checkUpdatesMenu, zh.cliCommandMenu, 'separator', zh.exitApplication,
     ])
     expect(harness.popup.mock.lastCall![0]).toMatchObject({ window, x: 48, y: 34 })
     expect(harness.popup.mock.lastCall![0].callback).toBeTypeOf('function')
@@ -1062,8 +1065,8 @@ describe('desktop main startup', () => {
       : ['Application', 'editMenu'])
     const application = template[0]!.submenu as MenuItemConstructorOptions[]
     expect(application.filter(item => item.visible !== false).map(describeItem)).toEqual(platform === 'darwin'
-      ? ['about', 'separator', en.checkUpdatesMenu, en.cliCommandMenu, 'separator', 'hide', 'hideOthers', 'unhide', 'separator', 'quit']
-      : ['about', 'separator', en.checkUpdatesMenu, 'separator', 'quit'])
+      ? ['about', en.licensesMenu, 'separator', en.checkUpdatesMenu, en.cliCommandMenu, 'separator', 'hide', 'hideOthers', 'unhide', 'separator', 'quit']
+      : ['about', en.licensesMenu, 'separator', en.checkUpdatesMenu, 'separator', 'quit'])
     expect(harness.menu.setApplicationMenu).toHaveBeenCalledOnce()
   })
 
@@ -2254,7 +2257,7 @@ describe('desktop main startup', () => {
     expect(harness.hosts).toHaveLength(0)
     finishRead()
     await harness.hostStarted.promise
-    expect(harness.hosts[0]!.environment?.DSH_TEST_LOGIN_SHELL).toBe('login')
+    expect(harness.hosts[0]!.environment?.TEST_LOGIN_SHELL).toBe('login')
     harness.hosts[0]!.ready.resolve()
     await Promise.all([boot, harness.navigated.promise])
     const { signal } = harness.loginShell.mock.calls[0]![2]
@@ -2289,7 +2292,7 @@ describe('desktop main startup', () => {
     })
     expect(harness.hosts[0]!.environment).not.toBe(process.env)
     expect(harness.hosts[0]!.environment?.DSH_CLIENT_VERSION).toBe('1.2.3')
-    expect(harness.hosts[0]!.environment?.DSH_TEST_LOGIN_SHELL).toBe('login')
+    expect(harness.hosts[0]!.environment?.TEST_LOGIN_SHELL).toBe('login')
     expect(console.warn).toHaveBeenCalledWith('desktop login shell: /account/shell failed (timeout)')
     expect(harness.analytics).toHaveBeenCalledExactlyOnceWith({ eventName: 'desktop_app_launch', timestamp: Date.now(), attributes: {} })
     expect(harness.hosts[0]!.start).toHaveBeenCalledTimes(1)

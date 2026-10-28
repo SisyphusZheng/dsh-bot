@@ -1,11 +1,16 @@
 {
   "darwin:en-US": {
     "menu": [
-      { "label": "About DeepSeek Harness", "role": "about" },
-      { "type": "separator" }
+      {
+        "label": "About dsh-bot",
+        "role": "about"
+      },
+      {
+        "type": "separator"
+      }
     ],
     "options": {
-      "applicationName": "DeepSeek Harness",
+      "applicationName": "dsh-bot",
       "applicationVersion": "1.0.0",
       "version": "",
       "copyright": "",
@@ -14,11 +19,16 @@
   },
   "darwin:zh-CN": {
     "menu": [
-      { "label": "关于 DeepSeek Harness", "role": "about" },
-      { "type": "separator" }
+      {
+        "label": "关于 dsh-bot",
+        "role": "about"
+      },
+      {
+        "type": "separator"
+      }
     ],
     "options": {
-      "applicationName": "DeepSeek Harness",
+      "applicationName": "dsh-bot",
       "applicationVersion": "1.0.0",
       "version": "",
       "copyright": "",
@@ -27,11 +37,15 @@
   },
   "win32:zh-CN": {
     "menu": [
-      { "label": "关于 DeepSeek Harness" },
-      { "type": "separator" }
+      {
+        "label": "关于 dsh-bot"
+      },
+      {
+        "type": "separator"
+      }
     ],
     "options": {
-      "applicationName": "DeepSeek Harness",
+      "applicationName": "dsh-bot",
       "applicationVersion": "1.0.0",
       "version": "",
       "copyright": "",
@@ -40,11 +54,15 @@
   },
   "win32:en-US": {
     "menu": [
-      { "label": "About DeepSeek Harness" },
-      { "type": "separator" }
+      {
+        "label": "About dsh-bot"
+      },
+      {
+        "type": "separator"
+      }
     ],
     "options": {
-      "applicationName": "DeepSeek Harness",
+      "applicationName": "dsh-bot",
       "applicationVersion": "1.0.0",
       "version": "",
       "copyright": "",

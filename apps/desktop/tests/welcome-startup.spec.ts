@@ -184,7 +184,9 @@ vi.mock('../src/pet-runtime.ts', () => ({
 vi.mock('../src/bot-config-server.ts', () => ({
   startBotConfigServer: async () => ({ port: 0, token: 'test-token', close: async () => {} }),
 }))
-vi.mock('../src/bot-host-environment.ts', () => ({ botHostEnvironment: () => ({}) }))
+vi.mock('../src/bot-host-environment.ts', async importOriginal => ({
+  ...await importOriginal<typeof import('../src/bot-host-environment.ts')>(),
+}))
 vi.mock('../src/secret-store.ts', () => ({ DshCredentialStore: class { get() { return '' } } }))
 vi.mock('node:fs/promises', async importOriginal => ({
   ...await importOriginal<typeof import('node:fs/promises')>(),

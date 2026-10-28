@@ -37,7 +37,7 @@
 | V001-08 health/审批 unavailable | IMPLEMENTED | 未鉴权 Host `/health` 移除 `paths` 并加回归；Worker `/health` 仅暴露最小 `last_error`；无 DSH answerer 且桌宠 SSE 未连接时短 grace 后 fail-closed，不空等 120s；桌宠在 grace 内连上仍可回答；2 条新单测 + smoke-host/host-integration 回归通过。 |
 | V001-09 旧产物/性能 | IMPLEMENTED（记录） | 盘点完成；候选 DMG `702,145,159 B` vs beta `779,421,007 B`（−9.9%），App `2.1G` vs `/Applications` beta `2.3G`；启动中位数候选 1327 ms vs beta 1283 ms（beta 首跑 6101 ms 为冷缓存离群），差异 <4% 属噪声。清理执行与回滚清单仍待用户确认。 |
 | V001-10 版本收尾 | NOT-STARTED | 保留 `0.0.1-beta`：真实声学/TCC/Provider 与 V001-11 未闭环，未去 beta；未创建 tag/Release。 |
-| V001-11 测试入口 | IN-PROGRESS | `verify-local.sh` 已并入相关回归与新增测试；启动 spec 修了 Electron/process/host-process/产品运行时 mock，并修复真实产品缺陷（packaged 环境清理误删 `DSH_CLIENT_VERSION`）。`main-startup` 101/125、`welcome-startup` 0/2 仍为上游预期与产品 main.ts 差异，已分类、未计入默认入口。 |
+| V001-11 测试入口 | IN-PROGRESS（分类完成，待产品化重写） | `verify-local.sh` 已并入相关回归与新增测试；启动 spec 修了 Electron/process/host-process/产品运行时 mock，并修复真实产品缺陷（packaged 环境清理误删 `DSH_CLIENT_VERSION`）。本轮把产品菜单/应用名/许可证项与 About 面板对齐到产品实际行为（新增 9 个通过用例并刷新 2 个快照），`main-startup` 提升到 **112/125**。剩余 13 个失败已分类为：产品 pet-only 首次启动/激活语义（4 个 raise 用例超时 + 窗口隐藏/恢复类）、退出确认与托盘流程、更新证据写入路径、轮询计时差异；`welcome-startup` 0/2 为产品欢迎触发条件与上游 harness 不一致。均未计入默认入口，需要按产品行为重写断言后才能并入。 |
 | V001-12 冻结门禁 | COMPLETED | Actions/Dependabot 冻结、PR/分支清理、延迟审计、备份恢复验证完成；仓库级冻结保持。 |
 
 ## 额外发现（本轮修复）
