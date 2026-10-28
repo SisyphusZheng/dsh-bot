@@ -1,0 +1,12 @@
+{
+  "geometry": {
+    "top": 18,
+    "bottom": 411,
+    "viewport": 420,
+    "footerTop": 333,
+    "footerBottom": 362,
+    "cardOverflow": false,
+    "labels": true
+  },
+  "scope": "Shipped renderer in Chromium; explicit IPC fixture; not native macOS acceptance"
+}

@@ -1,0 +1,95 @@
+{
+  "status": "PASS",
+  "scope": "Linux-executable closure only; not native macOS acceptance or a new DMG",
+  "codeCommit": "976eefa6f504f756530ca83fbe4fbc2787b5f647",
+  "codeTree": "b6880589727f7c117900d0f31aafcb847524cf8b",
+  "inputCommit": "faaf1703d1c3893d7502f7968cd7e918c7de3aef",
+  "inputBundleSha256": "ec971e10a8eb9a656718df73befcc483cf6582f5ffb01e76a8a6e932d2bba0bc",
+  "branch": "work/0.0.1-closure",
+  "productVersion": "0.0.1-beta",
+  "runtimeVersion": "0.2.1-rc.3",
+  "recordedAt": "2026-10-28T08:34:06.846579+00:00",
+  "environment": {
+    "os": "Linux x86_64",
+    "node": "24.22.1",
+    "pnpm": "11.28.5",
+    "python": "3.12.14",
+    "chromium": "153.0.8010.0",
+    "font": "Noto Sans SC; test-only download from google/fonts, not shipped",
+    "fontSha256": "a3041811a78c361b1de50f953c805e0244951c21c5bd412f7232ef0d899af0da"
+  },
+  "checks": {
+    "upstream": {
+      "status": "PASS",
+      "officialFiles": 16347,
+      "explicitOverrides": 36
+    },
+    "typescript": {
+      "status": "PASS",
+      "gates": 5,
+      "note": "Dedicated typecheck run; the frozen production build also rechecked both aggregates."
+    },
+    "productionBuild": {
+      "status": "PASS",
+      "gates": 9,
+      "note": "Same production graph, Node ESM hook replaces tsx CLI IPC in cloud-only installed launcher; native addon compiled with official Node 24.0.0 Node-API headers and the same Node 24.22.1 binary."
+    },
+    "vitest": {
+      "status": "PASS",
+      "files": 17,
+      "tests": 281,
+      "startupTests": 128,
+      "nodeProxyFlag": "0 only for keyless Vitest fixture processes"
+    },
+    "node": {
+      "status": "PASS",
+      "tests": 57,
+      "skipped": 0
+    },
+    "python": {
+      "status": "PASS",
+      "tests": 32
+    },
+    "host": {
+      "status": "PASS",
+      "scope": "Production CLI, real sessions/tools, forced approval allow/reject/cancel with file-side-effect assertions, questions, model/persona hot update; mock LLM and memory HTTP peers"
+    },
+    "hostWeb": {
+      "status": "PASS",
+      "scope": "Real production Web boot and Bot Session navigation; old raw-ESM failure is a negative control"
+    },
+    "voiceMedia": {
+      "status": "PASS",
+      "scope": "Real Pipecat/WebRTC/SDK, fake microphone and local ASR/TTS/Bridge peers; not room acoustics"
+    },
+    "renderer": {
+      "status": "PASS",
+      "scope": "Shipped HTML/CSS/JS, explicit Electron IPC fixture, layout/interaction assertions and screenshots; no cross-platform pixel golden comparison",
+      "actualHttpAssetClosure": "PASS: every script referenced by the actual served bubble HTML returns 200; missing nonce returns 404"
+    },
+    "nativeWake": {
+      "status": "PASS",
+      "scope": "Bundled model/native worker ready, PCM accepted and process stopped; not spoken wake-word quality"
+    }
+  },
+  "remaining": {
+    "newMacDmg": "BLOCKED-ENVIRONMENT",
+    "nativePointerAndTcc": "BLOCKED-ENVIRONMENT",
+    "realMicrophoneAcoustics": "BLOCKED-ENVIRONMENT",
+    "realProviderLongConversationAndProxyMatrix": "BLOCKED-EXTERNAL",
+    "realUserMemoryImmediateRecall": "BLOCKED-ENVIRONMENT",
+    "modelBrevityQuality": "BLOCKED-EXTERNAL"
+  },
+  "github": {
+    "pushed": false,
+    "createdPr": false,
+    "dispatchedOrReranActions": false,
+    "repositorySettingsChanged": false,
+    "note": "No GitHub writes/API used in this source repair turn; previous main/Actions counts are user-reported, not freshly audited."
+  },
+  "historicalMacCandidate": {
+    "commit": "f3b593b2dd3005588caea9f4ab60bcd06d70ee96",
+    "dmgSha256": "d430e1db52d30cc01c764c5538ef2ce43b4adf15ba501673ba11068349e7bd87",
+    "note": "Original evidence preserved in ../0.0.1-local-acceptance; it does not qualify this new source."
+  }
+}
