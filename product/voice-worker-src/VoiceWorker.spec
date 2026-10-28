@@ -3,7 +3,7 @@ from PyInstaller.utils.hooks import collect_all
 
 datas = []
 binaries = []
-hiddenimports = ['server', 'dashscope_services', 'dsh_bridge', 'capture_policy', 'wake_phrase']
+hiddenimports = ['server', 'dashscope_services', 'dsh_bridge', 'capture_policy', 'voice_errors', 'wake_phrase']
 tmp_ret = collect_all('pipecat')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 tmp_ret = collect_all('aiortc')

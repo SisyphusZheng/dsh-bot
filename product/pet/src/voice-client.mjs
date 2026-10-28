@@ -6,14 +6,31 @@ import { createVoiceSession } from './voice-session.mjs'
 import { createPetView } from './pet-view.jsx'
 import { createTaskCards } from './task-cards.mjs'
 import { desktopTranslator } from './i18n.mjs'
+import { voiceErrorNotice } from './voice-input.mjs'
 const bridge = window.petBridge, audio = document.getElementById('speaker'), pet = document.getElementById('pet')
 const view = createPetView(pet, () => report('桌宠素材加载失败，请打开 DSH 查看。'))
 const micButton = document.getElementById('microphone'), hint = document.getElementById('hint'), taskCard = document.getElementById('tasks')
 let preferences = { voiceInput: { mode: 'hold', keyId: 'alt' }, hint: '按住 Option/Alt 说话', language: 'zh', orbSkin: 'whale-girl' }
 let capture, current, hintTimer, localMic, localContext, localProcessor, wakeReady = false, localStarting = false
+let lastVoiceErrorAt = 0
 const text = (zh, en) => preferences.language === 'en' ? en : zh
 function showHint() { hint.textContent = preferences.hint || ''; document.body.dataset.hint = 'show'; clearTimeout(hintTimer); hintTimer = setTimeout(() => { delete document.body.dataset.hint }, 4500) }
-function report(message, phase = 'idle', notify = true, kind = 'status', captureId = '', utteranceId = '') { void bridge.voiceStatus({ text: kind === 'status' ? desktopTranslator(preferences.language)(message) : message, phase, enabled: session.snapshot().enabled, transportPhase: session.snapshot().phase, notify, kind, captureId, utteranceId }) }
+function report(message, phase = 'idle', notify = true, kind = 'status', captureId = '', utteranceId = '', extra = {}) { void bridge.voiceStatus({ text: kind === 'status' ? desktopTranslator(preferences.language)(message) : message, phase, enabled: session.snapshot().enabled, transportPhase: session.snapshot().phase, notify, kind, captureId, utteranceId, ...extra }) }
+/** Classified worker/transport failure → actionable bubble with a retry action. */
+function reportVoiceError(payload = {}) {
+  lastVoiceErrorAt = Date.now()
+  const kind = String(payload.kind || 'unknown')
+  const notice = voiceErrorNotice(kind, {
+    diagId: String(payload.diagId || ''),
+    language: preferences.language,
+    retryable: payload.retryable !== false,
+  })
+  report(notice.text, 'idle', true, 'error', '', '', {
+    retryable: notice.retryable,
+    diagId: notice.diagId,
+    errorKind: kind,
+  })
+}
 function level(value) { const amount = Math.min(1, Math.max(0, Number(value) || 0)); document.getElementById('level').style.setProperty('--level', String(1 + amount * 3)); document.getElementById('level').setAttribute('aria-valuenow', String(Math.round(amount * 100))) }
 function stopLocal() { localProcessor?.disconnect(); localProcessor = undefined; localMic?.getTracks().forEach(track => track.stop()); localMic = undefined; void localContext?.close().catch(() => {}); localContext = undefined }
 async function localWake() {
@@ -33,6 +50,9 @@ const session = createVoiceSession({
   publish(status) {
     document.body.dataset.voice = status.phase; document.body.dataset.microphone = status.enabled ? 'on' : 'off'
     micButton.title = micButton.ariaLabel = status.phase === 'connecting' ? text('正在连接语音', 'Connecting voice') : status.enabled ? text('暂停麦克风', 'Pause microphone') : text('开启语音', 'Start voice')
+    // A classified provider failure already produced the actionable bubble; do not
+    // overwrite it with the opaque transport error that follows the disconnect.
+    if (status.phase === 'failed' && Date.now() - lastVoiceErrorAt < 5000) return
     report(status.text, status.phase === 'listening' ? 'listening' : status.phase === 'connecting' ? 'processing' : 'idle', !!status.text)
     if (status.enabled || status.wanted) stopLocal(); else void localWake()
   },
@@ -53,7 +73,10 @@ const session = createVoiceSession({
       // Raw SDK transcripts precede the application capture/echo filter.
       onUserInput: () => {}, onSttRawText: () => {},
       onBotTtsText: data => { if (data.text) report(data.text, 'speaking', true, 'speech') },
-      onServerMessage(data) { capture?.message(data); if (data.type === 'duck-playback') audio.volume = 0.3; if (data.type === 'restore-playback') audio.volume = 1; if (data.type === 'barge-in-confirmed') { audio.muted = true; report('', 'listening', false) }; if (data.type === 'playback-identity') { audio.muted = false; audio.volume = 1 }; if (data.type === 'greeting') report(data.text, 'speaking', true, 'speech') },
+      onServerMessage(data) {
+        if (data.type === 'voice-error') { reportVoiceError(data); return }
+        capture?.message(data); if (data.type === 'duck-playback') audio.volume = 0.3; if (data.type === 'restore-playback') audio.volume = 1; if (data.type === 'barge-in-confirmed') { audio.muted = true; report('', 'listening', false) }; if (data.type === 'playback-identity') { audio.muted = false; audio.volume = 1 }; if (data.type === 'greeting') report(data.text, 'speaking', true, 'speech')
+      },
     } })
     capture = createCaptureClient({
       send: (type, data) => own.sendClientMessage(type, data),
@@ -66,7 +89,7 @@ const session = createVoiceSession({
   },
 })
 async function apply(state) { if (state.notice && state.notice !== current?.notice) report(state.notice); current = state; await session.update(state.phase === 'available' ? state.offerUrl : undefined); if (['failed', 'unconfigured'].includes(state.phase) && session.snapshot().wanted) report(state.error || '语音服务尚未就绪。') }
-function command(value) { if (value.action === 'discard') { if (capture?.discard(value.captureId)) void session.command('mute'); return }; if (value.action === 'enable' || value.action === 'toggle') stopLocal(); void session.command(value.action || 'toggle'); if (current?.phase === 'unconfigured') report(current.error || '请先配置语音。') }
+function command(value) { if (value.action === 'discard') { if (capture?.discard(value.captureId)) void session.command('mute'); return }; if (value.action === 'retry') { lastVoiceErrorAt = 0; void session.retry(); return }; if (value.action === 'enable' || value.action === 'toggle') stopLocal(); void session.command(value.action || 'toggle'); if (current?.phase === 'unconfigured') report(current.error || '请先配置语音。') }
 micButton.addEventListener('click', event => { event.stopPropagation(); command({ action: 'toggle' }) }); micButton.addEventListener('mousedown', event => event.stopPropagation())
 bridge.onVoice(state => { void apply(state) }); bridge.onVoiceCommand(command)
 function settings(value) { preferences = { ...preferences, ...value }; hint.textContent = preferences.hint || ''; view.update({ skin: preferences.orbSkin || 'whale-girl' }); document.documentElement.lang = preferences.language === 'en' ? 'en' : 'zh-CN'; if (!preferences.voiceInput?.hintSeen) showHint(); if (preferences.voiceInput?.mode === 'always') command({ action: 'enable' }); if (!preferences.wakeWordEnabled) stopLocal(); else void localWake() }

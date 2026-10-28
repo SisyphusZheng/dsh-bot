@@ -21,7 +21,7 @@ type PendingInteraction = { id: string; kind: string; sessionId: string; questio
 type Presentation = {
   sync(snapshot: { pid: number; sessionId: string; requests: PendingInteraction[] }): void
   event(event: { ioSeq: number; type: string }): void
-  notice(text: string, kind?: string): void
+  notice(text: string, kind?: string, duration?: number, capture?: string, options?: object): void
   capture(status: object): void
   cancelCapture(id: string): boolean
   voice(state: string): void
@@ -106,6 +106,24 @@ export class ProductPet {
       toggleMain(reveal?: boolean): void
     },
   ) {}
+  /**
+   * Last classified provider failure reported by the worker health endpoint.
+   * /health carries only summary/diagId (no stack), enough to replace the opaque
+   * transport error bubble with an actionable message.
+   */
+  private async lastWorkerVoiceError(): Promise<{ kind?: string; summary?: string; diagId?: string; retryable?: boolean } | null> {
+    const port = this.options.voicePort ?? 8765
+    try {
+      const response = await fetch(`http://127.0.0.1:${String(port)}/health`, { signal: AbortSignal.timeout(1500) })
+      if (!response.ok) return null
+      const body = await response.json() as {
+        last_error?: { kind?: string; summary?: string; diagId?: string; retryable?: boolean; at?: number }
+      }
+      const error = body.last_error
+      if (!error || typeof error.at !== 'number' || Date.now() - error.at > 120_000) return null
+      return error
+    } catch { return null }
+  }
   private log(message: string, detail?: unknown): void {
     const dir = join(this.options.home, 'pet/logs'),
       file = join(dir, 'desktop.log')
@@ -354,7 +372,7 @@ export class ProductPet {
       if (sender !== this.window?.webContents) throw new Error('Unowned pet renderer')
     }
     const assertBubble = (sender: Electron.WebContents): void => { if (!this.bubble?.owns(sender)) throw new Error('Unowned bubble renderer') }
-    ipcMain.handle('pet:bubble-action', (e, value: unknown) => { assertBubble(e.sender); if (!value || typeof value !== 'object') throw new Error('Invalid action'); if ('type' in value && value.type === 'cancel' && 'id' in value && value.id === 'cancel-capture') { if ('requestId' in value && typeof value.requestId === 'string' && this.presentation?.cancelCapture(value.requestId)) window.webContents.send('pet:voice-command', { action: 'discard', captureId: value.requestId }); return } return this.experience?.action(value).then(handled => handled ? undefined : this.presentation?.action(value)) })
+    ipcMain.handle('pet:bubble-action', (e, value: unknown) => { assertBubble(e.sender); if (!value || typeof value !== 'object') throw new Error('Invalid action'); if ('type' in value && value.type === 'cancel' && 'id' in value && value.id === 'cancel-capture') { if ('requestId' in value && typeof value.requestId === 'string' && this.presentation?.cancelCapture(value.requestId)) window.webContents.send('pet:voice-command', { action: 'discard', captureId: value.requestId }); return } if ('type' in value && value.type === 'secondary' && 'id' in value && value.id === 'retry-voice') { window.webContents.send('pet:voice-command', { action: 'retry' }); this.presentation?.notice('正在重新连接语音…'); return } return this.experience?.action(value).then(handled => handled ? undefined : this.presentation?.action(value)) })
     ipcMain.handle('pet:bubble-interactive', (e, value: unknown) => { assertBubble(e.sender); this.bubble?.setInteractive(value === true) })
     ipcMain.handle('pet:bubble-focus', (e, value: unknown) => { assertBubble(e.sender); this.bubble?.setInputMode(value === true) })
     ipcMain.handle('pet:bubble-open', (e) => { assertBubble(e.sender); this.options.toggleMain(true) })
@@ -387,7 +405,7 @@ export class ProductPet {
       assertOwner(e.sender)
       if (!(await this.request('/cancel', { source: 'task-stop' })).ok) throw new Error('Cancellation failed')
     })
-    ipcMain.handle('pet:voice-status', (e, message: unknown) => {
+    ipcMain.handle('pet:voice-status', async (e, message: unknown) => {
       assertOwner(e.sender)
       if (message && typeof message === 'object') {
         const status = message as {
@@ -398,12 +416,25 @@ export class ProductPet {
           kind?: string
           captureId?: string
           utteranceId?: string
+          retryable?: boolean
+          diagId?: string
+          errorKind?: string
         }
         this.experience?.voice(status)
         if (['idle', 'listening', 'speaking', 'processing'].includes(status.phase || '')) this.presentation?.voice(status.phase || 'idle')
+        const retry = status.retryable === false ? {} : { secondary: [{ id: 'retry-voice', label: '重试' }] }
         if (['input', 'transcript', 'capture-end'].includes(status.kind || '')) this.presentation?.capture(status)
-        else if (status.notify && status.text) this.presentation?.notice(status.text, status.kind)
-        this.log('voice-client', String(status.text || status.phase || '').slice(0, 400))
+        else if (status.kind === 'error' && status.text) this.presentation?.notice(status.text, 'error', 15_000, '', retry)
+        else if (status.phase === 'failed') {
+          // Prefer the worker's classified failure over the opaque transport text.
+          const detail = await this.lastWorkerVoiceError()
+          if (detail?.summary) {
+            const diag = detail.diagId ? `诊断 ${detail.diagId}。` : ''
+            this.presentation?.notice(`${detail.summary}${diag ? `（${diag}）` : ''}\n点“重试”重新连接语音。`, 'error', 15_000, '', { secondary: [{ id: 'retry-voice', label: '重试' }] })
+            this.log('voice-error', detail)
+          } else if (status.text) this.presentation?.notice(status.text, 'error', 15_000, '', { secondary: [{ id: 'retry-voice', label: '重试' }] })
+        } else if (status.notify && status.text) this.presentation?.notice(status.text, status.kind)
+        this.log('voice-client', String(status.text || status.phase || '').slice(0, 400) + (status.diagId ? ` diag=${status.diagId}` : ''))
       } else this.log('voice-client', String(message).slice(0, 400))
     })
     ipcMain.handle('pet:drag-start', (e, x: unknown, y: unknown) => {

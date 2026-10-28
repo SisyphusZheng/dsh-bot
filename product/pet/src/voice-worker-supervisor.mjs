@@ -12,6 +12,59 @@ import { spawn } from 'node:child_process'
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
+/** Per-record bound for one supervisor log write; rotation lives in the desktop logger. */
+export const MAX_LOG_CHUNK = 8192
+
+/**
+ * Redact provider secrets from a chunked stdout/stderr stream.
+ *
+ * A process may write a key split across multiple `data` events, so a plain
+ * per-chunk `replaceAll` can leak half of it. Keep the longest possible secret
+ * tail buffered until the next chunk (or `flush()` on exit) to close that gap,
+ * and never truncate the diagnostic reason to a few hundred characters.
+ * @param {string|string[]} secrets - Values that must never reach the log.
+ * @param {{maxChunk?: number}} [options] - Upper bound for one emitted record.
+ * @returns {{push(data: unknown): string, flush(): string}}
+ */
+export function createRedactingSink(secrets = [], { maxChunk = MAX_LOG_CHUNK } = {}) {
+  const values = (Array.isArray(secrets) ? secrets : [secrets])
+    .filter((value) => typeof value === 'string' && value.length >= 8)
+    .sort((left, right) => right.length - left.length)
+  const redact = (text) => values.reduce((value, secret) => value.replaceAll(secret, '[credential]'), text)
+  // Longest suffix that is a proper prefix of a secret: it may be completed by the
+  // next chunk, so it must stay buffered instead of being emitted half-leaked.
+  const heldSuffix = (text) => {
+    let held = 0
+    for (const secret of values) {
+      const limit = Math.min(secret.length - 1, text.length)
+      for (let length = limit; length > held; length -= 1) {
+        if (text.endsWith(secret.slice(0, length))) {
+          held = length
+          break
+        }
+      }
+    }
+    return held
+  }
+  const bound = (text) => (text.length > maxChunk ? text.slice(-maxChunk) : text)
+  let pending = ''
+  return {
+    push(data) {
+      pending = redact(pending + String(data ?? ''))
+      const held = heldSuffix(pending)
+      const cut = pending.length - held
+      const out = pending.slice(0, cut)
+      pending = pending.slice(cut)
+      return bound(out)
+    },
+    flush() {
+      const out = redact(pending)
+      pending = ''
+      return bound(out)
+    },
+  }
+}
+
 export class VoiceWorkerSupervisor {
   constructor({
     command,
@@ -110,13 +163,18 @@ export class VoiceWorkerSupervisor {
     })
     this.child.once('error', (error) => this.log('voice worker spawn failed', error.message))
     this.pid = this.child.pid
-    const safeOutput = (data) => {
-      const text = String(data)
-      const key = this.env.DASHSCOPE_API_KEY
-      return (key ? text.replaceAll(key, '[credential]') : text).trim().slice(0, 300)
+    const sink = createRedactingSink([this.env.DASHSCOPE_API_KEY])
+    const emit = (stream) => (data) => {
+      const text = sink.push(data).trim()
+      if (text !== '') this.log(stream, text)
     }
-    this.child.stdout?.on('data', (data) => this.log('voice worker stdout', safeOutput(data)))
-    this.child.stderr?.on('data', (data) => this.log('voice worker stderr', safeOutput(data)))
+    const flushOutput = () => {
+      const text = sink.flush().trim()
+      if (text !== '') this.log('voice worker final output', text)
+    }
+    this.child.stdout?.on('data', emit('voice worker stdout'))
+    this.child.stderr?.on('data', emit('voice worker stderr'))
+    this.child.once('exit', flushOutput)
     this._attachLifecycle(this.child)
     const healthy = await this.waitForHealthy()
     if (!healthy) {

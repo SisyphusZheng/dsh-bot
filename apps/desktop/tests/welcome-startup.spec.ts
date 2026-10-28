@@ -51,6 +51,9 @@ vi.mock('electron', () => ({
   app: {
     isPackaged: false,
     name: 'Harness',
+    setName: vi.fn(),
+    commandLine: { getSwitchValue: () => '' },
+    setPath: vi.fn(),
     requestSingleInstanceLock: () => true,
     setAsDefaultProtocolClient: vi.fn(),
     whenReady: () => Promise.resolve(),
@@ -179,7 +182,7 @@ it.each([false, true])('starts welcome onboarding without carrying update focus 
   state.hasApiKey = false
   state.operations = undefined
   state.accountState.mockResolvedValue({ status: 'signed-out', attempt: null, links: { usageUrl: '', topUpUrl: '' } })
-  if (updated) vi.stubGlobal('process', { ...process, platform: 'win32', argv: ['desktop', '--updated'] })
+  if (updated) vi.stubGlobal('process', { ...process, once: process.once.bind(process), on: process.on.bind(process), platform: 'win32', argv: ['desktop', '--updated'] })
   vi.useFakeTimers()
   vi.stubEnv('DSH_CLIENT_VERSION', '1.2.3')
   vi.stubEnv('DSH_DESKTOP_DEV_PROJECT_DIR', '/development-profile')

@@ -55,6 +55,7 @@ from pipecat.transports.smallwebrtc.transport import SmallWebRTCTransport
 
 from dashscope_services import DashScopeASRService, DashScopeTTSService
 from dsh_bridge import DSHBridgeProcessor
+import voice_errors
 
 TOKEN = os.environ.get("SPIKE_TOKEN", "dev-token")
 MODE = os.environ.get("G1_MODE", "echo")
@@ -374,12 +375,37 @@ async def _run_task(transport, task, session_id: str, session_state: dict) -> No
     global CURRENT_TASK
     CURRENT_TASK = task
     runner = PipelineRunner(handle_sigint=False)
+
+    async def notify_voice_error(payload: dict) -> None:
+        """Forward a classified provider failure to the client and keep it for /health."""
+        global LAST_VOICE_ERROR
+        LAST_VOICE_ERROR = payload
+        session_state["last_error"] = payload
+        try:
+            if task.rtvi is not None:
+                await task.rtvi.send_server_message({
+                    "type": "voice-error",
+                    **{
+                        key: payload[key]
+                        for key in ("kind", "summary", "action", "diagId", "retryable", "source", "at")
+                    },
+                })
+        except Exception as exc:
+            print(f"[g1] voice-error notify failed session={session_id}: {exc!r}", flush=True)
+
+    voice_errors.set_reporter(notify_voice_error)
     try:
         await runner.run(task)
     except Exception as exc:
         session_state["error"] = str(exc)
+        last = session_state.get("last_error")
+        # A service already reported with the actionable payload; do not overwrite it.
+        stale = last is None or (round(time.time() * 1000) - int(last.get("at") or 0)) > 5000
+        if stale:
+            await voice_errors.report(exc, source="session")
         print(f"[g1] session error session={session_id}: {exc!r}", flush=True)
     finally:
+        voice_errors.set_reporter(None)
         if CURRENT_TASK is task:
             CURRENT_TASK = None
         print(f"[g1] session finished session={session_id} mode={MODE}", flush=True)
@@ -387,6 +413,7 @@ async def _run_task(transport, task, session_id: str, session_state: dict) -> No
 
 CURRENT_TASK = None
 DSH_PROCESSOR = None
+LAST_VOICE_ERROR = None
 
 PIPELINES = {
     "echo": run_echo_pipeline,
@@ -416,6 +443,8 @@ def _session_stats(session_state: dict) -> dict:
         out["transcripts"] = list(session_state["transcripts"])
     if "error" in session_state:
         out["error"] = session_state["error"]
+    if session_state.get("last_error"):
+        out["last_error"] = session_state["last_error"]
     return out
 
 
@@ -433,6 +462,8 @@ async def health():
         "dsh_bridge_descriptor": DSH_BRIDGE_DESCRIPTOR if MODE == "dsh" else None,
         "uptime_seconds": round(time.time() - STARTED_AT, 1),
         "active_sessions": len(active_sessions),
+        # Minimal unauthenticated projection: no redacted stack/detail on /health.
+        "last_error": voice_errors.health_view(LAST_VOICE_ERROR),
     }
 
 

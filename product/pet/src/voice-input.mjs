@@ -268,12 +268,82 @@ export function voiceErrorBubble(kind, detail = '') {
 export function classifyVoiceError(raw) {
   const text = String(raw || '')
   if (!text) return 'unknown'
+  if (/socks|python-socks|proxy|代理/i.test(text)) return 'proxy'
+  if (/quota|balance|429|rate.?limit|额度|余额/i.test(text)) return 'quota'
   if (/missing api key|缺少 api key|api key is required|no api key/i.test(text)) return 'missing_key'
   if (/permission|notallowed|not allowed|tcc|麦克风权限|device_missing|device_unavailable/i.test(text)) return 'unsupported'
   if (/401|403|unauthorized|invalid.*key|key.*invalid|鉴权/i.test(text)) return 'auth'
   if (/404|model.*(?:not|un)available|model.*not found|模型不可用|unknown model/i.test(text)) return 'model'
   if (/ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ECONNRESET|ETIMEDOUT|timeout|超时|network|网络/i.test(text)) return 'network'
   return 'unknown'
+}
+
+// Worker-side classification (voice_errors.py) and the local transport fallback
+// share these actionable copies; the raw error text stays in the diagnostic log.
+const VOICE_ERROR_COPY = {
+  proxy: {
+    icon: '🌐',
+    zh: ['语音连接被本机代理拦截', '本版语音直连，不经过系统代理。请关闭系统 SOCKS/HTTPS 代理，或为该语音域名设置 NO_PROXY，然后点“重试”。'],
+    en: ['Voice connection blocked by a local proxy', 'This build connects directly and does not use the system proxy. Turn off the system SOCKS/HTTPS proxy (or add this voice host to NO_PROXY), then retry.'],
+  },
+  network: {
+    icon: '📡',
+    zh: ['无法连接语音服务（网络或 DNS）', '请检查网络、DNS 或代理设置，然后点“重试”。'],
+    en: ['Cannot reach the voice service (network or DNS)', 'Check the network, DNS or proxy settings, then retry.'],
+  },
+  auth: {
+    icon: '🔑',
+    zh: ['语音服务鉴权失败', '请到 DSH → Bot 设置检查语音 API Key 是否有效，保存后点“重试”。'],
+    en: ['Voice authentication failed', 'Check the voice API key in DSH → Bot settings, save it, then retry.'],
+  },
+  missing_key: {
+    icon: '🔑',
+    zh: ['还没有保存语音 API Key', '请到 DSH → Bot 设置填写语音 API Key，保存后点“重试”。'],
+    en: ['No voice API key saved', 'Add the voice API key in DSH → Bot settings, save it, then retry.'],
+  },
+  quota: {
+    icon: '⏳',
+    zh: ['语音服务额度不足或被限流', '请检查 DashScope 账户余额/并发额度，或稍后点“重试”。'],
+    en: ['Voice quota or rate limit reached', 'Check the DashScope balance/concurrency quota, or retry later.'],
+  },
+  permission: {
+    icon: '🎤',
+    zh: ['麦克风权限或音频设备不可用', '请在系统设置中允许麦克风权限，或检查音频设备后点“重试”。'],
+    en: ['Microphone permission or device unavailable', 'Grant microphone permission in System Settings or check the audio device, then retry.'],
+  },
+  unsupported: {
+    icon: '🎤',
+    zh: ['麦克风不可用或被拒绝授权', '请在系统设置中允许麦克风权限，或检查音频设备后点“重试”。'],
+    en: ['Microphone unavailable or permission denied', 'Grant microphone permission in System Settings or check the audio device, then retry.'],
+  },
+  provider: {
+    icon: '🛰️',
+    zh: ['语音服务暂时不可用', '服务端暂时异常，请稍后点“重试”；持续失败请提供诊断 ID。'],
+    en: ['Voice service temporarily unavailable', 'The provider is having trouble; retry shortly and include the diagnostic ID if it keeps failing.'],
+  },
+  model: {
+    icon: '🧩',
+    zh: ['语音模型不可用', '所选 provider 不支持这个模型，请到 DSH → Bot 设置换一个模型后重试。'],
+    en: ['Voice model unavailable', 'The selected provider does not support this model; choose another one in DSH → Bot settings, then retry.'],
+  },
+  unknown: {
+    icon: '⚠️',
+    zh: ['语音连接失败', '请点“重试”；持续失败请把诊断 ID 和诊断日志发给维护者。'],
+    en: ['Voice connection failed', 'Retry; if it keeps failing, send the diagnostic ID and diagnostic log to the maintainer.'],
+  },
+}
+
+/**
+ * Actionable notice for a classified voice failure.
+ * @param {string} kind - One of the classifyVoiceError kinds.
+ * @param {{diagId?: string, language?: string, retryable?: boolean}} [options]
+ * @returns {{kind: 'error', icon: string, text: string, retryable: boolean, diagId: string}}
+ */
+export function voiceErrorNotice(kind, { diagId = '', language = 'zh', retryable = true } = {}) {
+  const copy = VOICE_ERROR_COPY[kind] || VOICE_ERROR_COPY.unknown
+  const [title, action] = language === 'en' ? copy.en : copy.zh
+  const diag = diagId ? (language === 'en' ? `Diagnostic ${diagId}` : `诊断 ${diagId}`) : ''
+  return { kind: 'error', icon: copy.icon, text: [title, action, diag].filter(Boolean).join('\n'), retryable: retryable !== false, diagId }
 }
 
 /**

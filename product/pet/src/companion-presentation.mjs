@@ -35,10 +35,10 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
       ],
     })
   }
-  function notice(value, kind = 'status', duration = 4500, capture = '') {
+  function notice(value, kind = 'status', duration = 4500, capture = '', options = {}) {
     if (stopped || requests.length) return
     cancelTimer()
-    show({ visible: true, kind, text: value, clickThrough: kind !== 'input', ...(kind === 'input' ? { requestId: capture, cancel: { id: 'cancel-capture', label: '取消录音' }, inputLabel: '你说' } : {}) })
+    show({ visible: true, kind, text: value, clickThrough: kind !== 'input', ...(kind === 'input' ? { requestId: capture, cancel: { id: 'cancel-capture', label: '取消录音' }, inputLabel: '你说' } : {}), ...options })
     timer = setTimer(() => { if (!requests.length && !stopped) hide() }, duration)
   }
   async function submit(request, body) {

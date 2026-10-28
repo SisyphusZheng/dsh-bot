@@ -1,3 +1,4 @@
+import time
 import unittest
 from unittest.mock import AsyncMock, patch
 from capture_policy import CapturePolicy
@@ -53,15 +54,33 @@ class VoiceAdmissionTests(unittest.IsolatedAsyncioTestCase):
         p = DSHBridgeProcessor('/unused'); p.set_greeting('你好，我在呢。想聊什么？')
         p.push_frame = AsyncMock(); p._start_next_turn = AsyncMock(); p._cancel_current = AsyncMock(); p._send_rtvi = AsyncMock()
         with patch.object(FrameProcessor, 'process_frame', new=AsyncMock()):
-            for text in ['嗯', '嗯。', '啊', '你好，我在呢。']:
+            for text in ['嗯', '嗯。', '啊', '你好，我在呢。想聊什么？', '你好我在呢想聊什么']:
                 await p.process_frame(TranscriptionFrame(text, 'u', 'now'), FrameDirection.DOWNSTREAM)
             self.assertEqual(p._start_next_turn.await_count, 0)
             self.assertEqual(p._cancel_current.await_count, 0)
             self.assertEqual(p._send_rtvi.await_count, 0)
-            # Short intentional replies are not blanket-filtered.
-            for text in ['是', '否', '打开浏览器']:
+            # Short intentional replies are not blanket-filtered, including the
+            # greeting's own words said back by the user.
+            for text in ['是', '否', '打开浏览器', '你好', '我在', '想聊什么']:
                 await p.process_frame(TranscriptionFrame(text, 'u', 'now'), FrameDirection.DOWNSTREAM)
-            self.assertEqual(p._start_next_turn.await_count, 3)
+            self.assertEqual(p._start_next_turn.await_count, 6)
+
+    async def test_short_reply_is_not_mistaken_for_active_reply_echo(self):
+        p = DSHBridgeProcessor('/unused')
+        p.push_frame = AsyncMock(); p._start_next_turn = AsyncMock(); p._cancel_current = AsyncMock(); p._send_rtvi = AsyncMock()
+        p._current = None
+        p._last_barge_context = {
+            "turn_key": "r1",
+            "reply_text": "好的，我这就帮你打开浏览器并整理下载目录。",
+            "audible": True,
+            "ended_mono": time.monotonic(),
+        }
+        with patch.object(FrameProcessor, 'process_frame', new=AsyncMock()):
+            await p.process_frame(TranscriptionFrame("打开浏览器", 'u', 'now'), FrameDirection.DOWNSTREAM)
+            self.assertEqual(p._start_next_turn.await_count, 1)
+            # A long contiguous fragment of the spoken reply is still echo.
+            await p.process_frame(TranscriptionFrame("我这就帮你打开浏览器", 'u', 'now'), FrameDirection.DOWNSTREAM)
+            self.assertEqual(p._start_next_turn.await_count, 1)
 
     async def test_assistant_step_end_flushes_tts_before_agent_turn_finishes(self):
         p = DSHBridgeProcessor('/unused'); p.push_frame = AsyncMock()

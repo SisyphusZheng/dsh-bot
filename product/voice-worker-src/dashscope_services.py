@@ -36,6 +36,7 @@ from collections.abc import AsyncGenerator
 from loguru import logger
 
 from capture_policy import CapturePolicy
+from voice_errors import VoiceProviderError, report as report_voice_error
 from websockets.protocol import State
 
 from pipecat.frames.frames import (
@@ -122,12 +123,22 @@ class DashScopeASRService(WebsocketSTTService):
     async def _connect_websocket(self):
         if os.environ.get("WG_TEST_ASR_FAIL_HANDSHAKE") == "1":
             raise RuntimeError("TEST injected ASR handshake failure")
+        try:
+            await self._connect_websocket_locked()
+        except Exception as exc:
+            payload = await report_voice_error(exc, source="asr")
+            raise VoiceProviderError(payload, cause=exc) from exc
+
+    async def _connect_websocket_locked(self):
         uri = f"{self._url}?model={self._model}"
         self._websocket = await self._websocket_connect(
             uri,
             additional_headers={"Authorization": f"Bearer {self._api_key}"},
             max_size=20 * 1024 * 1024,
             open_timeout=15,
+            # Provider voice is a direct connection by product decision: websockets
+            # >=16 otherwise auto-adopts the macOS system proxy and fails on SOCKS.
+            proxy=None,
         )
         first = json.loads(await self._websocket.recv())
         if first.get("type") != "session.created":
@@ -341,12 +352,21 @@ class DashScopeTTSService(WebsocketTTSService):
     async def _connect_websocket(self):
         if os.environ.get("WG_TEST_TTS_FAIL_HANDSHAKE") == "1":
             raise RuntimeError("TEST injected TTS handshake failure")
+        try:
+            await self._connect_websocket_locked()
+        except Exception as exc:
+            payload = await report_voice_error(exc, source="tts")
+            raise VoiceProviderError(payload, cause=exc) from exc
+
+    async def _connect_websocket_locked(self):
         uri = f"{self._url}?model={self._model}"
         self._websocket = await self._websocket_connect(
             uri,
             additional_headers={"Authorization": f"Bearer {self._api_key}"},
             max_size=20 * 1024 * 1024,
             open_timeout=15,
+            # Same direct-connection policy as ASR; see above.
+            proxy=None,
         )
         first = json.loads(await self._websocket.recv())
         logger.info(f"[dashscope-tts] connected: {first.get('type')}")

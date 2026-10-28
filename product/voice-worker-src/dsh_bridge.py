@@ -135,12 +135,27 @@ class DSHBridgeProcessor(FrameProcessor):
         self._greeting_until = time.monotonic() + max(8.0, len(text) / 3.0 + 3.0)
         self._last_barge_context = {"turn_key": "welcome", "reply_text": text, "audible": True, "ended_mono": time.monotonic()}
 
+    # Echo decisions combine a playback time window with a *long contiguous match*;
+    # a bare length threshold is not an acoustic oracle. Short valid replies such as
+    # 你好 / 我在 / 想聊什么 / 是 / 否 must always be admissible.
+    ECHO_MIN_CHARS = 6
+
+    @classmethod
+    def _echo_like(cls, heard, window):
+        """True only for a long contiguous (or near-identical) echo of the window."""
+        if not heard or not window or len(heard) < cls.ECHO_MIN_CHARS:
+            return False
+        required = max(cls.ECHO_MIN_CHARS, int(len(window) * 0.5))
+        if heard in window:
+            return len(heard) >= required
+        return len(heard) >= required and SequenceMatcher(None, heard[-40:], window[-120:]).ratio() >= 0.8
+
     def _input_noise(self, text):
         heard = re.sub(r"[^0-9A-Za-z\u4e00-\u9fff]", "", text or "").lower()
         if not heard or re.fullmatch(r"[嗯啊哦呃额唔]+", heard):
             return True
         greeting = re.sub(r"[^0-9A-Za-z\u4e00-\u9fff]", "", self._greeting).lower()
-        if time.monotonic() < self._greeting_until and len(heard) >= 2 and heard in greeting:
+        if time.monotonic() < self._greeting_until and self._echo_like(heard, greeting):
             return True
         ctx = self._current or self._last_barge_context or {}
         recent = "".join(e.get("text", "") for e in ctx.get("text_events", []) if time.monotonic() - e.get("at_mono", 0) <= 6.0)
@@ -148,7 +163,7 @@ class DSHBridgeProcessor(FrameProcessor):
         if ctx is self._last_barge_context and time.monotonic() - ctx.get("ended_mono", 0) > 30:
             return False
         spoken = re.sub(r"[^0-9A-Za-z\u4e00-\u9fff]", "", recent or ctx.get("reply_text", "")).lower()
-        return len(heard) >= 2 and bool(spoken) and (heard in spoken or SequenceMatcher(None, heard[-40:], spoken[-120:]).ratio() >= 0.8)
+        return self._echo_like(heard, spoken)
 
     # ---- lifecycle -----------------------------------------------------
     async def cleanup(self):
@@ -430,14 +445,16 @@ class DSHBridgeProcessor(FrameProcessor):
                 self._pending.clear()
                 await self._cancel_current()
                 return
-            # P1: drop final transcripts that closely match the recent spoken window
+            # P1: drop final transcripts that closely match the recent spoken window.
+            # Short legitimate replies (你好/我在/想聊什么/是/否) must survive; only a
+            # long contiguous echo of the bounded playback window is dropped.
             norm = lambda s: re.sub(r"[^0-9A-Za-z\u4e00-\u9fff]", "", s or "").lower()
             heard = norm(text)
             ctx = self._last_barge_context or ({**self._current} if self._current else {})
             events = ctx.get("text_events") or []
             recent = "".join(e.get("text", "") for e in events if time.monotonic() - e.get("at_mono", 0) <= 6.0)
             window = norm(recent or ctx.get("reply_text", ""))
-            if len(heard) >= 2 and window and (heard in window or SequenceMatcher(None, heard[-40:], window[-120:]).ratio() >= 0.8):
+            if self._echo_like(heard, window):
                 self.metrics["echo_transcript_dropped"] += 1
                 logger.info(f"[dsh] echoed transcript dropped: {text!r}")
                 return

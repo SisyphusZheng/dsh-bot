@@ -47,6 +47,16 @@ export function createVoiceSession({ createClient, publish, handshakeTimeoutMs =
       if (action === 'disable') { const closing = close(); return schedule(async () => { await closing; report('off', '语音已关闭') }) }
       return schedule(async () => { if (stopped) return; if (wanted) await open(); else report(client ? 'muted' : 'off') })
     },
+    /** Reconnect in place after a classified failure; never requires an app restart. */
+    retry() {
+      if (stopped) return Promise.resolve()
+      wanted = true
+      return schedule(async () => {
+        await close().catch(() => {})
+        if (stopped) return
+        await open()
+      })
+    },
     snapshot: () => ({ phase, enabled, wanted }),
     async stop() { stopped = true; wanted = false; await close(); await queue },
   }

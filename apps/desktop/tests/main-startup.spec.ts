@@ -153,6 +153,9 @@ const harness = await vi.hoisted(async () => {
   const app = Object.assign(new EventEmitter(), {
     isPackaged: true,
     name: 'Desktop test',
+    setName: vi.fn(),
+    commandLine: { getSwitchValue: () => '' },
+    setPath: vi.fn(),
     whenReady: () => Promise.resolve(),
     getLocale: (): string => 'en-US',
     getPreferredSystemLanguages: () => ['en-US'],
@@ -371,6 +374,19 @@ vi.mock('../src/welcome-backend.ts', () => ({
   }),
 }))
 
+
+/** Product main.ts registers signal handlers on process; a plain spread loses them. */
+function stubProcess(overrides: Record<string, unknown>): void {
+  vi.stubGlobal('process', {
+    ...process,
+    once: process.once.bind(process),
+    on: process.on.bind(process),
+    off: process.off.bind(process),
+    removeListener: process.removeListener.bind(process),
+    ...overrides,
+  })
+}
+
 function configureTestAuthPopup(allow: boolean): void {
   const directory = join(harness.app.getPath('userData'), 'desktop')
   mkdirSync(directory, { recursive: true })
@@ -418,7 +434,7 @@ beforeEach(() => {
   vi.stubEnv('DSH_DESKTOP_PNPM_ENTRY', 'test-pnpm')
   vi.stubEnv('DSH_DESKTOP_DSH_DIR', 'test-runtime')
   vi.stubEnv('DSH_DESKTOP_PRIMARY_RUNTIME_DIR', 'test-primary-runtime')
-  vi.stubGlobal('process', { ...process, platform: 'win32', arch: 'x64', resourcesPath: 'desktop-test-resources' })
+  stubProcess({ platform: 'win32', arch: 'x64', resourcesPath: 'desktop-test-resources'  })
   vi.stubEnv('DSH_DESKTOP_HOST_INSPECT_PORT', undefined)
   vi.stubEnv('DSH_DESKTOP_DEV_PROJECT_DIR', undefined)
   vi.stubEnv('DSH_DESKTOP_MANDATORY_UPDATE_CONFIG', undefined)
@@ -519,7 +535,7 @@ describe('desktop main startup', () => {
   })
 
   it('installs hidden native DevTools shortcuts in the macOS application menu', async () => {
-    vi.stubGlobal('process', { ...process, platform: 'darwin' })
+    stubProcess({ platform: 'darwin'  })
     await readyForUpdate()
     expect(applicationMenuItems().slice(-2)).toEqual([
       { role: 'toggleDevTools', visible: false },
@@ -534,7 +550,7 @@ describe('desktop main startup', () => {
     ['win32', true, 'zh-CN'],
     ['win32', false, 'en-US'],
   ] as const)('offers the About command before other commands on %s (packaged=%s, locale=%s)', async (platform, packaged, locale) => {
-    vi.stubGlobal('process', { ...process, platform })
+    stubProcess({ platform  })
     harness.app.isPackaged = packaged
     vi.spyOn(harness.app, 'getLocale').mockReturnValue(locale)
     vi.spyOn(harness.app, 'getPreferredSystemLanguages').mockReturnValue([locale])
@@ -1190,7 +1206,7 @@ describe('desktop main startup', () => {
     ['darwin', ['--updated'], false],
     ['linux', ['--updated'], false],
   ] as const)('raises the first workspace only for a Windows installer restart (%s, %j)', async (platform, args, raises) => {
-    vi.stubGlobal('process', { ...process, platform, argv: ['desktop', ...args] })
+    stubProcess({ platform, argv: ['desktop', ...args]  })
     await import('../src/main.ts')
     await harness.preparing.promise
     const window = harness.windows[0]!
@@ -1218,7 +1234,7 @@ describe('desktop main startup', () => {
   it.each([
     ['win32', 'zh-CN'], ['win32', 'en-US'], ['darwin', 'zh-CN'], ['darwin', 'en-US'],
   ] as const)('records the restart confirmation on %s in %s', async (platform, language) => {
-    vi.stubGlobal('process', { ...process, platform })
+    stubProcess({ platform  })
     vi.spyOn(harness.app, 'getPreferredSystemLanguages').mockReturnValue([language])
     await readyForUpdate()
     harness.updateState = { phase: 'ready', version: '0.1.7-alpha.2' }
@@ -1304,7 +1320,7 @@ describe('desktop main startup', () => {
   })
 
   it('leaves macOS fullscreen before hiding on close and reopens the hidden window on activate', async () => {
-    vi.stubGlobal('process', { ...process, platform: 'darwin', arch: 'arm64', resourcesPath: 'desktop-test-resources' })
+    stubProcess({ platform: 'darwin', arch: 'arm64', resourcesPath: 'desktop-test-resources'  })
     await readyWorkspace()
     const window = harness.windows[0]!
     expect(harness.trays).toHaveLength(0)
@@ -1321,7 +1337,7 @@ describe('desktop main startup', () => {
   })
 
   it('skips the confirmation during a macOS shutdown but asks again once a cancelled shutdown returns focus', async () => {
-    vi.stubGlobal('process', { ...process, platform: 'darwin', arch: 'arm64', resourcesPath: 'desktop-test-resources' })
+    stubProcess({ platform: 'darwin', arch: 'arm64', resourcesPath: 'desktop-test-resources'  })
     const host = await readyWorkspace()
     const window = harness.windows[0]!
     host.inspectQuit.mockResolvedValue({ activeTasks: true, scheduledTasks: false })
