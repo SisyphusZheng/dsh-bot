@@ -1,0 +1,21 @@
+{
+  "capturedAt": "2026-10-28T09:19:00Z",
+  "samples": [
+    {
+      "prompt": "用一句话介绍你自己",
+      "completedIn": "3-4s",
+      "answer": "我是 Nisse（家灵）——住在你桌面上的个人 Agent，帮你干活、查东西、写代码，说话直接不绕弯。",
+      "chars": 45,
+      "sentences": 1
+    },
+    {
+      "prompt": "汇报当前工作区有哪些文件，按简洁清单给结论",
+      "completedIn": "1m15s",
+      "answer": "列目录的命令被审批拒了，所以我现在没有实际的文件清单可汇报——不会凭印象编。要么你重新允许一次目录读取，要么直接告诉我你想看哪个路径下的文件，我换个只读方式再看。",
+      "chars": 92,
+      "sentences": 2,
+      "note": "No fabricated file list; concise refusal + two recovery options."
+    }
+  ],
+  "scope": "Real opencode-go provider through the packaged App; subjective model behavior, manual judgment still required."
+}

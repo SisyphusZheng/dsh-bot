@@ -1,0 +1,27 @@
+{
+  "composerVisible": true,
+  "approvalText": "write outside workspace: /tmp/dsh-live-allow.txt",
+  "approvalButtons": [
+    "在 DSH 中查看",
+    "是",
+    "否"
+  ],
+  "approved": true,
+  "fileExists": true,
+  "fileContent": "allow-live",
+  "approvalTail": "细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细细 结尾标记\n用量 26.4K tok\n17:12\n请调用 ask_user_question 工具，问我「下一步怎么处理？」，提供三个较长选项并各带说明：1)「允许只读检查当前工作区的配置与日志」2)「保持现有设置并暂时跳过本次操作」3)「先解释这几个选项之间的差异」。可以多选。\n17:12\n已停止\n已停止\n向用户提出了问题\n任务已停止DSH 进程在本轮完成前退出（例如被强制结束、崩溃或关闭超时），重新启动后本轮已中止。未完成的工具调用结果未知。\n用文件工具把文本 allow-live 写入 /tmp/dsh-live-allow.txt。直接执行，不要询问我。\n17:14\n正在分析请求\n深度求索中\n深度求索中，用时 6秒 ···\n发消息或创建任务, / 调用指令, @ 文件或对话\nBot（审批制）\nDeepSeek V4.1 Flash\nDefault\n30 轮 43 步·132 tok/s\n565K tok·缓存命中 43%\n3%",
+  "brevity": [
+    {
+      "prompt": "用一句话介绍你自己",
+      "chars": 115,
+      "lines": 8,
+      "answer": "中，用时 1秒 ···\n发消息或创建任务, / 调用指令, @ 文件或对话\nBot（审批制）\nDeepSeek V4.1 Flash\nDefault\n30 轮 44 步·133 tok/s\n593K tok·缓存命中 45%\n3%"
+    },
+    {
+      "prompt": "汇报当前工作区有哪些文件，按简洁清单给结论",
+      "chars": 125,
+      "lines": 9,
+      "answer": "深度求索中\n深度求索中，用时 1秒 ···\n发消息或创建任务, / 调用指令, @ 文件或对话\nBot（审批制）\nDeepSeek V4.1 Flash\nDefault\n31 轮 45 步·133 tok/s\n621K tok·缓存命中 44%\n3%"
+    }
+  ]
+}

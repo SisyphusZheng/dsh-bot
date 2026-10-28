@@ -1,0 +1,6 @@
+{
+  "deniedPending": true,
+  "composerVisible": true,
+  "samples": [],
+  "error": "Error: timeout\n    at waitFor (file:///private/tmp/ui-brevity2.mjs:8:154)\n    at async ask (file:///private/tmp/ui-brevity2.mjs:22:5)\n    at async file:///private/tmp/ui-brevity2.mjs:30:20"
+}
