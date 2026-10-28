@@ -1069,14 +1069,7 @@ export function apply(ctx, config = {}) {
         tools: Boolean(ctx.get?.('tools')),
         memory: Boolean(memoryUrl),
       },
-      paths: {
-        dshHome: String(process.env.DSH_HOME || ''),
-        home: String(process.env.HOME || ''),
-        profile: String(process.env.NISSE_M1_PROFILE || process.env.DSH_PROFILE || ''),
-        cwd: process.cwd(),
-        bridgeDir,
-        workspaceDir: canonicalWorkspaceDir(),
-      },
+      // /health is unauthenticated loopback: never disclose home/profile/cwd paths.
       agent: {
         sessionId: sessionId || null,
         created: Boolean(agent),

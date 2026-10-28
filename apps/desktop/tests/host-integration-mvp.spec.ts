@@ -43,6 +43,8 @@ for (const decision of ['allow','reject','cancel']) it(`runs DSH Session/Tool/Ap
     expect(existsSync(target)).toBe(decision==='allow');expect(frames.some(x=>x.type==='turn-end')).toBe(true)
     if(decision==='allow') {
       const health=await(await fetch(base+'/health')).json(),agent=ctx.agents.get(health.agent.sessionId)
+      expect(health.paths).toBeUndefined()
+      expect(JSON.stringify(health)).not.toMatch(/dsh-home|bridgeDir|workspaceDir/)
       if(!agent)throw new Error('No Bot agent')
       const before=adapter.requests.length
       agent.followup(createUserMessage({ source:{ kind:'user' },content:[{ type:'text',text:'从 DSH 文字入口问：我喜欢什么咖啡？' }] }))
