@@ -374,6 +374,42 @@ vi.mock('../src/welcome-backend.ts', () => ({
   }),
 }))
 
+// Product-only runtime modules: this upstream startup suite asserts shell/Host
+// orchestration, not the WhaleGirl Bot runtime added on top of it.
+vi.mock('../src/bot-runtime.ts', () => ({
+  BotRuntime: class {
+    readConfig() { return {} }
+    setMemory() {}
+    prepare() {}
+    status() { return { ok: true, state: 'ready' } }
+  },
+}))
+vi.mock('../src/memory-runtime.ts', () => ({
+  MemoryRuntime: class {
+    url = null
+    token = null
+    async start() { return { phase: 'unavailable' } }
+    async stop() {}
+    status() { return { phase: 'unavailable' } }
+    async request() { return { json: async () => ({}) } }
+    async restart() {}
+    publishDescriptor() {}
+  },
+}))
+vi.mock('../src/pet-runtime.ts', () => ({
+  ProductPet: class {
+    async start() {}
+    updateBehavior() {}
+    async configure() {}
+    async stop() {}
+  },
+}))
+vi.mock('../src/bot-config-server.ts', () => ({
+  startBotConfigServer: async () => ({ port: 0, token: 'test-token', close: async () => {} }),
+}))
+vi.mock('../src/bot-host-environment.ts', () => ({ botHostEnvironment: () => ({}) }))
+vi.mock('../src/secret-store.ts', () => ({ DshCredentialStore: class { get() { return '' } } }))
+
 
 /** Product main.ts registers signal handlers on process; a plain spread loses them. */
 function stubProcess(overrides: Record<string, unknown>): void {

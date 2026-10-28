@@ -1,12 +1,17 @@
 vi.mock('../src/web-document.ts', () => ({ authenticateWebHost: async () => 'test-cookie', serveWebDocument: vi.fn(), forwardWebRequest: vi.fn() }))
 /** Welcome startup uses the Host before transitioning to the workspace. */
 
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { afterEach, expect, it, vi } from 'vitest'
 import type { BrowserWindowConstructorOptions } from 'electron'
 import type { DesktopLocale } from '../src/locale.ts'
 import type { AccountView } from '@deepseek-ai/dsh-deepseek-account/types'
 import type { WelcomeOperations } from '../src/welcome-api.ts'
 import { DESKTOP_IPC } from '../src/ipc.ts'
+
+const userDataDirectory = mkdtempSync(join(tmpdir(), 'dsh-welcome-user-data-'))
 
 const state = vi.hoisted(() => ({
   appListeners: new Map<string, (...args: unknown[]) => void>(),
@@ -61,7 +66,7 @@ vi.mock('electron', () => ({
     getVersion: () => '1.0.0',
     setAboutPanelOptions: vi.fn(),
     getAppPath: () => '/development-app',
-    getPath: (name: string) => name === 'userData' ? '/desktop-user-data' : `/development-${name}`,
+    getPath: (name: string) => name === 'userData' ? userDataDirectory : `/development-${name}`,
     setAppLogsPath: vi.fn(),
     getPreferredSystemLanguages: () => ['en-US'],
     on: (name: string, callback: (...args: unknown[]) => void) => { state.appListeners.set(name, callback) },
@@ -114,7 +119,8 @@ vi.mock('../src/project-manager.ts', () => ({ DesktopProjectManager: class {
   applyRelease = vi.fn(async () => {})
   canRecoverProfile = vi.fn(() => true)
 } }))
-vi.mock('../src/host-process.ts', () => ({
+vi.mock('../src/host-process.ts', async importOriginal => ({
+  ...await importOriginal<typeof import('../src/host-process.ts')>(),
   DesktopHostProcess: class {
     start = state.startHost
     stop = state.stopHost
@@ -144,6 +150,42 @@ vi.mock('../src/welcome-backend.ts', () => ({
     },
   }),
 }))
+
+// Product-only runtime modules: this upstream startup suite asserts shell/Host
+// orchestration, not the WhaleGirl Bot runtime added on top of it.
+vi.mock('../src/bot-runtime.ts', () => ({
+  BotRuntime: class {
+    readConfig() { return {} }
+    setMemory() {}
+    prepare() {}
+    status() { return { ok: true, state: 'ready' } }
+  },
+}))
+vi.mock('../src/memory-runtime.ts', () => ({
+  MemoryRuntime: class {
+    url = null
+    token = null
+    async start() { return { phase: 'unavailable' } }
+    async stop() {}
+    status() { return { phase: 'unavailable' } }
+    async request() { return { json: async () => ({}) } }
+    async restart() {}
+    publishDescriptor() {}
+  },
+}))
+vi.mock('../src/pet-runtime.ts', () => ({
+  ProductPet: class {
+    async start() {}
+    updateBehavior() {}
+    async configure() {}
+    async stop() {}
+  },
+}))
+vi.mock('../src/bot-config-server.ts', () => ({
+  startBotConfigServer: async () => ({ port: 0, token: 'test-token', close: async () => {} }),
+}))
+vi.mock('../src/bot-host-environment.ts', () => ({ botHostEnvironment: () => ({}) }))
+vi.mock('../src/secret-store.ts', () => ({ DshCredentialStore: class { get() { return '' } } }))
 vi.mock('node:fs/promises', async importOriginal => ({
   ...await importOriginal<typeof import('node:fs/promises')>(),
   readFile: vi.fn(async () => '{}'),

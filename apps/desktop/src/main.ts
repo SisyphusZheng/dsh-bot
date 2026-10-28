@@ -330,6 +330,9 @@ async function main(): Promise<void> {
     // DSH/WHALEGIRL/NISSE values, including NISSE_DSH_HOME. An override
     // here could point a packaged app at the user's unrelated ~/.dsh profile.
     for (const name of Object.keys(process.env)) {
+      // Keep the build identity: it labels account requests and cannot redirect
+      // paths or credentials, unlike the inherited home/profile overrides below.
+      if (name === 'DSH_CLIENT_VERSION') continue
       if (/^(?:DSH|WHALEGIRL|NISSE)_/u.test(name)) Reflect.deleteProperty(process.env, name)
     }
     delete process.env.ELECTRON_RUN_AS_NODE

@@ -23,7 +23,7 @@
 | V001-01 可行动诊断 | IN-PROGRESS | 新增 `voice_errors.py`（分类、脱敏、`diagId`、`/health` 最小投影）；Worker ASR/TTS/会话失败接入分类与日志；supervisor 去掉 300 字截断并做跨 chunk 密钥脱敏；桌宠侧分类气泡、诊断 ID、就地“重试”动作已接线。剩余：真实 DashScope 故障注入/恢复回归，以及 UI 端到端验收。 |
 | V001-02 代理/NO_PROXY | IN-PROGRESS | DashScope ASR/TTS WebSocket 显式 `proxy=None`（不采用 macOS 系统 SOCKS）；新增行为测试断言两种 provider 连接均传 `proxy=None`。剩余：系统代理开启下的真机 DashScope 复测与故障注入矩阵。 |
 | V001-05 声学/过滤 | IN-PROGRESS | 修复欢迎语子串误过滤：`_input_noise` 与最终转写回声过滤改为“播放窗口 + 长连续相似”，`你好/我在/想聊什么/是/否` 可提交，完整/长片段回声仍丢弃；新增两条回归测试。剩余：真实外放/耳机/连续 10 轮/抢话验收。 |
-| V001-11 测试入口 | IN-PROGRESS | `verify-local.sh` 并入 `host-client-bundle`、`development-project`、`pet-voice-route` 与新增 Node/Python 测试；修复启动 spec 的 Electron mock（`app.setName/commandLine/setPath`）与 process 事件桩。**阻塞**：`main-startup.spec.ts`（packaged=true 分支）与 `welcome-startup.spec.ts` 仍因产品主进程新增的 BotRuntime/MemoryRuntime/ProductPet 启动路径未被上游 harness mock 覆盖而超时/报错；未把它们计入默认入口，待补齐产品模块 mock 后再并入。 |
+| V001-11 测试入口 | IN-PROGRESS | `verify-local.sh` 并入 `host-client-bundle`、`development-project`、`pet-voice-route` 与新增 Node/Python 测试；启动 spec 的 Electron mock（`app.setName/commandLine/setPath`）、`process` 事件桩、`host-process` 原样导出、临时真实 userData、产品运行时模块（BotRuntime/MemoryRuntime/ProductPet/bot-config-server/bot-host-environment/secret-store）桩均已补齐。**修复的产品缺陷**：packaged 模式的环境清理原先删除了 `DSH_CLIENT_VERSION`（账号请求的构建身份），现保留该变量且仍清理 home/profile 覆盖；`main-startup` 的 packaged 用例由超时转为通过。当前 `main-startup.spec.ts` **101/125 通过、24 失败 + 2 快照失败**，失败集中在上游菜单/退出确认/窗口恢复预期与产品 main.ts 差异；`welcome-startup.spec.ts` 仍 0/2（产品欢迎流程触发条件与上游 harness 不一致）。两个 spec 暂不计入默认入口，分类结果保留，待逐条对齐后回填。 |
 | V001-03/04 设置范围与旧 Provider | NOT-STARTED | 下一轮审计保存设置的调用路径与旧 Provider 可选面。 |
 | V001-07 安全默认 | NOT-STARTED | 已在语音链路实现“默认 hold、未按键不开麦”现状核对；仍需逐项验收。 |
 | V001-08 health/审批 unavailable | NOT-STARTED | `/health` 已改为最小投影（`last_error` 仅 kind/summary/diagId/retryable/source/at）；审批无接收者与 tokenless 路由待审计。 |
@@ -37,11 +37,11 @@
 - Node：`tests 51 / pass 51 / fail 0`（含新增 `voice-diagnostics.test.mjs`）。
 - `pnpm run typecheck`：`5 passed, 0 failed`。
 - `pnpm run build`：`9 passed, 0 failed`，`EXIT=0`。
-- Vitest 定向：`pet-runtime`、`host-client-bundle`、`development-project`、`pet-voice-route` 通过；两个启动 spec 的阻塞见 V001-11。
+- Vitest 定向：`pet-runtime`、`host-client-bundle`、`development-project`、`pet-voice-route` 通过；启动 spec 进展见 V001-11（`main-startup` 101/125，`welcome-startup` 0/2，未计为通过）。
 - 真实 DashScope 复测（系统 SOCKS 开启、无 NO_PROXY）：`proxy=None` 下 ASR/TTS 均返回 `session.created`；默认（不传 `proxy=None`）复现 `connecting through a SOCKS proxy requires python-socks`。分类器将该原始错误归为 `proxy` 并生成 `diagId`。
 
 ## 已知限制 / 接下来
 
-1. 先补 `main-startup`/`welcome-startup` 的产品模块 mock（BotRuntime/MemoryRuntime/ProductPet），再把两个 spec 并入 `verify-local.sh`。
+1. `main-startup` 剩余失败按类别处理：上游菜单/退出确认/窗口恢复预期 vs 产品 main.ts 差异（需更新预期或补产品分支 mock），`welcome-startup` 需按产品欢迎触发条件对齐 harness；全部通过后再回填 `verify-local.sh`。
 2. 完成 V001-02 的真实 DashScope 系统代理矩阵与 V001-01 的 UI 端到端重试验收。
 3. 继续 V001-03/04/07/08/09 审计与修复，然后进入 V001-10 版本收尾、单一候选 DMG 构建与 `accept-macos.sh` + 声学验收。
