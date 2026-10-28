@@ -1,11 +1,14 @@
 version: 2
 
+# 0.0.1 local acceptance freeze: open-pull-requests-limit: 0 stops version-update PRs.
+# Remove these three lines (or restore a positive limit) to resume Dependabot version updates.
 updates:
   - package-ecosystem: "npm"
     directory: "/"
     exclude-paths:
       # Vendored Cordis sources follow vendor/README.md instead of registry updates.
       - "vendor/**"
+    open-pull-requests-limit: 0
     schedule:
       interval: "cron"
       cronjob: "0 4 * * *"
@@ -18,6 +21,7 @@ updates:
 
   - package-ecosystem: "uv"
     directory: "/python/sdk"
+    open-pull-requests-limit: 0
     schedule:
       interval: "cron"
       cronjob: "0 4 * * *"
@@ -30,6 +34,7 @@ updates:
 
   - package-ecosystem: "github-actions"
     directory: "/"
+    open-pull-requests-limit: 0
     schedule:
       interval: "cron"
       cronjob: "0 4 * * *"
