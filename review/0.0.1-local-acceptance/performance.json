@@ -1,0 +1,30 @@
+{
+  "measuredAt": "2026-10-28T05:16:18.686Z",
+  "machine": "Apple Silicon macOS (local)",
+  "dmg": {
+    "candidate": 702145159,
+    "beta": 779421007,
+    "deltaBytes": -77275848,
+    "deltaPercent": -9.91
+  },
+  "app": {
+    "candidate": "2.1G",
+    "beta": "2.3G"
+  },
+  "startupMs": {
+    "candidate": [
+      1283,
+      1327,
+      1366
+    ],
+    "beta": [
+      6101,
+      1283,
+      1281
+    ],
+    "candidateMedian": 1327,
+    "betaMedian": 1283,
+    "note": "first beta run 6101ms is a cold-cache outlier; runs 2-3 are 1283/1281ms. Candidate runs 1283/1327/1366ms. Difference is within noise (<4%)."
+  },
+  "method": "packaged app, isolated HOME/user-data, wait-agent-ready.mjs until health.agent.ready, 3 runs each"
+}
