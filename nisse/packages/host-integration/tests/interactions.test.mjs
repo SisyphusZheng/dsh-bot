@@ -34,3 +34,36 @@ test('answer validation rejects omitted ids, repeated selections and extra choic
   assert.deepEqual(validateAnswer(questions,answer),answer)
   assert.deepEqual(validateAnswer([{id:'text',question:'备注'}],{answers:[{id:'text',selected:[],custom:' 无糖 '}]}),{answers:[{id:'text',selected:[],custom:'无糖'}]})
 })
+test('no DSH answerer fails closed promptly instead of waiting for the approval timeout', async () => {
+  const events=[]
+  const mirror=createInteractionMirror({
+    emit:(...x)=>events.push(x),
+    forward:async()=>{throw new Error('No DSH answerer')},
+    approvalTimeoutMs:60_000,
+    hasLocalUi:()=>false,
+    noAnswererGraceMs:20,
+  })
+  const started=Date.now()
+  assert.equal(await mirror.ask('approval',{agent:source().agent,toolName:'write'}),'cancelled')
+  assert.ok(Date.now()-started<5_000)
+  assert.equal(events.filter(x=>x[0]==='approval.decided').length,1)
+  assert.equal(mirror.snapshot().length,0)
+  mirror.dispose()
+})
+test('a pet UI connecting inside the no-answerer grace can still answer', async () => {
+  let local=false
+  const mirror=createInteractionMirror({
+    emit(){},
+    forward:async()=>{throw new Error('No DSH answerer')},
+    approvalTimeoutMs:60_000,
+    hasLocalUi:()=>local,
+    noAnswererGraceMs:100,
+  })
+  const pending=mirror.ask('approval',{agent:source().agent,toolName:'write'})
+  await new Promise(resolve=>setTimeout(resolve,10))
+  local=true
+  const request=mirror.snapshot()[0]
+  assert.equal(mirror.answer(request.id,'session','allowed-once'),true)
+  assert.equal(await pending,'allowed-once')
+  mirror.dispose()
+})

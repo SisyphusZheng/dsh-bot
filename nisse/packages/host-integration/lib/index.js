@@ -312,6 +312,8 @@ export function apply(ctx, config = {}) {
     forward: (event, request) => ctx.waterfall(scopeTarget(request.agent, request.agent), event, request, () => Promise.reject(new Error('No DSH answerer'))),
     emit: push,
     userQuestions: () => ctx.get?.('userQuestions'),
+    // The pet bridge is the product UI; SSE subscribers are its connected pages.
+    hasLocalUi: () => sseSubscribers.size > 0,
   })
 
   function continuedQuestions() {

@@ -25,7 +25,14 @@ export function validateAnswer(questions, value) {
 }
 
 /** One bridge instance, with private requests and a cancellation lifetime for both UIs. */
-export function createInteractionMirror({ forward, emit, userQuestions, approvalTimeoutMs = 120000 }) {
+export function createInteractionMirror({
+  forward,
+  emit,
+  userQuestions,
+  approvalTimeoutMs = 120000,
+  hasLocalUi = () => true,
+  noAnswererGraceMs = 750,
+}) {
   const pending = new Map()
   const forwarded = new WeakSet()
   let disposed = false
@@ -58,7 +65,7 @@ export function createInteractionMirror({ forward, emit, userQuestions, approval
         throw Object.assign(new Error('Question cancelled'), { code: 'ASK_ABORTED' })
       }
       const id = randomUUID(), controller = new AbortController()
-      let resolve, reject, timer
+      let resolve, reject, timer, noAnswererTimer
       const result = new Promise((yes, no) => { resolve = yes; reject = no })
       const abort = () => item.finish(null)
       const item = {
@@ -66,6 +73,7 @@ export function createInteractionMirror({ forward, emit, userQuestions, approval
         finish(answer) {
           if (!pending.delete(id)) return
           clearTimeout(timer)
+          clearTimeout(noAnswererTimer)
           source.signal?.removeEventListener('abort', abort)
           controller.abort()
           emit(kind === 'approval' ? 'approval.decided' : 'question.decided', {
@@ -95,7 +103,13 @@ export function createInteractionMirror({ forward, emit, userQuestions, approval
           if (['allowed-once', 'rejected', 'cancelled'].includes(answer)) item.finish(answer === 'cancelled' ? null : answer)
         } else item.finish(validateAnswer(source.questions, answer))
       }).catch(() => {
-        // No connected DSH answerer leaves the pet as the live UI; cancellation ends both.
+        // The official waterfall reports "No DSH answerer". If the pet UI is also not
+        // connected, fail closed after a short grace instead of holding the Agent for
+        // the full approval timeout. A late pet connection inside the grace still wins.
+        if (hasLocalUi()) return
+        noAnswererTimer = setTimeout(() => {
+          if (!hasLocalUi() && pending.has(id)) item.finish(null)
+        }, Math.max(0, Number(noAnswererGraceMs) || 0))
       })
       return result
     },
