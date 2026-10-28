@@ -240,7 +240,6 @@ export function createElectronBuilderConfig(
     afterPack: async context => {
       const { verifyDesktopRuntime } = await import('../lib/types/runtime-tree.js')
       const resourcesDir = context.packager.getResourcesDir(context.appOutDir)
-      if (resolvedPlatform === 'darwin' && unsigned) signAdHocResources(resourcesDir)
       if (resolvedPlatform === 'darwin' && update !== undefined) {
         await writeMacOSAppUpdateConfig(resourcesDir, resolveMacOSAppUpdateFeed(context.packager.config.publish),
           context.packager.appInfo.updaterCacheDirName)
@@ -251,6 +250,7 @@ export function createElectronBuilderConfig(
       const dshRuntimeVersion = JSON.parse(readFileSync(fileURLToPath(new URL('../../../package.json', import.meta.url)), 'utf8')).version
       await verifyDesktopRuntime(buildPaths.dsh,
         preparedRuntimeVersion ?? dshRuntimeVersion, { platform: resolvedPlatform, arch: resolvedArch })
+      if (resolvedPlatform === 'darwin' && unsigned) signAdHocResources(resourcesDir)
       // Unsigned Windows builds skip electron-builder's afterSign hook.
       if (packagesWindows && unsigned) await verifyWindowsAsarUnpack(buildPaths.dsh, resourcesDir, windowsCode)
     },

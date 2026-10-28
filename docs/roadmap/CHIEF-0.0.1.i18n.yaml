@@ -1,0 +1,22 @@
+# Bilingual-pair consistency record for CHIEF-0.0.1.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/roadmap/CHIEF-0.0.1.md
+/chief-companion-0-0-1-interaction-and-delivery-contract:
+  en: db334a6464f62490
+  zh: 1d377fa523fc89a4
+/chief-companion-0-0-1-interaction-and-delivery-contract/product-identity:
+  en: 36d6c86ca19a1162
+  zh: 0361e8cc322aebdf
+/chief-companion-0-0-1-interaction-and-delivery-contract/0-0-1-interaction-contract:
+  en: 8abbd9d68456c4c7
+  zh: a48921142ef49de5
+/chief-companion-0-0-1-interaction-and-delivery-contract/current-issue-mapping:
+  en: 48318207a388a7eb
+  zh: 17a154b35898b96b
+/chief-companion-0-0-1-interaction-and-delivery-contract/local-mac-execution:
+  en: e461ceafc5c1e9c1
+  zh: 51620882fd007611
+/chief-companion-0-0-1-interaction-and-delivery-contract/later-versions:
+  en: cff48ec6ce239a1b
+  zh: e20b650875057700

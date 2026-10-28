@@ -78,7 +78,10 @@ try {
  const box=await option.boundingBox();assert.ok(box)
  await option.hover();await page.mouse.down()
  assert.notEqual(await option.evaluate(el=>getComputedStyle(el).boxShadow),'none','Pointer down has no feedback')
- await page.mouse.up();await renders
+ await page.mouse.up()
+ // The binding schedules a renderer update after pointer-up; wait for its observable result.
+ await bubble.waitForFunction(()=>document.querySelector('#bubble-choices button')?.getAttribute('aria-pressed')==='true',null,{timeout:3000})
+ await renders
  assert.equal(await option.getAttribute('aria-pressed'),'true')
  await page.screenshot({path:join(output,'choice-selected.png')})
  await bubble.getByRole('button',{name:'其他回答',exact:true}).click();await renders
