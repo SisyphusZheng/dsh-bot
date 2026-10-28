@@ -78,6 +78,7 @@ try {
   const headers={authorization:`Bearer ${descriptor.token}`,'content-type':'application/json'}
   const preview = await (await fetch(`http://127.0.0.1:${descriptor.port}/persona/preview`, {headers})).json()
   const responseStyle = readFileSync(join(root,'product/tools/tests/expected/persona-response-style.txt'),'utf8').trim()
+  const detailedStyle = readFileSync(join(root,'product/tools/tests/expected/persona-response-detailed.txt'),'utf8').trim()
   assert.ok(preview.dshPrompt.includes(responseStyle),'Persona response style snapshot differs')
   assert.match(JSON.stringify(requests[0].messages ?? requests[0].system), /任务完成或汇报时/)
   const post=(path,body)=>fetch(`http://127.0.0.1:${descriptor.port}${path}`,{method:'POST',headers,body:JSON.stringify(body),signal:AbortSignal.timeout(30000)})
@@ -125,7 +126,12 @@ try {
     const customPreview = await (await fetch(`http://127.0.0.1:${descriptor.port}/persona/preview`,{headers})).json()
     assert.ok(customPreview.dshPrompt.includes(responseStyle))
     assert.match(customPreview.dshPrompt,/自定义人格完整保留/)
+    writeFileSync(join(home,'bot/config.json'),JSON.stringify({llm:{...updated,apiKey:''},persona:{},app:{responseStyle:'detailed'},approval:{mode:'ask-before-acting'}}))
+    const detailedPreview = await (await fetch(`http://127.0.0.1:${descriptor.port}/persona/preview`,{headers})).json()
+    assert.ok(detailedPreview.dshPrompt.includes(detailedStyle),'detailed response style was not applied')
+    assert.equal(detailedPreview.dshPrompt.includes(responseStyle),false,'concise rule leaked into detailed style')
     console.log('PASS production preset tools; real write approval allow/reject/cancel; live model/persona preserves PID, port and Session')
+    console.log('PASS concise/detailed response style reaches the live persona prompt')
   }
   assert.ok(memoryTrace.some(x=>x.path==='/search'&&x.body.query),'no per-turn recall')
   assert.ok(memoryTrace.every(x=>x.authorization==='Bearer fixture-memory-token'))

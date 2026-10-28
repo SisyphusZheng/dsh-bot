@@ -129,7 +129,8 @@ var SCHEMA = [
   {id:'permissions', label:'权限', kind:'permissions'},
   {id:'app', label:'应用程序', kind:'fields', fields:[
     {key:'autoStart', label:'开机启动', type:'checkbox'},
-    {key:'keepRunning', label:'窗口关闭后保持运行', type:'checkbox'}
+    {key:'keepRunning', label:'窗口关闭后保持运行', type:'checkbox'},
+    {key:'responseStyle', label:'回答风格', type:'select', options:[['concise','简洁（默认）'],['detailed','详细']]}
   ]},
   {id:'memory', label:'记忆', kind:'memory'}
 ];

@@ -78,7 +78,7 @@ export interface BotConfig {
   llm: { provider: string; model: string; baseUrl: string; apiKey: string }
   agent: { mode: 'chat-only' | 'dsh'; workspace: string; session: string }
   persona: BotPersona
-  app: { autoStart: boolean; keepRunning: boolean }
+  app: { autoStart: boolean; keepRunning: boolean; responseStyle: 'concise' | 'detailed' }
   memory: { enabled: boolean }
   approval: BotApprovalSettings
   behavior: BotBehaviorSettings
@@ -105,7 +105,7 @@ export const DEFAULT_BOT_CONFIG: BotConfig = {
     instructions: '事实与执行结果必须来自 DSH；不编造执行结果。',
     promptOverride: '',
   },
-  app: { autoStart: true, keepRunning: true },
+  app: { autoStart: true, keepRunning: true, responseStyle: 'concise' },
   memory: { enabled: true },
   approval: { mode: DEFAULT_APPROVAL_MODE, onceMinutes: DEFAULT_APPROVAL_ONCE_MINUTES },
   behavior: { pauseOnInput: true, allowScreenView: false },
@@ -193,6 +193,7 @@ export function normalizeBotConfig(input: unknown): BotConfig {
     app: {
       autoStart: appSection.autoStart !== false,
       keepRunning: appSection.keepRunning !== false,
+      responseStyle: appSection.responseStyle === 'detailed' ? 'detailed' : 'concise',
     },
     memory: { enabled: memorySection.enabled !== false },
     approval: {
