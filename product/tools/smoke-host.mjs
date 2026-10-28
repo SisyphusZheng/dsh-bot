@@ -120,6 +120,18 @@ try {
     }
     assert.equal((await post('/policies',{toolName:'write'})).status,400)
     console.log('PASS exact approval arguments, explicit persistent grant, reuse, changed-argument reapproval, duplicate rejection and revocation through real Host')
+    // Media disconnect detaches the listener; admitted Agent work keeps its own lifetime.
+    nextTool={file_path:join(home,'detached-voice.txt'),content:'detached-completed'}
+    const detachController=new AbortController()
+    const detached=await fetch(`http://127.0.0.1:${descriptor.port}/voice/turn`,{method:'POST',headers,body:JSON.stringify({text:'Detached media task fixture'}),signal:detachController.signal})
+    const reader=detached.body.getReader();let pendingApproval=null,detachedText=''
+    try {while(!pendingApproval){const chunk=await reader.read();assert.equal(chunk.done,false);detachedText+=new TextDecoder().decode(chunk.value);for(const line of detachedText.split('\n').slice(0,-1)){const event=JSON.parse(line);if(event.type==='approval')pendingApproval=event}}}finally{detachController.abort();reader.releaseLock()}
+    const exact=(await(await get('/interactions')).json()).requests.find(item=>item.id===pendingApproval.id);assert.ok(exact,'Disconnect cancelled the pending official approval')
+    assert.equal((await post('/approval',{id:exact.id,sessionId:exact.sessionId,decision:'allow'})).status,200)
+    const completionDeadline=Date.now()+15000;let detachedState
+    do{detachedState=await(await get('/task-state')).json();if(detachedState.status==='idle'&&existsSync(join(home,'detached-voice.txt')))break;await new Promise(r=>setTimeout(r,20))}while(Date.now()<completionDeadline)
+    assert.equal(detachedState.status,'idle');assert.equal(readFileSync(join(home,'detached-voice.txt'),'utf8'),'detached-completed')
+    console.log('PASS media disconnect preserves admitted Agent task and pending approval; tool completes independently')
     assert.equal((await post('/cancel', {sessionId:'stale-session'})).status,409)
     assert.equal((await post('/cancel', {clientTurnId:'stale-request'})).status,409)
     assert.equal((await post('/cancel', {turn:-999})).status,409)

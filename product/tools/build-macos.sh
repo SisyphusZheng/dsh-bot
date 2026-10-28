@@ -48,6 +48,7 @@ PACKAGED_APP=$(find "$ARTIFACT_DIR" -type d -name 'dsh-bot.app' -print -quit)
 [[ -n "$PACKAGED_APP" ]] || { echo 'Packaged app missing'; exit 1; }
 # Record signed bytes externally so the application signature remains valid.
 node product/memory/scripts/gen-version.mjs "$PACKAGED_APP/Contents/Resources/memory" "$STAGE/evidence/packaged-memory.json"
+node product/tools/verify-macos-app.mjs "$PACKAGED_APP" > "$STAGE/evidence/native-signatures.json"
 node product/tools/macos-artifacts.mjs app "$PACKAGED_APP"
 DMG=$(find "$ARTIFACT_DIR" -maxdepth 1 -name "dsh-bot-*-$SHORT_SHA-mac-arm64-unsigned.dmg" -print -quit)
 [[ -n "$DMG" ]] || { echo 'DMG for this commit is missing'; exit 1; }

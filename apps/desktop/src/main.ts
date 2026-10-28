@@ -492,6 +492,7 @@ async function main(): Promise<void> {
       if (!response.ok) throw new Error(`Bot 设置请求失败：${response.status}`)
       return reply
     },
+    quit: () => app.quit(),
     toggleMain:(reveal = false)=>{
       const window=mainWindow ?? createMainWindow()
       if(!reveal&&window.isVisible()&&window.isFocused())window.hide()
@@ -499,7 +500,7 @@ async function main(): Promise<void> {
         if (!enteredWorkspace) void enterWorkspace().catch((error: unknown) => reportFatal(error, 'main'))
         else { window.show(); window.focus() }
         void readyBridge().then(async (descriptor) => {
-          const response = await net.fetch(`http://127.0.0.1:${descriptor.port}/health`)
+          const response = await net.fetch(`http://127.0.0.1:${descriptor.port}/health`, { headers: { authorization: `Bearer ${descriptor.token}` } })
           const health = await response.json() as { agent?: { ready?: boolean; sessionId?: string } }
           const sessionId = health.agent?.sessionId
           if (!sessionId || window.isDestroyed()) return

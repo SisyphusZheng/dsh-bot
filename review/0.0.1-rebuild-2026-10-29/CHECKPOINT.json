@@ -331,8 +331,10 @@
     },
     {
       "id": "S4",
-      "state": "NOT-STARTED",
-      "scope": "桌宠正常退出、只读任务状态检查、安全恢复；Mac正常open启动、内层签名、稳定安装和进程归属检查。"
+      "state": "IMPLEMENTED",
+      "scope": "桌宠正常退出、只读任务状态检查、安全恢复；Mac正常open启动、内层签名、稳定安装和进程归属检查。",
+      "evidence": "S4.json",
+      "nativeAcceptance": "BLOCKED-ENVIRONMENT"
     },
     {
       "id": "S5",

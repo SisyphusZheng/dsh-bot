@@ -60,5 +60,9 @@ test('native acceptance persists failure and rejects an incomplete overall PASS'
     const result = JSON.parse(readFileSync(join(dir, 'RESULTS.json'), 'utf8'))
     assert.equal(result.status, 'FAIL'); assert.equal(result.phases['first-web-boot-and-navigation'], 'FAIL')
     assert.equal(result.sourceCommit, 'fixture-commit')
+    for (const phase of ['first-bridge','first-web-boot-and-navigation','first-memory','memory-write-and-cross-session','first-shutdown','first-descriptor-cleanup','restart-bridge','restart-web-boot-and-navigation','restart-memory','memory-restart-recall','restart-shutdown','restart-descriptor-cleanup']) assert.equal(run(phase,'PASS').status,0)
+    assert.notEqual(run('overall','PASS').status,0,'Direct-binary acceptance must not count as normal launch')
+    for (const phase of ['native-signatures','first-launchservices','restart-launchservices']) assert.equal(run(phase,'PASS').status,0)
+    assert.equal(run('overall','PASS').status,0)
   } finally { rmSync(dir, { recursive: true, force: true }) }
 })

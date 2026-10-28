@@ -30,9 +30,9 @@
     "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
   },
   "apps/desktop/scripts/electron-builder-config.mjs": {
-    "sha": "11af3884c9381dde284ea52f233056dd95d7b89b",
+    "sha": "4339e765f15831752b23c0b0e0ef2d6f52b2906b",
     "mode": "100644",
-    "reason": "Restore pet presentation, native wake/shortcut dependencies and owned Electron integration; DSH core unchanged"
+    "reason": "Product package resources and independent version; repair invalid internal ad-hoc native resource signatures before sealing the outer App"
   },
   "apps/desktop/scripts/package-macos.ts": {
     "sha": "e2bfef9f57265cab5471e3785759aa9b66c66aff",
@@ -65,9 +65,9 @@
     "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
   },
   "apps/desktop/src/main.ts": {
-    "sha": "b099332f8d93d2fb8b2229042c4548fd6c2c05f9",
+    "sha": "79f68882098d90a99497dc5409ee2081047687ab",
     "mode": "100644",
-    "reason": "Product desktop integration: keep build identity through packaged env scrub and preserve credential-driven voice resume"
+    "reason": "Product integration: normal shared app quit and authenticated pet Session navigation; preserve build identity and voice resume"
   },
   "apps/desktop/src/welcome-api.ts": {
     "sha": "3f45fb89db50547313105d68cd607d4667aedb2d",

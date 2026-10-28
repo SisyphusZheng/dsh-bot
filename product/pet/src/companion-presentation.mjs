@@ -182,7 +182,7 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
       if (event.type === 'error') {
         working = false
         animation({ id: `error:${event.ioSeq}`, name: 'failed' })
-        notice(humanizeFailure(event.data?.message), 'error', 9000, '', { secondary: [{ id: 'open', label: '打开主窗口' }] })
+        notice(humanizeFailure(event.data?.message), 'error', 9000, '', { secondary: [{ id: 'inspect-task', label: '检查任务状态' }, { id: 'open', label: '打开主窗口' }] })
       }
     },
     voice(state) { voice = state; animation() },
@@ -191,6 +191,7 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
       if (stopped) return
       if (action.type === 'open') return send('open')
       if (action.type === 'secondary' && action.id === 'open') return send('open')
+      if (action.type === 'secondary' && action.id === 'inspect-task') return send('inspect-task')
       if (manager && !requests.length && action.requestId === manager.id && !busy) {
         if (action.type === 'secondary' && action.id === 'grant-close') { manager = null; managerEpoch++; hide(); return }
         const rule = manager.rules.find(item => item.id === action.id)

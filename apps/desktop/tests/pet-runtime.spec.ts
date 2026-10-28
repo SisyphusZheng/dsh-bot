@@ -7,6 +7,7 @@ const state = vi.hoisted(() => ({
   urls: [] as string[],
   events: [] as { channel: string; data: { phase?: string; offerUrl?: string } }[],
   destroyed: false,
+  menu: [] as { label?: string; click?: () => void }[],
   owners: [] as object[],
   handlers: new Map<string, (event: { sender: object }, value?: unknown) => unknown>(),
 }))
@@ -53,7 +54,7 @@ vi.mock('electron', () => ({
     getDisplayMatching: () => ({ workArea: { x: 0, y: 0, width: 1000, height: 800 } }),
   },
   powerMonitor: { getSystemIdleTime: () => 100 },
-  Menu: { buildFromTemplate: () => ({ popup() {} }) },
+  Menu: { buildFromTemplate: (items: { label?: string; click?: () => void }[]) => { state.menu = items; return { popup() {} } } },
   session: { fromPartition: () => ({ setPermissionCheckHandler: () => {}, setPermissionRequestHandler: () => {} }) },
   systemPreferences: {},
   globalShortcut: { register: () => true, unregister() {} },
@@ -96,6 +97,7 @@ it('reconnects speech without reloading the pet document and authenticates signa
     join(resources, 'pet/voice-worker-runtime.mjs'),
     `import {writeFileSync} from 'node:fs';export function createVoiceWorkerRuntime({env}){return{async start(){writeFileSync(${JSON.stringify(tokenFile)},env.NISSE_PIPECAT_TOKEN);return{state:'running'}},async stop(){}}}`,
   )
+  let quitRequested = false
   const pet = new ProductPet({
     resources,
     home,
@@ -103,10 +105,15 @@ it('reconnects speech without reloading the pet document and authenticates signa
     appPath: join(root, 'apps/desktop'),
     voicePort: signalingAddress.port,
     toggleMain: () => {},
+    quit: () => { quitRequested = true },
   })
   let stage = 'configure'
   try {
     await pet.start({ voice: { apiKey: 'fake-key' } })
+    state.handlers.get('pet:menu')?.({ sender: state.owners[0]! })
+    expect(state.menu.some(item => item.label === '检查任务状态')).toBe(true)
+    state.menu.find(item => item.label === '退出 dsh-bot')?.click?.()
+    expect(quitRequested).toBe(true)
     await pet.configure({ voice: { apiKey: 'fake-key' } })
     expect(state.events.filter(x => x.channel === 'pet:voice-state').at(-1)?.data.phase).toBe('unconfigured')
     await pet.configure({ llm: { apiKey: 'fixture-model-key' }, voice: { apiKey: 'fake-key', voice: 'Serena' } })

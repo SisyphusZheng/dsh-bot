@@ -110,7 +110,7 @@ test('interrupted upstream failure prose becomes a human notice with a working m
   const payload=f.shown.at(-1)
   assert.match(payload.text,/上次任务被中断/)
   assert.match(payload.text,/打开主窗口/)
-  assert.deepEqual(payload.secondary,[{id:'open',label:'打开主窗口'}])
+  assert.deepEqual(payload.secondary,[{id:'inspect-task',label:'检查任务状态'},{id:'open',label:'打开主窗口'}])
   await f.presentation.action({type:'secondary',id:'open'})
   assert.deepEqual(calls,[['open']])
   f.presentation.stop()

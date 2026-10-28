@@ -1323,7 +1323,7 @@ export function apply(ctx, config = {}) {
         res.writeHead(200, { 'content-type': 'application/x-ndjson', 'cache-control': 'no-cache' })
         res.once('close', () => {
           const owned = voiceSubscribers.delete(subscriber)
-          if(owned && !res.writableEnded)void cancelTurn('voice-disconnect').catch(error=>log('disconnected turn cancellation failed: '+messageOf(error)))
+          if (owned && !res.writableEnded) auditEvent('voice.transport.detached', { sessionId, clientTurnId: requestId, turn: currentTurn })
         })
         voiceSubscribers.add(subscriber)
         try { await submitTurn(body.text, { clientTurnId: requestId, source: 'voice' }) }

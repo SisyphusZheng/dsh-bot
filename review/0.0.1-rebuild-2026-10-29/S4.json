@@ -1,0 +1,64 @@
+{
+  "stage": "S4",
+  "parentCommit": "0e5209c7d8c71739e53cb502ac7f1368565719b3",
+  "changes": [
+    "Right-click exit routes through the existing shared Electron quit flow.",
+    "Read-only authoritative task inspection; no automatic retry or replay of uncertain side effects.",
+    "Authenticate pet double-click Session navigation health request.",
+    "Media disconnect detaches the stream without canceling admitted Agent work.",
+    "Internal unsigned packaging repairs invalid Mach-O resource signatures before outer App sealing; checks inner code separately.",
+    "Mac acceptance requires normal LaunchServices first start/restart, signature checks and bounded ownership/shutdown; Translocation/path spaces covered in fixtures.",
+    "Stable installation helper backs up an existing App only with --replace; no Gatekeeper/quarantine bypass."
+  ],
+  "checks": [
+    {
+      "result": "PASS",
+      "scope": "70 Node tests; signature commands and process attribution use explicit fixtures",
+      "log": "evidence/s4-node.log.gz",
+      "rawSha256": "f479b4f472999873e990c1a031c8525ba05a7652a0764adc917b5430812fbe55",
+      "rawBytes": 6516
+    },
+    {
+      "result": "PASS",
+      "scope": "3 files / 129 tests, shared startup and real pet runtime fixture",
+      "log": "evidence/s4-vitest.log.gz",
+      "rawSha256": "fdef13475450c61eb44ef32357aadae26c57c418373d887309a18b7fee51a65e",
+      "rawBytes": 1374
+    },
+    {
+      "result": "PASS",
+      "scope": "9 production build gates",
+      "log": "evidence/s4a-build.log.gz",
+      "rawSha256": "a2985bc10e809d9f3218f9b08e85254be73007573b75db36948251b6c23bfeff",
+      "rawBytes": 869
+    },
+    {
+      "result": "PASS",
+      "scope": "real compiled Host; detached media preserves pending approval and tool execution; local mock Provider",
+      "log": "evidence/s4-host.log.gz",
+      "rawSha256": "7cc2d374ad641fca1cb72808550c5ead9ea5c4be708c04af5d80ecd248111995",
+      "rawBytes": 862
+    },
+    {
+      "result": "PASS",
+      "scope": "48 voice regression tests",
+      "log": "evidence/s4-python.log.gz",
+      "rawSha256": "b4aa3333b9f0d5091b65e02fe3476cb1dc3c11a04242e20c39993d78077614c1",
+      "rawBytes": 5553
+    },
+    {
+      "result": "PASS",
+      "scope": "16347 official blobs / 36 explicit overrides",
+      "log": "evidence/s4-upstream.log.gz",
+      "rawSha256": "cc129550360be80cee6941fb5991e99404400e2046905cd84ab46f72fc2bf084",
+      "rawBytes": 99
+    }
+  ],
+  "nativeAcceptance": "BLOCKED-ENVIRONMENT",
+  "gatekeeperAndNotarization": "BLOCKED-EXTERNAL",
+  "limitations": [
+    "No DMG built or launched on Linux.",
+    "Explicit retry/continue is not claimed; check task state and side effects in the main window before resubmitting.",
+    "Upstream main-window failure wording is retained; pet failure surface is humanized."
+  ]
+}

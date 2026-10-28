@@ -105,6 +105,7 @@ export class ProductPet {
       appPath: string
       voicePort?: number
       settingsRequest?(path: string, body?: object, method?: string): Promise<Record<string, unknown>>
+      quit?(): void
       toggleMain(reveal?: boolean): void
     },
   ) {}
@@ -143,6 +144,15 @@ export class ProductPet {
       token: string
       pid: number
     }
+  }
+  private async inspectTask(): Promise<void> {
+    try {
+      const response = await this.request('/task-state')
+      if (!response.ok) throw new Error('Unavailable')
+      const state = await response.json() as { waiting?: boolean; status?: string; lastTurn?: { terminal?: string } }
+      const summary = state.waiting ? '任务正在等你处理审批或回答。' : state.status === 'idle' ? (state.lastTurn ? '当前没有任务在执行。上次任务已结束；请确认结果和副作用后再决定是否重试。' : '当前没有任务在执行。') : '任务仍在执行。停止播报不会停止任务；需要取消时请选择「停止任务」。'
+      this.presentation?.notice(summary, 'status', 9000)
+    } catch { this.presentation?.notice('暂时无法确认任务状态。请打开主窗口检查；不会自动重复执行。', 'error', 9000, '', { secondary: [{ id: 'open', label: '打开主窗口' }] }) }
   }
   private request(path: string, body?: object, method?: string): Promise<Response> {
     const d = this.descriptor()
@@ -305,6 +315,7 @@ export class ProductPet {
       animate: payload => this.window?.webContents.send('pet:presentation', payload),
       send: async (path, body) => {
         if (path === 'open') { this.options.toggleMain(true); return }
+        if (path === 'inspect-task') { await this.inspectTask(); return }
         const method = path.startsWith('/policies') ? (body && 'method' in body ? String(body.method) : 'GET') : undefined
         const response = await this.request(path, method === 'DELETE' ? undefined : body, method)
         if (!response.ok) throw Object.assign(new Error(`DSH request failed: ${response.status}`), { stale: response.status === 409 })
@@ -388,8 +399,10 @@ export class ProductPet {
       const active = this.presentation?.state().working === true
       Menu.buildFromTemplate([
         ...(this.experience?.menu() ?? []),
+        { label: '检查任务状态', click: () => { void this.inspectTask() } },
         { label: '管理持续授权…', click: () => { void this.presentation?.managePolicies() } },
         ...(active ? [{ label: '停止任务', click: () => { void this.request('/cancel', { source: 'task-stop' }).catch(() => this.presentation?.notice('停止失败，请打开 DSH 查看。', 'error')) } }] : []),
+        ...(this.options.quit ? [{ type: 'separator' as const }, { label: '退出 dsh-bot', click: () => this.options.quit?.() }] : []),
       ]).popup({ window })
     })
     ipcMain.handle('pet:experience', (e) => { assertOwner(e.sender); return this.experience?.state() })
