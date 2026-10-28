@@ -37,7 +37,9 @@ async def main():
             if kind == 'input_audio_buffer.append' and not seen:
                 assert 'asr' in model and len(base64.b64decode(event['audio'])) > 0
                 seen = True
-                for item, transcript in [('noise-1','嗯。'),('echo-1','你好，我在呢。')]:
+                # Inject the actual welcome, not a short phrase a user may
+                # legitimately repeat after hearing it.
+                for item, transcript in [('noise-1','嗯。'),('echo-1',os.environ['DSH_VOICE_GREETING'])]:
                     await ws.send(json.dumps({'type':'conversation.item.input_audio_transcription.text','item_id':item,'text':transcript,'stash':''}))
                     await ws.send(json.dumps({'type':'conversation.item.input_audio_transcription.completed','item_id':item,'transcript':transcript}))
                 await asyncio.sleep(0.2)

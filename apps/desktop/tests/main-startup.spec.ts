@@ -832,7 +832,8 @@ describe('desktop main startup', () => {
     expect(harness.updateDownload).not.toHaveBeenCalled()
   })
 
-  it('persists opt-in update evidence from the real main entry without private diagnostics', async () => {
+  it('persists opt-in development update evidence without private diagnostics', async () => {
+    harness.app.isPackaged = false
     const directory = mkdtempSync(join(tmpdir(), 'dsh-main-update-journal-'))
     try {
       vi.stubEnv('DSH_DESKTOP_UPDATE_JOURNAL_DIR', directory)
@@ -1244,7 +1245,7 @@ describe('desktop main startup', () => {
     ['win32', [], false],
     ['darwin', ['--updated'], false],
     ['linux', ['--updated'], false],
-  ] as const)('raises the first workspace only for a Windows installer restart (%s, %j)', async (platform, args, raises) => {
+  ] as const)('starts with a hidden workspace and reserves raising for Windows installer restart (%s, %j)', async (platform, args, raises) => {
     stubProcess({ platform, argv: ['desktop', ...args]  })
     await import('../src/main.ts')
     await harness.preparing.promise
@@ -1253,14 +1254,15 @@ describe('desktop main startup', () => {
     harness.prepared.resolve()
     await harness.hostStarted.promise
     harness.hosts[0]!.ready.resolve()
-    await window.shown.promise
-    expect(window.show).toHaveBeenCalledOnce()
+    await harness.navigated.promise
+    await vi.waitFor(() => expect(window.hide).toHaveBeenCalledOnce())
+    expect(window.show).not.toHaveBeenCalled()
+    // A Windows installer restart may raise explicitly; normal startup stays hidden.
     expect(window.moveTop).toHaveBeenCalledTimes(raises ? 1 : 0)
     expect(window.focus).toHaveBeenCalledTimes(raises ? 1 : 0)
     expect(window.setAlwaysOnTop).not.toHaveBeenCalled()
-    if (raises) {
-      expect(window.show.mock.invocationCallOrder[0]).toBeLessThan(window.moveTop.mock.invocationCallOrder[0]!)
-    }
+    harness.app.emit('activate', {}, false)
+    expect(window.show).toHaveBeenCalledOnce()
     window.destroy()
     harness.app.emit('second-instance')
     const replacement = harness.windows[1]!
@@ -1284,10 +1286,15 @@ describe('desktop main startup', () => {
       .toMatchFileSnapshot(`./expected/update-restart-${platform}-${language}.json`)
   })
 
-  /** Like readyForUpdate, but past backend readiness and the workspace reveal, so the Host answers quit inspections. */
+  /** Open the initially hidden workspace explicitly before exercising visible-window actions. */
   async function readyWorkspace() {
     const host = await readyForUpdate()
     await Promise.resolve(invoke(DESKTOP_IPC.boot))
+    const window = harness.windows[0]!
+    await vi.waitFor(() => expect(window.hide).toHaveBeenCalledOnce())
+    harness.app.emit('activate', {}, false)
+    expect(window.show).toHaveBeenCalled()
+    window.hide.mockClear()
     return host
   }
 
@@ -1547,6 +1554,8 @@ describe('desktop main startup', () => {
   })
 
   it('shares the failed-check deadline across focus and resume, while explicit checks reset polling', async () => {
+    // Packaged launches deliberately discard environment-supplied timing overrides.
+    harness.app.isPackaged = false
     vi.stubEnv('DSH_DESKTOP_UPDATE_CHECK_INTERVAL_MS', '1000')
     vi.stubEnv('DSH_DESKTOP_UPDATE_CHECK_MAX_BACKOFF_MS', '4000')
     vi.stubEnv('DSH_DESKTOP_UPDATE_CHECK_JITTER', '0')

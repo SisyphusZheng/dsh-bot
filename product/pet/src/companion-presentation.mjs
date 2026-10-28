@@ -38,8 +38,8 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
   function notice(value, kind = 'status', duration = 4500, capture = '', options = {}) {
     if (stopped || requests.length) return
     cancelTimer()
-    show({ visible: true, kind, text: value, clickThrough: kind !== 'input', ...(kind === 'input' ? { requestId: capture, cancel: { id: 'cancel-capture', label: '取消录音' }, inputLabel: '你说' } : {}), ...options })
-    timer = setTimer(() => { if (!requests.length && !stopped) hide() }, duration)
+    show({ visible: true, kind, text: value, clickThrough: !['input', 'speech'].includes(kind), ...(kind === 'input' ? { requestId: capture, cancel: { id: 'cancel-capture', label: '取消录音' }, inputLabel: '你说' } : {}), ...options })
+    if (duration > 0) timer = setTimer(() => { if (!requests.length && !stopped) hide() }, duration)
   }
   async function submit(request, body) {
     busy = true
@@ -69,6 +69,14 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
   return {
     notice,
     capture(status) {
+      if (stopped) return
+      if (status.kind === 'capture-start' && status.captureId) {
+        captureId = status.captureId
+        captureIdentity = ''
+        clearTimer(captureTimer)
+        notice(status.text || '正在听…', 'input', 0, captureId)
+        return
+      }
       const identity = `${status.captureId}:${status.utteranceId || ''}`
       if (status.kind === 'input' && expiredInputs.has(identity)) return
       if (status.kind === 'input' && status.captureId && identity !== captureIdentity) {
@@ -98,8 +106,8 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
     event(event) {
       if (stopped) return
       if (event.type === 'turn.started' || event.type === 'turn.accepted') { text = ''; if (!working) startedAt = Date.now(); working = true; inputSource = event.data?.inputSource || (event.type === 'turn.accepted' ? 'desktop' : inputSource); captureId = ''; clearTimer(captureTimer); animation() }
-      if (event.type === 'assistant.delta') { text += event.data?.text || ''; notice(text.slice(-400), 'speech', 6500) }
-      if (event.type === 'assistant.message' && event.data?.text) notice(event.data.text.slice(-400), 'speech', 6500)
+      if (event.type === 'assistant.delta') { text += event.data?.text || ''; notice(text, 'speech', 6500) }
+      if (event.type === 'assistant.message' && event.data?.text) notice(event.data.text, 'speech', 6500)
       if (event.type === 'tool.call') { const payload = activityBubblePayload(event); if (payload) notice(payload.text, 'activity') }
       if (event.type === 'turn.ended') {
         working = false

@@ -219,7 +219,11 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-it.each([false, true])('starts welcome onboarding without carrying update focus into login or skip (Windows update=%s)', async (updated) => {
+it.each([
+  { updated: false, accountWelcome: true },
+  { updated: true, accountWelcome: true },
+  { updated: false, accountWelcome: false },
+])('starts account welcome only when opted in (account=$accountWelcome, update=$updated)', async ({ updated, accountWelcome }) => {
   vi.resetModules()
   vi.clearAllMocks()
   state.preference = 'zh'
@@ -229,6 +233,9 @@ it.each([false, true])('starts welcome onboarding without carrying update focus 
   if (updated) vi.stubGlobal('process', { ...process, once: process.once.bind(process), on: process.on.bind(process), platform: 'win32', argv: ['desktop', '--updated'] })
   vi.useFakeTimers()
   vi.stubEnv('DSH_CLIENT_VERSION', '1.2.3')
+  // dsh-bot defaults to local BYOK onboarding in the pet. This optional account
+  // flow is reachable only through the documented upstream-debug switch.
+  vi.stubEnv('WHALE_BOT_LOCAL_ONLY', accountWelcome ? '0' : '1')
   vi.stubEnv('DSH_DESKTOP_DEV_PROJECT_DIR', '/development-profile')
   vi.stubEnv('DSH_DESKTOP_NODE_BINARY', '/runtime/node')
   vi.stubEnv('DSH_DESKTOP_PNPM_ENTRY', '/runtime/pnpm')
@@ -252,6 +259,17 @@ it.each([false, true])('starts welcome onboarding without carrying update focus 
     activate()
     expect(state.showWorkspace).not.toHaveBeenCalled()
     reading.resolve(undefined)
+    if (!accountWelcome) {
+      await vi.waitFor(() => expect(state.loadWorkspace).toHaveBeenCalledExactlyOnceWith('dsh-app://app/'))
+      await vi.advanceTimersByTimeAsync(0)
+      expect(state.beforeWelcome).not.toHaveBeenCalled()
+      expect(state.showWorkspace).not.toHaveBeenCalled()
+      activate()
+      expect(state.showWorkspace).toHaveBeenCalledTimes(2)
+      expect(state.quit).not.toHaveBeenCalled()
+      expect(state.stopHost).not.toHaveBeenCalled()
+      return
+    }
     await vi.waitFor(() => { expect(state.beforeWelcome).toHaveBeenCalledOnce() })
     activate()
     expect(state.showWorkspace).not.toHaveBeenCalled()

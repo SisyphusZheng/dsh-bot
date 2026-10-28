@@ -20,7 +20,10 @@ export function createCaptureClient({ send, setMic, configure = async () => {}, 
           send('capture-state', { action: 'start', captureId: own })
         })
         await configure()
-        if (!stopped && wanted && current === own) await setMic(true)
+        if (!stopped && wanted && current === own) {
+          await setMic(true)
+          if (!stopped && wanted && current === own) publish({ kind: 'capture-start', captureId: own, text: '' })
+        }
       } catch (error) { if (wanted && current === own) { end(true); throw error } } })()
       return inFlight
     },

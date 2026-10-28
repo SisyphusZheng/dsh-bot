@@ -104,6 +104,7 @@ it('reconnects speech without reloading the pet document and authenticates signa
     voicePort: signalingAddress.port,
     toggleMain: () => {},
   })
+  let stage = 'configure'
   try {
     await pet.start({ voice: { apiKey: 'fake-key' } })
     await pet.configure({ voice: { apiKey: 'fake-key' } })
@@ -118,7 +119,7 @@ it('reconnects speech without reloading the pet document and authenticates signa
     const petOwner = state.owners[0]
     if (!petOwner) throw new Error('Missing owned pet')
     const status = state.handlers.get('pet:voice-status'), action = state.handlers.get('pet:bubble-action')
-    status?.({ sender:petOwner }, { kind:'input',captureId:'capture-a',text:'打开浏览器' })
+    status?.({ sender:petOwner }, { kind:'capture-start',captureId:'capture-a',text:'正在听…' })
     const bubbleOwner=state.owners[1]
     if (!bubbleOwner) throw new Error('Missing owned bubble')
     action?.({ sender:bubbleOwner }, { type:'cancel',id:'cancel-capture',requestId:'capture-a' })
@@ -132,19 +133,39 @@ it('reconnects speech without reloading the pet document and authenticates signa
     expect(state.events.filter(x=>x.channel==='pet:voice-command')).toHaveLength(1)
     expect(paths.some(path=>path.startsWith('/cancel'))).toBe(false)
     expect(() => action?.({ sender:{} },{ type:'cancel',id:'cancel-capture',requestId:'capture-a' })).toThrow('Unowned bubble')
+    stage = 'pet document'
     const document = await fetch(firstUrl)
     expect(document.status).toBe(200)
     expect(await document.text()).not.toContain('fake-key')
+    stage = 'served bubble script closure'
+    const bubbleUrl = new URL('bubble.html', firstUrl)
+    const bubbleResponse = await fetch(bubbleUrl)
+    expect(bubbleResponse.status).toBe(200)
+    const bubbleHtml = await bubbleResponse.text()
+    const scripts = [...bubbleHtml.matchAll(/<script src="([^"]+)"/g)].map(match => match[1]!)
+    expect(scripts).toContain('./bubble-markdown.js')
+    for (const script of scripts) {
+      const resource = await fetch(new URL(script, bubbleUrl))
+      expect(resource.status, script).toBe(200)
+      expect(resource.headers.get('content-type'), script).toContain('text/javascript')
+      expect((await resource.text()).length, script).toBeGreaterThan(0)
+    }
+    expect((await fetch(new URL('/bubble-markdown.js', firstUrl))).status).toBe(404)
+    stage = 'authenticated signaling'
     expect(
       await (
         await fetch(voice.offerUrl, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })
       ).json(),
     ).toEqual({ authenticated: true })
+    stage = 'foreign origin rejection'
     expect(
       (await fetch(voice.offerUrl, { method: 'POST', headers: { origin: 'https://foreign.example' }, body: '{}' }))
         .status,
     ).toBe(403)
+    stage = 'nonce protection'
     expect((await fetch(new URL('/index.html', voice.offerUrl))).status).toBe(404)
+  } catch (error) {
+    throw new Error(`Pet integration failed during ${stage}`, { cause:error })
   } finally {
     await pet.stop()
     await new Promise<void>(done => signaling.close(() => done()))

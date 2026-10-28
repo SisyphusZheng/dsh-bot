@@ -125,7 +125,8 @@ function render(payload) {
     iconSpan.textContent = payload.icon
     textEl.appendChild(iconSpan)
   }
-  textEl.appendChild(document.createTextNode(value))
+  if (kind === 'speech' || kind === 'action') window.petMarkdown.renderBubbleMarkdown(textEl, value)
+  else textEl.appendChild(document.createTextNode(value))
   setText(titleEl, title, 'title')
   setText(iconEl, payload?.icon || '', 'icon')
   setText(progressEl, payload?.progress || '', 'progress')

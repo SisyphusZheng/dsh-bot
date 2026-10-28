@@ -66,6 +66,8 @@ product/memory/runtime/
 .venv/
 
 apps/desktop/resources/pet/voice-client.js
+apps/desktop/resources/pet/bubble-markdown.js
+apps/desktop/resources/pet/bubble-markdown.LICENSE.txt
 apps/desktop/resources/pet/voice-worker-runtime.mjs
 apps/desktop/resources/pet/voice-worker-supervisor.mjs
 

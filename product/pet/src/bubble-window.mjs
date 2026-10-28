@@ -24,7 +24,7 @@ const here = dirname(fileURLToPath(import.meta.url))
 // 引导（onboarding）在气泡里带输入行 + 2×2 选项，窗口需要比纯文字气泡高
 // 一些；卡片刻意底部对齐，所以窗口变高只向上扩透明区域。
 export const ORB_BUBBLE_WINDOW_WIDTH = 380
-export const ORB_BUBBLE_WINDOW_HEIGHT = 300
+export const ORB_BUBBLE_WINDOW_HEIGHT = 420
 const ORB_BUBBLE_TAIL_TIP_OFFSET = 42
 export const ORB_BUBBLE_TAIL_OVERLAP = ORB_BUBBLE_TAIL_TIP_OFFSET
 /** 气泡正文最多 3 行（与 bubble.css 的 line-clamp 保持一致）。 */

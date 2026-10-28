@@ -82,7 +82,7 @@ const session = createVoiceSession({
       send: (type, data) => own.sendClientMessage(type, data),
       setMic: enabled => { const track = own.tracks()?.local?.audio; if (!enabled && track) track.enabled = false; own.enableMic(enabled); return mediaQueue },
       configure: async () => { const track = own.tracks()?.local?.audio; if (!track) throw new Error('麦克风音轨尚未就绪'); await track.applyConstraints({ echoCancellation: true, noiseSuppression: true, autoGainControl: true }); const settings = track.getSettings(); void bridge.voiceStatus({notify:false,kind:'media',mediaSettings:{echoCancellation:settings.echoCancellation,noiseSuppression:settings.noiseSuppression,autoGainControl:settings.autoGainControl}}); report(settings.echoCancellation === false ? '当前麦克风未启用回声消除，建议使用耳机。' : '', 'idle', settings.echoCancellation === false) },
-      publish: value => report(value.text, value.kind === 'input' ? 'listening' : 'processing', true, value.kind, value.captureId, value.utteranceId),
+      publish: value => report(value.kind === 'capture-start' ? text('正在听…', 'Listening…') : value.text, ['input', 'capture-start'].includes(value.kind) ? 'listening' : 'processing', true, value.kind, value.captureId, value.utteranceId),
     })
     const ownCapture = capture
     return { connect: endpoint => own.connect({ webrtcRequestParams: { endpoint } }), disconnect: async () => { ownCapture.stop(); const tracks = Object.values(own.tracks()?.local || {}).filter(Boolean); try { await own.disconnect() } finally { for (const track of tracks) track.stop(); audio.srcObject = null; level(0) } }, enableMic: enabled => ownCapture.enable(enabled) }

@@ -19,7 +19,8 @@
     "pythonTests": 15,
     "recordedNativeMacOS": "BLOCKED-ENVIRONMENT",
     "recordedRealProvider": "BLOCKED-EXTERNAL",
-    "warning": "The historical verifier binds its own HEAD tree. Run only at candidateCommit; do not rewrite expected hashes for this documentation integration."
+    "warning": "The historical verifier binds its own HEAD tree. Run only at candidateCommit; do not rewrite expected hashes for this documentation integration.",
+    "selectionWarning": "The original 12-file selection was not recorded. The reviewer reported 144 tests when replaying a selected 12-file set; the historical 74 count is retained unchanged and is not independently reproduced. Use explicit commands and fresh evidence for later candidates."
   },
   "userReportedNativeEvidence": {
     "source": "User's fde627f evaluation in this conversation",

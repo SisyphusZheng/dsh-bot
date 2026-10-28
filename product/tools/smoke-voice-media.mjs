@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os'
 import { createRequire } from 'node:module'
 import assert from 'node:assert/strict'
 const root = resolve(import.meta.dirname, '../..'), directory = mkdtempSync(join(tmpdir(), 'pet-media-'))
+const greeting = '你好，我在呢。想聊什么，或者有什么需要我帮忙的？'
 const { chromium } = createRequire(join(root, 'packages/experimental/inspector/package.json'))('playwright')
 let port, bridgePort
 let child, browser, log = '', statuses = [], requests = []
@@ -20,7 +21,7 @@ const server = createServer((req, res) => {
   res.setHeader('content-type', file.endsWith('.html') ? 'text/html' : file.endsWith('.js') ? 'text/javascript' : file.endsWith('.json') ? 'application/json' : 'image/webp'); res.end(readFileSync(file))
 })
 try {
-  child = spawn(resolve(process.argv[2] || '.mvv-build/voice-venv/bin/python'), [join(root, 'product/voice-worker-src/fixtures/media_fixture.py'), '0', '0', '0', join(directory, 'bridge.json')], { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, PYTHONUNBUFFERED: '1', MEDIA_HOLD_TURN: '1' } })
+  child = spawn(resolve(process.argv[2] || '.mvv-build/voice-venv/bin/python'), [join(root, 'product/voice-worker-src/fixtures/media_fixture.py'), '0', '0', '0', join(directory, 'bridge.json')], { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, PYTHONUNBUFFERED: '1', MEDIA_HOLD_TURN: '1', DSH_VOICE_GREETING: greeting } })
   child.stdout.on('data', d => { log += d }); child.stderr.on('data', d => { log += d })
   const deadline = Date.now() + 90000
   while (true) { try { const endpoints=JSON.parse(readFileSync(join(directory,'bridge.json'),'utf8')); port=endpoints.workerPort; bridgePort=endpoints.port; if ((await fetch(`http://127.0.0.1:${port}/health`)).ok) break } catch {} if (Date.now() > deadline || child.exitCode !== null || child.signalCode !== null) throw new Error('worker not ready\n' + log); await new Promise(r => setTimeout(r, 100)) }
@@ -53,7 +54,7 @@ try {
   assert.deepEqual(await (await fetch(`http://127.0.0.1:${bridgePort}/fixture-state`)).json(),{started:1,finished:1,cancels:0,disconnects:0})
   assert.equal(metrics.tts.responses, 2, 'one welcome synthesis and one Bridge response'); assert.equal(metrics.dsh.turns_completed, 1)
   assert.ok(requests.every(url => url.startsWith(origin + '/') || url.startsWith('blob:')), 'no media CDN or telemetry requests')
-  assert.ok(!statuses.some(x=>x.kind==='input'&&/^(嗯。|你好，我在呢。)$/.test(x.text)), 'echo/noise reached the input bubble')
+  assert.ok(!statuses.some(x=>x.kind==='input'&&(x.text===greeting||x.text==='嗯。')), 'full welcome echo/noise reached the input bubble')
   assert.ok(!log.includes('[g3-probe]'),'debug probes must be off by default')
   writeFileSync(join(evidence, 'metrics.json'), JSON.stringify(metrics, null, 2)); await page.screenshot({ path: join(evidence, 'listening.png') })
   await page.evaluate(() => window.voiceCommand({ action: 'mute' })); await page.waitForFunction(() => document.body.dataset.microphone === 'off')

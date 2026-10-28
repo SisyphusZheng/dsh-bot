@@ -160,6 +160,7 @@ export class ProductPet {
       ['bubble.html', [join(root, 'pet/bubble.html'), 'text/html']],
       ['bubble.css', [join(root, 'pet/bubble.css'), 'text/css']],
       ['bubble.js', [join(root, 'pet/bubble.js'), 'text/javascript']],
+      ['bubble-markdown.js', [join(root, 'pet/bubble-markdown.js'), 'text/javascript']],
       ['skins/whale-girl/pet.json', [join(root, 'whale-girl/pet.json'), 'application/json']],
       ['skins/whale-girl/spritesheet.webp', [join(root, 'whale-girl/spritesheet.webp'), 'image/webp']],
       ['voice-client.js', [join(root, 'pet/voice-client.js'), 'text/javascript']],
@@ -423,7 +424,7 @@ export class ProductPet {
         this.experience?.voice(status)
         if (['idle', 'listening', 'speaking', 'processing'].includes(status.phase || '')) this.presentation?.voice(status.phase || 'idle')
         const retry = status.retryable === false ? {} : { secondary: [{ id: 'retry-voice', label: '重试' }] }
-        if (['input', 'transcript', 'capture-end'].includes(status.kind || '')) this.presentation?.capture(status)
+        if (['capture-start', 'input', 'transcript', 'capture-end'].includes(status.kind || '')) this.presentation?.capture(status)
         else if (status.kind === 'error' && status.text) this.presentation?.notice(status.text, 'error', 15_000, '', retry)
         else if (status.phase === 'failed') {
           // Prefer the worker's classified failure over the opaque transport text.

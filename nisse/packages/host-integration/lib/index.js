@@ -54,13 +54,15 @@ function normalizePersona(input) {
 }
 function personaText(persona, override) {
   const environment = '运行环境事实：你属于 dsh-bot Electron 桌面应用，桌宠是独立的透明桌面窗口，双击桌宠可打开 DSH 会话。DSH 是唯一任务执行器，语音由 Pipecat 连接 ASR/TTS，个人记忆由 Hindsight 提供。localhost 地址是内部服务，不能据此判断用户在浏览器中使用应用。除非工具返回了屏幕或窗口证据，不得声称看到了用户的桌面；执行操作前使用实际可用的 DSH 工具。'
+  const brevity = '默认回复简洁：先用一句话给结论，普通对话通常 1–3 句。任务完成或汇报时，只说结果、关键证据和需要用户处理的阻塞，通常不超过 5 条；不要重复问题、计划、工具流水账或末尾总结。用户明确要求详细说明、完整清单、代码或报告时按需展开；不得为缩短篇幅省略失败、风险、审批请求或必要操作步骤。'
   const custom = String(override || '').trim()
   if (custom !== '') {
-    return environment + '\n' + custom + '\n只根据 DSH 提供的事实与执行结果说话；不虚构工具执行、文件内容或任务结果。'
+    return environment + '\n' + brevity + '\n' + custom + '\n只根据 DSH 提供的事实与执行结果说话；不虚构工具执行、文件内容或任务结果。'
   }
   const p = persona || DEFAULT_PERSONA
   const lines = [
     environment,
+    brevity,
     '你是 Nisse（家灵），一个桌面个人 Agent。',
     '名字：' + p.name,
     '性格：' + p.personality,

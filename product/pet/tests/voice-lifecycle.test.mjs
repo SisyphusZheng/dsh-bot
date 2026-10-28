@@ -28,7 +28,25 @@ test('capture discard rejects late text and never emits a task cancellation or d
 test('one always-listening capture supports multiple final utterances and ignores duplicate callbacks',async()=>{
  const f=capture();const p=f.c.enable(true);f.ack();await p
  f.transcript('u1','你好',true);f.transcript('u1','你好',true);f.transcript('u1','你');f.transcript('u2','打开窗口',true)
- assert.deepEqual(f.shown.map(x=>x.text),['你好','打开窗口']);f.c.stop()
+ assert.deepEqual(f.shown.filter(x=>x.kind==='transcript').map(x=>x.text),['你好','打开窗口']);f.c.stop()
+})
+test('silent admitted capture exposes cancellation before any transcript and never cancels the task', async () => {
+ const f=capture(), shown=[], timers=new Map();let seq=0
+ const p=createCompanionPresentation({show:v=>shown.push(v),hide(){},animate(){},send(){throw new Error('Recording cancellation must not call the Agent')},setTimer:fn=>{timers.set(++seq,fn);return seq},clearTimer:id=>timers.delete(id)})
+ p.event({type:'turn.accepted',data:{inputSource:'desktop'}})
+ const enabling=f.c.enable(true)
+ assert.equal(f.shown.length,0)
+ f.ack();await enabling
+ assert.equal(f.shown.at(-1).kind,'capture-start')
+ p.capture(f.shown.at(-1))
+ assert.equal(shown.at(-1).cancel.id,'cancel-capture')
+ assert.equal(timers.size,0,'Silent capture remains visible until released or cancelled')
+ assert.equal(p.cancelCapture('c1'),true)
+ assert.equal(f.c.discard('c1'),true)
+ assert.equal(p.state().working,true)
+ f.transcript('late','must not submit',true)
+ assert.equal(f.shown.at(-1).kind,'capture-end')
+ f.c.stop();p.stop()
 })
 test('voice-origin turns survive idle=0, while a desktop turn stops at most once',()=>{
  let time=1000,active=true,source='voice',started=1000,waiting=false,held=false;const stopped=[]

@@ -1,8 +1,8 @@
 {
   ".gitignore": {
-    "sha": "05563c79b3de41cef2281543071c304ea254ca74",
+    "sha": "94f51f92221101d5ea1d992a86e7826d0eb50205",
     "mode": "100644",
-    "reason": "Restore pet presentation, native wake/shortcut dependencies and owned Electron integration; DSH core unchanged"
+    "reason": "Product startup, menu/About expectations and generated pet renderer assets; preserves official runtime source"
   },
   "apps/desktop/electron-builder.config.d.mts": {
     "sha": "3ffa7f7724fe9f1b022c695d45b0a2400c81a0db",
@@ -155,13 +155,28 @@
     "reason": "0.0.1 freeze: pause Dependabot version-update PRs with open-pull-requests-limit 0"
   },
   "apps/desktop/tests/main-startup.spec.ts": {
-    "sha": "7c9fd5f1ee8ebd4fc310381381eb02c12f063d6f",
+    "sha": "e3c6f7e2f4bfa304eb73bbf0cdb8a1e4a4c9efc3",
     "mode": "100644",
-    "reason": "Product shell startup expectations: product runtime module mocks and process-event stubs"
+    "reason": "Product startup, menu/About expectations and generated pet renderer assets; preserves official runtime source"
   },
   "apps/desktop/tests/welcome-startup.spec.ts": {
-    "sha": "341ef30faead66acf447a9eed78dd468adf000d5",
+    "sha": "417096acb156bcbffc63bf4207e45e3cddd39b1d",
     "mode": "100644",
-    "reason": "Product shell welcome expectations: product runtime mocks, real userData, host-process exports"
+    "reason": "Product startup, menu/About expectations and generated pet renderer assets; preserves official runtime source"
+  },
+  "apps/desktop/tests/expected/about-panel.json": {
+    "sha": "d1c88210b81e77e707d26a28994935daac1f9421",
+    "mode": "100644",
+    "reason": "Product startup, menu/About expectations and generated pet renderer assets; preserves official runtime source"
+  },
+  "apps/desktop/tests/expected/application-menu-en-US.json": {
+    "sha": "769ed22fb10d92be24d07bf838627f78ef25ccd3",
+    "mode": "100644",
+    "reason": "Product startup, menu/About expectations and generated pet renderer assets; preserves official runtime source"
+  },
+  "apps/desktop/tests/expected/application-menu-zh-CN.json": {
+    "sha": "f8083b2cec0f0fda5fe788c2a2b2d5c779dec426",
+    "mode": "100644",
+    "reason": "Product startup, menu/About expectations and generated pet renderer assets; preserves official runtime source"
   }
 }

@@ -1,11 +1,36 @@
 /** Build the current Pipecat frontend and lifecycle resources from source. */
 import { build } from 'esbuild'
-import { mkdirSync, copyFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { mkdirSync, copyFileSync, readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs'
+import { resolve, dirname } from 'node:path'
 import { build as buildClient } from 'tsdown'
 const root = resolve(import.meta.dirname, '../../..'),
   dest = resolve(root, 'apps/desktop/resources/pet')
 mkdirSync(dest, { recursive: true })
+const markdown = await build({
+  absWorkingDir: root,
+  entryPoints: [resolve(root, 'product/pet/src/bubble-markdown.mjs')],
+  outfile: resolve(dest, 'bubble-markdown.js'),
+  bundle: true, format: 'iife', globalName: 'petMarkdown', platform: 'browser',
+  target: 'chrome130', minify: true, legalComments: 'eof', metafile: true,
+})
+const markdownPackages = new Set()
+for (const input of Object.keys(markdown.metafile.inputs)) {
+  if (!input.includes('node_modules/')) continue
+  let dir = dirname(resolve(root, input))
+  while (!existsSync(resolve(dir, 'package.json'))) {
+    const parent = dirname(dir)
+    if (parent === dir) throw new Error(`Markdown dependency has no package metadata: ${input}`)
+    dir = parent
+  }
+  markdownPackages.add(dir)
+}
+const markdownLicenses = [...markdownPackages].sort().map(dir => {
+  const meta = JSON.parse(readFileSync(resolve(dir, 'package.json'), 'utf8'))
+  const license = readdirSync(dir).find(name => /^licen[cs]e(?:[.-].*)?$/i.test(name))
+  if (!license) throw new Error(`Missing bundled Markdown license: ${meta.name}`)
+  return `${meta.name}@${meta.version}\n\n${readFileSync(resolve(dir, license), 'utf8').trim()}`
+})
+writeFileSync(resolve(dest, 'bubble-markdown.LICENSE.txt'), markdownLicenses.join('\n\n---\n\n') + '\n')
 // The Host package's ./client is consumed as a classic script, never as Node ESM.
 await buildClient({ config: resolve(root, 'nisse/packages/host-integration/tsdown.config.ts'), configLoader: 'native' })
 await build({

@@ -27,6 +27,9 @@ html, body {
   color: #141416;
   /* 气泡窗口默认点击穿透；卡片本体（输入/选项/审批按钮）必须接收点击。 */
   pointer-events: auto;
+  max-height: calc(100vh - 12px);
+  display: flex; flex-direction: column;
+  overflow: hidden;
 }
 /* 输入气泡：灰底，和 DSH 的白色回答气泡区分开。 */
 #bubble[data-kind="input"] .card { background: #f1f1f3; border-color: #3f3f46; }
@@ -36,7 +39,7 @@ html, body {
 #bubble[data-kind="activity"] .card { padding: 8px 13px 9px; border-radius: 15px; }
 #bubble[data-kind="activity"] .bubble-text { font-size: 14px; line-height: 20px; padding-right: 0; }
 
-.head { display: flex; align-items: baseline; gap: 6px; margin: 0 18px 4px 0; }
+.head { display: flex; flex-shrink: 0; align-items: baseline; gap: 6px; margin: 0 18px 4px 0; }
 .head .hidden { display: none; }
 .icon { font-size: 15px; line-height: 18px; }
 .title { font-size: 14px; font-weight: 700; }
@@ -57,10 +60,22 @@ html, body {
   font-size: 15px; line-height: 22px; text-align: left;
   padding-right: 14px;
   overflow-wrap: anywhere; word-break: break-word;
-  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4;
-  max-height: 88px; overflow: hidden;
+  min-height: 22px; max-height: 132px; overflow: auto;
   white-space: pre-line;
+  -webkit-user-select: text; user-select: text;
 }
+.bubble-text p { margin: 0 0 6px; }
+.bubble-text > :last-child { margin-bottom: 0; }
+.bubble-text h1, .bubble-text h2, .bubble-text h3, .bubble-text h4,
+.bubble-text h5, .bubble-text h6 { font-size: 15px; line-height: 22px; margin: 8px 0 4px; }
+.bubble-text > :first-child { margin-top: 0; }
+.bubble-text ul, .bubble-text ol { padding-left: 21px; margin: 4px 0; }
+.bubble-text li > p { margin-bottom: 2px; }
+.bubble-text code { font-family: ui-monospace, monospace; font-size: 12px; background: #f1f1f3; border-radius: 3px; padding: 1px 3px; }
+.bubble-text pre { white-space: pre-wrap; margin: 6px 0; padding: 7px; background: #f1f1f3; border-radius: 6px; }
+.bubble-text pre code { padding: 0; }
+.bubble-text blockquote { margin: 4px 0; padding-left: 8px; border-left: 3px solid #a1a1aa; }
+#bubble[data-kind="speech"] .bubble-text, #bubble[data-kind="action"] .bubble-text { white-space: normal; }
 #bubble[data-kind="activity"] .bubble-text { padding-right: 8px; }
 .hint {
   margin: 6px 0 0; font-size: 12px; line-height: 17px; color: #85858d;
@@ -80,6 +95,7 @@ html, body {
 
 .input-row {
   display: flex; align-items: center; gap: 8px; margin-top: 10px;
+  flex-shrink: 0;
 }
 .input-row.hidden { display: none; }
 .input-label { font-size: 12px; color: #6b6b73; flex: none; }
@@ -93,25 +109,28 @@ html, body {
 }
 .input:focus { box-shadow: 0 0 0 2px rgba(16, 16, 18, .18); }
 
-.choices { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.choices { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-auto-rows: max-content; gap: 7px; margin-top: 8px; min-height: 40px; overflow: auto; }
+#bubble[data-kind="action"] .choices { grid-template-columns: minmax(0, 1fr); }
 .choices.hidden { display: none; }
 .choices .choice {
-  height: 34px; padding: 0 10px; border-radius: 17px;
+  min-height: 36px; padding: 8px 10px; border-radius: 12px;
   border: 1.5px solid #101012; background: #ffffff; color: #101012;
   font-family: inherit; font-size: 13px; font-weight: 600;
-  cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  cursor: pointer; white-space: normal; overflow-wrap: anywhere; text-align: left;
 }
 .choices .choice:hover { background: #101012; color: #ffffff; }
+.choices .choice.selected { background: #101012; color: #fff; box-shadow: inset 0 0 0 2px #a1a1aa; }
+.choices .choice small { display: block; font-size: 12px; line-height: 17px; font-weight: normal; margin-top: 4px; opacity: .85; }
 
-#bubble-secondary { display: flex; gap: 12px; justify-content: center; margin-top: 9px; }
+#bubble-secondary { display: flex; flex-shrink: 0; flex-wrap: wrap; gap: 5px 8px; justify-content: flex-start; margin-top: 9px; }
 #bubble-secondary.hidden { display: none; }
 #bubble-secondary .link {
-  border: none; background: transparent; padding: 2px 0;
-  font-family: inherit; font-size: 12px; color: #77777f; cursor: pointer;
+  border: 1px solid #d4d4d8; border-radius: 8px; background: #f4f4f5; padding: 5px 8px;
+  font-family: inherit; font-size: 12px; color: #3f3f46; cursor: pointer;
 }
 #bubble-secondary .link:hover { color: #101012; text-decoration: underline; }
 
-.actions { display: flex; gap: 10px; justify-content: center; margin-top: 12px; }
+.actions { display: flex; flex-shrink: 0; gap: 10px; justify-content: center; margin-top: 12px; }
 .actions.hidden { display: none; }
 .btn {
   height: 34px; padding: 0 18px; border-radius: 17px;
@@ -126,6 +145,7 @@ html, body {
   display: block; margin: 9px auto 0; border: none; background: transparent;
   font-family: inherit; font-size: 12px; color: #b91c1c; cursor: pointer;
   text-decoration: underline; padding: 2px 0;
+  flex-shrink: 0;
 }
 .cancel-link.hidden { display: none; }
 
@@ -153,11 +173,9 @@ html, body {
 @media (prefers-reduced-motion: reduce) { #bubble, #bubble.entering { animation: none; transition: none; } }
 
 
-/* Interactive requests retain full details and scroll inside the original card. */
-#bubble[data-kind="action"] .bubble-text { display:block; max-height:120px; overflow:auto; -webkit-user-select:text; user-select:text; padding-right:12px }
-.card { max-height:280px; overflow:auto }
-.choices { max-height:140px; overflow:auto }
-.choices .choice { height:auto; min-height:34px; white-space:normal; overflow-wrap:anywhere; padding:7px 10px }
-.choices .choice.selected { background:#101012; color:#fff }
-button:disabled { opacity:.5; cursor:wait }
-.choices .choice small { display:block; font-size:11px; font-weight:normal; margin-top:4px; opacity:.8 }
+/* Text/options scroll independently; submit and secondary actions stay visible. */
+#bubble[data-kind="action"] .bubble-text { max-height: 88px; flex-shrink: 0; }
+button { transition: background-color .12s, color .12s, box-shadow .12s; }
+button:not(:disabled):active { transform: translateY(1px); box-shadow: inset 0 0 0 2px #71717a; }
+button:focus-visible { outline: 3px solid #6366f1; outline-offset: 2px; }
+button:disabled { opacity: .55; cursor: wait; }

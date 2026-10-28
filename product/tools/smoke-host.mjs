@@ -76,6 +76,10 @@ try {
   const tools=requests[0]?.tools?.map(x=>x.function?.name||x.name)
   for(const name of ['bash','read','write','edit'])assert.ok(tools?.includes(name),`Missing production tool: ${name}`)
   const headers={authorization:`Bearer ${descriptor.token}`,'content-type':'application/json'}
+  const preview = await (await fetch(`http://127.0.0.1:${descriptor.port}/persona/preview`, {headers})).json()
+  const responseStyle = readFileSync(join(root,'product/tools/tests/expected/persona-response-style.txt'),'utf8').trim()
+  assert.ok(preview.dshPrompt.includes(responseStyle),'Persona response style snapshot differs')
+  assert.match(JSON.stringify(requests[0].messages ?? requests[0].system), /任务完成或汇报时/)
   const post=(path,body)=>fetch(`http://127.0.0.1:${descriptor.port}${path}`,{method:'POST',headers,body:JSON.stringify(body),signal:AbortSignal.timeout(30000)})
   const session=frames.find(x=>x.type==='admitted').sessionId
   if(llm.provider==='custom'){
@@ -117,6 +121,10 @@ try {
     const live=await post('/voice/turn',{text:'Verify the updated model and persona.'}),liveFrames=(await live.text()).trim().split('\n').map(x=>JSON.parse(x))
     assert.equal(liveFrames.find(x=>x.type==='admitted')?.sessionId,session);assert.equal(requests.at(-1).model,'mvp-updated');assert.equal(requests.at(-1)._authorization,'Bearer mvp-updated-key');assert.match(JSON.stringify(requests.at(-1).messages),/LivePersona/)
     assert.ok(liveFrames.some(x=>x.type==='turn-end'&&x.reason?.kind==='completed'),JSON.stringify(liveFrames))
+    writeFileSync(join(home,'bot/config.json'),JSON.stringify({llm:{...updated,apiKey:''},persona:{promptOverride:'自定义人格完整保留'},approval:{mode:'ask-before-acting'}}))
+    const customPreview = await (await fetch(`http://127.0.0.1:${descriptor.port}/persona/preview`,{headers})).json()
+    assert.ok(customPreview.dshPrompt.includes(responseStyle))
+    assert.match(customPreview.dshPrompt,/自定义人格完整保留/)
     console.log('PASS production preset tools; real write approval allow/reject/cancel; live model/persona preserves PID, port and Session')
   }
   assert.ok(memoryTrace.some(x=>x.path==='/search'&&x.body.query),'no per-turn recall')

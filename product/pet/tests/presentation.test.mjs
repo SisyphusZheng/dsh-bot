@@ -17,9 +17,18 @@ test('idle is silent; ordinary speech expires and stops leave no timers', () => 
   const f=fixture();assert.equal(f.shown.length,0)
   f.presentation.sync(snapshot([]));assert.equal(f.shown.length,0)
   f.presentation.event({type:'assistant.delta',data:{text:'你好'}})
-  assert.equal(f.shown.at(-1).text,'你好');assert.equal(f.shown.at(-1).clickThrough,true)
+  assert.equal(f.shown.at(-1).text,'你好');assert.equal(f.shown.at(-1).clickThrough,false)
   const before=f.hidden();for(const fn of [...f.timers.values()])fn();assert.ok(f.hidden()>before)
   f.presentation.stop();assert.equal(f.timers.size,0)
+})
+test('speech retains the beginning and ending of long streamed and completed reports', () => {
+  const f = fixture(), report = '**结果**\n' + '详情'.repeat(450) + '\n完成'
+  f.presentation.event({type:'assistant.delta',data:{text:report.slice(0,500)}})
+  f.presentation.event({type:'assistant.delta',data:{text:report.slice(500)}})
+  assert.equal(f.shown.at(-1).text, report)
+  f.presentation.event({type:'assistant.message',data:{text:report}})
+  assert.equal(f.shown.at(-1).text, report)
+  f.presentation.stop()
 })
 test('single choice posts an official answer batch to the owning request', async () => {
   const calls=[],f=fixture(async(...args)=>calls.push(args))
