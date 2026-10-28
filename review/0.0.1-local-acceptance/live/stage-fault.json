@@ -1,0 +1,7 @@
+{
+  "bubbleText": "语音服务鉴权失败\n请到 DSH → Bot 设置检查语音 API Key 是否有效，保存后点“重试”。\n诊断 ve-c75fb89851b0",
+  "buttons": [
+    "✕",
+    "重试"
+  ]
+}

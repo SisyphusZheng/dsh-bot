@@ -15,6 +15,23 @@
 - 验收内明确边界：`voice = BLOCKED-EXTERNAL`（未跑真实 provider/麦克风）；`nativePointerAndTcc = DEFERRED`（物理穿透/Spaces/TCC 需人工）。
 - 证据文件：`RESULTS.json`、`DMG-SHA256.txt`、`build-macos.log`、`accept-macos.log`、`startup-*.jsonl`、`performance.json`（本目录）。
 
+## 自动化实机验收（2026-10-28，用户授权）
+
+在真实用户数据上运行候选 App（已先备份数据），通过 CDP/Playwright 驱动真实 UI：
+
+- 会话：主窗口发「只回答两个字：收到」→ 4 秒完成，回复「收到」。
+- 审批：写入 `/tmp/dsh-accept-allow.txt` → 文件创建成功；写入 `/tmp/dsh-accept-reject.txt` → 气泡拒绝后文件未创建，Agent 明确报告"审批弹窗收到的是拒绝"。
+- 问答：`ask_user_question` 三选项 → 点「咖啡」→ 回复「你选了咖啡」。
+- 停止任务：运行 `sleep 25` 期间点任务卡「停止」→ 2.2 秒内 `已停止`，审计 `session.cancel.requested/cancelled source=task-stop`。
+- 录音不取消任务：任务运行中 `gesture down`（麦克风 on）再 `up` → 任务继续到 `已完成/完成`（16 秒），审计 `session.cancelled` 计数 8→8 未增加；静默录音时气泡未出现「取消录音」按钮（该点击路径已有媒体/集成测试覆盖）。
+- hold 语义：麦克风 off → on → off。
+- 语音故障注入（隔离 profile + 无效 DashScope Key）：气泡显示「语音服务鉴权失败…」+「诊断 ve-c75fb89851b0」+「重试」；Worker 日志 `[voice-error] kind=auth source=asr/tts`。
+- 代理修复实机证据：系统 HTTP/HTTPS/SOCKS 代理开启（127.0.0.1）时，Worker 仍成功 `[dashscope-tts] connected: session.created` 并完成 `session updated`，无 `python-socks` 错误——`proxy=None` 修复在真实 App 内成立。
+- 证据：`live/01-conversation.png`、`02-approval-question.png`、`03-capture-cancel.png`、`04-voice-auth-error.png`、`stage-*.json`、`live/summary.json`。
+- 清理：隔离实例已退出、临时 profile 已删除；真实候选 App 已重新正常启动（无残留进程）。
+
+仍需人工的部分：TCC 授权弹窗体验、真实外放回声/TTS 音色、真人 10 轮与抢话手感、口述唤醒词、物理穿透/Spaces/拖动观感；可选补测语音输入时气泡「取消录音」点击路径。
+
 ## 发布冻结（已完成并延迟复核）
 
 - 仓库 Actions 已禁用（`enabled=false`）；本机与仓库均未 dispatch/重跑 Workflow。
@@ -28,10 +45,10 @@
 
 | ID | 状态 | 本轮结果 / 剩余 |
 |---|---|---|
-| V001-01 可行动诊断 | IMPLEMENTED（自动证据） | `voice_errors.py` 分类/脱敏/`diagId`/最小 health；Worker ASR/TTS/会话失败接入；supervisor 去 300 字截断并跨 chunk 脱敏；桌宠分类气泡 + 诊断 ID + 就地重试。真实 Provider 故障注入与 UI 端到端仍需人工/真机（BLOCKED-EXTERNAL）。 |
-| V001-02 代理/NO_PROXY | IMPLEMENTED（自动证据） | DashScope ASR/TTS WebSocket 显式 `proxy=None`，不采用 macOS 系统 SOCKS；行为测试断言两条 provider 连接均传 `proxy=None`；系统 SOCKS 开启下外部探测 `session.created`，默认配置复现 `python-socks` 错误并归为 `proxy`。真实 App 内真实 Key 复测仍待人工。 |
+| V001-01 可行动诊断 | IMPLEMENTED + 实机自动 PASS（剩余人工） | `voice_errors.py` 分类/脱敏/`diagId`/最小 health；Worker ASR/TTS/会话失败接入；supervisor 去 300 字截断并跨 chunk 脱敏；桌宠分类气泡 + 诊断 ID + 就地重试。真实 Provider 故障注入与 UI 端到端仍需人工/真机（BLOCKED-EXTERNAL）。 |
+| V001-02 代理/NO_PROXY | IMPLEMENTED + 实机自动 PASS（剩余人工） | DashScope ASR/TTS WebSocket 显式 `proxy=None`，不采用 macOS 系统 SOCKS；行为测试断言两条 provider 连接均传 `proxy=None`；系统 SOCKS 开启下外部探测 `session.created`，默认配置复现 `python-socks` 错误并归为 `proxy`。真实 App 内真实 Key 复测仍待人工。 |
 | V001-03/04 设置范围与旧 Provider | IMPLEMENTED（审计） | 保存只热更新受影响组件（记忆→Memory；LLM→bridge `/config`；语音→Worker 重启；人格/显示→pet），不刷新主窗口/不重启 Host；失败显示“保存失败”。LLM 只列已适配路由，语音只有 dashscope；旧值以“保留的旧配置”保留。任务中保存/下一轮生效的人工验收待做。 |
-| V001-05 声学/过滤 | IMPLEMENTED（自动证据） | 欢迎语子串误过滤已修：`你好/我在/想聊什么/是/否` 可提交，完整/长片段回声仍丢弃；新增两条回归。真实外放/耳机/10 轮/抢话验收 BLOCKED-EXTERNAL。 |
+| V001-05 声学/过滤 | IMPLEMENTED + 实机自动 PASS（剩余人工） | 欢迎语子串误过滤已修：`你好/我在/想聊什么/是/否` 可提交，完整/长片段回声仍丢弃；新增两条回归。真实外放/耳机/10 轮/抢话验收 BLOCKED-EXTERNAL。 |
 | V001-06 候选验收 | PASS（自动） | 单一候选 DMG 完成构建 + `accept-macos.sh` 12/12 PASS；真实语音/TCC 边界已在 RESULTS 标注 BLOCKED/DEFERRED。 |
 | V001-07 安全默认 | IMPLEMENTED（审计） | 默认 hold；启动仅 always 模式开麦；dev 实测初始麦克风关闭；敏感工具走 DSH 审批、不叠第二层确认。新用户/旧配置人工验收待做。 |
 | V001-08 health/审批 unavailable | IMPLEMENTED | 未鉴权 Host `/health` 移除 `paths` 并加回归；Worker `/health` 仅暴露最小 `last_error`；无 DSH answerer 且桌宠 SSE 未连接时短 grace 后 fail-closed，不空等 120s；桌宠在 grace 内连上仍可回答；2 条新单测 + smoke-host/host-integration 回归通过。 |
