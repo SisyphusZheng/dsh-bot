@@ -28,7 +28,7 @@ try {
  await context.exposeBinding('bubbleAction',async(_source,action)=>{if(!await experience?.action(action))return presentation.action(action)})
  await context.addInitScript(()=>{
   window.petBridge={state:async()=>({phase:'unconfigured'}),voiceStatus(){},onVoice(){},onVoiceCommand(){},onPresentation:fn=>{window.receivePresentation=fn},hit(){},dragStart(){},dragMove(){},dragEnd(){},openMain(){},menu(){}}
-  window.petBubble={onUpdate:fn=>{window.receiveBubble=fn},action:value=>window.bubbleAction(value),setInteractive(){},requestInputFocus(){},openDsh(){}}
+  window.petBubble={onUpdate:fn=>{window.receiveBubble=fn},action:value=>window.bubbleAction(value),setInteractive(){},requestInputFocus(){},resize:value=>{(window.__resizeCalls||=[]).push(value)},openDsh(){}}
  })
  const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message))
  await page.goto(`http://127.0.0.1:${server.address().port}/fixture`)
@@ -98,6 +98,9 @@ try {
  await detailsToggle.click();await renders
  const detailsText=await bubble.locator('#bubble-details').innerText()
  assert.match(detailsText,/工具：write/);assert.match(detailsText,/原始原因：write outside workspace/);assert.match(detailsText,/范围：仅本次请求/)
+ const approvalResize=await bubble.evaluate(()=>window.__resizeCalls?.at(-1)||0)
+ assert.ok(approvalResize>=150,`approval bubble asked for only ${approvalResize}px`)
+ assert.ok(approvalResize<=ORB_BUBBLE_WINDOW_HEIGHT)
  await page.screenshot({path:join(output,'approval.png')})
  await bubble.getByRole('button',{name:'允许一次',exact:true}).click();await renders
  assert.equal(calls.at(-1)[1].decision,'allow')

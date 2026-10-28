@@ -56,7 +56,9 @@ function scheduleSizing() {
   resizeFrame = requestAnimationFrame(() => {
     resizeFrame = 0
     if (bubble.classList.contains('hidden')) return
-    const measured = Math.ceil(bubble.getBoundingClientRect().height + 2)
+    // scrollHeight reports the full content even while the window is still small;
+    // getBoundingClientRect would be clipped by the current window and never grow.
+    const measured = Math.ceil(Math.max(bubble.scrollHeight, card.scrollHeight) + 2)
     if (measured < 1 || Math.abs(measured - lastRequestedHeight) < 3) return
     lastRequestedHeight = measured
     window.petBubble?.resize?.(measured)
