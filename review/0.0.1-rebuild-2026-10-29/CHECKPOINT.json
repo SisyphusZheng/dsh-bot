@@ -1,0 +1,347 @@
+{
+  "formatVersion": 1,
+  "branch": "work/0.0.1-closure",
+  "baselineCommit": "f4e4909dade8a6d5020abf55d6ab86996a9ae603",
+  "baselineTree": "6678c7b9a49cd0e386376c4f9903efef7e6cc06c",
+  "productVersion": "0.0.1-beta",
+  "runtimeVersion": "0.2.1-rc.3",
+  "checkpointPolicy": {
+    "authorizedByUser": "每完成一个完整小阶段并通过相应本地检查后推送工作分支；推送后读取远端 SHA 验证，再继续。",
+    "main": "不得修改或合并",
+    "release": "不创建 PR/tag/Release，不启动 Actions。",
+    "previousCandidate": "5b310e4c 当前不可取回；不得沿用其测试数字或验收结论。",
+    "scope": "重建0.0.1稳定化；DSH唯一Agent Runtime；保留Pipecat/Hindsight及现有桌宠功能；DS-Bot实际接入在0.0.2。"
+  },
+  "restoration": {
+    "status": "PASS",
+    "method": "从已确认的远端Git对象恢复，Git tree完整一致；保留旧工作区未提交修改。"
+  },
+  "pushAudit": {
+    "workflowFiles": [
+      {
+        "path": ".github/workflows/build-exe-for-python-sdk.yml",
+        "sha": "0c869d008ab29029468a8b8b922512e75f992537",
+        "events": [
+          "workflow_call",
+          "workflow_dispatch"
+        ],
+        "pushBranches": [],
+        "matchesTargetPush": false
+      },
+      {
+        "path": ".github/workflows/build-exe-for-ssh-helper.yml",
+        "sha": "15455ddda29a0e79322c9fdf65a8252587d52ae7",
+        "events": [
+          "workflow_call",
+          "workflow_dispatch"
+        ],
+        "pushBranches": [],
+        "matchesTargetPush": false
+      },
+      {
+        "path": ".github/workflows/build-preview-cloudflare.yml",
+        "sha": "c2ff5d3231b620f23e43ee073d6ce8afd3f33aeb",
+        "events": [
+          "pull_request"
+        ],
+        "pushBranches": [],
+        "matchesTargetPush": false
+      },
+      {
+        "path": ".github/workflows/ci-master.yml",
+        "sha": "5620e6af639c975f658d3b66ea154da01a83f7a6",
+        "events": [
+          "push",
+          "workflow_dispatch"
+        ],
+        "pushBranches": [
+          "master"
+        ],
+        "matchesTargetPush": false
+      },
+      {
+        "path": ".github/workflows/ci.yml",
+        "sha": "1dc4318e4820f41cc5b9a3a64afd7f299625bbdc",
+        "events": [
+          "pull_request"
+        ],
+        "pushBranches": [],
+        "matchesTargetPush": false
+      },
+      {
+        "path": ".github/workflows/desktop-publish.yml",
+        "sha": "ba8f5b0896845a093aab7c804ab702cb2bbafe29",
+        "events": [
+          "workflow_dispatch"
+        ],
+        "pushBranches": [],
+        "matchesTargetPush": false
+      },
+      {
+        "path": ".github/workflows/docs-pages.yml",
+        "sha": "6c6cc155d46ebbdc4f2348339c177dfafb2535f9",
+        "events": [
+          "workflow_dispatch"
+        ],
+        "pushBranches": [],
+        "matchesTargetPush": false
+      },
+      {
+        "path": ".github/workflows/dsh-bot-regression.yml",
+        "sha": "25d234fedfc9d609c1ab99d60d2d3b462083fc88",
+        "events": [
+          "push",
+          "pull_request"
+        ],
+        "pushBranches": [
+          "fix/safety-config-and-rc3-preflight-20261025"
+        ],
+        "matchesTargetPush": false
+      },
+      {
+        "path": ".github/workflows/e2e.yml",
+        "sha": "147b5630f9524b2fd5a49f88310cafc991522191",
+        "events": [
+          "workflow_dispatch"
+        ],
+        "pushBranches": [],
+        "matchesTargetPush": false
+      },
+      {
+        "path": ".github/workflows/expected-filenames.yml",
+        "sha": "12ff5d7bc70ad1237718ff3ccf43291cf9367fcc",
+        "events": [
+          "pull_request"
+        ],
+        "pushBranches": [],
+        "matchesTargetPush": false
+      },
+      {
+        "path": ".github/workflows/issue-lifecycle.yml",
+        "sha": "519fe1c7dfea64010eb8b0a13c3cc9181046c2aa",
+        "events": [
+          "issues",
+          "pull_request",
+          "pull_request_review"
+        ],
+        "pushBranches": [],
+        "matchesTargetPush": false
+      },
+      {
+        "path": ".github/workflows/issue-policy.yml",
+        "sha": "6e07adb502a7105287998f72144f38bf7a249a5d",
+        "events": [
+          "pull_request",
+          "pull_request_review"
+        ],
+        "pushBranches": [],
+        "matchesTargetPush": false
+      },
+      {
+        "path": ".github/workflows/macos-package.yml",
+        "sha": "b0c31647297d5e33bfec92f0c31c2480fef9b161",
+        "events": [
+          "workflow_dispatch"
+        ],
+        "pushBranches": [],
+        "matchesTargetPush": false
+      },
+      {
+        "path": ".github/workflows/node-addon-system-release.yml",
+        "sha": "fef93c885b166af4d7b294200281f70960be22fd",
+        "events": [
+          "workflow_dispatch"
+        ],
+        "pushBranches": [],
+        "matchesTargetPush": false
+      },
+      {
+        "path": ".github/workflows/node-addon-system.yml",
+        "sha": "c50411aebaf5195c8390b004c2f39710921e89a2",
+        "events": [
+          "pull_request",
+          "push",
+          "workflow_dispatch"
+        ],
+        "pushBranches": [
+          "master"
+        ],
+        "matchesTargetPush": false
+      },
+      {
+        "path": ".github/workflows/pi-ai-provider-e2e.yml",
+        "sha": "5a4774e705a79556548024c0ace2d4cc661c9ae5",
+        "events": [
+          "workflow_dispatch"
+        ],
+        "pushBranches": [],
+        "matchesTargetPush": false
+      },
+      {
+        "path": ".github/workflows/publish-ssh-helper.yml",
+        "sha": "f6740f210c80dae0f0b3ad820ff9eebdc66b465d",
+        "events": [
+          "workflow_dispatch"
+        ],
+        "pushBranches": [],
+        "matchesTargetPush": false
+      },
+      {
+        "path": ".github/workflows/python-release.yml",
+        "sha": "0474ccfe927828986ad65aa6c01d09610244524f",
+        "events": [
+          "workflow_dispatch"
+        ],
+        "pushBranches": [],
+        "matchesTargetPush": false
+      },
+      {
+        "path": ".github/workflows/rc3-upgrade-candidate.yml",
+        "sha": "35fb30433e42510d3dbde20ff56fa01137bbccf8",
+        "events": [
+          "push",
+          "workflow_dispatch"
+        ],
+        "pushBranches": [
+          "fix/safety-config-and-rc3-preflight-20261025"
+        ],
+        "matchesTargetPush": false
+      },
+      {
+        "path": ".github/workflows/release-publish.yml",
+        "sha": "ec03a117ded03625c6bb42b4689274fc98104977",
+        "events": [
+          "workflow_dispatch"
+        ],
+        "pushBranches": [],
+        "matchesTargetPush": false
+      },
+      {
+        "path": ".github/workflows/release-vendor-publish.yml",
+        "sha": "25ec400b27aebd890f4a34f13fd4ee1b27392b95",
+        "events": [
+          "workflow_dispatch"
+        ],
+        "pushBranches": [],
+        "matchesTargetPush": false
+      },
+      {
+        "path": ".github/workflows/release-vendor.yml",
+        "sha": "f8bf170c1c462bc97a0fe137774d64dce18bf2d7",
+        "events": [
+          "pull_request",
+          "push",
+          "workflow_dispatch"
+        ],
+        "pushBranches": [
+          "master"
+        ],
+        "matchesTargetPush": false
+      },
+      {
+        "path": ".github/workflows/release.yml",
+        "sha": "b9def1dec16337daf0923c5ae21274892a380096",
+        "events": [
+          "pull_request",
+          "push",
+          "workflow_dispatch"
+        ],
+        "pushBranches": [
+          "master"
+        ],
+        "matchesTargetPush": false
+      },
+      {
+        "path": ".github/workflows/sandbox.yml",
+        "sha": "1494b8d1dbe327afeb62bf8a2471f55f808a7bb1",
+        "events": [
+          "push"
+        ],
+        "pushBranches": [
+          "master"
+        ],
+        "matchesTargetPush": false
+      },
+      {
+        "path": ".github/workflows/weighted-approval-review-event.yml",
+        "sha": "85ea83d2fe93df0003768ef58f556100a245b050",
+        "events": [
+          "pull_request_review"
+        ],
+        "pushBranches": [],
+        "matchesTargetPush": false
+      },
+      {
+        "path": ".github/workflows/weighted-approval.yml",
+        "sha": "eb6f2fe3ba33858ea4612f4c221d332e60d4013c",
+        "events": [
+          "pull_request_target",
+          "issue_comment",
+          "workflow_run"
+        ],
+        "pushBranches": [],
+        "matchesTargetPush": false
+      },
+      {
+        "path": ".github/workflows/windows-package.yml",
+        "sha": "bc76eca87bb7e5f2b95dc5f37a725a770a5e373a",
+        "events": [
+          "workflow_dispatch"
+        ],
+        "pushBranches": [],
+        "matchesTargetPush": false
+      }
+    ],
+    "matchingPushWorkflows": 0,
+    "defaultBranch": "main",
+    "openPrCount": 0,
+    "dependabotVersionUpdates": "open-pull-requests-limit: 0 for all three ecosystems",
+    "actionsCountBefore": 649,
+    "globalActionsSetting": "当前连接不支持读取管理端点，不以此声称全仓禁用；本分支安全依据为实际触发条件、无PR、非默认分支、依赖清单不变。",
+    "workflowDispatch": "PROHIBITED",
+    "skipCi": "仅为push/pull_request附加防护，不依赖它阻止pull_request_target。",
+    "sources": [
+      "https://docs.github.com/en/actions/how-tos/manage-workflow-runs/skip-workflow-runs",
+      "https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/secure-your-dependencies/submit-dependencies-automatically"
+    ]
+  },
+  "milestones": [
+    {
+      "id": "S1",
+      "state": "IMPLEMENTED",
+      "scope": "恢复真实基线，记录分段推送规则与修复范围。",
+      "checks": [
+        "原始f4 tree校验",
+        "pnpm frozen install",
+        "源码完整性检查",
+        "JSON与Git差异检查"
+      ]
+    },
+    {
+      "id": "S2",
+      "state": "NOT-STARTED",
+      "scope": "语音控制优先通道：停播/停任务/审批/状态/普通排队分开；旧口令和迟到回复测试；保留欢迎语、收音反馈及全部输入模式。"
+    },
+    {
+      "id": "S3",
+      "state": "NOT-STARTED",
+      "scope": "审批气泡：短摘要、真实工具参数、精确持续授权/二次确认/撤销；损坏文件保护和按钮测试。"
+    },
+    {
+      "id": "S4",
+      "state": "NOT-STARTED",
+      "scope": "桌宠正常退出、只读任务状态检查、安全恢复；Mac正常open启动、内层签名、稳定安装和进程归属检查。"
+    },
+    {
+      "id": "S5",
+      "state": "NOT-STARTED",
+      "scope": "集成本地门禁、源码/构建资源身份、更新Chief任务书并交付；只将实际执行结果标PASS。"
+    }
+  ],
+  "nativeAcceptance": {
+    "macOS": "BLOCKED-ENVIRONMENT",
+    "realMicrophoneTccAndAcoustics": "BLOCKED-ENVIRONMENT",
+    "realProvider": "BLOCKED-EXTERNAL",
+    "newHindsightSemanticAcceptance": "BLOCKED-EXTERNAL"
+  }
+}
