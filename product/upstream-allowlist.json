@@ -65,9 +65,9 @@
     "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
   },
   "apps/desktop/src/main.ts": {
-    "sha": "3ce916dfadc63c89c763255f94b1c6f24236a077",
+    "sha": "b099332f8d93d2fb8b2229042c4548fd6c2c05f9",
     "mode": "100644",
-    "reason": "Preserve product desktop integration and resume voice after main-model credential preflight; live key rotation does not restart media"
+    "reason": "Product desktop integration: keep build identity through packaged env scrub and preserve credential-driven voice resume"
   },
   "apps/desktop/src/welcome-api.ts": {
     "sha": "3f45fb89db50547313105d68cd607d4667aedb2d",
@@ -143,5 +143,25 @@
     "sha": "0455975f25b266f090a232d0cd7d2c291a7ad624",
     "mode": "100644",
     "reason": "Regression for separate desktop product and DSH runtime versions"
+  },
+  ".github/workflows/e2e.yml": {
+    "sha": "147b5630f9524b2fd5a49f88310cafc991522191",
+    "mode": "100644",
+    "reason": "0.0.1 freeze: disable automatic real-API E2E triggers; manual dispatch only"
+  },
+  ".github/dependabot.yml": {
+    "sha": "88b827ae39f121f7c23db7727c3dbc1f5cd2a90d",
+    "mode": "100644",
+    "reason": "0.0.1 freeze: pause Dependabot version-update PRs with open-pull-requests-limit 0"
+  },
+  "apps/desktop/tests/main-startup.spec.ts": {
+    "sha": "7c9fd5f1ee8ebd4fc310381381eb02c12f063d6f",
+    "mode": "100644",
+    "reason": "Product shell startup expectations: product runtime module mocks and process-event stubs"
+  },
+  "apps/desktop/tests/welcome-startup.spec.ts": {
+    "sha": "341ef30faead66acf447a9eed78dd468adf000d5",
+    "mode": "100644",
+    "reason": "Product shell welcome expectations: product runtime mocks, real userData, host-process exports"
   }
 }
