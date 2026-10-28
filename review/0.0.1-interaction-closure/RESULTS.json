@@ -1,0 +1,37 @@
+{
+  "sourceCommit": "787ae06a0804bdf1097c49ac29409052e4b5acfe",
+  "branch": "work/0.0.1-closure",
+  "baseline": "ed6db64390",
+  "productVersion": "0.0.1-beta",
+  "runtime": "DSH 0.2.1-rc.3 (locked)",
+  "candidate": {
+    "dmg": "apps/desktop/.desktop-build/targets/mac-arm64/unsigned-artifacts/dsh-bot-0.0.1-beta-787ae06a-mac-arm64-unsigned.dmg",
+    "bytes": 702234783,
+    "sha256": "49d91135180c7879d0b6f2443052a291bba101f30bc0c6292db682d261067d53"
+  },
+  "tests": {
+    "verifyLocal": "EXIT=0; 9/9 gates; Vitest 17 files/281 tests",
+    "node": 61,
+    "python": 32,
+    "packagedAcceptance": "PASS 12/12 phases",
+    "upstreamIntegrity": "PASS (36 overrides; 16347 official files)"
+  },
+  "idStatus": {
+    "ID01": "PASS", "ID02": "PASS", "ID03": "PASS", "ID04": "PASS(scope)",
+    "ID05": "PARTIAL", "ID06": "PASS", "ID07": "IMPLEMENTED", "ID08": "PASS"
+  },
+  "vStatus": {
+    "V01": "PASS(auto)", "V02": "PARTIAL", "V03": "BLOCKED-ENVIRONMENT", "V04": "BLOCKED-ENVIRONMENT",
+    "V05": "PARTIAL", "V06": "PASS(auto)", "V07": "PARTIAL", "V08": "PASS(record)", "V09": "PARTIAL"
+  },
+  "notDone": [
+    "ID05 recovery beyond humanized error + open-main action",
+    "V03 real acoustics and ten-turn voice",
+    "V04 TCC and physical pointer/Spaces",
+    "V05 full real-provider/system-proxy matrix",
+    "V02 live settings save during a task",
+    "V09 stable version bump and release"
+  ],
+  "noPush": true,
+  "noActions": true
+}

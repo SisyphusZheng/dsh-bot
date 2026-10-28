@@ -1,0 +1,36 @@
+{
+  "approval": {
+    "height": 118,
+    "text": "Nisse 想写入或修改工作区外的文件：\n/tmp/dsh-live-allow3.txt",
+    "buttons": [
+      "允许一次",
+      "拒绝"
+    ],
+    "noDshLink": true,
+    "detailsVisible": true,
+    "details": "工具：write\n目标：/tmp/dsh-live-allow3.txt\n原始原因：write outside workspace: /tmp/dsh-live-allow3.txt\n范围：仅本次请求；不会复用为后续操作的授权",
+    "turnEnd": [
+      "completed"
+    ],
+    "fileExists": true,
+    "fileContent": "allow-live"
+  },
+  "question": {
+    "height": 118,
+    "progressVisible": false,
+    "progressText": "",
+    "secondary": [
+      "其他回答",
+      "跳过"
+    ],
+    "noDshLink": true,
+    "choices": [
+      "咖啡",
+      "茶",
+      "水"
+    ],
+    "turnEnd": [
+      "completed"
+    ]
+  }
+}

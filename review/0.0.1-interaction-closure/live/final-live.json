@@ -1,0 +1,82 @@
+{
+  "shortHeight": 118,
+  "approvalBefore": {
+    "innerHeight": 167,
+    "innerWidth": 380,
+    "card": {
+      "top": 3,
+      "bottom": 158,
+      "height": 155,
+      "visible": true
+    },
+    "actions": {
+      "top": 123,
+      "bottom": 157,
+      "height": 34,
+      "visible": true
+    },
+    "details": {
+      "top": 0,
+      "bottom": 0,
+      "height": 0,
+      "visible": false
+    },
+    "detailsToggle": {
+      "top": 90,
+      "bottom": 111,
+      "height": 21,
+      "visible": true
+    },
+    "text": "Nisse 想写入或修改工作区外的文件：\n/tmp/dsh-final-allow.txt"
+  },
+  "approvalAfterDetails": {
+    "innerHeight": 275,
+    "innerWidth": 380,
+    "card": {
+      "top": 3,
+      "bottom": 266,
+      "height": 263,
+      "visible": true
+    },
+    "actions": {
+      "top": 231,
+      "bottom": 265,
+      "height": 34,
+      "visible": true
+    },
+    "details": {
+      "top": 116,
+      "bottom": 219,
+      "height": 103,
+      "visible": true
+    },
+    "detailsToggle": {
+      "top": 90,
+      "bottom": 111,
+      "height": 21,
+      "visible": true
+    },
+    "text": "Nisse 想写入或修改工作区外的文件：\n/tmp/dsh-final-allow.txt"
+  },
+  "approval": {
+    "text": "Nisse 想写入或修改工作区外的文件：\n/tmp/dsh-final-allow.txt",
+    "buttons": [
+      "允许一次",
+      "拒绝"
+    ],
+    "noDshLink": true,
+    "actionsVisible": true,
+    "cardFits": true,
+    "fileExists": true
+  },
+  "question": {
+    "innerHeight": 159,
+    "progressVisible": false,
+    "secondary": [
+      "其他回答",
+      "跳过"
+    ],
+    "cardBottom": 150,
+    "noDshLink": true
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "innerHeight": 118,
+  "innerWidth": 380,
+  "bubble": {
+    "x": 121.09375,
+    "y": 54,
+    "w": 137.8125,
+    "h": 64
+  },
+  "card": {
+    "x": 121.09375,
+    "y": 54,
+    "w": 137.8125,
+    "h": 55
+  },
+  "bodyScroll": 118,
+  "htmlScroll": 118,
+  "maxHeight": "none",
+  "overflow": "hidden"
+}
