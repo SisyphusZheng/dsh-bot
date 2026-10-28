@@ -39,7 +39,7 @@ export function createInteractionMirror({
   const view = request => ({
     id: request.id, kind: request.kind, sessionId: request.sessionId,
     ...(request.kind === 'question' ? { questions: request.source.questions, callId: request.source.wait?.callId }
-      : { toolName: request.source.toolName, reason: request.source.reason || '', callId: request.source.callId }),
+      : { toolName: request.source.toolName, reason: request.source.reason || '', callId: request.source.callId, ...(request.source.operation ? { operation: request.source.operation } : {}) }),
   })
   return {
     isForwarded: request => forwarded.has(request),

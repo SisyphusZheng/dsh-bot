@@ -16,14 +16,14 @@ export function approvalView(request) {
     : READ_TOOLS.has(tool) ? '读取工作区外的文件'
       : SHELL_TOOLS.test(tool) ? '在工作区外运行命令'
         : '执行一个需要你批准的操作'
-  const text = target
-    ? `Nisse 想${action}：\n${target}`
-    : `Nisse 想${action}${tool ? `（工具：${tool}）` : ''}。`
+  const text = `Nisse 想${action}。`
+  const operation = request?.operation
   const details = [
     `工具：${tool || '未知'}`,
     ...(target ? [`目标：${target}`] : []),
+    ...(operation ? [`工作目录：${operation.cwd}`, `实际参数：${JSON.stringify(operation.arguments, null, 2)}`] : ['未取得真实参数；只能批准本次请求。']),
     ...(reason ? [`原始原因：${reason}`] : []),
-    '范围：仅本次请求；不会复用为后续操作的授权',
+    '允许一次仅作用于本次；持续允许只匹配同一工具、工作目录和完全相同的参数，可在右键菜单撤销。',
   ]
   return { text, details }
 }
@@ -41,12 +41,13 @@ import { activityBubblePayload } from './activity-bubble.mjs'
 
 export function createCompanionPresentation({ show, hide, animate, send, setTimer = setTimeout, clearTimer = clearTimeout }) {
   let requests = [], identity = '', text = '', timer, busy = false, stopped = false
+  let persistentDraft = false, manager = null, managerEpoch = 0
   let questionIndex = 0, answers = [], selected = [], customInput = false
   let voice = 'idle', working = false, startedAt = 0, inputSource = 'desktop', captureId = '', captureIdentity = '', captureTimer
   const expiredInputs = new Set()
   const cancelTimer = () => { clearTimer(timer); timer = undefined }
   const animation = (cue = null) => animate({ state: requests.length ? 'awaiting-input' : voice !== 'idle' ? voice : working ? 'working' : 'idle', baseWorking: working, cue })
-  const resetDraft = () => { questionIndex = 0; answers = []; selected = []; customInput = false; busy = false }
+  const resetDraft = () => { questionIndex = 0; answers = []; selected = []; customInput = false; busy = false; persistentDraft = false }
   function render(hint = '') {
     const request = requests[0]
     if (!request) return
@@ -56,7 +57,9 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
       title: `${request.kind === 'approval' ? '需要批准' : '请你选择'}${requests.length > 1 ? ` · 还有 ${requests.length - 1} 项` : ''}` }
     if (request.kind === 'approval') {
       const approval = approvalView(request)
-      show({ ...base, text: approval.text, details: approval.details, approval: { id: request.id } })
+      show({ ...base, text: persistentDraft ? '持续允许完全相同的操作？更换命令、参数或工作目录仍会重新询问。' : approval.text,
+        details: approval.details, approval: { id: request.id, allowLabel: persistentDraft ? '确认持续允许' : '允许一次' },
+        secondary: request.operation ? [{ id: persistentDraft ? 'grant-back' : 'grant-confirm', label: persistentDraft ? '返回' : '始终允许此操作…' }] : [] })
       return
     }
     const question = request.questions[questionIndex]
@@ -77,10 +80,28 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
     })
   }
   function notice(value, kind = 'status', duration = 4500, capture = '', options = {}) {
-    if (stopped || requests.length) return
+    if (stopped || requests.length || manager) return
     cancelTimer()
     show({ visible: true, kind, text: value, clickThrough: !['input', 'speech'].includes(kind), ...(kind === 'input' ? { requestId: capture, cancel: { id: 'cancel-capture', label: '取消录音' }, inputLabel: '你说' } : {}), ...options })
     if (duration > 0) timer = setTimer(() => { if (!requests.length && !stopped) hide() }, duration)
+  }
+  function renderManager(hint = '') {
+    if (!manager || requests.length || stopped) return
+    const rules = manager.rules
+    show({ visible: true, kind: 'action', requestId: manager.id, title: '持续授权', text: hint || (rules.length ? '每项仅匹配完全相同的工具、参数和工作目录。点击可撤销。' : '没有持续授权。'),
+      choices: rules.map(rule => ({ id: rule.id, label: `撤销 ${rule.toolName}`, description: `${rule.createdAt} · ${rule.key.slice(0, 12)}` })),
+      secondary: [{ id: 'grant-close', label: '关闭' }], busy, clickThrough: false })
+  }
+  async function managePolicies() {
+    if (stopped) return
+    if (requests.length || busy) { if (requests.length) render('请先处理当前请求，再管理持续授权。'); return }
+    const epoch = ++managerEpoch
+    try {
+      const response = await send('/policies')
+      if (stopped || requests.length || epoch !== managerEpoch) return
+      manager = { id: `grants:${epoch}`, rules: response.rules || [] }
+      cancelTimer(); renderManager(response.error || '')
+    } catch { notice('读取持续授权失败，请稍后重试。', 'error') }
   }
   async function submit(request, body) {
     busy = true
@@ -109,6 +130,7 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
   }
   return {
     notice,
+    managePolicies,
     capture(status) {
       if (stopped) return
       if (status.kind === 'capture-start' && status.captureId) {
@@ -137,6 +159,7 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
       identity = nextIdentity
       const previous = requests[0]?.id, previousCount = requests.length
       requests = snapshot.requests || []
+      if (changedOwner || requests.length) { manager = null; managerEpoch++ }
       if (changedOwner || previous !== requests[0]?.id) {
         resetDraft(); cancelTimer()
         if (changedOwner) { working = false; text = ''; voice = 'idle' }
@@ -154,7 +177,7 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
         working = false
         const failed = event.data?.reason?.kind === 'failed'
         animation({ id: `turn:${event.ioSeq}`, name: failed ? 'failed' : 'jumping' })
-        if (!requests.length) { cancelTimer(); timer = setTimer(hide, 1800) }
+        if (!requests.length && !manager) { cancelTimer(); timer = setTimer(hide, 1800) }
       }
       if (event.type === 'error') {
         working = false
@@ -168,9 +191,26 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
       if (stopped) return
       if (action.type === 'open') return send('open')
       if (action.type === 'secondary' && action.id === 'open') return send('open')
+      if (manager && !requests.length && action.requestId === manager.id && !busy) {
+        if (action.type === 'secondary' && action.id === 'grant-close') { manager = null; managerEpoch++; hide(); return }
+        const rule = manager.rules.find(item => item.id === action.id)
+        if (action.type !== 'choice' || !rule) return
+        const own = manager; busy = true; renderManager('正在撤销…')
+        try {
+          await send(`/policies?id=${encodeURIComponent(rule.id)}`, { method: 'DELETE' })
+          if (manager === own) { manager.rules = manager.rules.filter(item => item.id !== rule.id); busy = false; renderManager('已撤销。') }
+        } catch { if (manager === own) { busy = false; renderManager('撤销失败，请重试。') } }
+        return
+      }
       const request = requests[0]
       if (!request || busy || action.requestId !== request.id) return
-      if (action.type === 'approval' && request.kind === 'approval') return submit(request, { decision: action.decision })
+      if (request.kind === 'approval' && action.type === 'secondary') {
+        if (action.id === 'grant-confirm' && request.operation) persistentDraft = true
+        else if (action.id === 'grant-back') persistentDraft = false
+        else return
+        render(); return
+      }
+      if (action.type === 'approval' && request.kind === 'approval') return submit(request, { decision: action.decision === 'allow' && persistentDraft ? 'always-allow' : action.decision, ...(action.decision === 'allow' && persistentDraft ? { confirmExact: true } : {}) })
       if (request.kind !== 'question') return
       const question = request.questions[questionIndex]
       if (action.type === 'choice') {
@@ -188,6 +228,6 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
         if (action.id === 'back' && questionIndex > 0) { questionIndex--; selected = answers[questionIndex]?.selected || []; render() }
       }
     },
-    stop() { stopped = true; cancelTimer(); clearTimer(captureTimer); requests = []; hide() },
+    stop() { stopped = true; manager = null; managerEpoch++; cancelTimer(); clearTimer(captureTimer); requests = []; hide() },
   }
 }

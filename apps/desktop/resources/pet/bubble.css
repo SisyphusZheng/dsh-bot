@@ -153,8 +153,8 @@ html, body {
 .actions { display: flex; flex-shrink: 0; gap: 10px; justify-content: center; margin-top: 12px; }
 .actions.hidden { display: none; }
 .btn {
-  height: 34px; padding: 0 18px; border-radius: 17px;
-  font-family: inherit; font-size: 14px; font-weight: 600;
+  height: 30px; padding: 0 12px; border-radius: 15px;
+  font-family: inherit; font-size: 13px; font-weight: 600;
   cursor: pointer; white-space: nowrap;
 }
 .btn.primary { background: #101012; border: 2px solid #101012; color: #ffffff; }

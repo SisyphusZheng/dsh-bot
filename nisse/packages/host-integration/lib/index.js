@@ -2,6 +2,7 @@
 import { appendFileSync, chmodSync, existsSync, mkdirSync, readFileSync, realpathSync, unlinkSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { createInteractionMirror, validateAnswer } from './interactions.mjs'
+import { createApprovalPolicies } from './approval-policies.mjs'
 import { randomUUID } from 'node:crypto'
 import { basename, dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -303,7 +304,8 @@ export function apply(ctx, config = {}) {
   const bridgeFrames = []
   let bridgeSeq = 0
   const sseSubscribers = new Set()
-  const policies = []
+  const policies = createApprovalPolicies(join(bridgeDir, 'approval-grants.json'))
+  const operationCalls = new Map()
   const personaFile = join(bridgeDir, 'persona.json')
   const auditFile = join(bridgeDir, 'audit.jsonl')
   const auditEvents = []
@@ -337,6 +339,14 @@ export function apply(ctx, config = {}) {
     ctx.on('tools/pre-execute', async (exec, next) => {
       try {
         const name = String(exec?.name || '')
+        if (exec.agent !== agent || !matchesSession(exec.agent?.session?.id)) return next()
+        const callId = String(exec.callId || '')
+        if (callId) {
+          const operation = { toolName: name, arguments: exec.arguments, cwd: String(exec.agent?.session?.header?.cwd || canonicalWorkspaceDir()) }
+          operationCalls.set(callId, operation)
+          if (operationCalls.size > 128) operationCalls.delete(operationCalls.keys().next().value)
+          exec.signal?.addEventListener('abort', () => operationCalls.delete(callId), { once: true })
+        }
         const args = exec?.arguments && typeof exec.arguments === 'object' ? exec.arguments : {}
         const behavior = behaviorSettings()
         if (!behavior.allowScreenView && /screen|screenshot|computer|cua|visual/i.test(name)) {
@@ -392,13 +402,6 @@ export function apply(ctx, config = {}) {
     return record
   }
 
-  function prunePolicies() {
-    const t = Date.now()
-    for (let i = policies.length - 1; i >= 0; i -= 1) {
-      if (policies[i].expiresAt && Date.parse(policies[i].expiresAt) <= t) policies.splice(i, 1)
-    }
-  }
-
   async function memoryRequest(method, path, body, timeoutMs = 120000) {
     if (!memoryUrl) throw new Error('memory backend not configured')
     const res = await fetch(memoryUrl + path, {
@@ -435,16 +438,6 @@ export function apply(ctx, config = {}) {
       if (origin !== memoryUrl) return
       turnMemory = (Array.isArray(result?.hits) ? result.hits : []).map(hit => typeof hit.text === 'string' ? hit.text : '').filter(Boolean).join('\n').slice(0,6000)
     } catch (error) { log('memory recall unavailable: ' + messageOf(error)) }
-  }
-
-  function activePolicy(toolName, reason) {
-    prunePolicies()
-    return policies.find((rule) => {
-      if (rule.toolName !== toolName) return false
-      if (rule.pathPrefix && !String(reason || '').includes(rule.pathPrefix)) return false
-      if (rule.reasonPattern && !String(reason || '').includes(rule.reasonPattern)) return false
-      return true
-    }) || null
   }
 
   function push(type, fields = {}) {
@@ -692,13 +685,14 @@ export function apply(ctx, config = {}) {
         // voice bridge so a real approval round-trip can be tested (T7).
         if (toolName === 'read') return 'allowed-once'
         const reason = String(req?.reason || '')
-        const policy = activePolicy(toolName, reason)
+        const operation = operationCalls.get(String(req.callId || ''))
+        const policy = policies.match(operation)
         if (policy) {
           auditEvent('policy.auto_allow', { policyId: policy.id, toolName, reason: preview(reason) })
           log('approval auto-allowed by policy', { policyId: policy.id, toolName })
           return 'allowed-once'
         }
-        return interactions.ask('approval', req)
+        return interactions.ask('approval', { ...req, ...(operation ? { operation } : {}) })
       } catch (error) {
         log('approval handler failed: ' + messageOf(error))
         return next()
@@ -1246,34 +1240,14 @@ export function apply(ctx, config = {}) {
         }
         return json(res, 200, {ok:true,applied:true,sessionId,effective:'next-agent-step'})
       }
-      if (url.pathname === '/policies' && req.method === 'GET') {
-        return json(res, 200, { rules: policies })
-      }
-      if (url.pathname === '/policies' && req.method === 'POST') {
-        const body = await readBody(req)
-        if (!body.toolName) return json(res, 400, { error: 'toolName required' })
-        const ttlMs = Math.max(0, Number(body.ttlMs || 0))
-        const rule = {
-          id: randomUUID(),
-          toolName: String(body.toolName),
-          reason: String(body.reason || ''),
-          pathPrefix: String(body.pathPrefix || ''),
-          reasonPattern: String(body.reasonPattern || ''),
-          createdAt: now(),
-          expiresAt: ttlMs > 0 ? new Date(Date.now() + ttlMs).toISOString() : null,
-        }
-        policies.push(rule)
-        auditEvent('policy.added', { policyId: rule.id, toolName: rule.toolName, pathPrefix: rule.pathPrefix, expiresAt: rule.expiresAt })
-        return json(res, 200, { ok: true, rule })
-      }
+      if (url.pathname === '/policies' && req.method === 'GET') return json(res, 200, policies.snapshot())
+      if (url.pathname === '/policies' && req.method === 'POST') return json(res, 400, { error: 'Create exact grants only through a pending approval' })
       if (url.pathname === '/policies' && req.method === 'DELETE') {
         const id = String(url.searchParams.get('id') || '')
-        const before = policies.length
-        for (let i = policies.length - 1; i >= 0; i -= 1) {
-          if (policies[i].id === id) policies.splice(i, 1)
-        }
-        auditEvent('policy.removed', { policyId: id, removed: before - policies.length })
-        return json(res, 200, { ok: true, removed: before - policies.length })
+        if (!id) return json(res, 400, { error: 'Grant id required' })
+        const removed = policies.revoke(id)
+        auditEvent('policy.removed', { policyId: id, removed })
+        return json(res, 200, { ok: true, removed })
       }
       if (url.pathname === '/approval' && req.method === 'POST') {
         const body = await readBody(req)
@@ -1282,7 +1256,14 @@ export function apply(ctx, config = {}) {
           return json(res, 400, { error: 'decision must be allow, reject or always-allow' })
         }
         const id = String(body.id || '')
-        if (!interactions.answer(id, String(body.sessionId || sessionId), requested === 'reject' ? 'rejected' : 'allowed-once')) return json(res, 409, { error: 'approval no longer pending' })
+        const pending = interactions.snapshot().find(item => item.id === id && item.kind === 'approval' && item.sessionId === String(body.sessionId || sessionId))
+        if (!pending) return json(res, 409, { error: 'approval no longer pending' })
+        if (requested === 'always-allow') {
+          if (body.confirmExact !== true || !pending.operation) return json(res, 400, { error: 'Exact operation and explicit confirmation required' })
+          const rule = policies.grant(pending.operation)
+          auditEvent('policy.added', { policyId: rule.id, toolName: rule.toolName })
+        }
+        if (!interactions.answer(id, pending.sessionId, requested === 'reject' ? 'rejected' : 'allowed-once')) return json(res, 409, { error: 'approval no longer pending' })
         if (requested !== 'reject') rememberAllowed()
         return json(res, 200, { ok: true, decision: requested })
       }

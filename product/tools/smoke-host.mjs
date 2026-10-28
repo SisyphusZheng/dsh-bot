@@ -93,6 +93,33 @@ try {
       }}
       assert.ok(approved,JSON.stringify(all));assert.equal(existsSync(target),decision==='allow',JSON.stringify(all));assert.ok(all.some(x=>x.type==='turn-end'))
     }
+    const grantTarget=join(home,'exact-granted.txt'), originalArgs={file_path:grantTarget,content:'precise-grant'}
+    const get=path=>fetch(`http://127.0.0.1:${descriptor.port}${path}`,{headers,signal:AbortSignal.timeout(30000)})
+    for(const step of ['grant','reuse','changed','revoked']){
+      nextTool=step==='changed'?{...originalArgs,content:'changed-content'}:originalArgs
+      const response=await post('/voice/turn',{text:`Write exact grant fixture ${step}`});assert.equal(response.status,200)
+      let buffer='',count=0,terminal=false
+      for await(const chunk of response.body){buffer+=new TextDecoder().decode(chunk);let pos;while((pos=buffer.indexOf('\n'))>=0){const event=JSON.parse(buffer.slice(0,pos));buffer=buffer.slice(pos+1)
+        if(event.type==='approval'){
+          count++;const pending=(await(await get('/interactions')).json()).requests.find(item=>item.id===event.id)
+          assert.equal(pending.operation.toolName,'write');assert.deepEqual(pending.operation.arguments,nextTool|| (step==='changed'?{...originalArgs,content:'changed-content'}:originalArgs))
+          if(step==='grant'){
+            assert.equal((await post('/approval',{id:event.id,sessionId:pending.sessionId,decision:'always-allow'})).status,400)
+            assert.equal((await post('/approval',{id:event.id,sessionId:pending.sessionId,decision:'always-allow',confirmExact:true})).status,200)
+            assert.equal((await post('/approval',{id:event.id,sessionId:pending.sessionId,decision:'always-allow',confirmExact:true})).status,409)
+          }else assert.equal((await post('/approval',{id:event.id,sessionId:pending.sessionId,decision:'reject'})).status,200)
+        }
+        if(event.type==='turn-end')terminal=true
+      }}
+      assert.equal(count,step==='reuse'?0:1);assert.ok(terminal)
+      if(step==='changed'){
+        const store=await(await get('/policies')).json();assert.equal(store.rules.length,1)
+        assert.doesNotMatch(readFileSync(join(home,'bot/approval-grants.json'),'utf8'),/precise-grant|file_path/)
+        const removed=await fetch(`http://127.0.0.1:${descriptor.port}/policies?id=${store.rules[0].id}`,{method:'DELETE',headers});assert.equal(removed.status,200)
+      }
+    }
+    assert.equal((await post('/policies',{toolName:'write'})).status,400)
+    console.log('PASS exact approval arguments, explicit persistent grant, reuse, changed-argument reapproval, duplicate rejection and revocation through real Host')
     assert.equal((await post('/cancel', {sessionId:'stale-session'})).status,409)
     assert.equal((await post('/cancel', {clientTurnId:'stale-request'})).status,409)
     assert.equal((await post('/cancel', {turn:-999})).status,409)

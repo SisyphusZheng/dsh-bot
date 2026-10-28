@@ -222,7 +222,7 @@ function render(payload) {
 
   // 审批气泡：是/否
   approvalId = String(payload?.approval?.id || '')
-  actionButtons[0].textContent = '允许一次'
+  actionButtons[0].textContent = payload?.approval?.allowLabel || '允许一次'
   actionButtons[1].textContent = '拒绝'
   actions.classList.toggle('hidden', !approvalId)
 

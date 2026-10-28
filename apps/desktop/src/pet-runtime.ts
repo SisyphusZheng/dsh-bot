@@ -27,6 +27,7 @@ type Presentation = {
   voice(state: string): void
   action(value: object): Promise<void>
   state(): { working: boolean; startedAt: number; inputSource: string; waiting: boolean }
+  managePolicies(): Promise<void>
   stop(): void
 }
 type BubbleController = {
@@ -143,10 +144,10 @@ export class ProductPet {
       pid: number
     }
   }
-  private request(path: string, body?: object): Promise<Response> {
+  private request(path: string, body?: object, method?: string): Promise<Response> {
     const d = this.descriptor()
     return fetch(`http://127.0.0.1:${d.port}${path}`, {
-      method: body ? 'POST' : 'GET',
+      method: method || (body ? 'POST' : 'GET'),
       headers: { authorization: `Bearer ${d.token}`, 'content-type': 'application/json' },
       ...(body ? { body: JSON.stringify(body) } : {}),
       signal: AbortSignal.any([AbortSignal.timeout(4000), this.requests.signal]),
@@ -295,7 +296,7 @@ export class ProductPet {
         show(payload: object): void
         hide(): void
         animate(payload: object): void
-        send(path: string, body?: object): Promise<void>
+        send(path: string, body?: object): Promise<unknown>
       }): Presentation
     }
     this.presentation = presenter.createCompanionPresentation({
@@ -304,8 +305,10 @@ export class ProductPet {
       animate: payload => this.window?.webContents.send('pet:presentation', payload),
       send: async (path, body) => {
         if (path === 'open') { this.options.toggleMain(true); return }
-        const response = await this.request(path, body)
+        const method = path.startsWith('/policies') ? (body && 'method' in body ? String(body.method) : 'GET') : undefined
+        const response = await this.request(path, method === 'DELETE' ? undefined : body, method)
         if (!response.ok) throw Object.assign(new Error(`DSH request failed: ${response.status}`), { stale: response.status === 409 })
+        return response.json()
       },
     })
     const experienceModule = await import(pathToFileURL(join(root, 'pet/experience-runtime.mjs')).href) as {
@@ -385,6 +388,7 @@ export class ProductPet {
       const active = this.presentation?.state().working === true
       Menu.buildFromTemplate([
         ...(this.experience?.menu() ?? []),
+        { label: '管理持续授权…', click: () => { void this.presentation?.managePolicies() } },
         ...(active ? [{ label: '停止任务', click: () => { void this.request('/cancel', { source: 'task-stop' }).catch(() => this.presentation?.notice('停止失败，请打开 DSH 查看。', 'error')) } }] : []),
       ]).popup({ window })
     })

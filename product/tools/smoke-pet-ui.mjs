@@ -97,13 +97,21 @@ try {
  await detailsToggle.waitFor({state:'visible'})
  await detailsToggle.click();await renders
  const detailsText=await bubble.locator('#bubble-details').innerText()
- assert.match(detailsText,/工具：write/);assert.match(detailsText,/原始原因：write outside workspace/);assert.match(detailsText,/范围：仅本次请求/)
+ assert.match(detailsText,/工具：write/);assert.match(detailsText,/原始原因：write outside workspace/);assert.match(detailsText,/只能批准本次/)
  const approvalResize=await bubble.evaluate(()=>window.__resizeCalls?.at(-1)||0)
  assert.ok(approvalResize>=150,`approval bubble asked for only ${approvalResize}px`)
  assert.ok(approvalResize<=ORB_BUBBLE_WINDOW_HEIGHT)
  await page.screenshot({path:join(output,'approval.png')})
  await bubble.getByRole('button',{name:'允许一次',exact:true}).click();await renders
  assert.equal(calls.at(-1)[1].decision,'allow')
+ presentation.sync(snapshot([{id:'persistent',kind:'approval',sessionId:'ui-session',toolName:'bash',operation:{toolName:'bash',cwd:'/work',arguments:{command:'echo fixture'}},reason:'needs approval'}]));await renders
+ await bubble.getByRole('button',{name:'始终允许此操作…',exact:true}).click();await renders
+ await bubble.getByRole('button',{name:'返回',exact:true}).click();await renders
+ assert.equal(await bubble.getByRole('button',{name:'允许一次',exact:true}).count(),1)
+ await bubble.getByRole('button',{name:'始终允许此操作…',exact:true}).click();await renders
+ await page.screenshot({path:join(output,'approval-persistent-confirm.png')})
+ await bubble.getByRole('button',{name:'确认持续允许',exact:true}).click();await renders
+ assert.equal(calls.at(-1)[1].decision,'always-allow');assert.equal(calls.at(-1)[1].confirmExact,true)
  presentation.sync(snapshot([{id:'approval-deny',kind:'approval',sessionId:'ui-session',toolName:'bash',reason:'bash outside workspace: /Users/example'}]));await renders
  assert.match(await bubble.locator('#bubble-text').textContent(),/运行命令/)
  await bubble.getByRole('button',{name:'拒绝',exact:true}).click();await renders

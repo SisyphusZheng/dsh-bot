@@ -85,9 +85,9 @@ test('approval payload is localized, never offers the dead DSH link, and exposes
   f.presentation.sync(snapshot([{ id:'a1',kind:'approval',sessionId:'s',toolName:'bash',reason:'bash outside workspace: /Users/example' }]))
   const payload = f.shown.at(-1)
   assert.match(payload.text,/运行命令/)
-  assert.match(payload.text,/Users\/example/)
-  assert.deepEqual(payload.details,['工具：bash','目标：/Users/example','原始原因：bash outside workspace: /Users/example','范围：仅本次请求；不会复用为后续操作的授权'])
-  assert.equal(payload.secondary,undefined)
+  assert.doesNotMatch(payload.text,/Users\/example/)
+  assert.ok(payload.details.includes('目标：/Users/example')); assert.ok(payload.details.some(line=>line.includes('只能批准本次')))
+  assert.deepEqual(payload.secondary,[])
   assert.ok(!JSON.stringify(payload).includes('在 DSH 中查看'))
   f.presentation.stop()
 })
@@ -118,14 +118,42 @@ test('interrupted upstream failure prose becomes a human notice with a working m
 
 test('approval mapping never converts an unknown shell command into read/delete risk claims', () => {
   const write = approvalView({ toolName:'write', reason:'write outside workspace: /Users/example/a.txt' })
-  assert.match(write.text,/写入或修改/); assert.match(write.text,/\/Users\/example\/a\.txt/)
+  assert.match(write.text,/写入或修改/); assert.ok(write.details.some(line=>line.includes("/Users/example/a.txt")))
   const read = approvalView({ toolName:'read', reason:'read outside workspace: /Users/example/b.txt' })
   assert.match(read.text,/读取/); assert.equal(read.text.includes('写入'),false)
   const shell = approvalView({ toolName:'bash', reason:'bash outside workspace: /Users/example' })
   assert.match(shell.text,/运行命令/); assert.equal(shell.text.includes('读取'),false); assert.equal(shell.text.includes('删除'),false)
   const unknown = approvalView({ toolName:'mcp__custom', reason:'needs approval' })
-  assert.match(unknown.text,/执行一个需要你批准的操作/); assert.ok(unknown.text.includes('mcp__custom'))
+  assert.match(unknown.text,/执行一个需要你批准的操作/); assert.ok(unknown.details.includes('工具：mcp__custom'))
   assert.ok(unknown.details.some(line => line.includes('原始原因：needs approval')))
   assert.equal(humanizeFailure('DSH 进程在本轮完成前退出（例如被强制结束、崩溃或关闭超时）').startsWith('上次任务被中断'), true)
   assert.equal(humanizeFailure('普通错误'), '普通错误')
+})
+
+test('persistent approval requires exact operation and a second confirmation; stale drafts cannot grant', async()=>{
+ const calls=[],f=fixture(async(...x)=>calls.push(x)),operation={toolName:'bash',cwd:'/work',arguments:{command:'echo fixture'}}
+ const request={id:'a',kind:'approval',sessionId:'s',toolName:'bash',operation}
+ f.presentation.sync(snapshot([request]));assert.ok(f.shown.at(-1).details.some(x=>x.includes('echo fixture')))
+ await f.presentation.action({type:'secondary',id:'grant-confirm',requestId:'a'});assert.equal(calls.length,0)
+ assert.equal(f.shown.at(-1).approval.allowLabel,'确认持续允许')
+ await f.presentation.action({type:'approval',decision:'allow',requestId:'a'})
+ assert.deepEqual(calls[0],['/approval',{id:'a',sessionId:'s',decision:'always-allow',confirmExact:true}])
+ f.presentation.sync(snapshot([request]));await f.presentation.action({type:'secondary',id:'grant-confirm',requestId:'a'})
+ f.presentation.sync(snapshot([{...request,id:'b'}]));assert.equal(f.shown.at(-1).approval.allowLabel,'允许一次')
+ await f.presentation.action({type:'approval',decision:'allow',requestId:'a'});assert.equal(calls.length,1)
+ f.presentation.stop()
+})
+test('grant manager revokes displayed ids only and yields to an arriving approval', async()=>{
+ const calls=[],rule={id:'r',toolName:'write',key:'abc123abc123abc123',createdAt:'today'}
+ const f=fixture(async(path,body)=>{calls.push([path,body]);return {rules:[rule]}})
+ await f.presentation.managePolicies();const own=f.shown.at(-1).requestId
+ await f.presentation.action({type:'choice',id:'forged',requestId:own});assert.equal(calls.length,1)
+ await f.presentation.action({type:'choice',id:'r',requestId:own});assert.deepEqual(calls.at(-1),['/policies?id=r',{method:'DELETE'}]);assert.equal(f.shown.at(-1).choices.length,0)
+ f.presentation.sync(snapshot([{id:'a',kind:'approval',sessionId:'s',toolName:'bash'}]))
+ await f.presentation.action({type:'choice',id:'r',requestId:own});assert.equal(calls.length,2);assert.equal(f.shown.at(-1).approval.id,'a');f.presentation.stop()
+})
+test('late grant-manager load cannot replace a pending approval', async()=>{
+ let resolve;const f=fixture(()=>new Promise(r=>resolve=r));const pending=f.presentation.managePolicies()
+ f.presentation.sync(snapshot([{id:'a',kind:'approval',sessionId:'s',toolName:'write'}]));resolve({rules:[]});await pending
+ assert.equal(f.shown.at(-1).requestId,'a');f.presentation.stop()
 })
