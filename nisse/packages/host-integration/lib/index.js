@@ -1120,6 +1120,9 @@ export function apply(ctx, config = {}) {
       if (!authorized) return json(res, 401, { error: 'unauthorized' })
 
       // ---- dsh-nisse bridge protocol subset (for the real Qwen voice client) ----
+      if (url.pathname === '/task-state' && req.method === 'GET') {
+        return json(res, 200, { sessionId, clientTurnId: activeClientTurnId || null, turn: currentTurn, status: String(agent?.status || 'starting'), waiting: interactions.snapshot().length > 0, lastTurn })
+      }
       if (url.pathname === '/history' && req.method === 'GET') {
         const limit = Math.min(200, Math.max(1, Number(url.searchParams.get('limit') || 50)))
         const interesting = new Set(['user.message', 'assistant.message', 'tool.call', 'tool.result', 'turn.ended', 'approval.request', 'approval.decided', 'error'])
@@ -1300,6 +1303,9 @@ export function apply(ctx, config = {}) {
       }
       if (url.pathname === '/cancel' && req.method === 'POST') {
         const body = await readBody(req)
+        if (body.sessionId !== undefined && body.sessionId !== sessionId) return json(res, 409, { error: 'stale session' })
+        if (body.clientTurnId !== undefined && (!body.clientTurnId || body.clientTurnId !== activeClientTurnId)) return json(res, 409, { error: 'stale turn' })
+        if (body.turn !== undefined && body.turn !== currentTurn) return json(res, 409, { error: 'stale DSH turn' })
         const allowed = ['idle-pause', 'task-stop', 'voice-command', 'voice-disconnect']
         const source = body.source === undefined ? 'task-stop' : body.source
         if (!allowed.includes(source)) return json(res, 400, { error: 'invalid cancellation source' })

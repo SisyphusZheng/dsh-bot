@@ -43,15 +43,16 @@ class CapturePolicyTests(unittest.TestCase):
             self.assertEqual(p.transcript(str(i), final=True), 'always')
 
     def test_cancel_is_an_explicit_command_not_a_substring(self):
-        self.assertTrue(_is_cancel('停止。'))
-        self.assertTrue(_is_cancel('cancel'))
+        self.assertFalse(_is_cancel('停止。'))
+        self.assertTrue(_is_cancel('停止任务。'))
+        self.assertFalse(_is_cancel('cancel'))
         self.assertFalse(_is_cancel('不要取消任务，打开浏览器'))
         self.assertFalse(_is_cancel('解释 cancellation 是什么意思'))
 
 
 class VoiceAdmissionTests(unittest.IsolatedAsyncioTestCase):
     async def test_welcome_echo_and_fillers_never_start_or_cancel_a_task(self):
-        p = DSHBridgeProcessor('/unused'); p.set_greeting('你好，我在呢。想聊什么？')
+        p = DSHBridgeProcessor('/unused'); p.set_greeting('你好，我在呢。想聊什么？'); p._bridge_request = AsyncMock(return_value={'requests': []})
         p.push_frame = AsyncMock(); p._start_next_turn = AsyncMock(); p._cancel_current = AsyncMock(); p._send_rtvi = AsyncMock()
         with patch.object(FrameProcessor, 'process_frame', new=AsyncMock()):
             for text in ['嗯', '嗯。', '啊', '你好，我在呢。想聊什么？', '你好我在呢想聊什么']:

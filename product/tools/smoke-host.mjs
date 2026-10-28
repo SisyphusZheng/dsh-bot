@@ -89,10 +89,17 @@ try {
       const response=await post('/voice/turn',{text:`Write ${target}`});assert.equal(response.status,200)
       let approved=false,pending='',all=[]
       for await(const chunk of response.body){pending+=new TextDecoder().decode(chunk);let pos;while((pos=pending.indexOf('\n'))>=0){const frame=JSON.parse(pending.slice(0,pos));pending=pending.slice(pos+1);all.push(frame)
-        if(frame.type==='approval'&&!approved){assert.equal(existsSync(target),false);approved=true;assert.equal((await post(decision==='cancel'?'/cancel':'/approval',decision==='cancel'?{}:{id:frame.id,decision})).status,200)}
+        if(frame.type==='approval'&&!approved){assert.equal(existsSync(target),false);approved=true;assert.equal((await post(decision==='cancel'?'/cancel':'/approval',decision==='cancel'?{sessionId:frame.sessionId,clientTurnId:frame.requestId}:{id:frame.id,decision})).status,200)}
       }}
       assert.ok(approved,JSON.stringify(all));assert.equal(existsSync(target),decision==='allow',JSON.stringify(all));assert.ok(all.some(x=>x.type==='turn-end'))
     }
+    assert.equal((await post('/cancel', {sessionId:'stale-session'})).status,409)
+    assert.equal((await post('/cancel', {clientTurnId:'stale-request'})).status,409)
+    assert.equal((await post('/cancel', {turn:-999})).status,409)
+    assert.equal((await fetch(`http://127.0.0.1:${descriptor.port}/task-state`)).status,401)
+    const taskState=await(await fetch(`http://127.0.0.1:${descriptor.port}/task-state`,{headers})).json()
+    assert.equal(taskState.sessionId,session);assert.equal(taskState.status,'idle')
+    console.log('PASS authenticated task state and session/request/DSH-turn cancellation scoping')
     for (const kind of ['single','multi','cancel']) {
       const questions = [{id:'place',question:'去哪里？',options:[{label:'杭州'},{label:'苏州'},{label:'上海'}],...(kind==='multi'?{multi_select:true}:{})}]
       nextTool={name:'ask_user_question',arguments:{questions}}

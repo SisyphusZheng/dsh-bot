@@ -75,7 +75,7 @@ const session = createVoiceSession({
       onBotTtsText: data => { if (data.text) report(data.text, 'speaking', true, 'speech') },
       onServerMessage(data) {
         if (data.type === 'voice-error') { reportVoiceError(data); return }
-        capture?.message(data); if (data.type === 'duck-playback') audio.volume = 0.3; if (data.type === 'restore-playback') audio.volume = 1; if (data.type === 'barge-in-confirmed') { audio.muted = true; report('', 'listening', false) }; if (data.type === 'playback-identity') { audio.muted = false; audio.volume = 1 }; if (data.type === 'greeting') report(data.text, 'speaking', true, 'speech')
+        capture?.message(data); if (data.type === 'stop-playback') { audio.muted = true; report('', 'listening', false) }; if (data.type === 'control-result' || data.type === 'task-queued') report(data.text, session.snapshot().enabled ? 'listening' : 'idle', true, 'status'); if (data.type === 'duck-playback') audio.volume = 0.3; if (data.type === 'restore-playback') audio.volume = 1; if (data.type === 'barge-in-confirmed') { audio.muted = true; report('', 'listening', false) }; if (data.type === 'playback-identity') { audio.muted = false; audio.volume = 1 }; if (data.type === 'greeting') report(data.text, 'speaking', true, 'speech')
       },
     } })
     capture = createCaptureClient({

@@ -12,8 +12,8 @@ Key semantics implemented here:
   the DSH turn keeps running and its remaining text is dropped (late output isolation)
 - explicit cancel phrases call the bridge /cancel endpoint (real DSH cancel, with
   keepInbox=true); playback stop and task cancel are separate paths
-- approvals are never granted here: approval/tool session events are only counted
-  and logged, DSH keeps authority
+- explicit approval answers target the same pending DSH request; ambiguous
+  or stale answers grant nothing and DSH retains execution authority
 - new utterances that arrive while a DSH turn is active are queued locally until
   the current turn finishes (or is cancelled), preserving DSH's turn authority
 """
@@ -30,6 +30,7 @@ from difflib import SequenceMatcher
 
 import aiohttp
 from wake_phrase import WakePhrase
+from voice_commands import control_kind, normalize
 from loguru import logger
 
 
@@ -54,27 +55,12 @@ def probe_log(message):
 
 
 DEFAULT_DESCRIPTOR = "/tmp/whalegirl-g2/home/whalegirl-g2/descriptor.json"
-CANCEL_PHRASES = ("取消", "停止", "停下", "别说了", "不用了", "stop", "cancel")
-
-
 def _is_cancel(text: str) -> bool:
-    lowered = text.strip().lower()
-    return re.sub(r"[\s，。！？,.!?]", "", lowered) in CANCEL_PHRASES
-
-
-INTERRUPT_COMMANDS = ("停一下", "停下", "停止", "暂停", "取消", "等一下", "别说了", "别播", "打断", "先停")
-INTERRUPT_EXACT = {"停", "停啊", "停吧"}
+    return control_kind(text) == 'task-stop'
 
 
 def _is_interrupt_command(text: str) -> bool:
-    """Only explicit imperative phrases. A bare '停' inside another word (e.g. 停留)
-    must not count as an interrupt; this caused a pure-playback false barge-in."""
-    lowered = re.sub(r"[^0-9A-Za-z\u4e00-\u9fff]", "", (text or "").strip().lower())
-    if not lowered:
-        return False
-    if lowered in INTERRUPT_EXACT:
-        return True
-    return any(phrase in lowered for phrase in INTERRUPT_COMMANDS)
+    return control_kind(text) in ('playback-stop', 'task-stop', 'approval-allow', 'approval-reject')
 
 
 class DSHBridgeProcessor(FrameProcessor):
@@ -85,12 +71,16 @@ class DSHBridgeProcessor(FrameProcessor):
         self._session: aiohttp.ClientSession | None = None
         self._current: dict | None = None
         self._pending: deque[str] = deque()
+        self._utterance_targets = {}
+        self._consumed_controls = {}
         self._greeting = ""
         self._greeting_until = 0.0
         self._turn_seq = 0
         self._last_session_id: str | None = None
         self._quarantined = False
         self._quarantine_reason: str | None = None
+        self._uncertain_request = None
+        self._closing = False
         self._last_request_text: str | None = None
         self._barge_candidate: dict | None = None
         self._last_barge_context: dict | None = None
@@ -167,12 +157,15 @@ class DSHBridgeProcessor(FrameProcessor):
 
     # ---- lifecycle -----------------------------------------------------
     async def cleanup(self):
-        await self._close_session()
+        self._closing = True
+        timer = self._barge_timeout_task
+        self._cancel_barge_timeout()
+        if timer is not None:
+            await asyncio.gather(timer, return_exceptions=True)
         current = self._current
-        if current:
-            task = current.get("task")
-            if task:
-                self.create_task(self._cancel_task_quietly(task))
+        if current and current.get('task'):
+            await self._cancel_task_quietly(current['task'])
+        await self._close_session()
         await super().cleanup()
 
     async def _close_session(self):
@@ -239,6 +232,8 @@ class DSHBridgeProcessor(FrameProcessor):
 
     # ---- frame handling -------------------------------------------------
     async def process_frame(self, frame: Frame, direction: FrameDirection):
+        if self._closing:
+            return
         await super().process_frame(frame, direction)
 
         if isinstance(frame, VADUserStartedSpeakingFrame):
@@ -300,7 +295,7 @@ class DSHBridgeProcessor(FrameProcessor):
                     self._duck_state = dict(list(self._duck_state.items())[-100:])
                 now_mono2 = time.monotonic()
                 ducked = False
-                if st["used"] < 2 and now_mono2 >= st["cooldown_until"]:
+                if now_mono2 >= st["cooldown_until"]:
                     st["used"] += 1
                     ducked = True
                     self.metrics["duck_applied"] += 1
@@ -335,9 +330,35 @@ class DSHBridgeProcessor(FrameProcessor):
 
         if isinstance(frame, (InterimTranscriptionFrame, TranscriptionFrame)):
             if self._input_noise(frame.text):
+                cand = self._barge_candidate
+                if cand and self._echo_like(normalize(frame.text), normalize(cand.get('recent_window') or cand.get('reply_text', ''))):
+                    self.metrics['barge_rejected_echo'] += 1
+                    self._barge_candidate = None
+                    self._cancel_barge_timeout()
+                    await self._restore_duck(cand)
                 if isinstance(frame, TranscriptionFrame) and frame.metadata.get("capture_id"):
                     await self._send_rtvi({"type":"capture-rejected", "captureId":frame.metadata["capture_id"], "utteranceId":frame.metadata.get("utterance_id")})
                 return
+            key = self._utterance_key(frame.metadata)
+            if key and key not in self._utterance_targets:
+                self._utterance_targets[key] = {'current': self._current, 'requests': None, 'task': None}
+                if len(self._utterance_targets) > 128:
+                    self._utterance_targets.pop(next(iter(self._utterance_targets)))
+            kind = control_kind(frame.text)
+            if key and kind in ('approval-allow', 'approval-reject', 'approval-ambiguous'):
+                target = self._utterance_targets[key]
+                if target['requests'] is None:
+                    try:
+                        target['requests'] = (await self._bridge_request('GET', '/interactions')).get('requests', [])
+                    except Exception:
+                        target['requests'] = []
+            if key and kind == 'task-stop' and self._utterance_targets[key]['current'] is None:
+                target = self._utterance_targets[key]
+                if target['task'] is None:
+                    try:
+                        target['task'] = await self._bridge_request('GET', '/task-state')
+                    except Exception:
+                        target['task'] = {}
             capture_id = frame.metadata.get("capture_id")
             if capture_id:
                 await self._send_rtvi({"type": "capture-transcript", "text": frame.text, "final": isinstance(frame, TranscriptionFrame), "captureId": capture_id, "utteranceId": frame.metadata.get("utterance_id", capture_id)})
@@ -440,10 +461,7 @@ class DSHBridgeProcessor(FrameProcessor):
             if not text:
                 await self.push_frame(frame, direction)
                 return
-            if _is_cancel(text):
-                logger.info(f"[dsh] cancel utterance: {text!r}")
-                self._pending.clear()
-                await self._cancel_current()
+            if await self._handle_control(text, frame.metadata):
                 return
             # P1: drop final transcripts that closely match the recent spoken window.
             # Short legitimate replies (你好/我在/想聊什么/是/否) must survive; only a
@@ -489,12 +507,114 @@ class DSHBridgeProcessor(FrameProcessor):
             if self._current is None:
                 await self._start_next_turn()
             else:
+                await self._control_notice('收到，当前任务仍在处理，这条要求已排队。', kind='task-queued', count=len(self._pending))
                 logger.info(
                     f"[dsh] queued utterance behind active turn {self._current.get('turn_key')}: {text!r}"
                 )
             return
 
         await self.push_frame(frame, direction)
+
+    @staticmethod
+    def _utterance_key(metadata):
+        return f"{metadata.get('capture_id')}:{metadata.get('utterance_id')}" if metadata.get('utterance_id') else None
+
+    async def _bridge_request(self, method, path, body=None):
+        descriptor = self._load_descriptor()
+        async with self._get_session().request(
+            method, f"http://127.0.0.1:{descriptor['port']}{path}", json=body,
+            headers={'Authorization': f"Bearer {descriptor['token']}"},
+            timeout=aiohttp.ClientTimeout(total=5),
+        ) as response:
+            if response.status != 200:
+                raise RuntimeError(f'Bridge control HTTP {response.status}')
+            return await response.json()
+
+    async def _control_notice(self, text, kind='control-result', **extra):
+        # Reopening the shared track for acknowledgements could unmute late TTS.
+        await self._send_rtvi({'type': kind, 'text': text, **extra})
+
+    async def _handle_control(self, text, metadata):
+        kind = control_kind(text)
+        if kind is None:
+            return False
+        key = self._utterance_key(metadata)
+        if key and key in self._consumed_controls:
+            return True
+        target = self._utterance_targets.get(key, {'current': self._current, 'requests': None, 'task': None})
+        try:
+            if kind.startswith('approval-'):
+                requests = target['requests']
+                if requests is None:
+                    requests = (await self._bridge_request('GET', '/interactions')).get('requests', [])
+                if not requests and normalize(text) in ('是', '否', '好', '可以'):
+                    return False
+                if kind == 'approval-ambiguous':
+                    await self._control_notice('请明确说“允许一次”或“拒绝”，尚未授权。')
+                elif len(requests) != 1 or requests[0].get('kind') != 'approval':
+                    await self._control_notice('没有唯一待批准操作，请在气泡里选择；尚未授权。')
+                else:
+                    request = requests[0]
+                    result = await self._bridge_request('POST', '/approval', {
+                        'id': request['id'], 'sessionId': request['sessionId'],
+                        'decision': 'allow' if kind == 'approval-allow' else 'reject',
+                    })
+                    if result.get('ok') is not True:
+                        raise RuntimeError('Approval not confirmed')
+                    await self._control_notice('已允许本次操作。' if kind == 'approval-allow' else '已拒绝本次操作。')
+            elif kind in ('playback-stop', 'task-stop'):
+                current = target['current']
+                if current is not self._current:
+                    await self._control_notice('原任务已结束，这条迟到指令不会影响新任务。')
+                elif kind == 'task-stop' and current is not None:
+                    await self._cancel_current()
+                    await self._control_notice('已请求停止任务，正在等待执行器确认。')
+                elif kind == 'task-stop':
+                    state = target['task']
+                    if state is None:
+                        state = await self._bridge_request('GET', '/task-state')
+                    if state.get('status') == 'idle':
+                        await self._control_notice('当前没有正在执行的任务。')
+                    elif state.get('sessionId') and (state.get('turn') is not None or state.get('clientTurnId')):
+                        body = {'sessionId': state['sessionId'], 'source': 'voice-command'}
+                        if state.get('turn') is not None:
+                            body['turn'] = state['turn']
+                        if state.get('clientTurnId'):
+                            body['clientTurnId'] = state['clientTurnId']
+                        result = await self._bridge_request('POST', '/cancel', body)
+                        if result.get('ok') is not True:
+                            raise RuntimeError('Cancellation not confirmed')
+                        await self._control_notice('已请求停止当前任务。')
+                    else:
+                        await self._control_notice('暂时无法确认任务身份，请在主窗口检查；尚未取消任务。')
+                else:
+                    if current:
+                        current['audible'] = False
+                    if self._last_barge_context:
+                        self._last_barge_context['audible'] = False
+                    self._cancel_barge_timeout()
+                    self._barge_candidate = None
+                    await self.broadcast_interruption()
+                    await self._send_rtvi({'type': 'stop-playback'})
+                    await self._control_notice('已停止播报，任务继续。')
+            else:
+                state = await self._bridge_request('GET', '/task-state')
+                await self._control_notice('正在等待你的批准或回答。' if state.get('waiting') else
+                    '当前没有正在执行的任务。' if state.get('status') == 'idle' else
+                    '服务正在准备，暂时无法确认任务。' if state.get('status') == 'starting' else '当前任务仍在处理。')
+        except Exception as exc:
+            logger.warning(f'[dsh] voice control failed: {type(exc).__name__}')
+            await self._control_notice('操作未确认成功，请在气泡中检查；不会另建任务。')
+        if key:
+            self._consumed_controls[key] = None
+            if len(self._consumed_controls) > 128:
+                self._consumed_controls.pop(next(iter(self._consumed_controls)))
+        return True
+
+    def _quarantine(self, current, reason):
+        self._quarantined = True
+        self._quarantine_reason = reason
+        self._uncertain_request = {'sessionId': current.get('session_id'), 'clientTurnId': current.get('request_id')}
 
     # ---- turn driver ----------------------------------------------------
     def queue_state(self):
@@ -517,7 +637,7 @@ class DSHBridgeProcessor(FrameProcessor):
         }
 
     async def _start_next_turn(self):
-        if not self._pending:
+        if self._closing or self._quarantined or self._current is not None or not self._pending:
             return
         text = self._pending.popleft()
         self._turn_seq += 1
@@ -569,6 +689,8 @@ class DSHBridgeProcessor(FrameProcessor):
                         continue
                     event = json.loads(line)
                     await self._handle_bridge_event(current, event)
+            if current.get('request_id') and not current.get('cancelled') and not current.get('terminal_received'):
+                raise RuntimeError('Bridge stream ended without a terminal task event')
             if not current.get("cancelled"):
                 if current.get("completed") and not current.get("cancelled"):
                     self.metrics["turns_completed"] += 1
@@ -586,8 +708,7 @@ class DSHBridgeProcessor(FrameProcessor):
             await self.push_error_frame(ErrorFrame(error=f"DSH turn failed: {exc}"))
             if current.get("request_id"):
                 current["execution_unknown"] = True
-                self._quarantined = True
-                self._quarantine_reason = "execution-unknown"
+                self._quarantine(current, 'execution-unknown')
                 self.metrics["execution_unknown"] += 1
                 logger.warning(f"[dsh] {turn_key} execution state UNKNOWN after bridge/DSH failure; session quarantined, no retry")
             if current.get("audible"):
@@ -634,9 +755,11 @@ class DSHBridgeProcessor(FrameProcessor):
                     'audible': current.get('audible', True),
                     'ended_mono': time.monotonic(),
                 }
+            if current.get('cancelled') and current.get('request_id') and not current.get('terminal_received'):
+                self._quarantine(current, 'cancel-unconfirmed')
             if self._current is current:
                 self._current = None
-                if self._pending:
+                if self._pending and not self._quarantined and not self._closing:
                     self.create_task(self._start_next_turn(), name="dsh-next-turn")
             # reset connection state for the next turn
 
@@ -648,6 +771,8 @@ class DSHBridgeProcessor(FrameProcessor):
             current["session_id"] = session_id
         if kind == "admitted":
             current["request_id"] = event.get("requestId")
+            if current.get('cancelled'):
+                await self._cancel_current()
             logger.info(f"[dsh] {current['turn_key']} admitted session={session_id} request={current.get('request_id')}")
         elif kind == "assistant-start":
             current["dsh_turn"] = event.get("turn")
@@ -719,6 +844,7 @@ class DSHBridgeProcessor(FrameProcessor):
             else:
                 logger.info(f"[dsh] {current['turn_key']} finalized reason={reason}")
         elif kind == "turn-end":
+            current['terminal_received'] = True
             current["completed"] = (event.get("reason") or {}).get("kind") == "completed"
             if current.get("submitted_at"):
                 self.metrics["dsh_turn_epoch_samples"].append({
@@ -751,6 +877,7 @@ class DSHBridgeProcessor(FrameProcessor):
             if self._current is current and not current.get("finalized_reason"):
                 self.metrics["cancel_unconfirmed"] += 1
                 current["cancel_state"] = "unconfirmed"
+                self._quarantine(current, 'cancel-unconfirmed')
                 logger.warning(f"[dsh] {current.get('turn_key')} cancel watch timed out; marking unconfirmed")
                 await self.cancel_task(task)
         except asyncio.CancelledError:
@@ -759,58 +886,48 @@ class DSHBridgeProcessor(FrameProcessor):
             pass
 
     async def _sync_quarantine(self):
-        try:
-            descriptor = self._load_descriptor()
-            sid = self._last_session_id or descriptor.get("sessionId")
-            headers = {"Authorization": f"Bearer {descriptor['token']}"}
-            async with self._get_session().get(
-                f"http://127.0.0.1:{descriptor['port']}/session-status?sessionId={sid}",
-                headers=headers, timeout=aiohttp.ClientTimeout(total=3),
-            ) as response:
-                if response.status == 200:
-                    body = await response.json()
-                    if not body.get("quarantined") and self._quarantine_reason == "cancel-unconfirmed":
-                        self._quarantined = False
-                        self._quarantine_reason = None
-                        logger.info("[dsh] local quarantine cleared: bridge reports not quarantined")
-        except Exception as exc:
-            logger.warning(f"[dsh] quarantine sync failed: {exc}")
+        if self._quarantine_reason == 'cancel-unconfirmed':
+            await self._try_recover()
 
     async def _try_recover(self):
+        expected = self._uncertain_request
+        if not expected or not expected.get('sessionId') or not expected.get('clientTurnId'):
+            return
         try:
-            descriptor = self._load_descriptor()
-            sid = self._last_session_id
-            if not sid:
-                return
-            headers = {"Authorization": f"Bearer {descriptor['token']}", "content-type": "application/json"}
-            async with self._get_session().post(
-                f"http://127.0.0.1:{descriptor['port']}/recover", json={"sessionId": sid},
-                headers=headers, timeout=aiohttp.ClientTimeout(total=5),
-            ) as response:
-                body = await response.text()
-                logger.info(f"[dsh] recovery attempt status={response.status} body={body[:200]}")
-                if response.status == 200 and json.loads(body).get("quarantineCleared"):
-                    self._quarantined = False
+            state = await self._bridge_request('GET', '/task-state')
+            terminal = (state.get('lastTurn') or {}).get('terminal')
+            if (state.get('sessionId') == expected['sessionId'] and
+                    state.get('clientTurnId') == expected['clientTurnId'] and
+                    state.get('status') == 'idle' and terminal in ('completed', 'aborted', 'failed', 'cancelled')):
+                self._quarantined = False
+                self._quarantine_reason = None
+                self._uncertain_request = None
+                count = len(self._pending)
+                self._pending.clear()
+                if count:
+                    await self._control_notice(f'原任务状态已确认；{count} 条尚未执行的排队要求未自动重放，请重新确认后提交。')
         except Exception as exc:
-            logger.warning(f"[dsh] recovery failed: {exc}")
+            logger.warning(f'[dsh] recovery state check failed: {type(exc).__name__}')
 
     async def _cancel_current(self):
         current = self._current
         if current is None:
             logger.info("[dsh] cancel requested but no active turn")
             return
-        descriptor = self._load_descriptor()
-        session_id = current.get("session_id") or descriptor.get("sessionId")
         current["cancelled"] = True
         current["audible"] = False
         self.metrics["cancel_requests"] += 1
-        logger.info(f"[dsh] cancelling DSH turn {current.get('turn_key')} session={session_id}")
         await self.broadcast_interruption()
+        if not current.get('request_id'):
+            return  # Admission performs scoped cancellation when its id arrives.
+        descriptor = self._load_descriptor()
+        session_id = current.get('session_id') or descriptor.get('sessionId')
+        logger.info(f"[dsh] cancelling DSH turn {current.get('turn_key')} session={session_id}")
         try:
             headers = {"Authorization": f"Bearer {descriptor['token']}", "content-type": "application/json"}
             async with self._get_session().post(
                 f"http://127.0.0.1:{descriptor['port']}/cancel",
-                json={"sessionId": session_id, "source": "voice-command"},
+                json={"sessionId": session_id, "clientTurnId": current.get("request_id"), "source": "voice-command"},
                 headers=headers,
                 timeout=aiohttp.ClientTimeout(total=10),
             ) as response:
