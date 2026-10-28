@@ -338,8 +338,10 @@
     },
     {
       "id": "S5",
-      "state": "NOT-STARTED",
-      "scope": "集成本地门禁、源码/构建资源身份、更新Chief任务书并交付；只将实际执行结果标PASS。"
+      "state": "VERIFIED",
+      "scope": "Executable cloud verification; native and external blockers remain",
+      "sourceCommit": "8984d48cd59cad4c2bbb5245a3f436b2f56a8843",
+      "evidence": "RESULTS.json"
     }
   ],
   "nativeAcceptance": {
@@ -347,5 +349,13 @@
     "realMicrophoneTccAndAcoustics": "BLOCKED-ENVIRONMENT",
     "realProvider": "BLOCKED-EXTERNAL",
     "newHindsightSemanticAcceptance": "BLOCKED-EXTERNAL"
+  },
+  "delivery": {
+    "sourceCommit": "8984d48cd59cad4c2bbb5245a3f436b2f56a8843",
+    "sourceTree": "2b93cada2835083c82f45a14505780b8bfda99ec",
+    "status": "MVP CANDIDATE FOR LOCAL ACCEPTANCE",
+    "stableRelease": false,
+    "results": "RESULTS.json",
+    "versions": "VERSIONS.json"
   }
 }

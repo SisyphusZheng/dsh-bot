@@ -1,0 +1,132 @@
+{
+  "product": "0.0.1-beta",
+  "runtime": "0.2.1-rc.3",
+  "sourceCommit": "8984d48cd59cad4c2bbb5245a3f436b2f56a8843",
+  "sourceTree": "2b93cada2835083c82f45a14505780b8bfda99ec",
+  "hostBridge": "0.1.0 / dsh-nisse-subset-v0",
+  "voiceWorker": {
+    "sourceCommit": "8984d48cd59cad4c2bbb5245a3f436b2f56a8843",
+    "pipecat": "1.13.0",
+    "websockets": "16.1.1",
+    "python": "3.12.14",
+    "platform": "Linux-6.18.55-x86_64-with-glibc2.39",
+    "entrySha256": "17b6634109b8d7cf95c1f7124c58642a85e5403da796b8f6240299a4472577eb",
+    "totalBytes": 738175487,
+    "files": 1619,
+    "fileManifestRawSha256": "d07ea3bff839bf79b729e251f73858e047fb48b075bd8ce7961206354f202b43",
+    "buildHeadAtStart": "e889fb09210b6b657aaa048b0f8ddfa5a6f31e54",
+    "identicalWorkerSourceTreeAtBuildAndFreeze": "102e01f38707830b250fa95e951a74f650aebc8a",
+    "cloudPythonPackages": [
+      "aiofiles==25.1.0",
+      "aiohappyeyeballs==2.7.1",
+      "aiohttp==3.14.5",
+      "aioice==0.10.2",
+      "aiortc==1.15.0",
+      "aiosignal==1.4.0",
+      "altgraph==0.17.5",
+      "annotated-doc==0.0.5",
+      "annotated-types==0.8.0",
+      "anyio==4.15.1",
+      "attrs==26.1.0",
+      "av==17.1.0",
+      "cffi==2.1.1",
+      "click==8.5.0",
+      "cryptography==50.0.2",
+      "dnspython==2.9.0",
+      "docopt==0.6.2",
+      "docstring_parser==0.18.0",
+      "fastapi==0.161.1",
+      "flatbuffers==25.12.19",
+      "frozenlist==1.8.0",
+      "google-crc32c==1.9.0",
+      "h11==0.16.0",
+      "httpcore2==2.16.0",
+      "httpx2==2.16.0",
+      "idna==3.20",
+      "ifaddr==0.2.0",
+      "jiter==0.18.0",
+      "llvmlite==0.50.0",
+      "loguru==0.7.3",
+      "loudness==0.2.0",
+      "Markdown==3.11.2",
+      "mpmath==1.3.0",
+      "multidict==7.2.1",
+      "num2words==0.5.14",
+      "numba==0.68.1",
+      "numpy==2.5.4",
+      "onnxruntime==1.24.4",
+      "openai==3.40.0",
+      "opencv-python-headless==4.14.0.94",
+      "opentelemetry-api==1.45.1",
+      "packaging==26.3",
+      "pillow==12.3.0",
+      "pip==25.0.1",
+      "pipecat-ai==1.13.0",
+      "propcache==0.5.4",
+      "protobuf==6.33.6",
+      "pycparser==3.12",
+      "pydantic==2.14.1",
+      "pydantic_core==2.50.1",
+      "pyee==16.0.0",
+      "pyinstaller==6.20.0",
+      "pyinstaller-hooks-contrib==2026.9",
+      "pylibsrtp==1.0.0",
+      "pyOpenSSL==26.4.0",
+      "python-dotenv==1.2.4",
+      "PyYAML==6.0.3",
+      "resampy==0.4.3",
+      "sentencex==1.0.32",
+      "setuptools==84.2.1",
+      "sniffio==1.3.1",
+      "soundfile==0.13.1",
+      "soxr==1.0.0",
+      "starlette==1.10.0",
+      "sympy==1.14.0",
+      "truststore==0.10.5",
+      "typing-inspection==0.4.4",
+      "typing_extensions==4.16.0",
+      "uvicorn==0.54.0",
+      "websockets==16.1.1",
+      "yarl==1.25.1"
+    ]
+  },
+  "memoryDeclaredInputs": {
+    "hindsight": "1.0.0",
+    "client": "1.0.0",
+    "pg0": "0.15.2",
+    "postgres": "18.1.0",
+    "embedding": "Xenova/multilingual-e5-small@761b726d",
+    "onnxModelSha256": "4d24e2bc01a447951524466ef533e52944bf48509e6552810bcee1a2711cb02c",
+    "source": "product/memory/requirements-macos.lock + HindsightAPI.spec"
+  },
+  "inputHashes": [
+    {
+      "path": "pnpm-lock.yaml",
+      "sha256": "df3fa728858b532d5177ccd55f6a124dcc65312008b7b1756a3dfea254ac816b"
+    },
+    {
+      "path": "product/voice-worker-src/requirements-macos.lock",
+      "sha256": "25f50968d35614d5b05dd404c980e8b0f370dd02b3c3d99e5fec53f8b605fa38"
+    },
+    {
+      "path": "product/memory/requirements-macos.lock",
+      "sha256": "41c85dcbf7a6879fda10166fc9fbbc6fd7cdfd3adaf1aa8a28458856d0da79bf"
+    },
+    {
+      "path": "product/upstream-integrity.json.gz",
+      "sha256": "6c86886161b027d4cd5e94844326c84f448634b0ae4558c68ed6a7d9f1fe03fa"
+    },
+    {
+      "path": "product/upstream-allowlist.json",
+      "sha256": "f7229c452fa699a636bbfb2ce60d6af402fb2d6b1e523035a4bae7a09a10ae0a"
+    },
+    {
+      "path": "apps/desktop/resources/whale-girl/pet.json",
+      "sha256": "86653287342b307be89d7823120d6428a71f5488863856c8236c957b6f520f9b"
+    },
+    {
+      "path": "apps/desktop/resources/whale-girl/spritesheet.webp",
+      "sha256": "5388d27a82eaabdfc05358f554dc5dad72bc49bb119fe12464e6c2a66b3b1efc"
+    }
+  ]
+}

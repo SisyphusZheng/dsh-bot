@@ -1,0 +1,151 @@
+{
+  "stage": "S5",
+  "sourceCommit": "8984d48cd59cad4c2bbb5245a3f436b2f56a8843",
+  "sourceTree": "2b93cada2835083c82f45a14505780b8bfda99ec",
+  "productVersion": "0.0.1-beta",
+  "result": "PASS",
+  "resultScope": "Required executable cloud verification only; not stable release or native acceptance",
+  "checks": [
+    {
+      "result": "PASS",
+      "scope": "Full verify-local entry on frozen source: install, integrity, 70 Node tests, 5 typecheck/9 production build gates, 18 Vitest files/284 tests, native KWS, resources, Chromium UI, real Host custom/default, 48 Python tests, Pipecat/WebRTC signaling and media fixtures, shell syntax and diff",
+      "rawLog": "frozen-gate-console.log",
+      "log": "evidence/frozen-gate-console.log.gz",
+      "rawBytes": 23831,
+      "rawSha256": "c43f1421d0524ae3a3c48d9930516a849bff1c8c11414e8b48d1eb198e07cfb0"
+    },
+    {
+      "result": "PASS",
+      "scope": "Linux frozen VoiceWorker real startup/signaling authentication/shutdown; no real provider",
+      "rawLog": "s5-frozen-smoke.log",
+      "log": "evidence/s5-frozen-smoke.log.gz",
+      "rawBytes": 92,
+      "rawSha256": "97a8a19e17e0318752454accda5061216a55783ace094879bb1b700952db8016"
+    },
+    {
+      "result": "PASS",
+      "scope": "Actual Linux x86_64 PyInstaller build",
+      "rawLog": "s5-freeze.log",
+      "log": "evidence/s5-freeze.log.gz",
+      "rawBytes": 39064,
+      "rawSha256": "c45dcda30bd655e67b9ad85faeecd568643d08380b46946b296c06a87a89036d"
+    },
+    {
+      "result": "PASS",
+      "scope": "New bilingual Chief brief only",
+      "rawLog": "s5-pairing.log",
+      "log": "evidence/s5-pairing.log.gz",
+      "rawBytes": 174,
+      "rawSha256": "f83877064e12883d099dfd9df8b8306d400bf0b5f6e4d6f0abf36ef2c66e51fc"
+    },
+    {
+      "result": "PASS",
+      "scope": "TypeScript after new native-resource hook test typing",
+      "rawLog": "s5-typecheck.log",
+      "log": "evidence/s5-typecheck.log.gz",
+      "rawBytes": 572,
+      "rawSha256": "afc503e0ff32762e7cdcc6ce28de289b95f29460fd42eb85018d8de75e799d03"
+    },
+    {
+      "result": "PASS",
+      "scope": "3 configuration-hook tests with explicit resource fixtures; no native signatures executed",
+      "rawLog": "s5-native-hook.log",
+      "log": "evidence/s5-native-hook.log.gz",
+      "rawBytes": 913,
+      "rawSha256": "cfd5b21819caf67c055c0ee113548c6d6eda156b21f52eccadeb972cb9790fab"
+    },
+    {
+      "result": "PASS",
+      "scope": "2 native-file/ownership unit tests with signature-command fixture",
+      "rawLog": "s5-signature-unit.log",
+      "log": "evidence/s5-signature-unit.log.gz",
+      "rawBytes": 346,
+      "rawSha256": "c97278618e8e390fc1618d3fc606c533785b663bba85b6b21087033020291ad4"
+    },
+    {
+      "result": "PASS",
+      "scope": "16347 official files / 36 explicit overrides",
+      "rawLog": "final-upstream.log",
+      "log": "evidence/final-upstream.log.gz",
+      "rawBytes": 99,
+      "rawSha256": "cc129550360be80cee6941fb5991e99404400e2046905cd84ab46f72fc2bf084"
+    },
+    {
+      "result": "FAIL",
+      "scope": "Additional whole-corpus documentation run: CLI help rejects cloud SOCKS diagnostic, client catalog stale, bounded at 120s; not a passing corpus check",
+      "rawLog": "s5-doc-sync.log",
+      "log": "evidence/s5-doc-sync.log.gz",
+      "rawBytes": 2159,
+      "rawSha256": "11a38908e1cad1b7f5168ea4ca9e5620ed5e6fc65f420ae062302e9ee826c5ec"
+    },
+    {
+      "result": "FAIL",
+      "scope": "Additional legacy upstream packaging tests have product/runtime version and branding expectation mismatches; run stopped, not a complete pass",
+      "rawLog": "s5-packaging-tests.log",
+      "log": "evidence/s5-packaging-tests.log.gz",
+      "rawBytes": 1436,
+      "rawSha256": "6b78aca2c9339c0b3526c4e0859fba0d07acdc8308bea31a9e7a5c4aa2216fe4"
+    }
+  ],
+  "gates": {
+    "G1": {
+      "result": "PASS",
+      "scope": "Cross-platform Desktop production build and macOS build inputs/helpers; native artifact not built"
+    },
+    "G2": {
+      "result": "PASS",
+      "scope": "Real compiled DSH Host Session/tools/approval/question; local Provider fixture"
+    },
+    "G3": {
+      "result": "PASS",
+      "scope": "Real Pipecat/WebRTC transport and shipped SDK; ASR/TTS/Bridge fixtures, not real acoustics"
+    },
+    "G4": {
+      "result": "BLOCKED-ENVIRONMENT",
+      "scope": "Memory HTTP adapter fixture passes; no new native Hindsight server/database/semantic acceptance"
+    },
+    "G5": {
+      "result": "PASS",
+      "scope": "Executable cloud Host lifecycle/isolation, live config and desktop runtime tests; native App remains unverified"
+    },
+    "G6": {
+      "result": "PASS",
+      "scope": "Local MVP authorization, scoped cancellation, credential regressions and exact-grant storage; not an external security certification"
+    },
+    "G7": {
+      "result": "BLOCKED-ENVIRONMENT",
+      "scope": "No macOS ARM64, DMG, TCC or physical input acceptance"
+    }
+  },
+  "realProvider": "BLOCKED-EXTERNAL",
+  "nativeAcousticsAndTcc": "BLOCKED-ENVIRONMENT",
+  "knownGaps": [
+    {
+      "id": "13",
+      "result": "DEFERRED",
+      "detail": "Read-only task inspection implemented; automatic continuation/retry not delivered; confirm side effects before resubmitting."
+    },
+    {
+      "id": "14",
+      "result": "DEFERRED",
+      "detail": "Pet failure prose humanized; main DSH window retains upstream technical diagnostics."
+    },
+    {
+      "id": "QA-DOCS",
+      "result": "FAIL",
+      "detail": "Whole-corpus documentation run did not pass; see raw log."
+    },
+    {
+      "id": "QA-LEGACY-PACKAGING",
+      "result": "FAIL",
+      "detail": "Additional legacy upstream packaging test run did not pass; current product hook has 3 dedicated passing tests."
+    }
+  ],
+  "remotePolicy": {
+    "branch": "work/0.0.1-closure",
+    "mainUnchanged": "710c94223cc0f4e75f066507107fb1c1d43d29a1",
+    "actionsObserved": 649,
+    "noPrTagRelease": true,
+    "authorAssociatedWith": "SisyphusZheng"
+  }
+}
