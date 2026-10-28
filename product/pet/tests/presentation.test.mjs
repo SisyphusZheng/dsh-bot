@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { createCompanionPresentation } from '../src/companion-presentation.mjs'
+import { approvalView, createCompanionPresentation, humanizeFailure } from '../src/companion-presentation.mjs'
 import { spritePlaybackSelection, resolveAnimations, spriteGeometry } from '../src/sprite-orb.js'
 import { readFileSync } from 'node:fs'
 
@@ -114,4 +114,18 @@ test('interrupted upstream failure prose becomes a human notice with a working m
   await f.presentation.action({type:'secondary',id:'open'})
   assert.deepEqual(calls,[['open']])
   f.presentation.stop()
+})
+
+test('approval mapping never converts an unknown shell command into read/delete risk claims', () => {
+  const write = approvalView({ toolName:'write', reason:'write outside workspace: /Users/example/a.txt' })
+  assert.match(write.text,/写入或修改/); assert.match(write.text,/\/Users\/example\/a\.txt/)
+  const read = approvalView({ toolName:'read', reason:'read outside workspace: /Users/example/b.txt' })
+  assert.match(read.text,/读取/); assert.equal(read.text.includes('写入'),false)
+  const shell = approvalView({ toolName:'bash', reason:'bash outside workspace: /Users/example' })
+  assert.match(shell.text,/运行命令/); assert.equal(shell.text.includes('读取'),false); assert.equal(shell.text.includes('删除'),false)
+  const unknown = approvalView({ toolName:'mcp__custom', reason:'needs approval' })
+  assert.match(unknown.text,/执行一个需要你批准的操作/); assert.ok(unknown.text.includes('mcp__custom'))
+  assert.ok(unknown.details.some(line => line.includes('原始原因：needs approval')))
+  assert.equal(humanizeFailure('DSH 进程在本轮完成前退出（例如被强制结束、崩溃或关闭超时）').startsWith('上次任务被中断'), true)
+  assert.equal(humanizeFailure('普通错误'), '普通错误')
 })
