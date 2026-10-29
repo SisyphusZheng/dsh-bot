@@ -114,10 +114,17 @@ export function orbBubbleWindowBounds(options) {
   if(!avoided.length)return preferred
   const area=options.workArea,orb=options.orbBounds,w=preferred.width,h=preferred.height
   const fit=(x,y)=>({x:Math.round(clamp(x,area.x,area.x+area.width-w)),y:Math.round(clamp(y,area.y,area.y+area.height-h)),width:w,height:h,placement:'beside'})
-  const candidates=[preferred,fit(orb.x-w-12,preferred.y),fit(orb.x+orb.width+12,preferred.y)]
-  for(const r of avoided)candidates.push(fit(r.x-w-12,preferred.y),fit(r.x+r.width+12,preferred.y),fit(preferred.x,r.y-h-12),fit(preferred.x,r.y+r.height+12))
+  // Stay anchored to the orb: moving the bubble to the far edge of the main window
+  // makes it look detached from the pet. These are the only nearby slots.
+  const candidates=[preferred,fit(orb.x-w-12,preferred.y),fit(orb.x+orb.width+12,preferred.y),fit(orb.x,orb.y-h-12),fit(orb.x,orb.y+orb.height+12)]
   const overlap=(a,b)=>Math.max(0,Math.min(a.x+a.width,b.x+b.width)-Math.max(a.x,b.x))*Math.max(0,Math.min(a.y+a.height,b.y+b.height)-Math.max(a.y,b.y))
-  const score=r=>avoided.reduce((sum,b)=>sum+overlap(r,b),0)+overlap(r,orb)*4
+  const centerX=orb.x+orb.width/2,centerY=orb.y+orb.height/2
+  // Overlap cost dominates, but a large distance from the orb is also a failure:
+  // the least-overlapping far-left slot previously led the bubble away from the pet.
+  const score=r=>{
+    const distance=Math.hypot((r.x+r.width/2)-centerX,(r.y+r.height/2)-centerY)
+    return avoided.reduce((sum,b)=>sum+overlap(r,b),0)*4+overlap(r,orb)*8+distance
+  }
   return candidates.reduce((best,r)=>score(r)<score(best)?r:best,preferred)
 }
 

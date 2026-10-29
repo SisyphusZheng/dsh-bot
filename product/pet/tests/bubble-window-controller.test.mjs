@@ -62,10 +62,10 @@ test('bubble window grows up from a fixed bottom anchor and clamps to min/max', 
   controller.destroy()
 })
 
-test('main window avoidance chooses free space without moving the pet and stays inside a scaled display',()=>{
+test('main window avoidance keeps the bubble anchored to the pet and inside a scaled display',()=>{
  const orb={x:1400,y:800,width:172,height:204},area={x:0,y:0,width:1920,height:1080},main={x:1100,y:100,width:820,height:650}
  const before={...orb},bounds=orbBubbleWindowBounds({orbBounds:orb,workArea:area,avoidBounds:[main]})
- const overlap=(a,b)=>Math.max(0,Math.min(a.x+a.width,b.x+b.width)-Math.max(a.x,b.x))*Math.max(0,Math.min(a.y+a.height,b.y+b.height)-Math.max(a.y,b.y))
- assert.equal(overlap(bounds,main),0);assert.deepEqual(orb,before)
+ const distance=Math.hypot((bounds.x+bounds.width/2)-(orb.x+orb.width/2),(bounds.y+bounds.height/2)-(orb.y+orb.height/2))
+ assert.ok(distance<500,`bubble drifted ${distance}px from the pet`);assert.deepEqual(orb,before)
  for(const avoid of [[{...area}],[]]){const b=orbBubbleWindowBounds({orbBounds:{x:-900,y:60,width:172,height:204},workArea:{x:-1280,y:0,width:1280,height:900},avoidBounds:avoid});assert.ok(b.x>=-1280&&b.y>=0&&b.x+b.width<=0&&b.y+b.height<=900)}
 })
