@@ -30,7 +30,14 @@ PY
 [[ -x "$STAGE/pg0-build-home/.pg0/installation/18.1.0/bin/postgres" ]]
 rm -rf "$STAGE/memory/runtime/pg0/installation/18.1.0"
 cp -R "$STAGE/pg0-build-home/.pg0/installation/18.1.0" "$STAGE/memory/runtime/pg0/installation/"
-(cd "$ROOT/product/memory" && "$STAGE/memory-venv/bin/pyinstaller" HindsightAPI.spec --distpath "$STAGE/memory-dist" --workpath "$STAGE/memory-build" --noconfirm)
+# Build into a fresh directory: Finder/Spotlight can recreate .DS_Store inside
+# an existing output tree between PyInstaller's cleanup attempts, which makes
+# --noconfirm fail with ENOTEMPTY. A fresh distpath avoids deleting anything.
+DIST_TMP="$STAGE/memory-dist-build.$$"
+rm -rf "$DIST_TMP"
+(cd "$ROOT/product/memory" && "$STAGE/memory-venv/bin/pyinstaller" HindsightAPI.spec --distpath "$DIST_TMP" --workpath "$STAGE/memory-build" --noconfirm)
+rm -rf "$STAGE/memory-dist"
+mv "$DIST_TMP" "$STAGE/memory-dist"
 rm -rf "$STAGE/memory/runtime/hindsight"
 cp -R "$STAGE/memory-dist/HindsightAPI" "$STAGE/memory/runtime/hindsight"
 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 "$STAGE/memory/runtime/hindsight/HindsightAPI" --check-embeddings "$STAGE/memory/runtime/models/Xenova/multilingual-e5-small"

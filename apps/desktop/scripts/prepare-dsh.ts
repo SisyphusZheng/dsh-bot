@@ -3,7 +3,7 @@
 import { resolveMacOSSignatureCacheDirectory } from './macos-signature-cache-directory.mjs'
 import { packagingStep } from './packaging-step.mjs'
 import { spawn } from 'node:child_process'
-import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { delimiter, join, relative, resolve } from 'node:path'
 import { desktopNodeEnvironment } from '../src/node-environment.ts'
@@ -35,6 +35,25 @@ import {
 import { desktopTargetPlatform, resolveDesktopBuildTarget, resolveDesktopTargetBuildPaths } from './desktop-build-paths.mjs'
 import { desktopRuntimeFileExclusion } from './runtime-file-policy.ts'
 import { selectOfficeEngine } from '../../../scripts/libreoffice-packages.mjs'
+
+
+/** Finder can recreate .DS_Store while a build directory is being removed. */
+function removeFinderMetadata(root: string): void {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    let removed = false
+    const walk = (dir: string): void => {
+      let entries: import('node:fs').Dirent[]
+      try { entries = readdirSync(dir, { withFileTypes: true }) } catch { return }
+      for (const entry of entries) {
+        const path = join(dir, entry.name)
+        if (entry.isDirectory()) walk(path)
+        else if (entry.name === '.DS_Store') { try { rmSync(path, { force: true }); removed = true } catch { /* retry */ } }
+      }
+    }
+    walk(root)
+    if (!removed) break
+  }
+}
 
 const APP_ROOT = resolve(import.meta.dirname, '..')
 const BUILD_PATHS = resolveDesktopTargetBuildPaths()
@@ -115,6 +134,7 @@ function runPnpm(args: readonly string[]): Promise<void> {
 async function main(): Promise<void> {
   try {
     await packagingStep(process.env.DSH_DESKTOP_PACKAGING_RUN_DIR, 'runtime:reset', async () => {
+      removeFinderMetadata(DSH_OUTPUT_ROOT)
       rmSync(DSH_OUTPUT_ROOT, { recursive: true, force: true })
       rmSync(PNPM_BUILD_STATE, { recursive: true, force: true })
       mkdirSync(STORE_ROOT, { recursive: true })
@@ -154,10 +174,12 @@ async function main(): Promise<void> {
     // Mach-O changes its bytes, and the ASAR integrity check compares those exact bytes.
     if (process.platform === 'darwin' && process.env.DSH_DESKTOP_UNSIGNED === '1') {
       await packagingStep(process.env.DSH_DESKTOP_PACKAGING_RUN_DIR, 'sign:dsh-ad-hoc', async () => {
+        removeFinderMetadata(DSH_OUTPUT_ROOT)
         signAdHocResources(DSH_OUTPUT_ROOT)
         signAdHocResources(join(RUNTIME_ROOT, 'primary-runtime'))
       })
     }
+    removeFinderMetadata(DSH_OUTPUT_ROOT)
     for (const file of DESKTOP_HOST_RUNTIME_FILES) {
       if (!existsSync(join(DSH_OUTPUT_ROOT, 'node_modules', DESKTOP_HOST_PACKAGE, file))) {
         throw new Error(`desktop runtime: missing private Host file ${file}`)
