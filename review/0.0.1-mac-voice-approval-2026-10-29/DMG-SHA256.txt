@@ -1,0 +1,1 @@
+d2d28b1445eb2d8c2a677e3cfab6e442ef3b9629261dd233ca0c6042ca546663  <HOME>/Documents/projects/dsh-bot-0.0.1/apps/desktop/.desktop-build/targets/mac-arm64/unsigned-artifacts/dsh-bot-0.0.1-beta-c2ae35b2-mac-arm64-unsigned.dmg
