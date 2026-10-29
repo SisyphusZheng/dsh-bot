@@ -59,6 +59,7 @@ export function createVoiceSession({ createClient, publish, handshakeTimeoutMs =
     },
     snapshot: () => ({ phase, enabled, wanted }),
     confirmInput(value) { if (ready && !stopped) return client?.confirmInput?.(value) },
+    playbackStyle(value) { if (ready && !stopped) return client?.playbackStyle?.(value) },
     questionView(value) { if (ready && !stopped) return client?.questionView?.(value) },
     queueControl(value) { if (ready && !stopped) return client?.queueControl?.(value) },
     async stop() { stopped = true; wanted = false; await close(); await queue },

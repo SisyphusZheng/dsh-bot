@@ -96,3 +96,4 @@ apps/desktop/resources/pet/legacy-preferences.mjs
 apps/desktop/resources/pet/wake-word/
 apps/desktop/resources/pet/wake-model/
 apps/desktop/resources/pet/question-voice.mjs
+apps/desktop/resources/pet/desktop-attention.mjs

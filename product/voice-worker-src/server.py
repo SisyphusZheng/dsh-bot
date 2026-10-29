@@ -351,6 +351,9 @@ async def _run_task(transport, task, session_id: str, session_state: dict) -> No
     if task.rtvi is not None and MODE == "dsh":
         @task.rtvi.event_handler("on_client_message")
         async def capture_control(rtvi, message):
+            if message.type == 'playback-style':
+                if isinstance(message.data,dict) and message.data.get('style') in ('brief','full'): session_state['dsh']._playback_style=message.data['style']
+                return
             if message.type == 'question-view':
                 if isinstance(message.data,dict): session_state['dsh'].set_question_view(message.data.get('view'))
                 return

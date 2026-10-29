@@ -167,7 +167,7 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
     if (!inputDraft || stopped || requests.length || manager || recovery) return
     cancelTimer()
     show({visible:true,kind:'action',requestId:`voice:${inputDraft.id}`,title:'我听到（尚未发送）',text:inputDraft.text,busy:inputDraftBusy,clickThrough:false,
-      hint:'常听可能收进环境声。确认才会发送；可说“确认发送”或“取消输入”。',
+      hint:'这句尚未发送，可能是环境声或不完整的识别。确认才会发送；可说“确认发送”或“取消输入”。',
       input:inputDraft.edit ? {value:inputDraft.text,placeholder:'纠正识别内容',submitLabel:'确认发送'} : null,
       secondary:[...(!inputDraft.edit ? [{id:'voice-confirm',label:'确认发送'},{id:'voice-edit',label:'修改'}] : []),{id:'voice-discard',label:'丢弃输入'}]})
   }
@@ -270,6 +270,7 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
         notice(humanizeFailure(event.data?.message), 'error', 9000, '', { secondary: [{ id: 'recover-task', label: '恢复上次任务…' }, { id: 'inspect-task', label: '检查任务状态' }, { id: 'open', label: '打开主窗口' }] })
       }
     },
+    syncTaskState(state) {if(stopped)return;working=state?.status==='running';if(working&&!startedAt)startedAt=Date.now();animation()},
     voice(state) { voice = state; animation() },
     state: () => ({ working, startedAt, inputSource, waiting: requests.length > 0, queued:queued.entries.length }),
     async action(action) {

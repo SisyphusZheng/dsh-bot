@@ -1,5 +1,5 @@
 /** Own the pet window and Pipecat worker within the desktop Electron process. */
-import { BrowserWindow, ipcMain, screen, session, systemPreferences, Menu, powerMonitor, globalShortcut, dialog } from 'electron'
+import { BrowserWindow, ipcMain, screen, session, systemPreferences, Menu, powerMonitor, globalShortcut, dialog, Notification } from 'electron'
 import { createServer, request as httpRequest, type Server } from 'node:http'
 import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
@@ -25,6 +25,7 @@ type Presentation = {
   capture(status: object): void
   cancelCapture(id: string): boolean
   voice(state: string): void
+  syncTaskState(state: object): void
   action(value: object): Promise<void>
   state(): { working: boolean; startedAt: number; inputSource: string; waiting: boolean }
   managePolicies(): Promise<void>
@@ -46,9 +47,19 @@ type BubbleController = {
 }
 type PetModules = {
   createBubbleWindowController(options: { BrowserWindow: typeof BrowserWindow; preloadPath: string; pageUrl: string }): BubbleController
-  orbBubbleWindowBounds(options: { orbBounds: Electron.Rectangle; workArea: Electron.Rectangle }): Electron.Rectangle
+  orbBubbleWindowBounds(options: {
+    orbBounds: Electron.Rectangle
+    workArea: Electron.Rectangle
+    avoidBounds?: Electron.Rectangle[]
+  }): Electron.Rectangle
 }
-type ExperienceState = { onboarding?: boolean; wakeWordEnabled: boolean; wakeWordPhrase: string }
+type ExperienceState = {
+  showDockIcon?: boolean
+  systemNotifications?: boolean
+  onboarding?: boolean
+  wakeWordEnabled: boolean
+  wakeWordPhrase: string
+}
 type Experience = {
   state(): ExperienceState
   menu(): Electron.MenuItemConstructorOptions[]
@@ -88,6 +99,7 @@ export class ProductPet {
   private presentation: Presentation | null = null
   private pause: { start(): void; stop(): void } | null = null
   private config: BotRuntimeConfig = {}
+  private attention: { sync(snapshot: object): void;stop(): void } | null = null
   private experience: Experience | null = null
   private wake: WakeRuntime | null = null
   private drag: { x: number; y: number; wx: number; wy: number } | null = null
@@ -108,6 +120,8 @@ export class ProductPet {
       development: boolean
       appPath: string
       voicePort?: number
+      mainBounds?(): Electron.Rectangle[]
+      showDockIcon?(visible: boolean): void
       settingsRequest?(path: string, body?: object, method?: string): Promise<Record<string, unknown>>
       quit?(): void
       toggleMain(reveal?: boolean): void
@@ -346,8 +360,21 @@ export class ProductPet {
       dialogs: {
         pickSkin: async () => (await dialog.showOpenDialog(window, { properties: ['openFile', 'openDirectory'], filters: [{ name: 'Pet skin', extensions: ['zip', 'json'] }] })).filePaths[0],
         pickPreferences: async () => (await dialog.showOpenDialog(window, { properties: ['openFile'], filters: [{ name: 'Pet preferences', extensions: ['json'] }] })).filePaths[0],
-      }, onPreferences: (state: ExperienceState) => { void this.configureWake(state) },
+      }, onPreferences: (state: ExperienceState) => {
+        this.options.showDockIcon?.(state.showDockIcon !== false)
+        void this.configureWake(state)
+      },
     })
+    const attentionModule=await import(pathToFileURL(join(root,'pet/desktop-attention.mjs')).href) as {
+      createInteractionAttention(options:object):NonNullable<ProductPet['attention']>
+    }
+    this.attention=attentionModule.createInteractionAttention({
+      enabled:()=>this.experience?.state().systemNotifications!==false,
+      open:()=>this.options.toggleMain(true),
+      show:({ title,body,click }:{ title:string;body:string;click:()=>void })=>{
+        if(!Notification.isSupported())return null
+        const notification=new Notification({ title,body,silent:false });notification.on('click',click);notification.show();return notification
+      } })
     const placement = await import(pathToFileURL(join(root, 'pet/orb-placement.mjs')).href) as {
       createOrbPlacement(options: {
         getDisplays(): Electron.Display[]
@@ -492,7 +519,7 @@ export class ProductPet {
       this.positionBubble()
     })
     let experienceStarted = false
-    this.window.webContents.on('did-finish-load', () => { if (experienceStarted) return; experienceStarted = true; this.experience?.start(); if (this.experience) void this.configureWake(this.experience.state()) })
+    this.window.webContents.on('did-finish-load', () => { if (experienceStarted) return; experienceStarted = true; this.experience?.start(); if (this.experience) { this.options.showDockIcon?.(this.experience.state().showDockIcon!==false);void this.configureWake(this.experience.state()) } })
     await this.window.loadURL(`${origin}/${nonce}/index.html`)
     this.poll = setInterval(() => {
       if (!this.pollTask) this.pollTask = this.pollEvents().finally(() => { this.pollTask = null })
@@ -517,15 +544,19 @@ export class ProductPet {
       const pending = await this.request('/interactions')
       if (pending.ok) {
         const snapshot = await pending.json() as { pid: number; sessionId: string; requests: PendingInteraction[] }
-        if (Array.isArray(snapshot.requests)) { this.experience?.sync(snapshot); this.presentation?.sync(snapshot) }
+        if (Array.isArray(snapshot.requests)) {
+          this.experience?.sync(snapshot); this.presentation?.sync(snapshot);this.attention?.sync(snapshot)
+        }
       }
+      if(changedOwner){const task=await this.request('/task-state');if(task.ok)this.presentation?.syncTaskState(await task.json())}
+      this.positionBubble()
       for (const event of payload.events || []) {
         if (event.ioSeq <= this.lastSeq) continue
         this.lastSeq = event.ioSeq
         if (!changedOwner) { this.presentation?.event(event); this.window?.webContents.send('pet:agent-event', event) }
       }
     } catch {
-      this.presentation?.sync({ pid: 0, sessionId: '', requests: [] })
+      this.presentation?.sync({ pid: 0, sessionId: '', requests: [] });this.attention?.sync({ requests:[] })
     } finally {
       this.polling = false
     }
@@ -533,7 +564,9 @@ export class ProductPet {
   private positionBubble(): void {
     if (!this.window || !this.bubbleModule) return
     const orbBounds = this.window.getBounds()
-    this.bubble?.reposition(this.bubbleModule.orbBubbleWindowBounds({ orbBounds, workArea: screen.getDisplayMatching(orbBounds).workArea }))
+    this.bubble?.reposition(this.bubbleModule.orbBubbleWindowBounds({
+      orbBounds, workArea: screen.getDisplayMatching(orbBounds).workArea, avoidBounds:this.options.mainBounds?.()||[],
+    }))
   }
   updateBehavior(config: BotRuntimeConfig): void { this.config = config }
   private async configureWake(state: ExperienceState): Promise<void> {
@@ -634,6 +667,7 @@ export class ProductPet {
     this.requests.abort()
     if (this.poll) clearInterval(this.poll)
     this.pause?.stop()
+    this.attention?.stop();this.attention=null
     this.presentation?.stop()
     this.bubble?.destroy()
     await this.pollTask

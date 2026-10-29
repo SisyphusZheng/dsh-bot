@@ -56,6 +56,7 @@ vi.mock('electron', () => ({
   powerMonitor: { getSystemIdleTime: () => 100 },
   Menu: { buildFromTemplate: (items: { label?: string; click?: () => void }[]) => { state.menu = items; return { popup() {} } } },
   session: { fromPartition: () => ({ setPermissionCheckHandler: () => {}, setPermissionRequestHandler: () => {} }) },
+  Notification:{ isSupported:()=>false },
   systemPreferences: {},
   globalShortcut: { register: () => true, unregister() {} },
   dialog: { showOpenDialog: async () => ({ filePaths: [] }) },

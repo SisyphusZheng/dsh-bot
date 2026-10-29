@@ -154,6 +154,7 @@ const harness = await vi.hoisted(async () => {
     isPackaged: true,
     name: 'Desktop test',
     setName: vi.fn(),
+    setActivationPolicy:vi.fn(),dock:{ show:vi.fn(async()=>{}),hide:vi.fn() },
     commandLine: { getSwitchValue: () => '' },
     setPath: vi.fn(),
     whenReady: () => Promise.resolve(),
@@ -299,7 +300,7 @@ vi.mock('electron', () => ({
   protocol: { registerSchemesAsPrivileged: vi.fn(), handle: harness.protocolHandle },
   powerMonitor: harness.powerMonitor,
   Tray: harness.FakeTray,
-  nativeImage: { createFromPath: (path: string) => ({ path }) },
+  nativeImage: { createFromPath: (path: string) => Object.defineProperty({ path },'resize',{ value:()=>({ path }) }) },
 }))
 vi.mock('../src/background-notice.ts', () => ({ DesktopBackgroundNotice: class {
   constructor(options: { markerPath: string }) { harness.backgroundNotice.markerPath = options.markerPath }
@@ -1369,7 +1370,8 @@ describe('desktop main startup', () => {
     stubProcess({ platform: 'darwin', arch: 'arm64', resourcesPath: 'desktop-test-resources'  })
     await readyWorkspace()
     const window = harness.windows[0]!
-    expect(harness.trays).toHaveLength(0)
+    expect(harness.trays).toHaveLength(1)
+    expect(harness.app.setActivationPolicy).toHaveBeenCalledWith('regular')
     window.fullscreen = true
     window.close()
     expect(window.setFullScreen).toHaveBeenCalledWith(false)

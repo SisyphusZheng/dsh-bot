@@ -1,8 +1,8 @@
 {
   ".gitignore": {
-    "sha": "0ddef8e7ba7de7fd51bd91e71130de8e295e7493",
+    "sha": "2a16b9c494e6ad4f6e40251293ff345f1f224955",
     "mode": "100644",
-    "reason": "Product startup, menu/About expectations and generated pet renderer assets; preserves official runtime source"
+    "reason": "Generated pet controller modules; source remains under product/pet/src"
   },
   "apps/desktop/electron-builder.config.d.mts": {
     "sha": "3ffa7f7724fe9f1b022c695d45b0a2400c81a0db",
@@ -30,7 +30,7 @@
     "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
   },
   "apps/desktop/scripts/electron-builder-config.mjs": {
-    "sha": "222b6abcb2d44f061214859514634c8cfb77f547",
+    "sha": "5c6dcec2996c83bb00e8094fb314b2f3de320098",
     "mode": "100644",
     "reason": "Product package resources and independent version; repair invalid internal ad-hoc native resource signatures before sealing the outer App"
   },
@@ -65,9 +65,9 @@
     "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
   },
   "apps/desktop/src/main.ts": {
-    "sha": "79f68882098d90a99497dc5409ee2081047687ab",
+    "sha": "8d50230f41f2edde2659846135ac226ab1b4d1a2",
     "mode": "100644",
-    "reason": "Product integration: normal shared app quit and authenticated pet Session navigation; preserve build identity and voice resume"
+    "reason": "Product integration: macOS regular Dock entry, optional pet-only mode and menu bar access; main-window avoidance callback"
   },
   "apps/desktop/src/welcome-api.ts": {
     "sha": "3f45fb89db50547313105d68cd607d4667aedb2d",
@@ -155,14 +155,14 @@
     "reason": "0.0.1 freeze: pause Dependabot version-update PRs with open-pull-requests-limit 0"
   },
   "apps/desktop/tests/main-startup.spec.ts": {
-    "sha": "e3c6f7e2f4bfa304eb73bbf0cdb8a1e4a4c9efc3",
+    "sha": "30b477043e908694118175a8b284981ca9f33e06",
     "mode": "100644",
-    "reason": "Product startup, menu/About expectations and generated pet renderer assets; preserves official runtime source"
+    "reason": "Test macOS Dock and menu bar entry alongside official startup and quit behavior"
   },
   "apps/desktop/tests/welcome-startup.spec.ts": {
-    "sha": "417096acb156bcbffc63bf4207e45e3cddd39b1d",
+    "sha": "fc352c127586f24479eca148fff249256b00e74e",
     "mode": "100644",
-    "reason": "Product startup, menu/About expectations and generated pet renderer assets; preserves official runtime source"
+    "reason": "Explicit Electron activation-policy/Dock mocks for product startup"
   },
   "apps/desktop/tests/expected/about-panel.json": {
     "sha": "d1c88210b81e77e707d26a28994935daac1f9421",
@@ -213,5 +213,10 @@
     "sha": "c83b7ab3a23806519301db79c78efd268b856b95",
     "mode": "100644",
     "reason": "Product runtime inventory: ignore Finder .DS_Store metadata during local Mac builds"
+  },
+  "apps/desktop/src/tray.ts": {
+    "sha": "992dca0b62eaabd59653fa56ae679210b4f567ac",
+    "mode": "100644",
+    "reason": "Reuse official desktop tray for macOS with existing product icon and explicit size"
   }
 }

@@ -11,7 +11,7 @@ import { desktopTranslator, effectiveDesktopLanguage } from './i18n.mjs'
 import { readLegacyPet } from './legacy-preferences.mjs'
 import { wakeWordKeywordsLine } from './wake-word/keyword-phrase.mjs'
 import { listSkins, importSkin, removeSkin, effectiveOrbSkin, skinAssetPath, extractZipArchive } from './skin-store.mjs'
-const defaults = { language: 'zh', orbSkin: 'whale-girl', autoHideSeconds: 0, wakeShortcut: 'CommandOrControl+Shift+Space', wakeWordEnabled: false, wakeWordPhrase: '你好小鲸' }
+const defaults = { showDockIcon: true, systemNotifications: true, playbackStyle: 'full', language: 'zh', orbSkin: 'whale-girl', autoHideSeconds: 0, wakeShortcut: 'CommandOrControl+Shift+Space', wakeWordEnabled: false, wakeWordPhrase: '你好小鲸' }
 export function createPetExperience(options) {
   const { home, window, emit, show, hide, request, shortcuts, idle = () => 0, dialogs, nativeRequire = createRequire(import.meta.url) } = options
   const directory = join(home, 'pet'), skinsRoot = join(directory, 'skins'); mkdirSync(directory, { recursive: true, mode: 0o700 })
@@ -69,6 +69,7 @@ export function createPetExperience(options) {
     const next = { ...preferences, ...Object.fromEntries(Object.entries(patch).filter(([key]) => key in defaults)) }
     if (!['zh', 'zh-CN', 'en', 'auto'].includes(next.language)) next.language = defaults.language
     if (!/^[a-z0-9][a-z0-9_-]{0,63}$/.test(String(next.orbSkin))) next.orbSkin = defaults.orbSkin
+    next.showDockIcon=next.showDockIcon!==false;next.systemNotifications=next.systemNotifications!==false;next.playbackStyle=next.playbackStyle==='brief'?'brief':'full'
     next.wakeWordEnabled = next.wakeWordEnabled === true; next.wakeWordPhrase = String(next.wakeWordPhrase || defaults.wakeWordPhrase).trim()
     if (patch.wakeWordPhrase !== undefined || next.wakeWordEnabled) wakeWordKeywordsLine(next.wakeWordPhrase)
     next.wakeShortcut = String(next.wakeShortcut || defaults.wakeShortcut).trim(); if (next.wakeShortcut.length > 100 || !next.wakeShortcut.includes('+')) throw new Error('请使用有效的组合快捷键，例如 CommandOrControl+Shift+Space')
@@ -84,6 +85,9 @@ export function createPetExperience(options) {
     { label: label('外观'), submenu: [{ label: 'WhaleGirl', type: 'radio', checked: preferences.orbSkin === 'whale-girl', click: () => update({ orbSkin: 'whale-girl' }) }, ...listSkins(skinsRoot).map(skin => ({ label: skin.displayName, type: 'radio', checked: preferences.orbSkin === skin.id, click: () => update({ orbSkin: skin.id }) })), { label: label('导入皮肤…'), click: async () => { try { const file = await dialogs?.pickSkin?.(); if (file) { const skin = await importSkin({ source: file, skinsRoot, extractZip: (zip, dest) => extractZipArchive(zip, dest, nativeRequire('extract-zip')) }); update({ orbSkin: skin.id }) } } catch (error) { notify(error.message) } } }, { label: label('删除所选皮肤'), enabled: preferences.orbSkin !== 'whale-girl', click: () => { removeSkin({ id: preferences.orbSkin, skinsRoot }); update({ orbSkin: 'whale-girl' }) } }] },
     { label: label('语言'), submenu: [['auto', '跟随系统'], ['zh', '中文'], ['en', 'English']].map(([language, text]) => ({ label: text, type: 'radio', checked: preferences.language === language, click: () => update({ language }) })) },
     { label: label('自动休眠'), submenu: [0, 60, 300, 600].map(seconds => ({ label: seconds ? `${seconds / 60} min` : label('永不'), type: 'radio', checked: preferences.autoHideSeconds === seconds, click: () => update({ autoHideSeconds: seconds }) })) },
+    { label: label('显示 Dock 图标'), type:'checkbox', checked:preferences.showDockIcon!==false, click:()=>update({showDockIcon:preferences.showDockIcon===false}) },
+    { label: label('系统审批/问答通知'), type:'checkbox', checked:preferences.systemNotifications!==false, click:()=>update({systemNotifications:preferences.systemNotifications===false}) },
+    { label: label('语音播报长度'), submenu:[['full','完整播报'],['brief','简短播报（约 240 字）']].map(([playbackStyle,title])=>({label:label(title),type:'radio',checked:preferences.playbackStyle===playbackStyle,click:()=>update({playbackStyle})})) },
     { label: label('隐藏桌宠'), click: () => { presence.hide('requested'); hide(); emit('lifecycle', { state: 'hidden' }) } },
     { label: label('导入旧桌宠偏好…'), click: async () => { const file = await dialogs?.pickPreferences?.(); if (!file) return; try { const old = JSON.parse(readFileSync(file, 'utf8')); progress = old.onboarding || progress; saveProgress(); update({ ...old.localConfig, voiceInput: old.voiceInput }) } catch (error) { notify(error.message) } } },
   ] }

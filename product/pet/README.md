@@ -25,3 +25,9 @@ Recovery appears in the context menu and failed-task bubble. Choosing a mode doe
 ## Voice answers to questions
 
 The pet question controller is shared by pointer and voice input. Say an exact option label, “第几个选项” or “最后一个选项”; select multiple options individually and finish with “提交选择”. Use “其他回答 …” for custom text. Answers carry the session, request, question and view revision. Changed or expired views are rejected, and ambiguous answers stay in the question instead of becoming new Agent work. The Worker keeps no independent question index or answer set.
+
+## Desktop access and attention
+
+macOS defaults to a regular Dock entry and a menu bar Open/Quit entry using the existing product icon. The pet menu can hide the Dock entry for pet-only use, disable system approval/question notifications, and choose full or brief speech. These preferences are local and do not restart DSH. Notifications exclude commands, paths and answers; delivery depends on OS permissions. The bubble prefers a nearby position that avoids the visible main window; full-screen coverage may leave no free position. Mic and task indicators remain separate.
+
+Brief speech caps output at about 240 characters (an active “只说结论 / 简短播报” request limits the remaining speech to 160). This is a spoken length budget, not semantic summarization. Full Agent text and execution continue in DSH. “详细播报” restores subsequent speech only; it does not replay skipped text.

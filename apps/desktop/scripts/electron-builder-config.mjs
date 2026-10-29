@@ -192,7 +192,7 @@ export function createElectronBuilderConfig(
       { from: memoryInput('VERSION.json'), to: 'memory/VERSION.json' },
       { from: fileURLToPath(new URL('../resources/whale-girl', import.meta.url)), to: 'whale-girl' },
       { from: fileURLToPath(new URL('../../../nisse/packages/host-integration', import.meta.url)), to: 'host-integration' },
-      // Windows tray bitmaps; macOS keeps the Dock and ships no menu bar icon.
+      // Windows tray bitmaps; macOS reuses the product icon for its menu bar entry.
       ...(packagesWindows ? [{ from: fileURLToPath(new URL('../resources/tray-windows.ico', import.meta.url)), to: 'tray.ico' }] : []),
     ],
     mac: {

@@ -53,7 +53,7 @@ export function orbBubbleHeadroom({ orbBounds, taskCount = 0, taskPlacement = 'b
 }
 
 /** 气泡窗口在屏幕上的位置（固定尺寸，底部对齐到 orb 顶边下 44px）。 */
-export function orbBubbleWindowBounds({
+function preferredBubbleWindowBounds({
   orbBounds,
   taskCount = 0,
   taskPlacement = 'below',
@@ -105,6 +105,20 @@ export function orbBubbleWindowBounds({
     height: ORB_BUBBLE_WINDOW_HEIGHT,
     placement: 'above',
   }
+}
+
+/** Prefer the head anchor; choose the least overlapping nearby position when the
+ * main window is visible. Full-screen coverage may leave no collision-free slot. */
+export function orbBubbleWindowBounds(options) {
+  const preferred=preferredBubbleWindowBounds(options), avoided=options.avoidBounds||[]
+  if(!avoided.length)return preferred
+  const area=options.workArea,orb=options.orbBounds,w=preferred.width,h=preferred.height
+  const fit=(x,y)=>({x:Math.round(clamp(x,area.x,area.x+area.width-w)),y:Math.round(clamp(y,area.y,area.y+area.height-h)),width:w,height:h,placement:'beside'})
+  const candidates=[preferred,fit(orb.x-w-12,preferred.y),fit(orb.x+orb.width+12,preferred.y)]
+  for(const r of avoided)candidates.push(fit(r.x-w-12,preferred.y),fit(r.x+r.width+12,preferred.y),fit(preferred.x,r.y-h-12),fit(preferred.x,r.y+r.height+12))
+  const overlap=(a,b)=>Math.max(0,Math.min(a.x+a.width,b.x+b.width)-Math.max(a.x,b.x))*Math.max(0,Math.min(a.y+a.height,b.y+b.height)-Math.max(a.y,b.y))
+  const score=r=>avoided.reduce((sum,b)=>sum+overlap(r,b),0)+overlap(r,orb)*4
+  return candidates.reduce((best,r)=>score(r)<score(best)?r:best,preferred)
 }
 
 /**

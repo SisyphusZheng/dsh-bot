@@ -323,6 +323,7 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
 }
 
 async function main(): Promise<void> {
+  if(process.platform==='darwin'){app.setActivationPolicy('regular');await app.dock?.show()}
   if (app.isPackaged) {
     // The packaged product must never inherit a terminal/agent DSH or dev
     // environment: those variables would make the bundled Host attach to the
@@ -492,6 +493,8 @@ async function main(): Promise<void> {
       if (!response.ok) throw new Error(`Bot 设置请求失败：${response.status}`)
       return reply
     },
+    mainBounds:()=>mainWindow&&!mainWindow.isDestroyed()&&mainWindow.isVisible()&&!mainWindow.isMinimized()?[mainWindow.getBounds()]:[],
+    showDockIcon:(visible)=>{if(process.platform==='darwin'){app.setActivationPolicy(visible?'regular':'accessory');if(visible)void app.dock?.show();else app.dock?.hide()}},
     quit: () => app.quit(),
     toggleMain:(reveal = false)=>{
       const window=mainWindow ?? createMainWindow()
@@ -1196,10 +1199,10 @@ async function main(): Promise<void> {
   }
   refreshApplicationMenu()
   const trayIconPath = development ? join(app.getAppPath(), 'resources', 'tray-windows.ico') : join(process.resourcesPath, 'tray.ico')
-  if (process.platform === 'win32') {
+  if (process.platform === 'win32' || process.platform === 'darwin') {
     // The tray is the way back to a hidden window; without it, relaunching the application still focuses it.
     try {
-      tray = new DesktopTray({ iconPath: trayIconPath, locale: currentDesktopLocale,
+      tray = new DesktopTray({ iconPath: process.platform==='darwin' ? (development?join(app.getAppPath(),'resources/icon-whalegirl.png'):join(process.resourcesPath,'icon.png')):trayIconPath, ...(process.platform==='darwin'?{ iconSize:18 }:{}), locale: currentDesktopLocale,
         open: () => { focusPrimaryWindow() }, quit: () => { app.quit() } })
     } catch (error) { console.warn('desktop tray: unavailable', error) }
   }

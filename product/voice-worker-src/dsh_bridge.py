@@ -78,12 +78,14 @@ class DSHBridgeProcessor(FrameProcessor):
         self._speech = SpeechAssembly(settle=float(os.environ.get('DSH_INPUT_SETTLE_MS','650'))/1000)
         self._speech_timer = None
         self._intake_tasks = set()
+        self._queue_session_id = None
         self._pumping_queue = False
         self._utterance_targets = {}
         self._consumed_controls = {}
         self._input_admission = InputAdmission()
         self._capture = capture
         self._stop_confirmation = None
+        self._playback_style = 'full'
         self._question_view = None
         self._announced_interactions = {}
         self._spoken_prompts = deque(maxlen=4)
@@ -502,7 +504,7 @@ class DSHBridgeProcessor(FrameProcessor):
                 if draft:
                     await self.discard_input(draft['id'])
                 return
-            if control_kind(text) not in ('playback-stop','task-stop','task-status') and await self._answer_question(text,frame.metadata):
+            if control_kind(text) not in ('playback-stop','task-stop','task-status','playback-brief','playback-full') and await self._answer_question(text,frame.metadata):
                 return
             if await self._handle_control(text, frame.metadata):
                 return
@@ -761,7 +763,13 @@ class DSHBridgeProcessor(FrameProcessor):
             target = {**self._stop_confirmation, 'requests':None}
             self._stop_confirmation = None
         try:
-            if kind.startswith('approval-'):
+            if kind in ('playback-brief','playback-full'):
+                self._playback_style='brief' if kind=='playback-brief' else 'full'
+                if self._current is not None:
+                    self._current['speech_limit']=self._current.get('speech_chars',0)+160 if kind=='playback-brief' else None
+                await self._control_notice('后续播报已缩短，完整结果保留在主窗口。' if kind=='playback-brief' else '后续内容将完整播报；已跳过的部分不会自动重播。',action=kind)
+            elif kind.startswith('approval-'):
+
                 requests = target['requests']
                 if requests is None:
                     requests = (await self._bridge_request('GET', '/interactions')).get('requests', [])
@@ -863,6 +871,10 @@ class DSHBridgeProcessor(FrameProcessor):
         self._pumping_queue = True
         try:
             state=await self._bridge_request('GET','/task-state')
+            owner=state.get('sessionId')
+            if owner and self._queue_session_id and owner!=self._queue_session_id:
+                self._pending.quarantine();await self.publish_queue('会话已变化，等待输入需要重新确认。')
+            if owner:self._queue_session_id=owner
             if state.get('status') != 'idle':
                 self._host_waiting=True
                 return
@@ -905,7 +917,7 @@ class DSHBridgeProcessor(FrameProcessor):
             token = descriptor["token"]
             url = f"http://127.0.0.1:{port}/voice/turn"
             headers = {"Authorization": f"Bearer {token}", "content-type": "application/json"}
-            logger.info(f"[dsh] turn {turn_key} -> DSH: {redact(text)!r} input={json.dumps(current.get('input', {}), ensure_ascii=False)}")
+            logger.info(f"[dsh] turn {turn_key} -> DSH: {redact(text)!r} input={redact(json.dumps(current.get('input', {}), ensure_ascii=False))}")
             async with self._get_session().post(
                 url, json={"text": text}, headers=headers, timeout=aiohttp.ClientTimeout(total=180)
             ) as response:
@@ -1044,6 +1056,20 @@ class DSHBridgeProcessor(FrameProcessor):
             if not current.get("audible"):
                 self.metrics["late_text_dropped"] += 1
                 return
+            if 'speech_limit' not in current: current['speech_limit']=240 if self._playback_style=='brief' else None
+            limit=current['speech_limit']
+            if limit is not None:
+                remaining=max(0,limit-current.get('speech_chars',0))
+                if not remaining:
+                    if not current.get('speech_limited'):
+                        current['speech_limited']=True
+                        await self._control_notice('简短播报已结束，任务继续；完整结果在主窗口。',action='playback-budget',turnKey=current.get('turn_key'))
+                    return
+                # Prefer a sentence end near the budget, otherwise use the stated character cap.
+                if len(delta)>remaining:
+                    cut=delta[:remaining];ends=[m.end() for m in re.finditer(r'[。！？.!?\n]',cut)]
+                    delta=cut[:ends[-1]] if ends and ends[-1]>=remaining//2 else cut
+            current['speech_chars']=current.get('speech_chars',0)+len(delta)
             if not current.get("response_open"):
                 current["text_started"] = True
                 current["response_open"] = True

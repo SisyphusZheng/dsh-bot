@@ -57,3 +57,12 @@ test('hold/toggle/mouse gestures, hide/wake shortcut and keyword control the own
  experience.menu().find(x=>x.label==='隐藏桌宠').click();assert.equal(events.at(-1).value.state,'hidden');keys.get('CommandOrControl+Shift+Space')();assert.equal(events.at(-1).value.state,'active')
  experience.update({wakeWordEnabled:true,wakeWordPhrase:'你好小鲸'});experience.wake();assert.equal(events.at(-1).value.source,'wake-word')
 }))
+
+test('Dock, notifications and speech length are local preferences and never restart the Agent',()=>fixture(async({experience,home})=>{
+ assert.equal(experience.state().showDockIcon,true);assert.equal(experience.state().systemNotifications,true)
+ experience.menu().find(item=>item.label==='显示 Dock 图标').click()
+ experience.menu().find(item=>item.label==='系统审批/问答通知').click()
+ experience.menu().find(item=>item.label==='语音播报长度').submenu[1].click()
+ const saved=JSON.parse(readFileSync(join(home,'pet/pet-experience.json'),'utf8')).localConfig
+ assert.equal(saved.showDockIcon,false);assert.equal(saved.systemNotifications,false);assert.equal(saved.playbackStyle,'brief')
+}))

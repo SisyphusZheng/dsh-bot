@@ -45,6 +45,28 @@ class Controls(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(await p._answer_question('最后一个选项',{}))
         self.assertFalse(p._pending);p._start_next_turn.assert_not_awaited()
 
+    async def test_brief_speech_budget_preserves_full_agent_output_and_never_cancels(self):
+        from pipecat.frames.frames import TextFrame
+        p=self.make();p._playback_style='brief'
+        current={'turn_key':'v','audible':True,'reply_text':''};p._current=current
+        await p._handle_bridge_event(current,{'type':'text','text':'完整内容。'*80})
+        await p._handle_bridge_event(current,{'type':'text','text':'后续内容。'*80})
+        spoken=''.join(call.args[0].text for call in p.push_frame.call_args_list if isinstance(call.args[0],TextFrame))
+        self.assertLessEqual(len(spoken),240);self.assertEqual(current['reply_text'],'完整内容。'*80+'后续内容。'*80)
+        await p._handle_control('详细播报',{})
+        await p._handle_bridge_event(current,{'type':'text','text':'新的后续内容。'})
+        self.assertIn('新的后续内容。',p.push_frame.call_args.args[0].text)
+        await p._handle_control('只说结论',{})
+        self.assertEqual(current['speech_limit'],current['speech_chars']+160)
+        p._cancel_current.assert_not_awaited();self.assertFalse(p._pending)
+
+    async def test_queued_input_requires_new_confirmation_when_host_session_changes(self):
+        p=self.make();p._queue_session_id='old';p._pending.append('整理报告')
+        p._bridge_request.return_value={'sessionId':'new','status':'idle'}
+        await p._start_next_turn()
+        self.assertIsNone(p._current);self.assertEqual(len(p._pending),1)
+        self.assertTrue(p._pending.snapshot()['entries'][0]['needsConfirmation'])
+
     async def test_stop_aliases_are_consumed_without_new_turn_or_task_cancellation(self):
         p = self.make(); p._current = {'turn_key': 'v', 'audible': True}; p._start_next_turn = AsyncMock()
         with patch.object(FrameProcessor, 'process_frame', new=AsyncMock()):

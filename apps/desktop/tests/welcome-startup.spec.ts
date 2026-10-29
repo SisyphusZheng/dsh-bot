@@ -57,6 +57,7 @@ vi.mock('electron', () => ({
     isPackaged: false,
     name: 'Harness',
     setName: vi.fn(),
+    setActivationPolicy:vi.fn(),dock:{ show:vi.fn(async()=>{}),hide:vi.fn() },
     commandLine: { getSwitchValue: () => '' },
     setPath: vi.fn(),
     requestSingleInstanceLock: () => true,
