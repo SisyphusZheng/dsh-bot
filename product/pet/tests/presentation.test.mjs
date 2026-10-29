@@ -13,6 +13,25 @@ function fixture(send = async () => {}) {
 }
 const question = { id:'choose',kind:'question',sessionId:'s',questions:[{id:'drink',question:'喝什么？',options:[{label:'拿铁'},{label:'美式'},{label:'茶'}]}] }
 const snapshot = requests => ({ pid:1,sessionId:'s',requests })
+test('waiting inputs can be reviewed, corrected, confirmed or deleted without touching the active task',async()=>{
+ const calls=[],f=fixture(async(...args)=>calls.push(args))
+ f.presentation.sync(snapshot([]))
+ f.presentation.queue({revision:3,entries:[{id:'queued',text:'就是',position:1,waitedSeconds:62,needsConfirmation:true}]})
+ await f.presentation.manageQueue()
+ assert.deepEqual(calls.pop(),['voice-queue',{action:'snapshot'}])
+ await f.presentation.action({type:'choice',requestId:'queue:3',id:'queued'})
+ assert.match(f.shown.at(-1).hint,/需要重新确认/)
+ await f.presentation.action({type:'secondary',requestId:'queue:3',id:'queue-edit'})
+ await f.presentation.action({type:'input',requestId:'queue:3',value:'请整理报告'})
+ assert.deepEqual(calls.pop(),['voice-queue',{action:'edit',id:'queued',revision:3,text:'请整理报告'}])
+ f.presentation.queue({revision:4,entries:[{id:'queued',text:'请整理报告',position:1,waitedSeconds:63,needsConfirmation:false}]})
+ await f.presentation.action({type:'secondary',requestId:'queue:3',id:'queue-delete'})
+ assert.equal(calls.length,0)
+ await f.presentation.action({type:'secondary',requestId:'queue:4',id:'queue-delete'})
+ assert.deepEqual(calls.pop(),['voice-queue',{action:'delete',id:'queued',revision:4}])
+ f.presentation.queue({revision:5,entries:[]});assert.equal(f.shown.at(-1).text,'没有等待的输入。')
+ f.presentation.stop()
+})
 test('passive input is labelled, editable and needs explicit submission; stale actions do nothing',async()=>{
   const calls=[],f=fixture(async(...args)=>calls.push(args))
   f.presentation.sync(snapshot([]))

@@ -51,6 +51,11 @@ class PassiveBridge(unittest.IsolatedAsyncioTestCase):
         frame.metadata.update(capture_id='c',utterance_id=utterance,input_mode=mode)
         with patch.object(FrameProcessor,'process_frame',new=AsyncMock()):
             await p.process_frame(frame,FrameDirection.DOWNSTREAM)
+            if not interim and p._speech.groups:
+                if mode=='hold': p.capture_changed('finish','c')
+                clock=p._speech.now()+2
+                p._speech.now=lambda:clock
+                await p.flush_speech()
 
     async def test_reported_environment_phrases_do_not_start_work_or_stop_current_speech(self):
         for text in ['这说不清楚', '啊，听一下', '嗯，对你自己', '两米八，眼神里有杀气。']:

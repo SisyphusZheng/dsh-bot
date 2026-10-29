@@ -33,6 +33,7 @@ from wake_phrase import WakePhrase
 from voice_commands import control_kind, normalize
 from input_admission import InputAdmission
 from voice_errors import build_payload, redact
+from speech_intake import SpeechAssembly, PendingInputs, needs_confirmation
 from loguru import logger
 
 
@@ -72,7 +73,11 @@ class DSHBridgeProcessor(FrameProcessor):
         self._descriptor_path = descriptor_path or os.environ.get("DSH_BRIDGE_DESCRIPTOR", DEFAULT_DESCRIPTOR)
         self._session: aiohttp.ClientSession | None = None
         self._current: dict | None = None
-        self._pending: deque[str] = deque()
+        self._pending = PendingInputs(limit=int(os.environ.get('DSH_PENDING_INPUT_LIMIT','5')), ttl=float(os.environ.get('DSH_PENDING_INPUT_TTL','60')))
+        self._speech = SpeechAssembly(settle=float(os.environ.get('DSH_INPUT_SETTLE_MS','650'))/1000)
+        self._speech_timer = None
+        self._intake_tasks = set()
+        self._pumping_queue = False
         self._utterance_targets = {}
         self._consumed_controls = {}
         self._input_admission = InputAdmission()
@@ -167,6 +172,9 @@ class DSHBridgeProcessor(FrameProcessor):
     # ---- lifecycle -----------------------------------------------------
     async def cleanup(self):
         self._closing = True
+        if self._speech_timer: self._speech_timer.cancel()
+        for owned in list(self._intake_tasks): owned.cancel()
+        if self._intake_tasks: await asyncio.gather(*self._intake_tasks, return_exceptions=True)
         timer = self._barge_timeout_task
         self._cancel_barge_timeout()
         if timer is not None:
@@ -374,7 +382,8 @@ class DSHBridgeProcessor(FrameProcessor):
                         target['task'] = {}
             capture_id = frame.metadata.get("capture_id")
             if capture_id:
-                await self._send_rtvi({"type": "capture-transcript", "text": frame.text, "final": isinstance(frame, TranscriptionFrame), "requiresConfirmation": frame.metadata.get('input_mode') == 'always', "captureId": capture_id, "utteranceId": frame.metadata.get("utterance_id", capture_id)})
+                waiting = not frame.metadata.get('input_confirmed') and (frame.metadata.get('input_mode') == 'always' or not frame.metadata.get('assembled') or needs_confirmation(frame.text))
+                await self._send_rtvi({"type": "capture-transcript", "text": frame.text, "final": isinstance(frame, TranscriptionFrame), "requiresConfirmation": waiting, "captureId": capture_id, "utteranceId": frame.metadata.get("utterance_id", capture_id)})
 
         if isinstance(frame, InterimTranscriptionFrame):
             cand = self._barge_candidate
@@ -413,7 +422,6 @@ class DSHBridgeProcessor(FrameProcessor):
                         logger.info(f"[dsh] barge-in candidate rejected as echo: asr={text!r} window_tail={spoken[-60:]!r}")
                         return
                     # Confirm explicit commands or a distinct utterance after echo and stabilization filters.
-                    deliberate = frame.metadata.get('input_mode', 'hold') in ('hold', 'toggle')
                     if not _is_interrupt_command(heard):
                         self.metrics["barge_noncommand_pending"] += 1
                         logger.info(f"[dsh] barge-in non-command ASR pending: asr={text!r} age={age:.2f} window_tail={spoken[-50:]!r}")
@@ -478,26 +486,34 @@ class DSHBridgeProcessor(FrameProcessor):
             passive = frame.metadata.get('input_mode') == 'always'
             if passive and self._capture is not None and (not self._capture.enabled or frame.metadata.get('capture_id') != self._capture.current):
                 return
-            if passive and normalize(text) in ('确认发送', '发送这句'):
+            if normalize(text) in ('确认发送', '发送这句'):
                 draft = self._input_admission.draft
                 if draft:
                     await self.confirm_input(draft['id'])
                 else:
                     await self._control_notice('没有等待发送的语音输入。')
                 return
-            if passive and normalize(text) in ('取消输入', '丢弃输入'):
+            if normalize(text) in ('取消输入', '丢弃输入'):
                 draft = self._input_admission.draft
                 if draft:
                     await self.discard_input(draft['id'])
                 return
             if await self._handle_control(text, frame.metadata):
                 return
-            if passive:
+            if frame.metadata.get('input_mode') and frame.metadata.get('capture_id') and not frame.metadata.get('assembled'):
+                try:
+                    self._speech.add(text, frame.metadata)
+                    self._schedule_speech()
+                except ValueError as exc: await self._control_notice(str(exc))
+                return
+            if not frame.metadata.get('input_confirmed') and (passive or frame.metadata.get('assembled') and needs_confirmation(text)):
                 if self._wake_phrase.admit(text, active=self._current is not None, commit=False) is None:
                     return
                 draft = self._input_admission.offer(text, frame.metadata)
                 if draft:
                     await self._send_rtvi({'type': 'input-confirmation', 'id': draft['id'], 'text': text, 'captureId': frame.metadata.get('capture_id'), 'ttlMs': 30000})
+                else:
+                    await self.enqueue_input(text, frame.metadata, confirm=True)
                 return
             # P1: drop final transcripts that closely match the recent spoken window.
             # Short legitimate replies (你好/我在/想聊什么/是/否) must survive; only a
@@ -539,14 +555,7 @@ class DSHBridgeProcessor(FrameProcessor):
                 await self.push_frame(TTSSpeakFrame(text="在呢，你说。"))
                 return
             text = admitted
-            self._pending.append(text)
-            if self._current is None:
-                await self._start_next_turn()
-            else:
-                await self._control_notice('收到，当前任务仍在处理，这条要求已排队。', kind='task-queued', count=len(self._pending))
-                logger.info(
-                    f"[dsh] queued utterance behind active turn {self._current.get('turn_key')}: {text!r}"
-                )
+            await self.enqueue_input(text, frame.metadata)
             return
 
         await self.push_frame(frame, direction)
@@ -557,7 +566,7 @@ class DSHBridgeProcessor(FrameProcessor):
 
     async def confirm_input(self, draft_id, text=None):
         draft = self._input_admission.take(draft_id, text)
-        if draft and self._capture is not None and (not self._capture.enabled or draft['metadata'].get('capture_id') != self._capture.current):
+        if draft and self._capture is not None and (draft['metadata'].get('capture_id') in self._capture.revoked or draft['metadata'].get('input_mode') == 'always' and (not self._capture.enabled or draft['metadata'].get('capture_id') != self._capture.current)):
             draft = None
         if draft is None:
             await self._control_notice('这条语音输入已过期或已处理，请重新说。')
@@ -565,7 +574,7 @@ class DSHBridgeProcessor(FrameProcessor):
             return False
         await self._send_rtvi({'type': 'input-confirmation-ended', 'id': draft_id})
         frame = TranscriptionFrame(draft['text'], 'confirmed-user', '')
-        frame.metadata.update(draft['metadata'], input_mode='hold')
+        frame.metadata.update(draft['metadata'], input_mode='hold', assembled=True, input_confirmed=True)
         await self.process_frame(frame, FrameDirection.DOWNSTREAM)
         return True
 
@@ -574,6 +583,64 @@ class DSHBridgeProcessor(FrameProcessor):
         if removed:
             await self._send_rtvi({'type': 'input-confirmation-ended', 'id': draft_id})
         return removed
+
+    def capture_changed(self, action, capture_id):
+        if action in ('finish','discard'):
+            self._speech.release(capture_id, discard=action=='discard')
+            self._schedule_speech()
+
+    def _schedule_speech(self):
+        if self._speech_timer: self._speech_timer.cancel()
+        deadline = self._speech.deadline()
+        if deadline is None or self._closing: return
+        def fire():
+            self._speech_timer = None
+            owned = asyncio.create_task(self.flush_speech())
+            self._intake_tasks.add(owned)
+            def settled(task):
+                self._intake_tasks.discard(task)
+                if not task.cancelled() and task.exception() is not None:
+                    logger.error('[speech-intake] '+redact(repr(task.exception())))
+            owned.add_done_callback(settled)
+        self._speech_timer = asyncio.get_running_loop().call_later(max(0,deadline-self._speech.now()),fire)
+
+    async def flush_speech(self):
+        for text,metadata in self._speech.ready():
+            if self._closing: return
+            frame=TranscriptionFrame(text,'assembled-user','')
+            frame.metadata.update(metadata)
+            await self.process_frame(frame,FrameDirection.DOWNSTREAM)
+        self._schedule_speech()
+
+    async def publish_queue(self, error=''):
+        snapshot=self._pending.snapshot()
+        signature=json.dumps({'revision':snapshot['revision'],'needs':[x['needsConfirmation'] for x in snapshot['entries']],'error':error})
+        if signature == getattr(self,'_queue_signature',None): return
+        self._queue_signature=signature
+        await self._send_rtvi({'type':'queue-state',**snapshot,'error':error})
+
+    async def enqueue_input(self, text, metadata, confirm=False):
+        if not confirm and self._current and self._current.get('audible'):
+            self._current['audible']=False
+            await self.broadcast_interruption()
+            await self._send_rtvi({'type':'stop-playback','reason':'complete-user-input','turnKey':self._current.get('turn_key')})
+        try:
+            item=self._pending.append(text,metadata,confirm)
+        except ValueError as exc:
+            await self.publish_queue(str(exc));await self._control_notice(str(exc));return
+        logger.info('[input-admission] ' + json.dumps({'inputId':item['id'],'mode':metadata.get('input_mode','legacy'),'captureId':metadata.get('capture_id'),'utteranceId':metadata.get('utterance_id'),'speechId':metadata.get('speech_id'),'segments':metadata.get('segments',1),'confirmed':metadata.get('input_confirmed',False),'needsConfirmation':confirm},ensure_ascii=False))
+        await self.publish_queue()
+        if self._current is None and not confirm: await self._start_next_turn()
+        if self._pending: await self._control_notice('已保留在等待队列，可查看、修改或删除。',kind='task-queued',count=len(self._pending))
+
+    async def queue_control(self, data):
+        if data.get('action') == 'snapshot':
+            self._queue_signature=None;await self.publish_queue();return True
+        try:
+            self._pending.edit(data.get('id'),data.get('revision'),data.get('action'),data.get('text'))
+        except ValueError as exc:
+            await self.publish_queue(str(exc));return False
+        await self.publish_queue();await self._start_next_turn();return True
 
     async def announce_pending(self):
         """Read authoritative pending requests; announce each first request once.
@@ -747,9 +814,23 @@ class DSHBridgeProcessor(FrameProcessor):
         }
 
     async def _start_next_turn(self):
-        if self._closing or self._quarantined or self._current is not None or not self._pending:
+        if self._closing or self._quarantined or self._current is not None or not self._pending or self._pumping_queue:
             return
-        text = self._pending.popleft()
+        self._pumping_queue = True
+        try:
+            state=await self._bridge_request('GET','/task-state')
+            if state.get('status') != 'idle':
+                self._host_waiting=True
+                return
+            if getattr(self,'_host_waiting',False):
+                self._host_waiting=False
+                if (state.get('lastTurn') or {}).get('terminal') == 'aborted': self._pending.quarantine()
+            item=self._pending.take()
+            if item is None: await self.publish_queue();return
+        except Exception as exc:
+            logger.warning('[queue] state unavailable: '+type(exc).__name__);return
+        finally: self._pumping_queue=False
+        text=item['text']
         self._turn_seq += 1
         current = {
             "turn_key": f"voice-{self._turn_seq}",
@@ -757,6 +838,8 @@ class DSHBridgeProcessor(FrameProcessor):
             "dsh_turn": None,
             "session_id": self._last_session_id,
             "text": text,
+            "input": {'id':item['id'],**item['metadata']},
+            "queue_item": item,
             "submitted_at": time.monotonic(),
             "submitted_epoch_ms": round(time.time() * 1000),
             "audible": True,
@@ -767,6 +850,7 @@ class DSHBridgeProcessor(FrameProcessor):
         self._current = current
         current["task"] = self.create_task(self._run_turn(current, text), name=f"dsh-{current['turn_key']}")
         self.metrics["turns_started"] += 1
+        await self.publish_queue()
 
     async def _run_turn(self, current: dict, text: str):
         turn_key = current["turn_key"]
@@ -781,6 +865,11 @@ class DSHBridgeProcessor(FrameProcessor):
             async with self._get_session().post(
                 url, json={"text": text}, headers=headers, timeout=aiohttp.ClientTimeout(total=180)
             ) as response:
+                if response.status == 409 and not current.get('request_id') and current.get('queue_item'):
+                    self._pending.restore(current['queue_item'])
+                    current['deferred'] = True
+                    await self.publish_queue()
+                    return
                 if response.status == 423:
                     body = await response.text()
                     current["quarantined"] = True
@@ -788,8 +877,9 @@ class DSHBridgeProcessor(FrameProcessor):
                     self.metrics.setdefault("quarantine_blocks", 0)
                     self.metrics["quarantine_blocks"] += 1
                     logger.warning(f"[dsh] turn {turn_key} blocked by session quarantine: {body[:160]}")
-                    await self.push_error_frame(ErrorFrame(error="DSH session is quarantined: previous execution state unknown"))
-                    return
+                    error=RuntimeError('DSH session is quarantined: previous execution state unknown')
+                    error.http_status=423
+                    raise error
                 if response.status != 200:
                     body = await response.text()
                     error = RuntimeError(f"Bridge HTTP {response.status}: {redact(body, 1000)}")
@@ -822,14 +912,14 @@ class DSHBridgeProcessor(FrameProcessor):
             logger.warning('[dsh-error] ' + json.dumps(diagnostic, ensure_ascii=False))
             await self._send_rtvi({'type':'task-error', **{key:value for key,value in diagnostic.items() if key != 'detail'}})
             await self.push_error_frame(ErrorFrame(error=f"任务连接异常（{diagnostic['diagId']}），执行结果需检查。"))
-            if current.get("request_id"):
+            if current.get("request_id") or not getattr(exc,'http_status',None):
                 current["execution_unknown"] = True
                 self._quarantine(current, 'execution-unknown')
                 self.metrics["execution_unknown"] += 1
                 logger.warning(f"[dsh] {turn_key} execution state UNKNOWN after bridge/DSH failure; session quarantined, no retry")
             if current.get("audible"):
                 try:
-                    await self.push_frame(TTSSpeakFrame(text="语音服务连接中断，任务状态未知，我已暂停新的请求。请检查 DSH 后再决定是否重试。"))
+                    await self.push_frame(TTSSpeakFrame(text="任务没有正常结束，结果需要检查。我已保留等待输入，请先查看任务状态。"))
                 except Exception:
                     pass
         finally:
@@ -875,7 +965,7 @@ class DSHBridgeProcessor(FrameProcessor):
                 self._quarantine(current, 'cancel-unconfirmed')
             if self._current is current:
                 self._current = None
-                if self._pending and not self._quarantined and not self._closing:
+                if self._pending and not self._quarantined and not self._closing and not current.get('deferred'):
                     self.create_task(self._start_next_turn(), name="dsh-next-turn")
             # reset connection state for the next turn
 
@@ -965,6 +1055,8 @@ class DSHBridgeProcessor(FrameProcessor):
             current['cancellation_source'] = event.get('cancellationSource')
             logger.info('[task-terminal] ' + json.dumps({'turnKey':current.get('turn_key'),'sessionId':session_id,'requestId':current.get('request_id'),'turn':current.get('dsh_turn'),'reason':event.get('reason'),'source':event.get('cancellationSource')}, ensure_ascii=False))
             if (event.get('reason') or {}).get('kind') == 'aborted':
+                self._pending.quarantine()
+                await self.publish_queue()
                 await self._control_notice('任务已停止，未执行的等待项仍保留。', action='task-stop', phase='confirmed', turnKey=current.get('turn_key'), requestId=current.get('request_id'), source=event.get('cancellationSource') or 'unattributed')
             current["completed"] = (event.get("reason") or {}).get("kind") == "completed"
             if current.get("submitted_at"):
@@ -1026,7 +1118,7 @@ class DSHBridgeProcessor(FrameProcessor):
                 self._quarantine_reason = None
                 self._uncertain_request = None
                 count = len(self._pending)
-                self._pending.clear()
+                self._pending.quarantine()
                 if count:
                     await self._control_notice(f'原任务状态已确认；{count} 条尚未执行的排队要求未自动重放，请重新确认后提交。')
         except Exception as exc:

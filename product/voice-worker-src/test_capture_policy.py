@@ -63,6 +63,7 @@ class VoiceAdmissionTests(unittest.IsolatedAsyncioTestCase):
             # Short intentional replies are not blanket-filtered, including the
             # greeting's own words said back by the user.
             for text in ['是', '否', '打开浏览器', '你好', '我在', '想聊什么']:
+                p._pending.clear()
                 await p.process_frame(TranscriptionFrame(text, 'u', 'now'), FrameDirection.DOWNSTREAM)
             self.assertEqual(p._start_next_turn.await_count, 6)
 
@@ -97,8 +98,9 @@ class VoiceAdmissionTests(unittest.IsolatedAsyncioTestCase):
         frame = TranscriptionFrame('打开浏览器', 'u', 'now'); frame.metadata.update(capture_id='c1', utterance_id='u1')
         with patch.object(FrameProcessor, 'process_frame', new=AsyncMock()):
             await p.process_frame(frame, FrameDirection.DOWNSTREAM)
-        self.assertEqual(p._send_rtvi.call_args.args[0]['captureId'], 'c1')
-        self.assertTrue(p._send_rtvi.call_args.args[0]['final'])
+        transcript=next(call.args[0] for call in p._send_rtvi.call_args_list if call.args[0]['type']=='capture-transcript')
+        self.assertEqual(transcript['captureId'], 'c1')
+        self.assertTrue(transcript['final'])
         self.assertEqual(list(p._pending), ['打开浏览器'])
 
 class ASRReceiveTests(unittest.IsolatedAsyncioTestCase):

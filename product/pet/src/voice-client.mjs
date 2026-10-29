@@ -14,6 +14,8 @@ const voiceState = document.getElementById('voice-state')
 let preferences = { voiceInput: { mode: 'hold', keyId: 'alt' }, hint: '按住 Option/Alt 说话', language: 'zh', orbSkin: 'whale-girl' }
 let capture, current, hintTimer, localMic, localContext, localProcessor, wakeReady = false, localStarting = false
 let lastVoiceErrorAt = 0
+let captureMode = 'hold'
+let mediaEpoch = 0
 const text = (zh, en) => preferences.language === 'en' ? en : zh
 function showHint() { hint.textContent = preferences.hint || ''; document.body.dataset.hint = 'show'; clearTimeout(hintTimer); hintTimer = setTimeout(() => { delete document.body.dataset.hint }, 4500) }
 function report(message, phase = 'idle', notify = true, kind = 'status', captureId = '', utteranceId = '', extra = {}) { void bridge.voiceStatus({ text: kind === 'status' ? desktopTranslator(preferences.language)(message) : message, phase, enabled: session.snapshot().enabled, transportPhase: session.snapshot().phase, notify, kind, captureId, utteranceId, ...extra }) }
@@ -59,6 +61,7 @@ const session = createVoiceSession({
     if (status.enabled || status.wanted) stopLocal(); else void localWake()
   },
   createClient(callbacks) {
+    const epoch = ++mediaEpoch
     stopLocal()
     const mediaManager = new WavMediaManager(1024, 16000)
     let mediaQueue = Promise.resolve(); const setMic = mediaManager.enableMic.bind(mediaManager)
@@ -76,6 +79,8 @@ const session = createVoiceSession({
       onUserInput: () => {}, onSttRawText: () => {},
       onBotTtsText: data => { if (data.text) report(data.text, 'speaking', true, 'speech') },
       onServerMessage(data) {
+        if(epoch!==mediaEpoch)return
+        if(data.type==='queue-state') { const button=document.getElementById('queue-status');if(button){button.hidden=!data.entries?.length;button.textContent=`等待 ${data.entries?.length||0}`};void bridge.voiceStatus({kind:'queue-state',state:data});return }
         if (data.type === 'voice-error') { reportVoiceError(data); return }
         if (data.type === 'task-error') { report(`任务连接异常，执行结果需要检查。诊断 ID：${data.diagId}`, 'idle', true, 'task-error'); return }
         if (data.type === 'interaction-prompt') { audio.muted = false; audio.volume = 1; return }
@@ -85,19 +90,20 @@ const session = createVoiceSession({
       },
     } })
     capture = createCaptureClient({
-      mode: () => preferences.voiceInput?.mode || 'hold',
+      mode: () => captureMode,
       send: (type, data) => own.sendClientMessage(type, data),
       setMic: enabled => { const track = own.tracks()?.local?.audio; if (!enabled && track) track.enabled = false; own.enableMic(enabled); return mediaQueue },
       configure: async () => { const track = own.tracks()?.local?.audio; if (!track) throw new Error('麦克风音轨尚未就绪'); await track.applyConstraints({ echoCancellation: true, noiseSuppression: true, autoGainControl: true }); const settings = track.getSettings(); void bridge.voiceStatus({notify:false,kind:'media',mediaSettings:{echoCancellation:settings.echoCancellation,noiseSuppression:settings.noiseSuppression,autoGainControl:settings.autoGainControl}}); report(settings.echoCancellation === false ? '当前麦克风未启用回声消除，建议使用耳机。' : '', 'idle', settings.echoCancellation === false) },
       publish: value => report(value.kind === 'capture-start' ? text('正在听…', 'Listening…') : value.text, ['input', 'capture-start'].includes(value.kind) ? 'listening' : 'processing', true, value.kind, value.captureId, value.utteranceId),
     })
     const ownCapture = capture
-    return { confirmInput: data => own.sendClientMessage('input-confirmation', data), connect: endpoint => own.connect({ webrtcRequestParams: { endpoint } }), disconnect: async () => { ownCapture.stop(); const tracks = Object.values(own.tracks()?.local || {}).filter(Boolean); try { await own.disconnect() } finally { for (const track of tracks) track.stop(); audio.srcObject = null; level(0) } }, enableMic: enabled => ownCapture.enable(enabled) }
+    return { queueControl: data => own.sendClientMessage('queue-control',data), confirmInput: data => own.sendClientMessage('input-confirmation', data), connect: endpoint => own.connect({ webrtcRequestParams: { endpoint } }), disconnect: async () => { ownCapture.stop(); const tracks = Object.values(own.tracks()?.local || {}).filter(Boolean); try { await own.disconnect() } finally { for (const track of tracks) track.stop(); if(epoch===mediaEpoch){mediaEpoch++;audio.srcObject = null;level(0);const button=document.getElementById('queue-status');if(button)button.hidden=true;void bridge.voiceStatus({kind:'queue-state',state:{revision:0,entries:[]}})} } }, enableMic: enabled => ownCapture.enable(enabled) }
   },
 })
 async function apply(state) { if (state.notice && state.notice !== current?.notice) report(state.notice); current = state; await session.update(state.phase === 'available' ? state.offerUrl : undefined); if (['failed', 'unconfigured'].includes(state.phase) && session.snapshot().wanted) report(state.error || '语音服务尚未就绪。') }
-function command(value) { if (value.action === 'confirm-input' || value.action === 'discard-input') { session.confirmInput({ id: value.id, action: value.action === 'confirm-input' ? 'confirm' : 'discard', ...(value.text === undefined ? {} : { text: value.text }) }); return }; if (value.action === 'discard') { if (capture?.discard(value.captureId)) void session.command('mute'); return }; if (value.action === 'retry') { lastVoiceErrorAt = 0; void session.retry(); return }; if (value.action === 'enable' || value.action === 'toggle') stopLocal(); void session.command(value.action || 'toggle'); if (current?.phase === 'unconfigured') report(current.error || '请先配置语音。') }
+function command(value) { if(value.action==='queue-control'){void session.queueControl(value.data);return}; if (value.action === 'confirm-input' || value.action === 'discard-input') { session.confirmInput({ id: value.id, action: value.action === 'confirm-input' ? 'confirm' : 'discard', ...(value.text === undefined ? {} : { text: value.text }) }); return }; if (value.action === 'discard') { if (capture?.discard(value.captureId)) void session.command('mute'); return }; if (value.action === 'retry') { lastVoiceErrorAt = 0; void session.retry(); return }; if (value.action === 'enable' || value.action === 'toggle') { stopLocal(); if (!session.snapshot().wanted) captureMode = preferences.voiceInput?.mode === 'always' ? 'always' : preferences.voiceInput?.mode === 'hold' && value.action === 'enable' && value.source === 'gesture' ? 'hold' : 'toggle' }; void session.command(value.action || 'toggle'); if (current?.phase === 'unconfigured') report(current.error || '请先配置语音。') }
 micButton.addEventListener('click', event => { event.stopPropagation(); command({ action: 'toggle' }) }); micButton.addEventListener('mousedown', event => event.stopPropagation())
+document.getElementById('queue-status')?.addEventListener('click',event=>{event.stopPropagation();void bridge.queue()})
 bridge.onVoice(state => { void apply(state) }); bridge.onVoiceCommand(command)
 function settings(value) { const previousMode = preferences.voiceInput?.mode; preferences = { ...preferences, ...value }; hint.textContent = preferences.hint || ''; view.update({ skin: preferences.orbSkin || 'whale-girl' }); document.documentElement.lang = preferences.language === 'en' ? 'en' : 'zh-CN'; if (!preferences.voiceInput?.hintSeen) showHint(); if (previousMode !== preferences.voiceInput?.mode) { void session.command('mute').then(()=>{if(preferences.voiceInput?.mode==='always')command({action:'enable'})}) } else if (preferences.voiceInput?.mode === 'always') command({ action: 'enable' }); if (!preferences.wakeWordEnabled) stopLocal(); else void localWake() }
 bridge.onPreferences?.(settings); void bridge.preferences?.().then(settings)
@@ -111,7 +117,7 @@ pet.addEventListener('mousedown', event => { if (preferences.voiceInput?.keyId =
 pet.addEventListener('mouseenter', showHint)
 let dragging = false, down, lastHover = 0, hit = false
 function isOverSprite(event) { if (dragging) return true; const canvas = pet.querySelector('canvas'), bounds = canvas?.getBoundingClientRect(); if (!canvas || !bounds || event.clientX < bounds.left || event.clientX >= bounds.right || event.clientY < bounds.top || event.clientY >= bounds.bottom) return false; const x = Math.floor((event.clientX - bounds.left) * canvas.width / bounds.width), y = Math.floor((event.clientY - bounds.top) * canvas.height / bounds.height); return canvas.getContext('2d').getImageData(x, y, 1, 1).data[3] > 12 }
-window.addEventListener('mousemove', event => { const nextHit = !!event.target.closest?.('#controls,#tasks') || isOverSprite(event); if (nextHit !== hit) { hit = nextHit; void bridge.hit(hit) }; if (down && (dragging || Math.hypot(event.screenX - down.x, event.screenY - down.y) > 4)) { dragging = true; pet.classList.add('dragging'); view.update({ dragDirection: event.screenX < down.x ? 'left' : 'right' }); void bridge.dragMove(event.screenX, event.screenY) } else if (hit && !down && performance.now() - lastHover > 6000) { lastHover = performance.now(); view.update({ cue: { id: `hover:${lastHover}`, name: 'jumping' } }) } })
+window.addEventListener('mousemove', event => { const nextHit = !!event.target.closest?.('#controls,#tasks,#queue-status') || isOverSprite(event); if (nextHit !== hit) { hit = nextHit; void bridge.hit(hit) }; if (down && (dragging || Math.hypot(event.screenX - down.x, event.screenY - down.y) > 4)) { dragging = true; pet.classList.add('dragging'); view.update({ dragDirection: event.screenX < down.x ? 'left' : 'right' }); void bridge.dragMove(event.screenX, event.screenY) } else if (hit && !down && performance.now() - lastHover > 6000) { lastHover = performance.now(); view.update({ cue: { id: `hover:${lastHover}`, name: 'jumping' } }) } })
 pet.addEventListener('mousedown', event => { if (event.button !== 0 || !isOverSprite(event)) return; down = { x: event.screenX, y: event.screenY }; void bridge.dragStart(event.screenX, event.screenY); event.preventDefault() })
 window.addEventListener('mouseup', () => { if (!down) return; down = undefined; dragging = false; pet.classList.remove('dragging'); view.update({ dragDirection: '' }); void bridge.dragEnd() })
 pet.addEventListener('dblclick', event => { if (isOverSprite(event)) void bridge.openMain() }); pet.addEventListener('contextmenu', event => { event.preventDefault(); if (isOverSprite(event)) void bridge.menu() })

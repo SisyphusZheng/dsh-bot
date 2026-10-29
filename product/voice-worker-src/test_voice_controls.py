@@ -133,7 +133,8 @@ class Controls(unittest.IsolatedAsyncioTestCase):
             p._bridge_request.return_value = {'sessionId': 's', 'clientTurnId': request, 'status': status, 'lastTurn': {'terminal': 'completed'}}
             await p._try_recover(); self.assertTrue(p._quarantined); self.assertEqual(len(p._pending), 1)
         p._bridge_request.return_value = {'sessionId': 's', 'clientTurnId': 'r', 'status': 'idle', 'lastTurn': {'terminal': 'completed'}}
-        await p._try_recover(); self.assertFalse(p._quarantined); self.assertFalse(p._pending)
+        await p._try_recover(); self.assertFalse(p._quarantined); self.assertTrue(p._pending)
+        self.assertTrue(p._pending.snapshot()['entries'][0]['needsConfirmation'])
 
     async def test_cancel_before_admission_does_not_issue_unscoped_request(self):
         p = self.make(); p._current = {'turn_key': 'early', 'audible': True}

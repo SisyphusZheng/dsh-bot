@@ -29,6 +29,8 @@ type Presentation = {
   state(): { working: boolean; startedAt: number; inputSource: string; waiting: boolean }
   managePolicies(): Promise<void>
   recoverTask(): Promise<void>
+  manageQueue(): Promise<void>
+  queue(value: object): void
   stop(): void
 }
 type BubbleController = {
@@ -93,7 +95,7 @@ export class ProductPet {
     'toggle-main',
     'approval',
     'cancel',
-    'voice-status',
+    'voice-status', 'queue-open',
     'drag-start',
     'drag-move',
     'drag-end', 'menu', 'hit', 'bubble-action', 'bubble-interactive', 'bubble-focus', 'bubble-open', 'experience', 'gesture', 'wake-audio',
@@ -318,6 +320,7 @@ export class ProductPet {
         if (path === 'open') { this.options.toggleMain(true); return }
         if (path === 'inspect-task') { await this.inspectTask(); return }
         if (path === 'voice-input') { window.webContents.send('pet:voice-command', body); return }
+        if (path === 'voice-queue') { window.webContents.send('pet:voice-command', { action:'queue-control', data:body }); return }
         const method = path.startsWith('/policies') ? (body && 'method' in body ? String(body.method) : 'GET') : undefined
         const response = await this.request(path, method === 'DELETE' ? undefined : body, method)
         if (!response.ok) throw Object.assign(new Error(`DSH request failed: ${response.status}`), { stale: response.status === 409 })
@@ -395,6 +398,7 @@ export class ProductPet {
     ipcMain.handle('pet:bubble-focus', (e, value: unknown) => { assertBubble(e.sender); this.bubble?.setInputMode(value === true) })
     ipcMain.handle('pet:bubble-resize', (e, value: unknown) => { assertBubble(e.sender); if (typeof value === 'number') this.bubble?.resize(value) })
     ipcMain.handle('pet:bubble-open', (e) => { assertBubble(e.sender); this.options.toggleMain(true) })
+    ipcMain.handle('pet:queue-open', (e) => { assertOwner(e.sender); return this.presentation?.manageQueue() })
     ipcMain.handle('pet:hit', (e, value: unknown) => { assertOwner(e.sender); window.setIgnoreMouseEvents(value !== true, { forward: true }) })
     ipcMain.handle('pet:menu', (e) => {
       assertOwner(e.sender)
@@ -404,6 +408,7 @@ export class ProductPet {
         { label: '恢复上次任务…', click: () => { void this.presentation?.recoverTask() } },
         { label: '检查任务状态', click: () => { void this.inspectTask() } },
         { label: '管理持续授权…', click: () => { void this.presentation?.managePolicies() } },
+        { label: '查看等待输入…', click: () => { void this.presentation?.manageQueue() } },
         ...(active ? [{ label: '停止任务', click: () => { void this.request('/cancel', { source: 'task-stop' }).catch(() => this.presentation?.notice('停止失败，请打开 DSH 查看。', 'error')) } }] : []),
         ...(this.options.quit ? [{ type: 'separator' as const }, { label: '退出 dsh-bot', click: () => this.options.quit?.() }] : []),
       ]).popup({ window })
@@ -431,6 +436,7 @@ export class ProductPet {
     ipcMain.handle('pet:voice-status', async (e, message: unknown) => {
       assertOwner(e.sender)
       if (message && typeof message === 'object') {
+        if ('kind' in message && message.kind === 'queue-state' && 'state' in message && message.state && typeof message.state === 'object') { this.presentation?.queue(message.state); return }
         const status = message as {
           text?: string
           phase?: string

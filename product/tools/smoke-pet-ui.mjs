@@ -113,6 +113,18 @@ try {
  await bubble.getByRole('button',{name:'确认发送',exact:true}).click();await renders
  assert.deepEqual(calls.at(-1),['voice-input',{action:'confirm-input',id:'ui-draft',text:'请整理报告'}])
  presentation.capture({kind:'input-confirmation-ended',draftId:'ui-draft'});await renders
+ presentation.queue({revision:1,entries:[{id:'queued-ui',text:'请整理报告',position:1,waitedSeconds:63,needsConfirmation:true}]})
+ await presentation.manageQueue();await renders
+ await bubble.getByRole('button',{name:/^请整理报告/}).click();await renders
+ await bubble.getByRole('button',{name:'修改',exact:true}).click();await renders
+ await bubble.getByPlaceholder('修改等待输入').fill('请整理最新报告')
+ await bubble.getByRole('button',{name:'保存并确认',exact:true}).click();await renders
+ assert.deepEqual(calls.at(-1),['voice-queue',{action:'edit',id:'queued-ui',revision:1,text:'请整理最新报告'}])
+ presentation.queue({revision:2,entries:[{id:'queued-ui',text:'请整理最新报告',position:1,waitedSeconds:64,needsConfirmation:false}]});await renders
+ await bubble.getByRole('button',{name:'删除这条',exact:true}).click();await renders
+ assert.deepEqual(calls.at(-1),['voice-queue',{action:'delete',id:'queued-ui',revision:2}])
+ presentation.queue({revision:3,entries:[]});await renders
+ await bubble.getByRole('button',{name:'关闭',exact:true}).click();await renders
  presentation.capture({kind:'capture-start',captureId:'silent',text:'正在听…'});await renders
  await bubble.getByRole('button',{name:'取消录音',exact:true}).waitFor({state:'visible'})
  const sentBeforeCancel=calls.length

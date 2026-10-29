@@ -3,5 +3,5 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write product/pet/README.md
 /desktop-companion-presentation:
-  en: d7a9dc1c91b0d1d0
-  zh: 10e98823f30b4341
+  en: 3c35014d0d0409fa
+  zh: 8591ab553f31ae63

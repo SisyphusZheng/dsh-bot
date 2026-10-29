@@ -60,6 +60,8 @@ async def main():
         return web.json_response(lifecycle)
     async def speech(request):
         return web.json_response({'spoken':spoken})
+    async def task_state(request):
+        return web.json_response({'sessionId':'media-session','status':'running' if lifecycle['started']>lifecycle['finished'] else 'idle'})
     async def interactions(request):
         assert request.headers['Authorization']=='Bearer bridge-fixture'
         if lifecycle['started'] != 1 or lifecycle['finished'] or not os.environ.get('MEDIA_INTERACTION'):
@@ -88,7 +90,7 @@ async def main():
         await response.write((json.dumps({'type':'turn-end','reason':{'kind':'completed'}})+'\n').encode())
         lifecycle['finished'] += 1
         await response.write_eof(); return response
-    bridge = web.Application(); bridge.router.add_post('/voice/turn',turn); bridge.router.add_get('/fixture-state',state); bridge.router.add_get('/fixture-speech',speech); bridge.router.add_get('/interactions',interactions); bridge.router.add_post('/fixture-release',resume); bridge.router.add_post('/cancel',cancel); runner=web.AppRunner(bridge); await runner.setup(); await web.SockSite(runner,bridge_socket).start()
+    bridge = web.Application(); bridge.router.add_post('/voice/turn',turn); bridge.router.add_get('/fixture-state',state); bridge.router.add_get('/fixture-speech',speech); bridge.router.add_get('/task-state',task_state); bridge.router.add_get('/interactions',interactions); bridge.router.add_post('/fixture-release',resume); bridge.router.add_post('/cancel',cancel); runner=web.AppRunner(bridge); await runner.setup(); await web.SockSite(runner,bridge_socket).start()
     descriptor.write_text(json.dumps({'port':bridge_port,'token':'bridge-fixture','workerPort':worker_port,'providerPort':provider_port}))
     try:
         async with serve(provider,sock=provider_socket): await uvicorn.Server(uvicorn.Config(app,host='127.0.0.1',port=worker_port,log_level='warning')).serve(sockets=[worker_socket])

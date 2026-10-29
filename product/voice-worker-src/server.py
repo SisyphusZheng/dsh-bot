@@ -337,6 +337,7 @@ async def _run_task(transport, task, session_id: str, session_state: dict) -> No
         while not session_state['dsh']._closing:
             try:
                 await session_state['dsh'].announce_pending()
+                await session_state['dsh']._start_next_turn()
                 failed = False
             except asyncio.CancelledError:
                 raise
@@ -350,6 +351,9 @@ async def _run_task(transport, task, session_id: str, session_state: dict) -> No
     if task.rtvi is not None and MODE == "dsh":
         @task.rtvi.event_handler("on_client_message")
         async def capture_control(rtvi, message):
+            if message.type == 'queue-control':
+                if isinstance(message.data,dict): await session_state['dsh'].queue_control(message.data)
+                return
             if message.type == 'input-confirmation':
                 data = message.data if isinstance(message.data, dict) else {}
                 if not isinstance(data.get('id'), str) or len(data['id']) > 100:
@@ -367,6 +371,7 @@ async def _run_task(transport, task, session_id: str, session_state: dict) -> No
             action, capture_id = data.get("action"), data.get("captureId")
             if not capture.control(action, capture_id, data.get('mode', 'always')):
                 return
+            session_state['dsh'].capture_changed(action,capture_id)
             if action in ('finish', 'discard'):
                 bridge = session_state['dsh']
                 draft = bridge._input_admission.draft

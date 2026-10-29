@@ -45,6 +45,7 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
   let questionIndex = 0, answers = [], selected = [], customInput = false
   let voice = 'idle', working = false, startedAt = 0, inputSource = 'desktop', captureId = '', captureIdentity = '', captureTimer
   let inputDraft = null, inputDraftTimer, inputDraftBusy = false
+  let queued = {revision:0,entries:[]}, queueView = null
   const expiredInputs = new Set()
   const cancelTimer = () => { clearTimer(timer); timer = undefined }
   const animation = (cue = null) => animate({ state: requests.length ? 'awaiting-input' : voice !== 'idle' ? voice : working ? 'working' : 'idle', baseWorking: working, cue })
@@ -81,7 +82,7 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
     })
   }
   function notice(value, kind = 'status', duration = 4500, capture = '', options = {}) {
-    if (stopped || requests.length || manager || recovery || inputDraft) return
+    if (stopped || requests.length || manager || recovery || inputDraft || queueView) return
     cancelTimer()
     show({ visible: true, kind, text: value, clickThrough: !['input', 'speech'].includes(kind) && !options.secondary?.length, ...(['input','transcript'].includes(kind) ? { title: kind === 'input' ? '我听到（识别中）' : '我听到（已提交）' } : {}), ...(kind === 'input' ? { requestId: capture, cancel: { id: 'cancel-capture', label: '取消录音' } } : {}), ...options })
     if (duration > 0) timer = setTimer(() => { if (!requests.length && !stopped) hide() }, duration)
@@ -94,6 +95,7 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
       secondary: [{ id: 'grant-close', label: '关闭' }], busy, clickThrough: false })
   }
   async function managePolicies() {
+    queueView=null
     if (stopped) return
     if (requests.length || busy) { if (requests.length) render('请先处理当前请求，再管理持续授权。'); return }
     recovery = null; recoveryEpoch++
@@ -115,6 +117,7 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
       secondary:[...(mode ? [{id:'recovery-confirm',label:mode==='continue'?'确认检查后继续':'确认重新提交'},{id:'recovery-back',label:'返回'}] : []),{id:'recovery-close',label:'暂不恢复'}]})
   }
   async function recoverTask() {
+    queueView=null
     if (stopped) return
     if (requests.length || busy) { if (requests.length) render('请先处理当前请求。'); return }
     manager = null; managerEpoch++
@@ -159,10 +162,27 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
       secondary:[...(!inputDraft.edit ? [{id:'voice-confirm',label:'确认发送'},{id:'voice-edit',label:'修改'}] : []),{id:'voice-discard',label:'丢弃输入'}]})
   }
   function clearInputDraft() { inputDraft = null; inputDraftBusy = false; clearTimer(inputDraftTimer); inputDraftTimer = undefined }
+  function renderQueue(hint='') {
+    if(!queueView||requests.length||stopped)return
+    cancelTimer()
+    const item=queued.entries.find(entry=>entry.id===queueView.id)
+    show({visible:true,kind:'action',requestId:`queue:${queued.revision}`,title:`等待输入 · ${queued.entries.length}`,text:item?item.text:queued.entries.length?'这些内容尚未交给 Agent，可修改、删除或确认继续排队。':'没有等待的输入。',hint:hint||(item?.needsConfirmation?'这条输入需要重新确认，不会自动执行。':''),clickThrough:false,
+      choices:item?[]:queued.entries.map(entry=>({id:entry.id,label:entry.text,description:`第 ${entry.position} 位 · 已等 ${entry.waitedSeconds} 秒${entry.needsConfirmation?' · 待确认':''}`})),
+      input:item&&queueView.edit?{value:item.text,placeholder:'修改等待输入',submitLabel:'保存并确认'}:null,
+      secondary:item?[...(!queueView.edit?[{id:'queue-confirm',label:'确认继续排队'},{id:'queue-edit',label:'修改'}]:[]),{id:'queue-delete',label:'删除这条'},{id:'queue-back',label:'返回'}]:[{id:'queue-close',label:'关闭'}]})
+  }
+  async function manageQueue() { if(requests.length){render('请先处理当前请求。');return};manager=null;recovery=null;queueView={id:'',edit:false};renderQueue();await send('voice-queue',{action:'snapshot'}) }
   return {
     notice,
     managePolicies,
     recoverTask,
+    manageQueue,
+    queue(value) {
+      if(stopped||!value||!Array.isArray(value.entries)||!Number.isInteger(value.revision))return
+      queued={revision:value.revision,entries:value.entries.slice(0,20)}
+      if(queueView?.id&&!queued.entries.some(entry=>entry.id===queueView.id))queueView={id:'',edit:false}
+      renderQueue(value.error||'')
+    },
     capture(status) {
       if (stopped) return
       if (status.kind === 'input-confirmation') {
@@ -198,6 +218,7 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
       const nextIdentity = `${snapshot.pid}:${snapshot.sessionId}`
       const changedOwner = identity !== nextIdentity
       if (changedOwner) clearInputDraft()
+      if (changedOwner || snapshot.requests?.length) queueView=null
       identity = nextIdentity
       const previous = requests[0]?.id, previousCount = requests.length
       requests = snapshot.requests || []
@@ -229,9 +250,18 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
       }
     },
     voice(state) { voice = state; animation() },
-    state: () => ({ working, startedAt, inputSource, waiting: requests.length > 0 }),
+    state: () => ({ working, startedAt, inputSource, waiting: requests.length > 0, queued:queued.entries.length }),
     async action(action) {
       if (stopped) return
+      if(queueView&&!requests.length&&action.requestId===`queue:${queued.revision}`){
+        if(action.type==='choice'){queueView={id:action.id,edit:false};renderQueue();return}
+        if(action.type==='secondary'&&action.id==='queue-close'){queueView=null;if(inputDraft)renderInputDraft();else hide();return}
+        if(action.type==='secondary'&&action.id==='queue-back'){queueView={id:'',edit:false};renderQueue();return}
+        if(action.type==='secondary'&&action.id==='queue-edit'){queueView.edit=true;renderQueue();return}
+        const operation=action.type==='input'?'edit':action.id==='queue-delete'?'delete':action.id==='queue-confirm'?'confirm':null
+        if(operation){const item=queued.entries.find(entry=>entry.id===queueView.id);if(item)await send('voice-queue',{action:operation,id:item.id,revision:queued.revision,...(operation==='edit'?{text:action.value}:{})})}
+        return
+      }
       if (inputDraft && !requests.length && action.requestId === `voice:${inputDraft.id}` && !inputDraftBusy) {
         if(action.type==='secondary'&&action.id==='voice-edit'){inputDraft.edit=true;renderInputDraft();return}
         if(action.type==='secondary'&&action.id==='voice-discard'){const id=inputDraft.id;clearInputDraft();hide();await send('voice-input',{action:'discard-input',id});return}
