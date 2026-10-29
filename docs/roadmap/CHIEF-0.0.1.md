@@ -2,7 +2,7 @@
 
 English | [中文](CHIEF-0.0.1.zh.md)
 
-This brief defines the current closure and later integration boundaries. The product remains 0.0.1-beta; passing cloud checks does not establish Mac, real microphone or real model acceptance. See the [current checkpoint](../../review/0.0.1-candidate-2026-10-29/CHECKPOINT.json) for recorded results.
+This brief defines the current closure and later integration boundaries. The product remains 0.0.1-beta; passing cloud checks does not establish Mac, real microphone or real model acceptance. See the [current checkpoint](acceptance-0.0.1.json) for recorded results.
 
 ## Product identity
 
@@ -67,3 +67,4 @@ Installation defaults to ~/Applications/dsh-bot.app; an existing App is preserve
 | 1.0 | Headphones, Pad and persistent cloud tasks | Cross-device identity, controlled memory, durable work and result briefings; not currently delivered |
 
 The 1.0 vision remains in its owning roadmap. This iteration commits and pushes stages only to the work branch; do not merge main, publish or use Actions. Check each stage before publishing and verify its remote SHA. After source freeze, evidence-only commits record actual checks of that source rather than reusing historical counts.
+

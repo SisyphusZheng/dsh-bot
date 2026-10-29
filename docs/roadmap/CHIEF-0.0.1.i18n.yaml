@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/roadmap/CHIEF-0.0.1.md
 /chief-companion-0-0-1-interaction-and-delivery-contract:
-  en: 6581738d284b86df
-  zh: beeb8758eccebe01
+  en: 8972eee1b647c75f
+  zh: 1ce6bf6092c01447
 /chief-companion-0-0-1-interaction-and-delivery-contract/product-identity:
   en: 36d6c86ca19a1162
   zh: 0361e8cc322aebdf

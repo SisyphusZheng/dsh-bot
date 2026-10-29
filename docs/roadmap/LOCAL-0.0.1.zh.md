@@ -1,5 +1,7 @@
 # 0.0.1 本地执行计划
 
+本轮云端收口已完成；执行前先读 [当前验收与剩余边界](0.0.1.zh.md#本轮交互收口与本地验收) 和 [候选身份](acceptance-0.0.1.json)。下方原生、声学和发布步骤仍须对新 DMG 执行，不复用旧包的结果。
+
 本文是交给 Apple Silicon Mac 执行者的工作计划。按 [稳定化任务书](0.0.1.zh.md)完成修复并交付可用的 0.0.1；本次文档整合不代表这些工作已完成。以下 Mac 命令按仓库脚本核对，云端没有执行原生构建、TCC、物理声学或真实 Provider 验收。
 
 上次“Actions 573 → 573、无新增运行”的最终结论撤回：即时样本不足以排除延迟触发。默认分支整合后至少新增 68 条运行，其中 dynamic 8、pull_request 40、pull_request_target 20；具体时间和查询范围见 baseline.json。不是 push 类工作流直接启动，但同样违反本任务不消耗 Actions 的要求。
@@ -145,3 +147,4 @@ Developer ID 签名/公证明确 DEFERRED 至 0.1.0 扩大分发阶段，0.0.1 �
 6. 对新增运行按直接 SHA、Dependabot PR rebase 链及事件关联归因；总数有变化不自动都归给本次，查询为空也只表示已观察窗口内未发现。若相关新增运行出现，记录 FAIL，不继续推广候选，不通过 dispatch/重跑补证据。
 
 延迟观察不保证未来永不触发，仓库级冻结在整个本地验收/发布期间保持。GitHub 的已有 PR rebase 例外见 [Dependabot 官方说明](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference#rebase-strategy)。后续推送与发布仍须核实用户授权；先前 main 整合授权不是自动发布 Release 或持续推送的许可。
+

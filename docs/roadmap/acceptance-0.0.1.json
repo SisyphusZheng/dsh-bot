@@ -1,0 +1,153 @@
+{
+  "codeCommit": "f9d65fdd0553c57f29eee600e25a673eb4bc130d",
+  "codeTree": "89150c2f3a3b342f7ce7266c47f522a0045da0e3",
+  "sourceFingerprint": {
+    "algorithm": "sha256(git ls-tree -r COMMIT -- paths)",
+    "paths": [
+      "apps",
+      "packages",
+      "native",
+      "nisse",
+      "product",
+      "scripts",
+      "package.json",
+      "pnpm-lock.yaml",
+      "pnpm-workspace.yaml",
+      "tsconfig.json"
+    ],
+    "sha256": "fe3da784f89d2bca79b222ead7e00d8c2527b18017396cf0bbf6bb89e2422afa"
+  },
+  "platform": "linux-x86_64",
+  "node": "v24.22.1",
+  "python": "Python 3.12.14",
+  "product": "0.0.1-beta",
+  "runtime": "0.2.1-rc.3",
+  "tests": {
+    "vitestFiles": 22,
+    "vitestTests": 477,
+    "nodeTests": 90,
+    "pythonTests": 78,
+    "typecheckGates": 5,
+    "buildGates": 9
+  },
+  "commands": [
+    {
+      "command": "bash product/tools/verify-local.sh",
+      "status": "PASS",
+      "log": "closure/frozen-gate-console.log"
+    },
+    {
+      "command": "node product/tools/smoke-host.mjs --web",
+      "status": "PASS",
+      "log": "closure/frozen-host-web.log"
+    },
+    {
+      "command": "pyinstaller VoiceWorker.spec --distpath <fresh-directory> --noconfirm; node product/tools/smoke-voice.mjs --binary <worker>",
+      "status": "PASS",
+      "log": "closure/frozen-worker-smoke.log"
+    }
+  ],
+  "frozenWorker": {
+    "platform": "linux-x86_64",
+    "binarySha256": "27fefe25e96adbc2fe33df9e7316730bae7ff64600da1b2b5ef112a28333c9b6",
+    "distributionBytes": 981379888,
+    "modulesChecked": [
+      "dsh_bridge",
+      "speech_intake",
+      "voice_commands"
+    ],
+    "cloudAdapter": "Unchanged public codex-rejected-cas.pem copied beside frozen stdlib ssl.py, required by the cloud Python runtime. No TLS disabling; this is not a macOS build input.",
+    "firstAttempt": "Existing Linux dist collided with an AV shared-library symlink. A fresh output directory succeeded; macOS build script already uses fresh output directories."
+  },
+  "limits": [
+    "No macOS DMG was built in this environment.",
+    "No TCC, real room acoustics, Bluetooth or physical desktop interaction qualification.",
+    "No real ASR/TTS/LLM credentials were present; providers are explicit fixtures.",
+    "Real Hindsight database restart/semantic qualification of this source and personal-bank recall require local acceptance; cloud Host memory test uses an explicit HTTP fixture.",
+    "No exact task wait-time prediction, voiceprint authentication or semantic summarizer."
+  ],
+  "archive": {
+    "name": "dsh-bot-0.0.1-f9d65fdd-cloud-evidence.zip",
+    "bytes": 331628,
+    "sha256": "c87a9b957d7c5cafd7ca4fc83ec4ec9e674f7e5a0272ed219d132e86e99bdf19"
+  },
+  "delivery": {
+    "branch": "work/0.0.1-closure",
+    "mainUnchanged": "710c94223cc0f4e75f066507107fb1c1d43d29a1",
+    "status": "MVP READY FOR LOCAL ACCEPTANCE",
+    "productVersion": "0.0.1-beta",
+    "formalStableRelease": "DEFERRED",
+    "noNewMacArtifact": true,
+    "documentationOnlyAfterCodeFreeze": true
+  },
+  "githubAudit": {
+    "actionsTotalCount": 649,
+    "latestRunCreatedAt": "2026-10-27T20:08:33Z",
+    "openPRs": 0,
+    "newRunsObserved": 0,
+    "settingsRead": "BLOCKED-EXTERNAL: connector does not expose the Actions permissions endpoint; disabled/Dependabot freeze is user-reported, not independently re-read",
+    "noDispatchRunnerArtifactTagReleaseMerge": true
+  },
+  "gates": {
+    "G1": {
+      "cloud": "PASS",
+      "native": "BLOCKED-ENVIRONMENT"
+    },
+    "G2": {
+      "productionHostAndMockProvider": "PASS",
+      "realProvider": "BLOCKED-EXTERNAL"
+    },
+    "G3": {
+      "realWebRTCAndSyntheticASRTTS": "PASS",
+      "acousticsTCCBluetooth": "BLOCKED-ENVIRONMENT",
+      "realProvider": "BLOCKED-EXTERNAL"
+    },
+    "G4": {
+      "hostAdapterHTTPFixture": "PASS",
+      "newCandidateRealHindsightAndPersonalBank": "BLOCKED-ENVIRONMENT"
+    },
+    "G5": {
+      "crossPlatform": "PASS",
+      "newCandidateMacLifecycle": "BLOCKED-ENVIRONMENT"
+    },
+    "G6": {
+      "testedInternalMVPBoundary": "PASS",
+      "fullSecurityAudit": "DEFERRED"
+    },
+    "G7": {
+      "native": "BLOCKED-ENVIRONMENT"
+    }
+  },
+  "remaining": [
+    {
+      "id": "Q-02/TCC/U-native",
+      "status": "BLOCKED-ENVIRONMENT",
+      "scope": "New native App/DMG, Dock/menu bar, notifications, window avoidance, Spaces, physical interaction, microphone/TCC, real room echo, Bluetooth and ten-turn interruption testing"
+    },
+    {
+      "id": "Q-03",
+      "status": "BLOCKED-EXTERNAL",
+      "scope": "Real ASR/TTS/LLM providers and full proxy matrix; no credentials were present"
+    },
+    {
+      "id": "Q-04",
+      "status": "BLOCKED-ENVIRONMENT",
+      "scope": "Real Hindsight DB restart/semantic retrieval and existing personal bank; previous Mac result remains historical evidence only"
+    },
+    {
+      "id": "U-05-extended",
+      "status": "DEFERRED",
+      "scope": "Semantic summary, section-based playback/resume; current feature is only an explicit length budget"
+    },
+    {
+      "id": "Q-05/Q-08",
+      "status": "DEFERRED",
+      "scope": "New candidate size/startup comparison and safe cleanup of old Apps/DMGs on the user Mac; no local user data deleted"
+    },
+    {
+      "id": "Q-06",
+      "status": "DEFERRED",
+      "scope": "Developer ID/notarization; internal ad-hoc signing remains distinct from public distribution"
+    }
+  ]
+}
