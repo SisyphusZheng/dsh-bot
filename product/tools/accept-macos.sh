@@ -42,21 +42,29 @@ trap cleanup EXIT
 start_app(){
   # LaunchServices need not inherit HOME. Isolation is through user-data-dir.
   node -e 'require("fs").rmSync(process.argv[1],{force:true})' "$RUN/user-data/DevToolsActivePort"
-  local attempt
-  for attempt in 1 2 3; do
+  local attempt started pid
+  for attempt in 1 2; do
+    for pid in $(pgrep -f "$RUN/dsh-bot.app/Contents" 2>/dev/null || true); do kill -TERM "$pid" 2>/dev/null || true; done
+    sleep 1
+    echo "LaunchServices attempt $attempt"
     env -u ELECTRON_RUN_AS_NODE -u NODE_OPTIONS /usr/bin/open -n -W --env ELECTRON_RUN_AS_NODE= --stdout "$RUN/launchservices-$1.out.log" --stderr "$RUN/launchservices-$1.err.log" "$RUN/dsh-bot.app" --args --user-data-dir="$RUN/user-data" --remote-debugging-address=127.0.0.1 --remote-debugging-port=0 > "$RUN/launchservices-$1.log" 2>&1 & OPEN_PID=$!
-    sleep 1
-    kill -0 "$OPEN_PID" 2>/dev/null && break
-    if [[ $attempt -eq 3 ]]; then cat "$RUN/launchservices-$1.out.log" "$RUN/launchservices-$1.err.log" 2>/dev/null; echo 'FAIL normal LaunchServices start'; return 1; fi
-    sleep 1
+    started=0
+    # Wait for BOTH the app process and the bridge descriptor. A process alone
+    # is insufficient: the host may still be starting (or may have died).
+    for i in {1..60}; do
+      PID=$(node product/tools/find-macos-app-pid.mjs "$RUN/user-data" 2>/dev/null) || PID=''
+      if [[ -n "$PID" && -f "$RUN/user-data/dsh-home/bot/bridge.json" ]]; then started=1; break; fi
+      if ! kill -0 "$OPEN_PID" 2>/dev/null; then break; fi
+      sleep 1
+    done
+    if [[ $started -eq 1 ]]; then return 0; fi
+    cat "$RUN/launchservices-$1.out.log" "$RUN/launchservices-$1.err.log" 2>/dev/null
+    kill "$OPEN_PID" 2>/dev/null || true
+    for pid in $(pgrep -f "$RUN/dsh-bot.app/Contents" 2>/dev/null || true); do kill -TERM "$pid" 2>/dev/null || true; done
+    sleep 2
   done
-  for i in {1..90}; do
-    PID=$(node product/tools/find-macos-app-pid.mjs "$RUN/user-data") || return 1
-    if [[ -n "$PID" ]]; then return 0; fi
-    if ! kill -0 "$OPEN_PID" 2>/dev/null; then cat "$RUN/launchservices-$1.out.log" "$RUN/launchservices-$1.err.log" 2>/dev/null; echo 'FAIL normal LaunchServices start'; return 1; fi
-    sleep 0.5
-  done
-  echo 'FAIL LaunchServices process deadline'; return 1
+  echo 'FAIL LaunchServices app/bridge startup'
+  return 1
 }
 phase(){ local name=$1; shift; echo "START $name"; if "$@"; then record "$name" PASS; else record "$name" FAIL; return 1; fi; }
 wait_ready(){

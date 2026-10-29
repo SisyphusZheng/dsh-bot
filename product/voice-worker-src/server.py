@@ -341,6 +341,15 @@ async def _run_task(transport, task, session_id: str, session_state: dict) -> No
                 failed = False
             except asyncio.CancelledError:
                 raise
+            except FileNotFoundError:
+                # The host removes its bridge descriptor before the worker
+                # finishes shutting down. That is a normal shutdown race, not a
+                # user-facing announcement failure.
+                if session_state['dsh']._closing or not os.path.exists(session_state['dsh']._descriptor_path):
+                    break
+                if not failed:
+                    print('[voice] interaction announcement unavailable: FileNotFoundError', flush=True)
+                failed = True
             except Exception as exc:
                 if not failed:
                     print(f'[voice] interaction announcement unavailable: {type(exc).__name__}', flush=True)

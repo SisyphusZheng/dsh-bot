@@ -211,3 +211,25 @@ class Controls(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(timer.done()); self.assertTrue(p._closing)
         await p.process_frame(TranscriptionFrame('打开浏览器', 'u', 'now'), FrameDirection.DOWNSTREAM)
         self.assertFalse(p._pending)
+
+
+    async def test_natural_approval_prefixes_reach_the_same_control(self):
+        for text in ('允许一次', '我允许一次', '我确认允许一次', '好的，确认允许一次', '那拒绝'):
+            expected = 'approval-reject' if '拒绝' in text else 'approval-allow'
+            self.assertEqual(control_kind(text), expected, text)
+
+    async def test_prefixed_allow_is_not_queued_as_a_new_turn(self):
+        p = self.make()
+        p._utterance_targets['c:u'] = {
+            'current': {}, 'requests': [{'id': 'a', 'sessionId': 's', 'kind': 'approval'}], 'task': None,
+        }
+        metadata = {'capture_id': 'c', 'utterance_id': 'u'}
+        self.assertTrue(await p._handle_control('我允许一次。', metadata))
+        p._bridge_request.assert_awaited_once_with(
+            'POST', '/approval', {'id': 'a', 'sessionId': 's', 'decision': 'allow'},
+        )
+        self.assertEqual(list(p._pending), [])
+
+    async def test_negated_or_chatty_sentences_are_still_not_controls(self):
+        for text in ('我不允许你这么做', '解释一下允许一次是什么', '允许范围是什么'):
+            self.assertIsNone(control_kind(text), text)

@@ -18,6 +18,26 @@ _PHRASES = {
 }
 _CONTROLS = {normalize(phrase): kind for kind, phrases in _PHRASES.items() for phrase in phrases}
 
+# Spoken approvals usually arrive as "我允许一次" / "好的，确认允许一次".  Only
+# strip a leading discourse prefix when the remainder is still an exact control
+# phrase; this keeps ordinary sentences such as "我不允许你这么做" untouched.
+_PREFIXES = ('我这边', '我', '好的', '好', '嗯', '那', '那就', '请', '麻烦', '确认一下')
+
+
+def control_text(text):
+    """Normalized text with an optional leading discourse prefix removed."""
+    value = normalize(text)
+    for prefix in sorted(_PREFIXES, key=len, reverse=True):
+        if value.startswith(prefix) and len(value) > len(prefix):
+            candidate = value[len(prefix):]
+            if candidate in _CONTROLS:
+                return candidate
+    return value
+
 
 def control_kind(text):
-    return _CONTROLS.get(normalize(text))
+    value = normalize(text)
+    kind = _CONTROLS.get(value)
+    if kind is not None:
+        return kind
+    return _CONTROLS.get(control_text(text))

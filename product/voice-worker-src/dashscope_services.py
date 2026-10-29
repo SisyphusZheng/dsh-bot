@@ -29,6 +29,7 @@ import asyncio
 import base64
 import json
 import os
+import re
 import time
 import uuid
 from collections.abc import AsyncGenerator
@@ -54,6 +55,21 @@ from pipecat.services.settings import STTSettings, TTSSettings
 from pipecat.services.tts_service import WebsocketTTSService
 from pipecat.utils.time import time_now_iso8601
 from pipecat.utils.text.markdown_text_filter import MarkdownTextFilter
+
+
+class SpeechTextFilter(MarkdownTextFilter):
+    """Markdown filter plus TTS-safe whitespace.
+
+    Pipecat's Markdown filter removes markup but leaves newlines from
+    headings/lists, which makes Qwen TTS pause in the middle of a sentence.
+    Keep one space between words and turn line breaks into a spoken comma.
+    """
+
+    async def filter(self, text: str) -> str:
+        spoken = await super().filter(text)
+        spoken = re.sub(r"[ \t]*\n+[ \t]*", "，", spoken)
+        spoken = re.sub(r"[ \t]{2,}", " ", spoken)
+        return spoken
 
 def probe_log(message):
     if os.environ.get("DSH_VOICE_DEBUG_PROBES") == "1":
@@ -306,7 +322,7 @@ class DashScopeTTSService(WebsocketTTSService):
         super().__init__(
             sample_rate=sample_rate,
             settings=TTSSettings(model=model, voice=voice, language=None),
-            text_filters=kwargs.pop("text_filters", [MarkdownTextFilter()]),
+            text_filters=kwargs.pop("text_filters", [SpeechTextFilter()]),
             **kwargs,
         )
         self._receive_task = None

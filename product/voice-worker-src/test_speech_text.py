@@ -26,3 +26,17 @@ class SpeechText(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn('*', spoken)
         self.assertIn('速度快', spoken)
         self.assertIn('价格高', spoken)
+
+
+    async def test_line_breaks_and_list_markers_are_not_sent_to_tts(self):
+        tts = DashScopeTTSService(api_key='fixture')
+        for source, words in [
+            ('\n后台作业：无\n', ['后台作业', '无']),
+            ('- 项目一\n- 项目二\n', ['项目一', '项目二']),
+            ('## 标题\n正文第一句\n正文第二句', ['标题', '正文第一句', '正文第二句']),
+        ]:
+            spoken = await tts._filter_text(source)
+            self.assertNotIn('\n', spoken)
+            self.assertNotIn('**', spoken)
+            for word in words:
+                self.assertIn(word, spoken)

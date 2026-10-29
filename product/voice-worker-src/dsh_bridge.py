@@ -31,7 +31,7 @@ from difflib import SequenceMatcher
 
 import aiohttp
 from wake_phrase import WakePhrase
-from voice_commands import control_kind, normalize
+from voice_commands import control_kind, control_text, normalize
 from input_admission import InputAdmission
 from voice_errors import build_payload, redact
 from speech_intake import SpeechAssembly, PendingInputs, needs_confirmation
@@ -492,14 +492,14 @@ class DSHBridgeProcessor(FrameProcessor):
             passive = frame.metadata.get('input_mode') == 'always'
             if passive and self._capture is not None and (not self._capture.enabled or frame.metadata.get('capture_id') != self._capture.current):
                 return
-            if normalize(text) in ('确认发送', '发送这句'):
+            if control_text(text) in ('确认发送', '发送这句'):
                 draft = self._input_admission.draft
                 if draft:
                     await self.confirm_input(draft['id'])
                 else:
                     await self._control_notice('没有等待发送的语音输入。')
                 return
-            if normalize(text) in ('取消输入', '丢弃输入'):
+            if control_text(text) in ('取消输入', '丢弃输入'):
                 draft = self._input_admission.draft
                 if draft:
                     await self.discard_input(draft['id'])
@@ -742,7 +742,7 @@ class DSHBridgeProcessor(FrameProcessor):
         if kind is None:
             return False
         if metadata.get('input_mode') == 'always':
-            if kind == 'task-stop' and normalize(text) != '确认停止任务':
+            if kind == 'task-stop' and control_text(text) != '确认停止任务':
                 target = {'current':self._current,'task':None}
                 if self._current is None:
                     try: target['task'] = await self._bridge_request('GET','/task-state')
@@ -755,7 +755,7 @@ class DSHBridgeProcessor(FrameProcessor):
         if key and key in self._consumed_controls:
             return True
         target = self._utterance_targets.get(key, {'current': self._current, 'requests': None, 'task': None})
-        if kind == 'task-stop' and normalize(text) == '确认停止任务' and self._stop_confirmation is not None:
+        if kind == 'task-stop' and control_text(text) == '确认停止任务' and self._stop_confirmation is not None:
             if time.monotonic() >= self._stop_confirmation['expires']:
                 self._stop_confirmation = None
                 await self._control_notice('停止确认已过期，尚未取消任务。请重新确认目标。')
@@ -774,13 +774,13 @@ class DSHBridgeProcessor(FrameProcessor):
                 if requests is None:
                     requests = (await self._bridge_request('GET', '/interactions')).get('requests', [])
                 if requests and requests[0].get('kind')=='question': return False
-                if not requests and normalize(text) in ('是', '否', '好', '可以'):
+                if not requests and control_text(text) in ('是', '否', '好', '可以'):
                     return False
                 if kind == 'approval-ambiguous':
                     await self._control_notice('请明确说“允许一次”或“拒绝”，尚未授权。')
                 elif len(requests) != 1 or requests[0].get('kind') != 'approval':
                     await self._control_notice('没有唯一待批准操作，请在气泡里选择；尚未授权。')
-                elif metadata.get('input_mode') == 'always' and kind == 'approval-allow' and normalize(text) != '确认允许一次':
+                elif metadata.get('input_mode') == 'always' and kind == 'approval-allow' and control_text(text) != '确认允许一次':
                     await self._control_notice('尚未授权。请明确说“确认允许一次”，或点击气泡。')
                 else:
                     request = requests[0]
