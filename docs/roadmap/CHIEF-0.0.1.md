@@ -2,7 +2,7 @@
 
 English | [中文](CHIEF-0.0.1.zh.md)
 
-This brief defines the current closure and later integration boundaries. The product remains 0.0.1-beta; passing cloud checks does not establish Mac, real microphone or real model acceptance. See the [current checkpoint](../../review/0.0.1-rebuild-2026-10-29/CHECKPOINT.json) for recorded results.
+This brief defines the current closure and later integration boundaries. The product remains 0.0.1-beta; passing cloud checks does not establish Mac, real microphone or real model acceptance. See the [current checkpoint](../../review/0.0.1-candidate-2026-10-29/CHECKPOINT.json) for recorded results.
 
 ## Product identity
 
@@ -18,7 +18,7 @@ DSH supplies the sole Agent Runtime, Pipecat adapts media, ASR/TTS and voice eve
 - Voice approval answers apply only to one unique, pending request. Ambiguous, duplicate, stale or multiple requests cannot grant permission. Persistent grants require two clicks after actual parameters are available.
 - Persistent grants match the same tool, working directory and exactly identical arguments, and can be revoked from the context menu. Corrupt stores are disabled and preserved; reason text, path substrings or tool names alone cannot grant broad permission.
 - Recording cancellation discards capture only. Media disconnect detaches that connection while admitted Agent work continues. Quitting the App still uses existing Host/Memory cleanup and does not promise continued local execution after exit.
-- Unknown execution status blocks automatic progression and offers read-only status inspection. The user checks results and side effects before resubmitting; the product neither invents resume support nor automatically replays possibly executed tools.
+- Unknown execution status blocks automatic progression. Recovery reads official Session history, offers checked continuation or original-instruction resubmission, then requires a separate side-effect confirmation. Both become new user instructions to DSH; tools are never automatically replayed.
 
 ## Current issue mapping
 
@@ -38,11 +38,11 @@ PASS below covers only recorded cloud code and fixture checks. Acoustics, physic
 | 10 Interrupted command still executes | Stop sentence enters work queue → consume separately; stale identities cannot control successor work | PASS |
 | 11 Limited duck attempts | Two attempts per turn → remove hard cap, retain debounce and echo-candidate restoration | PASS |
 | 12 No actual approval arguments | Tool name/reason only → capture actual arguments from the official pre-execute event | PASS |
-| 13 Incomplete interruption recovery | Error and open-window action only → add read-only inspection; automatic resume/retry is not delivered | DEFERRED |
-| 14 Technical main-window error | Companion humanizes the error; DSH main window retains upstream diagnostic text | DEFERRED |
+| 13 Incomplete interruption recovery | Error/open-window only → official history preview, checked continuation/resubmission, second confirmation and expiry guards | PASS |
+| 14 Technical main-window error | Main window and companion use concise interruption copy while retaining uncertainty and side-effect warnings | PASS |
 | 15 Running from temporary directories | Add stable installation and previous-App backup; actual installation awaits Mac verification | BLOCKED-ENVIRONMENT |
 
-The remainder of issue 13 needs an explicit idempotent retry or DSH continuation contract; issue 14 concerns main-window wording. Keep both for the next stabilization iteration rather than hiding errors or automatically rerunning work. Neither counts as completed here.
+Recovery for issue 13 does not promise tool rollback or idempotence: a new turn starts only after explicit user confirmation. Busy work, changed history, expiry and duplicate clicks reject submission. Issue 14 changes product copy only, preserving DSH failure reasons and durable events.
 
 ## Local Mac execution
 

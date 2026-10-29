@@ -6,7 +6,7 @@
   "scope": "Continue remaining closure; do not modify main or use Actions",
   "phases": {
     "recovery": "VERIFIED in executable cloud scope",
-    "packagingAndDocs": "IN-PROGRESS",
+    "packagingAndDocs": "VERIFIED in product scope",
     "frozenCandidate": "NOT-STARTED"
   },
   "checks": [
@@ -62,5 +62,43 @@
   ],
   "nativeAcceptance": "BLOCKED-ENVIRONMENT",
   "realProvider": "BLOCKED-EXTERNAL",
-  "remaining": "Packaging contract tests and documentation checks; final frozen full gate and evidence."
+  "remaining": "Frozen full product gate; native Mac/TCC/real-room/provider/backend acceptance remains blocked.",
+  "packagingAndDocsChecks": [
+    {
+      "result": "PASS",
+      "scope": "3 files / 26 packaging contract tests; explicit resource fixtures, not native builds",
+      "path": "evidence/packaging-regressions.log.gz",
+      "rawBytes": 982,
+      "rawSha256": "972d4f9c6d66560b4195e71e7d1250976859e375d1eb0eaced3cddfaeba9ac93"
+    },
+    {
+      "result": "PASS",
+      "scope": "5 TypeScript gates",
+      "path": "evidence/packaging-typecheck.log.gz",
+      "rawBytes": 572,
+      "rawSha256": "f522e178b247e2a67a3efdb09e233bb99cca84acbd9e444bbefcd01e7100ad14"
+    },
+    {
+      "result": "PASS",
+      "scope": "3 bilingual product document pairs, generated client catalog, 7 CLI help pages, 2026 Markdown-link files",
+      "path": "evidence/product-docs.log.gz",
+      "rawBytes": 578,
+      "rawSha256": "d50f4cf723df9024336d57a888c37d7da98a9b9b7bb851d10ce0168707d38d1f"
+    },
+    {
+      "result": "PASS",
+      "scope": "real Host/Session restart, invalidated stale tokens and confirmed continuation; fixture Provider and Memory adapter",
+      "path": "evidence/recovery-restart.log.gz",
+      "rawBytes": 1109,
+      "rawSha256": "936b9fba8ccca164f5dc36b88de0c4db88f45727d43d71ace8d647875c1c8a41"
+    },
+    {
+      "result": "PASS",
+      "scope": "42 explicit product overrides of 16347 official files",
+      "path": "evidence/packaging-upstream.log.gz",
+      "rawBytes": 99,
+      "rawSha256": "cc333f4040598dc79661c6e56f61495e7433a0bbf945a95d723dc020bc85e4b4"
+    }
+  ],
+  "nonBlockingDebt": "Full upstream documentation translation corpus still contains historical roadmap/review pairs; preserve original frozen review bytes, do not claim whole-corpus PASS."
 }

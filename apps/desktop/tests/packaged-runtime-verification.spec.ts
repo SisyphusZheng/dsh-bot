@@ -1,4 +1,6 @@
-import { describe, expect, it, vi } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { productPackagingInputs } from './fixtures/product-packaging-inputs.ts'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 const { verifyDesktopRuntime } = vi.hoisted(() => ({
   verifyDesktopRuntime: vi.fn<(root: string, expected: string) => Promise<void>>(async () => undefined),
@@ -35,12 +37,18 @@ async function requiredRuntimeVersion(preparedRuntime?: string, preparedRuntimeV
   return verifyDesktopRuntime.mock.calls[0]?.[1]
 }
 
+let inputs: ReturnType<typeof productPackagingInputs>
+beforeAll(() => { inputs = productPackagingInputs() })
+afterAll(() => inputs?.dispose())
+
 describe('packaged runtime verification', () => {
-  it('requires the product version when the target tree supplies the runtime', async () => {
+  it('requires the independent DSH Runtime version when the target tree supplies the runtime', async () => {
     const productVersion = (JSON.parse(
       await import('node:fs/promises').then(async fs => fs.readFile(new URL('../package.json', import.meta.url), 'utf8')),
     ) as { version: string }).version
-    expect(await requiredRuntimeVersion()).toBe(productVersion)
+    const runtimeVersion = JSON.parse(readFileSync(new URL('../../../package.json', import.meta.url), 'utf8')).version
+    expect(runtimeVersion).not.toBe(productVersion)
+    expect(await requiredRuntimeVersion()).toBe(runtimeVersion)
   })
 
   it('requires the version installed-update qualification wrote into its private runtime', async () => {
@@ -58,6 +66,6 @@ describe('packaged runtime verification', () => {
       { ...ENVIRONMENT, DSH_DESKTOP_BUILD_VERSION: `${productVersion}.20260921.1` }, 'win32', 'x64')
     expect(config.extraMetadata).toMatchObject({ version: `${productVersion}.20260921.1` })
     await config.afterPack(CONTEXT as never)
-    expect(verifyDesktopRuntime.mock.calls[0]?.[1]).toBe(productVersion)
+    expect(verifyDesktopRuntime.mock.calls[0]?.[1]).toBe(JSON.parse(readFileSync(new URL('../../../package.json', import.meta.url), 'utf8')).version)
   })
 })

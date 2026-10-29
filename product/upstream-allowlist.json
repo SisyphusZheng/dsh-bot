@@ -188,5 +188,25 @@
     "sha": "2f11020e62ea91ce5f385965abd96f235b1b3101",
     "mode": "100644",
     "reason": "Product interruption wording; preserve uncertainty and side-effect warning. Official locale registry forbids duplicate namespace registration. No Agent Runtime logic changed."
+  },
+  "apps/desktop/tests/installer-packaging.spec.ts": {
+    "sha": "88df0e16f30bf999856433c57d5461ec6b06c095",
+    "mode": "100644",
+    "reason": "Product packaging regression: explicit isolated inputs, independent product/runtime versions, branding and commit-qualified unsigned artifacts; retain production checks."
+  },
+  "apps/desktop/tests/packaged-runtime-verification.spec.ts": {
+    "sha": "b616758e8f14ba2b109e59fb0cd9350f81bc2bcb",
+    "mode": "100644",
+    "reason": "Product packaging regression: explicit isolated inputs, independent product/runtime versions, branding and commit-qualified unsigned artifacts; retain production checks."
+  },
+  "apps/desktop/tests/macos-signature.spec.ts": {
+    "sha": "d826d601e1d3c128e374d13361f3dc8090dd817a",
+    "mode": "100644",
+    "reason": "Product packaging regression: explicit isolated inputs, independent product/runtime versions, branding and commit-qualified unsigned artifacts; retain production checks."
+  },
+  "packages/extensions/cordis-client-runner/src/client/slot-catalog.ts": {
+    "sha": "6534adcaffabe97ce0dab9d9c9d8b52e62611071",
+    "mode": "100644",
+    "reason": "Regenerated client catalog records the actual product Bot settings and branding slot occupants; no hand-edited runtime behavior."
   }
 }

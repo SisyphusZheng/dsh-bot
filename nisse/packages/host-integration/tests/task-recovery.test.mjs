@@ -19,3 +19,12 @@ test('completed, active, non-text and oversized instructions are not silently re
  const input=events();input[1].data.content.push({type:'image',data:'fixture'});assert.throws(()=>latestRecoverableTask(input))
  assert.throws(()=>latestRecoverableTask([...events(),...events('completed','new target')]))
 })
+
+test('malformed recovery bodies fail as bad requests without execution',async()=>{const f=fixture();for(const body of [null,undefined,[],{},'retry',{mode:'resume',confirmSideEffects:true}])await assert.rejects(f.recovery.submit(body),e=>e.status===400);assert.equal(f.calls.length,0)})
+test('simultaneous confirmations admit only once while execution is pending',async()=>{
+ let release,count=0;const snapshot={status:'idle',sessionId:'s',events:events()}
+ const recovery=createTaskRecovery({load:async()=>snapshot,isCurrent:()=>true,execute:async()=>{count++;await new Promise(r=>release=r)}})
+ const preview=await recovery.preview(),body={token:preview.token,mode:'continue',confirmSideEffects:true}
+ const first=recovery.submit(body)
+ try{await assert.rejects(recovery.submit(body),e=>e.status===409);assert.equal(count,1)}finally{release();await first}
+})

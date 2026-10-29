@@ -30,7 +30,8 @@ export function createTaskRecovery({load,isCurrent,execute,now=Date.now,ttlMs=60
    const token=randomUUID(),expiresAt=now()+ttlMs;previews.set(token,{snapshot,task,expiresAt})
    return {token,sessionId:snapshot.sessionId,turn:task.turn,terminal:task.terminal,originalText:task.text,warning:RECOVERY_WARNING,expiresAt}
   },
-  async submit({token,mode,confirmSideEffects}){
+  async submit(body){
+   const {token,mode,confirmSideEffects}=body&&typeof body==='object'?body:{}
    if(!['continue','retry'].includes(mode)||confirmSideEffects!==true)throw failure('Choose a recovery mode and confirm side effects',400)
    prune();const preview=previews.get(token)
    if(!preview)throw failure('Recovery request expired or already used')

@@ -1,8 +1,8 @@
-import { tmpdir } from 'node:os'
+import { productPackagingInputs } from './fixtures/product-packaging-inputs.ts'
 import { readFileSync } from 'node:fs'
 import { Arch, Platform } from 'electron-builder'
 import { Packager } from 'app-builder-lib'
-import { describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 const { execute } = vi.hoisted(() => ({ execute: vi.fn(async () => undefined) }))
 vi.mock('node:child_process', async (importOriginal) => {
@@ -10,6 +10,10 @@ vi.mock('node:child_process', async (importOriginal) => {
   const { promisify } = await import('node:util')
   return { ...original, execFile: Object.assign(vi.fn(), { [promisify.custom]: execute }) }
 })
+
+let inputs: ReturnType<typeof productPackagingInputs>
+beforeAll(() => { inputs = productPackagingInputs() })
+afterAll(() => inputs?.dispose())
 
 describe('installer preparation preserves application dependencies', () => {
   it.each(['win32', 'darwin'] as const)('rejects a missing production policy before signing on %s', async (platform) => {
@@ -39,7 +43,7 @@ describe('installer preparation preserves application dependencies', () => {
       const config = createElectronBuilderConfig(env, platform, 'x64')
       const aboutIcon = config.extraResources.find(resource => resource.to === 'icon.png')
       expect(aboutIcon).toBeDefined()
-      expect(readFileSync(aboutIcon!.from)).toEqual(readFileSync(new URL('../resources/icon-windows.png', import.meta.url)))
+      expect(readFileSync(aboutIcon!.from)).toEqual(readFileSync(new URL('../resources/icon-whalegirl.png', import.meta.url)))
       // Only the Windows package carries the tray bitmaps; macOS keeps the Dock.
       const trayIcon = config.extraResources.find(resource => resource.to === 'tray.ico')
       if (platform === 'win32') {
@@ -47,14 +51,14 @@ describe('installer preparation preserves application dependencies', () => {
       } else {
         expect(trayIcon).toBeUndefined()
       }
-      const packager = new Packager({ projectDir: tmpdir() })
+      const packager = new Packager({ projectDir: inputs.root })
       // A foreign source-build target avoids rebuilding modules; the real dependency ownership decision still runs.
       Object.defineProperties(packager, {
         config: { value: { beforeBuild: config.beforeBuild, buildDependenciesFromSource: true } },
         framework: { value: { isNpmRebuildRequired: true, version: '42.0.0' } },
         appInfo: { value: { type: 'module' } },
       })
-      vi.spyOn(packager, 'getWorkspaceRoot').mockResolvedValue(tmpdir())
+      vi.spyOn(packager, 'getWorkspaceRoot').mockResolvedValue(inputs.root)
       await packager.installAppDependencies(process.platform === 'win32' ? Platform.LINUX : Platform.WINDOWS, Arch.x64)
       expect(packager.areNodeModulesHandledExternally).toBe(false)
       expect(execute).toHaveBeenCalledTimes(platform === 'win32' ? 1 : 0)
@@ -74,7 +78,7 @@ describe('installer preparation preserves application dependencies', () => {
       DSH_DESKTOP_TARGET_ARCH: 'x64',
       DSH_DESKTOP_UNSIGNED: '1',
     }, 'win32', 'x64')
-    expect(config.artifactName).toBe('deepseek-harness-${version}-${os}-${arch}-unsigned.${ext}')
+    expect(config.artifactName).toBe('dsh-bot-${version}-${os}-${arch}-unsigned.${ext}')
   })
 
   it('packages every preload entry point the shell loads', async () => {
