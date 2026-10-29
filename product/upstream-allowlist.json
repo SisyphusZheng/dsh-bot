@@ -45,9 +45,9 @@
     "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
   },
   "apps/desktop/scripts/prepare-dsh.ts": {
-    "sha": "10cdd71b0ae03319a862c5ac76c3ef248b375dd1",
+    "sha": "857285d1878215d5e40778dd593ece2990fd044e",
     "mode": "100644",
-    "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
+    "reason": "Product packaging: ad-hoc sign runtime before ASAR integrity inventory so unsigned Mac builds can be verified and launched"
   },
   "apps/desktop/scripts/smoke-packaged-runtime.ts": {
     "sha": "01384ee28e01a9795371ef5d15dd5d05670ddda5",
