@@ -135,7 +135,8 @@ async function main(): Promise<void> {
   try {
     await packagingStep(process.env.DSH_DESKTOP_PACKAGING_RUN_DIR, 'runtime:reset', async () => {
       removeFinderMetadata(DSH_OUTPUT_ROOT)
-      rmSync(DSH_OUTPUT_ROOT, { recursive: true, force: true })
+      // Finder may recreate .DS_Store between deletion and rmdir; Node retries ENOTEMPTY.
+      rmSync(DSH_OUTPUT_ROOT, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
       rmSync(PNPM_BUILD_STATE, { recursive: true, force: true })
       mkdirSync(STORE_ROOT, { recursive: true })
     })

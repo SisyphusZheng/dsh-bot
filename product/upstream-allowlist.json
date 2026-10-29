@@ -45,7 +45,7 @@
     "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
   },
   "apps/desktop/scripts/prepare-dsh.ts": {
-    "sha": "21e242baa6623b9ae19920c3076433da99b6fb8d",
+    "sha": "b3166b4e35a96d2cfa4965b0ba0180fd1590c961",
     "mode": "100644",
     "reason": "Product packaging: ad-hoc sign runtime before ASAR inventory and tolerate Finder metadata during local builds"
   },
