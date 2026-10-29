@@ -64,6 +64,8 @@ function runtimeFiles(root: string): { path: string; name: string }[] {
       const path = join(directory, entry.name)
       const name = relative(root, path).split(sep).join('/')
       if (name === DESKTOP_RUNTIME_FILE) continue
+      // Finder metadata is not product content and must never enter the sealed inventory.
+      if (entry.name === '.DS_Store') continue
       if (entry.isDirectory()) visit(path)
       else if (entry.isFile()) files.push({ path, name })
       else throw new Error(`desktop runtime: unsupported filesystem entry ${name}`)

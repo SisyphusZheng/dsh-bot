@@ -208,5 +208,10 @@
     "sha": "6534adcaffabe97ce0dab9d9c9d8b52e62611071",
     "mode": "100644",
     "reason": "Regenerated client catalog records the actual product Bot settings and branding slot occupants; no hand-edited runtime behavior."
+  },
+  "apps/desktop/src/runtime-tree.ts": {
+    "sha": "c83b7ab3a23806519301db79c78efd268b856b95",
+    "mode": "100644",
+    "reason": "Product runtime inventory: ignore Finder .DS_Store metadata during local Mac builds"
   }
 }
