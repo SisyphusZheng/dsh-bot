@@ -42,11 +42,18 @@ trap cleanup EXIT
 start_app(){
   # LaunchServices need not inherit HOME. Isolation is through user-data-dir.
   node -e 'require("fs").rmSync(process.argv[1],{force:true})' "$RUN/user-data/DevToolsActivePort"
-  env -u ELECTRON_RUN_AS_NODE -u NODE_OPTIONS /usr/bin/open -n -W --env ELECTRON_RUN_AS_NODE= --stdout "$RUN/launchservices-$1.log" --stderr "$RUN/launchservices-$1.log" "$RUN/dsh-bot.app" --args --user-data-dir="$RUN/user-data" --remote-debugging-address=127.0.0.1 --remote-debugging-port=0 > "$RUN/launchservices-$1.log" 2>&1 & OPEN_PID=$!
+  local attempt
+  for attempt in 1 2 3; do
+    env -u ELECTRON_RUN_AS_NODE -u NODE_OPTIONS /usr/bin/open -n -W --env ELECTRON_RUN_AS_NODE= --stdout "$RUN/launchservices-$1.out.log" --stderr "$RUN/launchservices-$1.err.log" "$RUN/dsh-bot.app" --args --user-data-dir="$RUN/user-data" --remote-debugging-address=127.0.0.1 --remote-debugging-port=0 > "$RUN/launchservices-$1.log" 2>&1 & OPEN_PID=$!
+    sleep 1
+    kill -0 "$OPEN_PID" 2>/dev/null && break
+    if [[ $attempt -eq 3 ]]; then cat "$RUN/launchservices-$1.out.log" "$RUN/launchservices-$1.err.log" 2>/dev/null; echo 'FAIL normal LaunchServices start'; return 1; fi
+    sleep 1
+  done
   for i in {1..90}; do
     PID=$(node product/tools/find-macos-app-pid.mjs "$RUN/user-data") || return 1
     if [[ -n "$PID" ]]; then return 0; fi
-    if ! kill -0 "$OPEN_PID" 2>/dev/null; then cat "$RUN/launchservices-$1.log"; echo 'FAIL normal LaunchServices start'; return 1; fi
+    if ! kill -0 "$OPEN_PID" 2>/dev/null; then cat "$RUN/launchservices-$1.out.log" "$RUN/launchservices-$1.err.log" 2>/dev/null; echo 'FAIL normal LaunchServices start'; return 1; fi
     sleep 0.5
   done
   echo 'FAIL LaunchServices process deadline'; return 1
