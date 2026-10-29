@@ -2,33 +2,48 @@
 # section, a hash of its English and Chinese blocks outside code blocks and generated regions.
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write README.md
-/deepseek-harness:
-  en: f68c4f080ce55ff2
-  zh: 88a76d7f7f0b260e
-/deepseek-harness/developer-preview:
-  en: 4ef4d8a71ac143f0
-  zh: 1bfc3149ba8e5543
-/deepseek-harness/run:
-  en: 4e0248e4c6474fc6
-  zh: eb2fb8d78c7d6bc0
-/deepseek-harness/run/run-from-npm:
-  en: e22005cd42e6cbad
-  zh: 0f536f4208df1d60
-/deepseek-harness/run/run-from-source:
-  en: 819e3f7c144d0d64
-  zh: de815f040975dba7
-/deepseek-harness/community-and-support:
-  en: 20acf6451fdc869b
-  zh: d06246dd019ecef7
-/deepseek-harness/contributing:
-  en: cabc2d3e9f8898bd
-  zh: 83b6d238bae29ce3
-/deepseek-harness/development:
-  en: 803ca2b11b497bed
-  zh: 8b4071eb0e7783ef
-/deepseek-harness/citation:
-  en: 6704e9e5a8d49a91
-  zh: 85c9cdd8d56f8e9d
-/deepseek-harness/license:
-  en: 926995344fc1c72b
-  zh: c92fab5abf85932f
+/nisse-dsh-bot:
+  en: b368a637d2ab3a8e
+  zh: d5e87d8cbc162004
+/nisse-dsh-bot/section:
+  en: 99d16c10f091c5b6
+  zh: 99d16c10f091c5b6
+/nisse-dsh-bot/chatbot:
+  en: 6350d8ff06a64170
+  zh: 6350d8ff06a64170
+/nisse-dsh-bot/90:
+  en: 955ed7aba7e7c04e
+  zh: 955ed7aba7e7c04e
+/nisse-dsh-bot/section~2:
+  en: e53dec8fa4bc6f77
+  zh: e53dec8fa4bc6f77
+/nisse-dsh-bot/section~3:
+  en: 6f7c38f0a4c6a4f2
+  zh: 6f7c38f0a4c6a4f2
+/nisse-dsh-bot/section/1-asr:
+  en: b69392d9722f73c7
+  zh: b69392d9722f73c7
+/nisse-dsh-bot/section/2:
+  en: f5309f136e59151c
+  zh: f5309f136e59151c
+/nisse-dsh-bot/section/3:
+  en: a76cfcbfb3e76ef7
+  zh: a76cfcbfb3e76ef7
+/nisse-dsh-bot/section~4:
+  en: 914c6ffba350a700
+  zh: 914c6ffba350a700
+/nisse-dsh-bot/section/section:
+  en: f695138cf4750a80
+  zh: f695138cf4750a80
+/nisse-dsh-bot/macos:
+  en: 815fa37d294a6279
+  zh: 815fa37d294a6279
+/nisse-dsh-bot/section~5:
+  en: 45feebae52f4d55c
+  zh: 45feebae52f4d55c
+/nisse-dsh-bot/roadmap:
+  en: 0b0db508c90da3a7
+  zh: 0b0db508c90da3a7
+/nisse-dsh-bot/license:
+  en: e7797ab907894cd6
+  zh: e7797ab907894cd6

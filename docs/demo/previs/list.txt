@@ -1,0 +1,15 @@
+file '01.png'
+duration 7.3
+file '02.png'
+duration 19.3
+file '03.png'
+duration 14.2
+file '04.png'
+duration 16.0
+file '05.png'
+duration 16.0
+file '06.png'
+duration 11.0
+file '07.png'
+duration 6.8
+file '07.png'

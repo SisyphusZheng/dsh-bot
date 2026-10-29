@@ -1,77 +1,189 @@
-# DeepSeek Harness
+# Nisse / dsh-bot
 
 English | [中文](README.zh.md)
 
-DeepSeek Harness (`dsh`) is an open-source agent harness developed by [DeepSeek AI](https://deepseek.com).
+> **一个住在桌面上的语音 Agent：能听、能做、有记忆，也有边界。**
+>
+> 不是“聊天框里多了一个模型”，而是把 Agent 放进真实桌面：桌宠是入口，DSH 是唯一 Agent Runtime，Pipecat 负责实时语音，Hindsight 负责长期记忆。
 
-It is built on an **everything-is-a-plugin** architecture and powered by [Cordis](https://github.com/cordiverse/cordis), whose design is described in [_A Programming Paradigm for Spatiotemporal Composability_](https://arxiv.org/abs/2608.25512).
+<p align="center">
+  <img src="docs/assets/demo-cover.png" alt="Nisse：桌面上的语音 Agent" width="860">
+  <br>
+  <sub>演示视频制作中 · 分镜与旁白见 <a href="docs/demo/SCRIPT.zh.txt">docs/demo/SCRIPT.zh.txt</a></sub>
+</p>
 
-Documentation: [https://deepseek-harness.github.io/deepseek-harness/](https://deepseek-harness.github.io/deepseek-harness/)
+当前状态：**`0.0.1-beta`，macOS Apple Silicon 本地候选**。已通过 Mac 打包验收；真人声学、TCC、真实 Provider 长对话与个人记忆库仍属于人工验收范围。
 
-## Developer preview
+---
 
-DeepSeek Harness is in _developer preview_ and iterating rapidly. **THERE WILL BE COMPATIBILITY-BREAKING CHANGES.**
+## 这是什么
 
-Review the [safety notice](SAFETY.md) before running the project.
+一个 macOS 桌面宠物形态的个人 Agent：
 
-## Run
+- **语音优先**：按住说话、切换说话、常听确认三种输入方式；桌面宠物旁边直接出气泡。
+- **真的能做事**：文件、终端、浏览器等操作走 DSH Agent 的工具链，不是只回一段文字。
+- **有安全边界**：有副作用的操作先审批；支持“允许一次 / 拒绝 / 始终允许”，语音与气泡共享同一份状态。
+- **有长期记忆**：跨会话记住你的偏好、称呼和正在做的事。
+- **打断和安全停止**：播报中可以“停一下”；停止播报和停止任务是两件事，回执分开。
+- **住在桌面里**：桌宠拖动、双击打开主窗口、Dock/菜单栏入口、系统通知、可退出。
 
-### Run from `npm`
+一句话：**把“能对话的模型”变成“住在你桌面上的 Agent”，并且让它在真实操作前停下来问你。**
 
-Install `Node.js`, then run:
+---
 
-```sh
-npx @deepseek-ai/dsh web
+## 为什么不是又一个 Chatbot
+
+| 常见聊天框 | Nisse / dsh-bot |
+|---|---|
+| 你打开网页，输入文字 | 桌宠常驻桌面，语音直接说 |
+| 回答完就结束 | 任务、审批、队列、恢复是完整生命周期 |
+| “我正在帮你做” | 真实执行，副作用前必须审批 |
+| 换个会话就失忆 | Hindsight 跨会话长期记忆 |
+| 打断 = 关页面 | 语音打断、停止播报、停止任务分别处理 |
+| 只在一个标签页里 | Electron 原生窗口、Dock、通知、快捷键、桌宠 |
+
+**独特定位：桌面上的语音 Agent，不是聊天框里的 Agent。**
+
+---
+
+## 90 秒能看到的流程
+
+1. **语音下达任务**：说一句要做的事，桌宠显示识别与执行状态。
+2. **中途打断**：播报中说“停一下”，只停播报，任务继续；再说“继续”。
+3. **副作用审批**：写工作区外文件前弹审批，说“我允许一次”，只执行一次。
+4. **记忆召回**：问“还记得我上次说的偏好吗？”，从 Hindsight 取回。
+5. **桌面交互**：拖动桌宠、双击主窗口、Dock 图标、退出。
+
+> 演示重点是“语音 Agent 的完整闭环”，不是功能清单。
+
+---
+
+## 架构
+
+```mermaid
+flowchart LR
+  U[用户] -->|按住/切换/常听| P[Electron 桌宠]
+  P -->|WebRTC 音频| V[Pipecat VoiceWorker]
+  V -->|鉴权 NDJSON /voice/turn| D[DSH Agent Runtime]
+  P -->|同一 Session / 工具 / 审批| D
+  D --> T[文件 · 终端 · 浏览器]
+  D --> M[Hindsight 长期记忆]
+  P --> B[气泡 · 审批 · 结构化提问]
+  D -->|事件流| P
 ```
 
-The command starts the Web UI at `http://127.0.0.1:3080` by default and opens it in the default browser for a local launch. An SSH launch only prints the host URL because the SSH client or editor owns the local forwarded address. Pass `--no-open` to run the server without opening a browser. See [Web UI guide](docs/user/guide/index.md).
+- **DSH** 是唯一 Agent Runtime（固定 `0.2.1-rc.3`），语音不另起一套 Agent。
+- **Pipecat** 负责实时 ASR/TTS、VAD、打断与媒体生命周期。
+- **Hindsight** 负责跨会话记忆；Memory 服务是本地 sidecar。
+- **Electron** 负责桌宠、气泡、主窗口、Dock/菜单栏、系统集成。
 
-### Run from source
+---
 
-To run from a repository checkout:
+## 三个真正难的地方
 
-```sh
-git clone https://github.com/deepseek-ai/deepseek-harness.git
-cd deepseek-harness
-pnpm install
-pnpm run build
-pnpm dsh web
+### 1. 实时语音不是“把 ASR 接上”就完了
+
+- 半双工会显得迟钝，全双工又会被回声/环境声误触发；
+- 做的是：VAD + 回声候选过滤 + 打断确认 + 控制词消费 + 停止回执；
+- 常听模式的普通输入先确认，避免“环境声直接变成任务”。
+
+### 2. 审批是产品边界，不是弹窗
+
+- 审批必须把**工具、工作目录、参数**展示清楚；
+- “允许一次”只对本次生效；“始终允许”只匹配同一工具+目录+完全相同的参数；
+- 语音说“我允许一次”和点击气泡必须走同一条状态机，不能一边批准、一边又生成新任务。
+
+### 3. 桌面窗口是另一个操作系统
+
+- 桌宠/气泡要浮在普通窗口、全屏窗口和 DSH 主窗口之上；
+- 打包时 Electron 的 ASAR 完整性、ad-hoc 签名顺序、Frameworks 签名、LaunchServices 启动互相影响；
+- 这些不是“UI 细节”，是 Mac 上能不能正常打开的问题。
+
+---
+
+## 工程验证
+
+| 验证 | 结果 |
+|---|---|
+| Node / Pet / Host | 91 项通过 |
+| VoiceWorker（Python） | 82 项通过 |
+| 产品测试 | 477 项 Vitest（22 个文件） |
+| 类型检查 / 生产构建 | 5 项类型检查、9 项构建门禁 |
+| Mac 打包验收 | `accept-macos.sh` **15/15 PASS**（原生签名、LaunchServices 首启/重启、Bridge、Web、Hindsight、shutdown/cleanup） |
+| 气泡位置 | 原生窗口测量：气泡中心距桌宠 **171px**（要求 <500px） |
+| 产物 | 未签名/未公证的 `0.0.1-beta` Mac 候选；DMG 文件名带源码短 SHA |
+
+证据不是“测试数字”，而是可复核的产物：
+
+- 打包验收：[`review/0.0.1-mac-voice-approval-2026-10-29/STATUS.zh.md`](review/0.0.1-mac-voice-approval-2026-10-29/STATUS.zh.md)
+- 气泡层级修复：[`review/0.0.1-mac-bubble-level-2026-10-29/STATUS.zh.md`](review/0.0.1-mac-bubble-level-2026-10-29/STATUS.zh.md)
+- 构建/验收脚本：[`product/tools/build-macos.sh`](product/tools/build-macos.sh)、[`product/tools/accept-macos.sh`](product/tools/accept-macos.sh)
+
+### 还没验证的
+
+- 真人麦克风/外放回声/蓝牙耳机/十轮连续对话/抢话；
+- TCC、鼠标穿透、Spaces、多屏缩放、物理拖动；
+- 真实 Provider（ASR/TTS/LLM）完整长对话；
+- 真实个人 Hindsight 库跨重启召回；
+- Developer ID 签名与公证、体积/冷启动优化。
+
+**不把“代码写完了”说成“已经验收通过”。**
+
+---
+
+<a id="run"></a>
+<a id="run-from-source"></a>
+
+## 快速开始（macOS）
+
+要求：Apple Silicon、macOS 14+、Node 24+、uv、Xcode Command Line Tools。
+
+```bash
+git clone https://github.com/SisyphusZheng/dsh-bot.git
+cd dsh-bot
+git switch work/0.0.1-closure
+
+bash product/tools/build-macos.sh
+bash product/tools/verify-local.sh
+bash product/tools/accept-macos.sh "$(node -p "require('./.mvv-build/evidence/macos-build.json').artifact.path")"
 ```
 
-`pnpm run build` prepares the repository artifacts. `pnpm dsh web` uses those built artifacts without rebuilding.
+安装：
 
-## Community and support
-
-- Submit feedback or bug reports through [GitHub Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions).
-- Add the [`dsh-plugin`](https://github.com/topics/dsh-plugin) topic to your plugin repository for discoverability.
-- Join <a href="https://discord.gg/4MrtZUhpxg">DeepSeek Harness Discord community</a>.
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Development
-
-Start with the [development guide](docs/development.md) and [architecture documentation](docs/architecture.md).
-
-`pnpm run dev:web` builds, serves, and rebuilds client bundles on source edits in one terminal, and `make help` lists the matching Make targets for Web and Desktop; the guide's application commands section owns the full table.
-
-For agents, follow [AGENTS.md](AGENTS.md).
-
-## Citation
-
-```bibtex
-@misc{deepseek-harness2026,
-  title={DeepSeek Harness: Everything is a Plugin},
-  author={DeepSeek-AI},
-  year={2026},
-  publisher={GitHub},
-  howpublished={\url{https://github.com/deepseek-ai/deepseek-harness}},
-}
+```bash
+bash product/tools/install-macos.sh /path/to/dsh-bot.app
 ```
 
-## License
+首次启动后在 DSH 设置 → Bot 中填写 LLM 与 DashScope Key；语音即可使用。
 
-[MIT](LICENSE)
+---
 
-Third-party dependencies and their licenses are disclosed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+## 目录速览
+
+```text
+apps/desktop/          Electron 桌面壳、主窗口、桌宠运行时
+product/pet/           桌宠页面、气泡、语音交互、引导、皮肤
+product/voice-worker-src/  Pipecat VoiceWorker、ASR/TTS、语音控制
+nisse/packages/host-integration/  Host/Bridge 与 DSH 集成
+product/tools/         构建、验收、安装、测量工具
+review/                每个候选的验收证据（绑定源码 SHA）
+docs/                  产品、架构、路线图与演示脚本
+```
+
+---
+
+## Roadmap
+
+- **0.0.1**：稳定语音、审批、桌面体验与 Mac 打包链路
+- **0.0.2**：CUA/桌面操作与 DS-Bot 适配
+- **0.0.3**：本地 TTS、动作协调、首启简化
+- **0.0.4**：完整 App + DSH 插件/伴随程序双交付
+- **1.0**：云端持续执行、多 Bot 协作、统一记忆与双交付
+
+路线图是计划，不是已完成功能；状态以 `review/` 和任务书为准。
+
+---
+
+## License / 边界
+
+本仓库保留 DSH 上游代码与许可声明；产品集成部分见 `product/` 与各 review 记录。内部候选使用 ad-hoc 签名，未做 Developer ID/公证，仅用于本地验收，不构成生产发布。
