@@ -28,7 +28,7 @@ try {
  await context.exposeBinding('bubbleAction',async(_source,action)=>{if(!await experience?.action(action))return presentation.action(action)})
  await context.addInitScript(()=>{
   window.petBridge={state:async()=>({phase:'unconfigured'}),voiceStatus(){},onVoice(){},onVoiceCommand(){},onPresentation:fn=>{window.receivePresentation=fn},hit(){},dragStart(){},dragMove(){},dragEnd(){},openMain(){},menu(){}}
-  window.petBubble={onUpdate:fn=>{window.receiveBubble=fn},action:value=>window.bubbleAction(value),setInteractive(){},requestInputFocus(){},resize:value=>{(window.__resizeCalls||=[]).push(value)},openDsh(){}}
+  window.petBubble={onUpdate:fn=>{window.receiveBubble=fn},action:value=>window.bubbleAction(value),setInteractive(){},requestInputFocus(){},resize:value=>{(window.__resizeCalls||=[]).push(value); const frame=window.parent.document.getElementById('bubble'); if(frame){ const height=Math.max(118,Math.min(420,value)); frame.style.height=height+'px'; frame.style.top=(420-height)+'px' }},openDsh(){}}
  })
  const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message))
  await page.goto(`http://127.0.0.1:${server.address().port}/fixture`)
@@ -88,6 +88,23 @@ try {
  await bubble.getByPlaceholder('输入你的回答').fill('保留完整结果')
  await bubble.getByRole('button',{name:'提交',exact:true}).click();await renders
  assert.deepEqual(calls.at(-1)[1].answer.answers,[{id:'long',selected:[longOptions[0]],custom:'保留完整结果'}])
+ // The actual native-sized viewport must grow after a compact bubble, and long
+ // option descriptions remain reachable without moving the fixed answer footer.
+ const description='扩到约 500 字，装进新建的 Word 文档。'.repeat(35)+'完整说明结尾'
+ presentation.sync(snapshot([{id:'overflow',kind:'question',sessionId:'ui-session',questions:[{id:'document',header:'文档内容',question:'要写的五百字用什么内容？',multiSelect:true,options:[{label:'用之前那篇《慢一点也没关系》（推荐）',description},{label:'写一篇新的内容',description:'第二个选项的完整说明'}]}]}]));await renders
+ await bubble.getByRole('button',{name:/^用之前那篇/}).waitFor()
+ await bubble.waitForFunction(()=>document.querySelector('#bubble-content').scrollHeight>document.querySelector('#bubble-content').clientHeight)
+ await bubble.locator('#bubble-scroll-hint').waitFor({state:'visible'})
+ const longChoice=bubble.getByRole('button',{name:/^用之前那篇/})
+ assert.ok((await longChoice.textContent()).endsWith('完整说明结尾'))
+ await bubble.locator('#bubble-content').evaluate(el=>{el.scrollTop=el.scrollHeight})
+ await bubble.getByRole('button',{name:/^写一篇新的内容/}).click();await renders
+ assert.equal(await bubble.getByRole('button',{name:/^写一篇新的内容/}).getAttribute('aria-pressed'),'true')
+ const longGeometry=await bubble.evaluate(()=>{const card=document.querySelector('#bubble-card').getBoundingClientRect(),button=[...document.querySelectorAll('#bubble-secondary button')].find(el=>el.textContent==='提交').getBoundingClientRect();return {top:card.top,bottom:card.bottom,footerBottom:button.bottom,viewport:innerHeight}})
+ assert.ok(longGeometry.top>=0&&longGeometry.bottom<=longGeometry.viewport&&longGeometry.footerBottom<=longGeometry.bottom,JSON.stringify(longGeometry))
+ await page.screenshot({path:join(output,'long-question-scroll.png')})
+ await bubble.getByRole('button',{name:'提交',exact:true}).click();await renders
+ assert.deepEqual(calls.at(-1)[1].answer.answers,[{id:'document',selected:['写一篇新的内容']}])
  presentation.capture({kind:'capture-start',captureId:'silent',text:'正在听…'});await renders
  await bubble.getByRole('button',{name:'取消录音',exact:true}).waitFor({state:'visible'})
  const sentBeforeCancel=calls.length

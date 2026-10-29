@@ -15,16 +15,19 @@
           <span id="bubble-progress" class="progress hidden"></span>
           <button id="bubble-close" class="close" tabindex="-1" aria-label="关闭">✕</button>
         </div>
+        <div id="bubble-content" class="content" tabindex="0" aria-label="气泡内容，可滚动阅读">
         <div id="bubble-text" class="bubble-text"></div>
         <button id="bubble-details-toggle" class="details-toggle hidden" type="button" tabindex="0">查看详情</button>
         <div id="bubble-details" class="details hidden"></div>
         <p id="bubble-hint" class="hint hidden"></p>
+        <div id="bubble-choices" class="choices hidden"></div>
+        </div>
+        <p id="bubble-scroll-hint" class="scroll-hint hidden">上下滚动查看完整内容</p>
         <form id="bubble-input-row" class="input-row hidden">
           <label id="bubble-input-label" class="input-label hidden" for="bubble-input"></label>
           <input id="bubble-input" class="input" type="text" autocomplete="off" spellcheck="false" tabindex="0" />
           <button id="bubble-input-submit" class="btn primary small" type="submit" tabindex="0">发送</button>
         </form>
-        <div id="bubble-choices" class="choices hidden"></div>
         <div id="bubble-secondary" class="secondary hidden"></div>
         <div id="bubble-actions" class="actions hidden">
           <button class="btn primary" tabindex="0">允许一次</button>

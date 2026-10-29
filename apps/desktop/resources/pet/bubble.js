@@ -5,6 +5,8 @@
 // 恢复穿透。活动气泡（clickThrough）永远不请求可交互，避免挡住用户操作。
 const bubble = document.getElementById('bubble')
 const card = document.getElementById('bubble-card')
+const content = document.getElementById('bubble-content')
+const scrollHint = document.getElementById('bubble-scroll-hint')
 const iconEl = document.getElementById('bubble-icon')
 const titleEl = document.getElementById('bubble-title')
 const progressEl = document.getElementById('bubble-progress')
@@ -58,7 +60,9 @@ function scheduleSizing() {
     if (bubble.classList.contains('hidden')) return
     // scrollHeight reports the full content even while the window is still small;
     // getBoundingClientRect would be clipped by the current window and never grow.
-    const measured = Math.ceil(Math.max(bubble.scrollHeight, card.scrollHeight) + 2)
+    const overflow = content.scrollHeight > content.clientHeight + 1
+    scrollHint.classList.toggle('hidden', !overflow)
+    const measured = Math.ceil(Math.max(bubble.scrollHeight, card.scrollHeight) + Math.max(0, content.scrollHeight - content.clientHeight) + 2)
     if (measured < 1 || Math.abs(measured - lastRequestedHeight) < 3) return
     lastRequestedHeight = measured
     window.petBubble?.resize?.(measured)
@@ -133,6 +137,9 @@ function render(payload) {
   lastKey = controlsKey
 
   const wasHidden = bubble.classList.contains('hidden')
+  const previousRequest = bubble.dataset.requestId
+  bubble.dataset.requestId = requestId
+  if (previousRequest !== requestId) content.scrollTop = 0
   bubble.dataset.kind = kind
   bubble.classList.toggle('click-through', clickThrough)
   bubble.classList.remove('hidden', 'fading', 'entering')
@@ -246,6 +253,9 @@ function render(payload) {
   }
   scheduleSizing()
 }
+
+// Re-measure after the native window applies a new viewport height.
+window.addEventListener('resize', scheduleSizing)
 
 // The Host acknowledgement and pending snapshot own removal; failed submits remain retryable.
 actionButtons.forEach((button, index) => button.addEventListener('click', event => {

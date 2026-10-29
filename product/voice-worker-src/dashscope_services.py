@@ -53,6 +53,7 @@ from pipecat.services.stt_service import WebsocketSTTService
 from pipecat.services.settings import STTSettings, TTSSettings
 from pipecat.services.tts_service import WebsocketTTSService
 from pipecat.utils.time import time_now_iso8601
+from pipecat.utils.text.markdown_text_filter import MarkdownTextFilter
 
 def probe_log(message):
     if os.environ.get("DSH_VOICE_DEBUG_PROBES") == "1":
@@ -303,6 +304,7 @@ class DashScopeTTSService(WebsocketTTSService):
         super().__init__(
             sample_rate=sample_rate,
             settings=TTSSettings(model=model, voice=voice, language=None),
+            text_filters=kwargs.pop("text_filters", [MarkdownTextFilter()]),
             **kwargs,
         )
         self._receive_task = None

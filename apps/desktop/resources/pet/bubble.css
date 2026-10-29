@@ -8,6 +8,7 @@ html, body {
   position: absolute; left: 50%; bottom: 0;
   width: max-content; max-width: 330px; transform: translateX(-50%);
   display: flex; flex-direction: column; align-items: center;
+  max-height: min(420px, 100vh);
   pointer-events: none;
   opacity: 1; transition: opacity .24s ease;
 }
@@ -27,7 +28,7 @@ html, body {
   color: #141416;
   /* 气泡窗口默认点击穿透；卡片本体（输入/选项/审批按钮）必须接收点击。 */
   pointer-events: auto;
-  max-height: calc(100vh - 12px);
+  min-height: 0; max-height: calc(min(420px, 100vh) - 12px);
   display: flex; flex-direction: column;
   overflow: hidden;
 }
@@ -41,6 +42,11 @@ html, body {
 
 .head { display: flex; flex-shrink: 0; align-items: baseline; gap: 6px; margin: 0 18px 4px 0; }
 .head .hidden { display: none; }
+.content { min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.content::-webkit-scrollbar { width: 7px; }
+.content::-webkit-scrollbar-thumb { background: #a1a1aa; border-radius: 6px; }
+.scroll-hint { flex-shrink: 0; margin: 4px 0 0; color: #71717a; font-size: 11px; line-height: 15px; }
+.scroll-hint.hidden { display: none; }
 .icon { font-size: 15px; line-height: 18px; }
 .title { font-size: 14px; font-weight: 700; }
 .progress { font-size: 11px; color: #9a9aa2; margin-left: auto; }
@@ -138,6 +144,7 @@ html, body {
 .choices .choice small { display: block; font-size: 12px; line-height: 17px; font-weight: normal; margin-top: 4px; opacity: .85; }
 
 #bubble-secondary { display: flex; flex-shrink: 0; flex-wrap: wrap; gap: 5px 8px; justify-content: flex-start; margin-top: 9px; }
+#bubble[data-kind="action"] #bubble-secondary { border-top: 1px solid #d4d4d8; padding-top: 7px; }
 #bubble-secondary.hidden { display: none; }
 #bubble-secondary .link {
   border: 1px solid #d4d4d8; border-radius: 8px; background: #f4f4f5; padding: 5px 8px;
@@ -171,6 +178,7 @@ html, body {
 
 .tail {
   position: relative;
+  flex-shrink: 0;
   width: 20px; height: 10px;
   margin-top: -1px;
 }
@@ -194,7 +202,8 @@ html, body {
 
 
 /* Text/options scroll independently; submit and secondary actions stay visible. */
-#bubble[data-kind="action"] .bubble-text { max-height: 88px; flex-shrink: 0; }
+#bubble[data-kind="action"] .bubble-text { max-height: none; overflow: visible; }
+#bubble[data-kind="action"] .choices { min-height: 0; overflow: visible; }
 button { transition: background-color .12s, color .12s, box-shadow .12s; }
 button:not(:disabled):active { transform: translateY(1px); box-shadow: inset 0 0 0 2px #71717a; }
 button:focus-visible { outline: 3px solid #6366f1; outline-offset: 2px; }

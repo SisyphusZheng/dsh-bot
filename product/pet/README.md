@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-The pet and its bubble use separate Electron windows. The transparent bubble window follows the rendered card height up to its configured maximum; short notices keep their compact size. Question text and choices scroll independently, leaving the answer controls visible. Double-clicking a speech bubble or the pet opens DSH.
+The pet and its bubble use separate Electron windows. The transparent bubble window follows the rendered card height up to its configured maximum; short notices keep their compact size. Question text and complete option descriptions share a keyboard-scrollable content area with a visible scrollbar and overflow hint; answer controls stay in a separate fixed footer. Double-clicking a speech bubble or the pet opens DSH.
 
 Speech and pending-request details support CommonMark headings, emphasis, lists, quotations and code. Rendering creates DOM elements without HTML execution, external media loading or model-controlled navigation. Full response text remains available in the scrollable bubble and DSH; the presentation does not truncate model output.
 
