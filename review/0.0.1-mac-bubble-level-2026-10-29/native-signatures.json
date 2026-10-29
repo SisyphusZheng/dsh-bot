@@ -1,0 +1,9 @@
+{
+  "status": "PASS",
+  "scope": "code signatures, not notarization or native launch",
+  "nativeFiles": 660,
+  "gatekeeper": {
+    "status": "BLOCKED-EXTERNAL",
+    "detail": "<HOME>/Documents/projects/dsh-bot-0.0.1/apps/desktop/.desktop-build/targets/mac-arm64/unsigned-artifacts/mac-arm64/dsh-bot.app: rejected"
+  }
+}
