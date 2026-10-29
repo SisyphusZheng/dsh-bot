@@ -34,7 +34,13 @@ fi
 uv pip sync --python "$STAGE/voice-venv/bin/python" --require-hashes product/voice-worker-src/requirements-macos.lock
 "$STAGE/voice-venv/bin/python" -m unittest discover -s product/voice-worker-src -p 'test_*.py'
 node product/tools/smoke-voice.mjs "$STAGE/voice-venv/bin/python"
-(cd product/voice-worker-src && "$STAGE/voice-venv/bin/pyinstaller" VoiceWorker.spec --distpath "$STAGE/voice-dist" --workpath "$STAGE/voice-build" --noconfirm)
+# Fresh distpath: Finder can recreate .DS_Store inside an existing output tree,
+# making PyInstaller --noconfirm fail with ENOTEMPTY on this Mac.
+VOICE_DIST_TMP="$STAGE/voice-dist-build.$$"
+rm -rf "$VOICE_DIST_TMP"
+(cd product/voice-worker-src && "$STAGE/voice-venv/bin/pyinstaller" VoiceWorker.spec --distpath "$VOICE_DIST_TMP" --workpath "$STAGE/voice-build" --noconfirm)
+rm -rf "$STAGE/voice-dist"
+mv "$VOICE_DIST_TMP" "$STAGE/voice-dist"
 export NISSE_VOICE_WORKER_DIR="$STAGE/voice-dist/VoiceWorker"
 node product/tools/smoke-voice.mjs --binary "$NISSE_VOICE_WORKER_DIR/VoiceWorker"
 node product/tools/smoke-wake-word.mjs
