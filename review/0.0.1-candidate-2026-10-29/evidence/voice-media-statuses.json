@@ -1,0 +1,250 @@
+[
+  {
+    "text": "正在连接语音…",
+    "phase": "processing",
+    "enabled": false,
+    "transportPhase": "connecting",
+    "notify": true,
+    "kind": "status",
+    "captureId": "",
+    "utteranceId": ""
+  },
+  {
+    "text": "你好，我在呢。想聊什么，或者有什么需要我帮忙的？",
+    "phase": "speaking",
+    "enabled": false,
+    "transportPhase": "connecting",
+    "notify": true,
+    "kind": "speech",
+    "captureId": "",
+    "utteranceId": ""
+  },
+  {
+    "text": "",
+    "phase": "speaking",
+    "enabled": false,
+    "transportPhase": "connecting",
+    "notify": false,
+    "kind": "status",
+    "captureId": "",
+    "utteranceId": ""
+  },
+  {
+    "text": "你好，我在呢。想聊什么，或者有什么需要我帮忙的？",
+    "phase": "speaking",
+    "enabled": false,
+    "transportPhase": "connecting",
+    "notify": true,
+    "kind": "speech",
+    "captureId": "",
+    "utteranceId": ""
+  },
+  {
+    "notify": false,
+    "kind": "media",
+    "mediaSettings": {
+      "echoCancellation": true,
+      "noiseSuppression": true,
+      "autoGainControl": true
+    }
+  },
+  {
+    "text": "",
+    "phase": "idle",
+    "enabled": false,
+    "transportPhase": "connecting",
+    "notify": false,
+    "kind": "status",
+    "captureId": "",
+    "utteranceId": ""
+  },
+  {
+    "text": "正在听…",
+    "phase": "listening",
+    "enabled": false,
+    "transportPhase": "connecting",
+    "notify": true,
+    "kind": "capture-start",
+    "captureId": "ca59488d-8ff8-43e3-b778-ea93f4e4c11f",
+    "utteranceId": ""
+  },
+  {
+    "text": "我在听，你说。",
+    "phase": "listening",
+    "enabled": true,
+    "transportPhase": "listening",
+    "notify": true,
+    "kind": "status",
+    "captureId": "",
+    "utteranceId": ""
+  },
+  {
+    "text": "",
+    "phase": "processing",
+    "enabled": true,
+    "transportPhase": "listening",
+    "notify": true,
+    "kind": "capture-end",
+    "captureId": "ca59488d-8ff8-43e3-b778-ea93f4e4c11f",
+    "utteranceId": ""
+  },
+  {
+    "text": "",
+    "phase": "processing",
+    "enabled": true,
+    "transportPhase": "listening",
+    "notify": true,
+    "kind": "capture-end",
+    "captureId": "ca59488d-8ff8-43e3-b778-ea93f4e4c11f",
+    "utteranceId": ""
+  },
+  {
+    "text": "请记录测试偏好",
+    "phase": "listening",
+    "enabled": true,
+    "transportPhase": "listening",
+    "notify": true,
+    "kind": "input",
+    "captureId": "ca59488d-8ff8-43e3-b778-ea93f4e4c11f",
+    "utteranceId": "intent-1"
+  },
+  {
+    "text": "请记录测试偏好",
+    "phase": "processing",
+    "enabled": true,
+    "transportPhase": "listening",
+    "notify": true,
+    "kind": "transcript",
+    "captureId": "ca59488d-8ff8-43e3-b778-ea93f4e4c11f",
+    "utteranceId": "intent-1"
+  },
+  {
+    "text": "好的，已收到测试请求。",
+    "phase": "speaking",
+    "enabled": true,
+    "transportPhase": "listening",
+    "notify": true,
+    "kind": "speech",
+    "captureId": "",
+    "utteranceId": ""
+  },
+  {
+    "text": "",
+    "phase": "processing",
+    "enabled": true,
+    "transportPhase": "listening",
+    "notify": true,
+    "kind": "capture-end",
+    "captureId": "ca59488d-8ff8-43e3-b778-ea93f4e4c11f",
+    "utteranceId": ""
+  },
+  {
+    "text": "",
+    "phase": "processing",
+    "enabled": true,
+    "transportPhase": "listening",
+    "notify": true,
+    "kind": "capture-end",
+    "captureId": "ca59488d-8ff8-43e3-b778-ea93f4e4c11f",
+    "utteranceId": ""
+  },
+  {
+    "text": "",
+    "phase": "idle",
+    "enabled": false,
+    "transportPhase": "muted",
+    "notify": false,
+    "kind": "status",
+    "captureId": "",
+    "utteranceId": ""
+  },
+  {
+    "text": "",
+    "phase": "processing",
+    "enabled": false,
+    "transportPhase": "muted",
+    "notify": true,
+    "kind": "capture-end",
+    "captureId": "ca59488d-8ff8-43e3-b778-ea93f4e4c11f",
+    "utteranceId": ""
+  },
+  {
+    "text": "",
+    "phase": "idle",
+    "enabled": false,
+    "transportPhase": "muted",
+    "notify": false,
+    "kind": "status",
+    "captureId": "",
+    "utteranceId": ""
+  },
+  {
+    "notify": false,
+    "kind": "media",
+    "mediaSettings": {
+      "echoCancellation": true,
+      "noiseSuppression": true,
+      "autoGainControl": true
+    }
+  },
+  {
+    "text": "",
+    "phase": "idle",
+    "enabled": false,
+    "transportPhase": "muted",
+    "notify": false,
+    "kind": "status",
+    "captureId": "",
+    "utteranceId": ""
+  },
+  {
+    "text": "正在听…",
+    "phase": "listening",
+    "enabled": false,
+    "transportPhase": "muted",
+    "notify": true,
+    "kind": "capture-start",
+    "captureId": "d78c7cab-9e00-4e76-a53c-35ec87a48afb",
+    "utteranceId": ""
+  },
+  {
+    "text": "",
+    "phase": "listening",
+    "enabled": true,
+    "transportPhase": "listening",
+    "notify": false,
+    "kind": "status",
+    "captureId": "",
+    "utteranceId": ""
+  },
+  {
+    "text": "",
+    "phase": "processing",
+    "enabled": true,
+    "transportPhase": "listening",
+    "notify": true,
+    "kind": "capture-end",
+    "captureId": "d78c7cab-9e00-4e76-a53c-35ec87a48afb",
+    "utteranceId": ""
+  },
+  {
+    "text": "",
+    "phase": "processing",
+    "enabled": false,
+    "transportPhase": "listening",
+    "notify": true,
+    "kind": "capture-end",
+    "captureId": "d78c7cab-9e00-4e76-a53c-35ec87a48afb",
+    "utteranceId": ""
+  },
+  {
+    "text": "语音已关闭",
+    "phase": "idle",
+    "enabled": false,
+    "transportPhase": "off",
+    "notify": true,
+    "kind": "status",
+    "captureId": "",
+    "utteranceId": ""
+  }
+]

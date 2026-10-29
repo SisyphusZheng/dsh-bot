@@ -1,0 +1,46 @@
+{
+  "product": "0.0.1-beta",
+  "runtime": "0.2.1-rc.3",
+  "sourceCommit": "345a1d607838aa41b24e42b38e5e4e4d487cd02c",
+  "sourceTree": "cdfceb78dc8c4d0f8b73ec9028d66d273f69fc2d",
+  "python": "3.12.14",
+  "pipecat": "1.13.0",
+  "websockets": "16.1.1",
+  "workerSourceTree": "102e01f38707830b250fa95e951a74f650aebc8a",
+  "workerBuildEvidence": {
+    "kind": "historical build evidence with unchanged worker sources; no new binary build claimed",
+    "record": "../0.0.1-rebuild-2026-10-29/VERSIONS.json",
+    "priorEntrySha256": "17b6634109b8d7cf95c1f7124c58642a85e5403da796b8f6240299a4472577eb"
+  },
+  "memoryInputs": {
+    "hindsight": "1.0.0",
+    "client": "1.0.0",
+    "pg0": "0.15.2",
+    "postgres": "18.1.0",
+    "embedding": "Xenova/multilingual-e5-small@761b726d",
+    "onnxModelSha256": "4d24e2bc01a447951524466ef533e52944bf48509e6552810bcee1a2711cb02c",
+    "source": "product/memory/requirements-macos.lock + HindsightAPI.spec"
+  },
+  "inputs": [
+    {
+      "path": "pnpm-lock.yaml",
+      "sha256": "df3fa728858b532d5177ccd55f6a124dcc65312008b7b1756a3dfea254ac816b"
+    },
+    {
+      "path": "product/voice-worker-src/requirements-macos.lock",
+      "sha256": "25f50968d35614d5b05dd404c980e8b0f370dd02b3c3d99e5fec53f8b605fa38"
+    },
+    {
+      "path": "product/memory/requirements-macos.lock",
+      "sha256": "41c85dcbf7a6879fda10166fc9fbbc6fd7cdfd3adaf1aa8a28458856d0da79bf"
+    },
+    {
+      "path": "product/upstream-integrity.json.gz",
+      "sha256": "6c86886161b027d4cd5e94844326c84f448634b0ae4558c68ed6a7d9f1fe03fa"
+    },
+    {
+      "path": "product/upstream-allowlist.json",
+      "sha256": "a2a697c6918568a26442e3e8cdd5e49d23306eaa176c3ffab126ea88ec708edc"
+    }
+  ]
+}

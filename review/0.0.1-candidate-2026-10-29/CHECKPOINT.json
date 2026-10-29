@@ -7,7 +7,7 @@
   "phases": {
     "recovery": "VERIFIED in executable cloud scope",
     "packagingAndDocs": "VERIFIED in product scope",
-    "frozenCandidate": "NOT-STARTED"
+    "frozenCandidate": "VERIFIED in executable cloud product scope"
   },
   "checks": [
     {
@@ -62,7 +62,7 @@
   ],
   "nativeAcceptance": "BLOCKED-ENVIRONMENT",
   "realProvider": "BLOCKED-EXTERNAL",
-  "remaining": "Frozen full product gate; native Mac/TCC/real-room/provider/backend acceptance remains blocked.",
+  "remaining": "Native Mac/TCC/real acoustics/Provider/Hindsight acceptance, plus non-blocking historic documentation translation debt.",
   "packagingAndDocsChecks": [
     {
       "result": "PASS",
@@ -100,5 +100,7 @@
       "rawSha256": "cc333f4040598dc79661c6e56f61495e7433a0bbf945a95d723dc020bc85e4b4"
     }
   ],
-  "nonBlockingDebt": "Full upstream documentation translation corpus still contains historical roadmap/review pairs; preserve original frozen review bytes, do not claim whole-corpus PASS."
+  "nonBlockingDebt": "Full upstream documentation translation corpus still contains historical roadmap/review pairs; preserve original frozen review bytes, do not claim whole-corpus PASS.",
+  "sourceCommit": "345a1d607838aa41b24e42b38e5e4e4d487cd02c",
+  "result": "MVP READY FOR LOCAL ACCEPTANCE"
 }

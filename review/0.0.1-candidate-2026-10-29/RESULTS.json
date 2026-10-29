@@ -1,0 +1,93 @@
+{
+  "candidate": "MVP READY FOR LOCAL ACCEPTANCE",
+  "productVersion": "0.0.1-beta",
+  "sourceCommit": "345a1d607838aa41b24e42b38e5e4e4d487cd02c",
+  "sourceTree": "cdfceb78dc8c4d0f8b73ec9028d66d273f69fc2d",
+  "productGate": "PASS",
+  "tests": {
+    "vitestFiles": 22,
+    "vitestTests": 477,
+    "nodeTests": 79,
+    "pythonTests": 48,
+    "typecheckGates": 5,
+    "buildGates": 9
+  },
+  "checks": [
+    {
+      "result": "PASS",
+      "scope": "Single verify-local entry on clean frozen source: 79 Node, 5 typecheck gates, 9 production build gates, 22 Vitest files/477 tests, product docs, resources, KWS, real Host custom/default, 48 Python, actual Pipecat/WebRTC SDK media fixtures, shell checks",
+      "path": "evidence/candidate-frozen-gate.log.gz",
+      "rawBytes": 25646,
+      "rawSha256": "b47dcd8da52c510ea52cd498ceff173880750956983cd3c77d7208725fed289b"
+    },
+    {
+      "result": "PASS",
+      "scope": "Complete production Web boot and official same-Bot Session navigation in Chromium; same real loader rejects previous bare-ESM format; real Host restart recovery; Electron callback and Provider/Memory are fixtures",
+      "path": "evidence/frozen-web-host.log.gz",
+      "rawBytes": 1337,
+      "rawSha256": "21aa17d338dff99eeff7549ed7c330fdabcc876d39eeccee938693ed39f0184a"
+    },
+    {
+      "result": "PASS",
+      "scope": "6 explicit recovery contract cases including malformed input and simultaneous duplicate confirmations",
+      "path": "evidence/recovery-module-final.log.gz",
+      "rawBytes": 631,
+      "rawSha256": "2af750d49b0469de6f88efe4e756a587e5c9fa858dca7452cb3fc1af3f60e4af"
+    },
+    {
+      "result": "FAIL",
+      "scope": "Full upstream translation corpus still has 9 historical roadmap/review pairs; not part of the passing maintained-product-doc scope",
+      "path": "evidence/current-corpus-pairing.log.gz",
+      "rawBytes": 1828,
+      "rawSha256": "3a3b628abaee2cffaca7c851253af25c702a41ff0bc5584070382c774d29b5c9"
+    }
+  ],
+  "gates": {
+    "G1": {
+      "status": "PASS",
+      "scope": "Cross-platform Desktop production build, Mac inputs and signature/launch-helper contracts; no DMG built"
+    },
+    "G2": {
+      "status": "PASS",
+      "scope": "Real DSH Host Session, tool, approval, question, recovery and restart; fixture Provider"
+    },
+    "G3": {
+      "status": "PASS",
+      "scope": "Real Pipecat/WebRTC/SDK transport and input/output tracks with Provider fixtures; no real-room acoustic claim"
+    },
+    "G4": {
+      "status": "BLOCKED-ENVIRONMENT",
+      "scope": "Adapter HTTP fixture passes; current native Hindsight server/database semantic persistence not requalified"
+    },
+    "G5": {
+      "status": "PASS",
+      "scope": "Executable cloud configuration, Host lifecycle, data isolation and guarded recovery"
+    },
+    "G6": {
+      "status": "PASS",
+      "scope": "Local MVP authentication, credentials and approval/recovery boundaries; not security certification"
+    },
+    "G7": {
+      "status": "BLOCKED-ENVIRONMENT",
+      "scope": "No macOS ARM64, LaunchServices, TCC or physical pointer acceptance"
+    }
+  },
+  "closed": [
+    "13: explicit durable-history preview, checked continuation or retry as a fresh user instruction; second confirmation, expiry, duplicate/current-state guards; verified across real Host restart",
+    "14: concise main-window interruption wording with uncertainty and side-effect warning",
+    "Packaging: 26 formerly failing/missing-input test cases now pass using explicit configuration fixtures and correct independent product/runtime expectations",
+    "Documentation: maintained product bilingual pairs, CLI help, regenerated Client catalog and all repository Markdown links pass"
+  ],
+  "nonBlockingDebt": {
+    "status": "DEFERRED",
+    "auditResult": "FAIL",
+    "scope": "9 historical full-corpus translation pairs; preserve original frozen review text; do not claim all 43 upstream doc-sync checks pass"
+  },
+  "nativeAndAcousticAcceptance": "BLOCKED-ENVIRONMENT",
+  "realProviderAcceptance": "BLOCKED-EXTERNAL",
+  "runtimeScope": "DSH sole Agent Runtime; Pipecat retained; Hindsight retained; actual DS-Bot integration stays 0.0.2",
+  "mainUnchanged": "710c94223cc0f4e75f066507107fb1c1d43d29a1",
+  "actionsObserved": 649,
+  "publication": "Only work/0.0.1-closure; no PR/tag/Release or workflow execution",
+  "assessment": "Executable cloud product gates are clear; suitable for owner Mac acceptance, not a stable/public release."
+}
