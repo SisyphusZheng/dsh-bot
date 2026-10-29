@@ -217,6 +217,7 @@ class DashScopeASRService(WebsocketSTTService):
                             logger.info(f"[dashscope-asr] partial: {partial}")
                     frame = InterimTranscriptionFrame(partial, self._user_id, time_now_iso8601())
                     frame.metadata["capture_id"] = capture_id
+                    frame.metadata["input_mode"] = self.capture.modes.get(capture_id, 'always') if self.capture.required else 'hold'
                     frame.metadata["utterance_id"] = msg.get("item_id") or f"{capture_id}:{self._utterance_seq}"
                     await self.push_frame(frame)
             elif event == "conversation.item.input_audio_transcription.completed":
@@ -240,6 +241,7 @@ class DashScopeASRService(WebsocketSTTService):
                         logger.info(f"[dashscope-asr] final: {transcript}")
                     frame = TranscriptionFrame(transcript, self._user_id, time_now_iso8601())
                     frame.metadata["capture_id"] = capture_id
+                    frame.metadata["input_mode"] = self.capture.modes.get(capture_id, 'always') if self.capture.required else 'hold'
                     frame.metadata["utterance_id"] = utterance_id
                     await self.push_frame(frame)
             elif event == "error":

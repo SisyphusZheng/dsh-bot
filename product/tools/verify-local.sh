@@ -24,5 +24,7 @@ VOICE_PYTHON=${DSH_BOT_VOICE_PYTHON:-.mvv-build/voice-venv/bin/python}
 "$VOICE_PYTHON" -m unittest discover -s product/voice-worker-src -p 'test_*.py'
 node product/tools/smoke-voice.mjs "$VOICE_PYTHON"
 node product/tools/smoke-voice-media.mjs "$VOICE_PYTHON"
+DSH_MEDIA_PASSIVE=1 DSH_MEDIA_INTERACTION=approval node product/tools/smoke-voice-media.mjs "$VOICE_PYTHON"
+DSH_MEDIA_PASSIVE=1 DSH_MEDIA_INTERACTION=question node product/tools/smoke-voice-media.mjs "$VOICE_PYTHON"
 bash -n product/tools/build-macos.sh product/tools/build-memory.sh product/tools/accept-macos.sh product/tools/install-macos.sh product/memory/scripts/run-server.sh
 git diff --check

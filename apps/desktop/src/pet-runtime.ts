@@ -317,6 +317,7 @@ export class ProductPet {
       send: async (path, body) => {
         if (path === 'open') { this.options.toggleMain(true); return }
         if (path === 'inspect-task') { await this.inspectTask(); return }
+        if (path === 'voice-input') { window.webContents.send('pet:voice-command', body); return }
         const method = path.startsWith('/policies') ? (body && 'method' in body ? String(body.method) : 'GET') : undefined
         const response = await this.request(path, method === 'DELETE' ? undefined : body, method)
         if (!response.ok) throw Object.assign(new Error(`DSH request failed: ${response.status}`), { stale: response.status === 409 })
@@ -445,7 +446,7 @@ export class ProductPet {
         this.experience?.voice(status)
         if (['idle', 'listening', 'speaking', 'processing'].includes(status.phase || '')) this.presentation?.voice(status.phase || 'idle')
         const retry = status.retryable === false ? {} : { secondary: [{ id: 'retry-voice', label: '重试' }] }
-        if (['capture-start', 'input', 'transcript', 'capture-end'].includes(status.kind || '')) this.presentation?.capture(status)
+        if (['capture-start', 'input', 'transcript', 'capture-end', 'input-confirmation', 'input-confirmation-ended'].includes(status.kind || '')) this.presentation?.capture(status)
         else if (status.kind === 'error' && status.text) this.presentation?.notice(status.text, 'error', 15_000, '', retry)
         else if (status.phase === 'failed') {
           // Prefer the worker's classified failure over the opaque transport text.

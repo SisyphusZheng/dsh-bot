@@ -10,6 +10,7 @@ import { voiceErrorNotice } from './voice-input.mjs'
 const bridge = window.petBridge, audio = document.getElementById('speaker'), pet = document.getElementById('pet')
 const view = createPetView(pet, () => report('桌宠素材加载失败，请打开 DSH 查看。'))
 const micButton = document.getElementById('microphone'), hint = document.getElementById('hint'), taskCard = document.getElementById('tasks')
+const voiceState = document.getElementById('voice-state')
 let preferences = { voiceInput: { mode: 'hold', keyId: 'alt' }, hint: '按住 Option/Alt 说话', language: 'zh', orbSkin: 'whale-girl' }
 let capture, current, hintTimer, localMic, localContext, localProcessor, wakeReady = false, localStarting = false
 let lastVoiceErrorAt = 0
@@ -49,6 +50,7 @@ async function localWake() {
 const session = createVoiceSession({
   publish(status) {
     document.body.dataset.voice = status.phase; document.body.dataset.microphone = status.enabled ? 'on' : 'off'
+    if (voiceState) voiceState.textContent = status.enabled ? text(preferences.voiceInput?.mode === 'always' ? '常听 · 先确认' : '正在收音', preferences.voiceInput?.mode === 'always' ? 'Always · confirm' : 'Mic on') : text('麦克风关闭', 'Mic off')
     micButton.title = micButton.ariaLabel = status.phase === 'connecting' ? text('正在连接语音', 'Connecting voice') : status.enabled ? text('暂停麦克风', 'Pause microphone') : text('开启语音', 'Start voice')
     // A classified provider failure already produced the actionable bubble; do not
     // overwrite it with the opaque transport error that follows the disconnect.
@@ -75,24 +77,28 @@ const session = createVoiceSession({
       onBotTtsText: data => { if (data.text) report(data.text, 'speaking', true, 'speech') },
       onServerMessage(data) {
         if (data.type === 'voice-error') { reportVoiceError(data); return }
+        if (data.type === 'interaction-prompt') { audio.muted = false; audio.volume = 1; return }
+        if (data.type === 'input-confirmation') { report(data.text, 'listening', true, 'input-confirmation', data.captureId, '', { draftId: data.id, ttlMs: data.ttlMs }); return }
+        if (data.type === 'input-confirmation-ended') { report('', 'idle', false, 'input-confirmation-ended', '', '', { draftId: data.id }); return }
         capture?.message(data); if (data.type === 'stop-playback') { audio.muted = true; report('', 'listening', false) }; if (data.type === 'control-result' || data.type === 'task-queued') report(data.text, session.snapshot().enabled ? 'listening' : 'idle', true, 'status'); if (data.type === 'duck-playback') audio.volume = 0.3; if (data.type === 'restore-playback') audio.volume = 1; if (data.type === 'barge-in-confirmed') { audio.muted = true; report('', 'listening', false) }; if (data.type === 'playback-identity') { audio.muted = false; audio.volume = 1 }; if (data.type === 'greeting') report(data.text, 'speaking', true, 'speech')
       },
     } })
     capture = createCaptureClient({
+      mode: () => preferences.voiceInput?.mode || 'hold',
       send: (type, data) => own.sendClientMessage(type, data),
       setMic: enabled => { const track = own.tracks()?.local?.audio; if (!enabled && track) track.enabled = false; own.enableMic(enabled); return mediaQueue },
       configure: async () => { const track = own.tracks()?.local?.audio; if (!track) throw new Error('麦克风音轨尚未就绪'); await track.applyConstraints({ echoCancellation: true, noiseSuppression: true, autoGainControl: true }); const settings = track.getSettings(); void bridge.voiceStatus({notify:false,kind:'media',mediaSettings:{echoCancellation:settings.echoCancellation,noiseSuppression:settings.noiseSuppression,autoGainControl:settings.autoGainControl}}); report(settings.echoCancellation === false ? '当前麦克风未启用回声消除，建议使用耳机。' : '', 'idle', settings.echoCancellation === false) },
       publish: value => report(value.kind === 'capture-start' ? text('正在听…', 'Listening…') : value.text, ['input', 'capture-start'].includes(value.kind) ? 'listening' : 'processing', true, value.kind, value.captureId, value.utteranceId),
     })
     const ownCapture = capture
-    return { connect: endpoint => own.connect({ webrtcRequestParams: { endpoint } }), disconnect: async () => { ownCapture.stop(); const tracks = Object.values(own.tracks()?.local || {}).filter(Boolean); try { await own.disconnect() } finally { for (const track of tracks) track.stop(); audio.srcObject = null; level(0) } }, enableMic: enabled => ownCapture.enable(enabled) }
+    return { confirmInput: data => own.sendClientMessage('input-confirmation', data), connect: endpoint => own.connect({ webrtcRequestParams: { endpoint } }), disconnect: async () => { ownCapture.stop(); const tracks = Object.values(own.tracks()?.local || {}).filter(Boolean); try { await own.disconnect() } finally { for (const track of tracks) track.stop(); audio.srcObject = null; level(0) } }, enableMic: enabled => ownCapture.enable(enabled) }
   },
 })
 async function apply(state) { if (state.notice && state.notice !== current?.notice) report(state.notice); current = state; await session.update(state.phase === 'available' ? state.offerUrl : undefined); if (['failed', 'unconfigured'].includes(state.phase) && session.snapshot().wanted) report(state.error || '语音服务尚未就绪。') }
-function command(value) { if (value.action === 'discard') { if (capture?.discard(value.captureId)) void session.command('mute'); return }; if (value.action === 'retry') { lastVoiceErrorAt = 0; void session.retry(); return }; if (value.action === 'enable' || value.action === 'toggle') stopLocal(); void session.command(value.action || 'toggle'); if (current?.phase === 'unconfigured') report(current.error || '请先配置语音。') }
+function command(value) { if (value.action === 'confirm-input' || value.action === 'discard-input') { session.confirmInput({ id: value.id, action: value.action === 'confirm-input' ? 'confirm' : 'discard', ...(value.text === undefined ? {} : { text: value.text }) }); return }; if (value.action === 'discard') { if (capture?.discard(value.captureId)) void session.command('mute'); return }; if (value.action === 'retry') { lastVoiceErrorAt = 0; void session.retry(); return }; if (value.action === 'enable' || value.action === 'toggle') stopLocal(); void session.command(value.action || 'toggle'); if (current?.phase === 'unconfigured') report(current.error || '请先配置语音。') }
 micButton.addEventListener('click', event => { event.stopPropagation(); command({ action: 'toggle' }) }); micButton.addEventListener('mousedown', event => event.stopPropagation())
 bridge.onVoice(state => { void apply(state) }); bridge.onVoiceCommand(command)
-function settings(value) { preferences = { ...preferences, ...value }; hint.textContent = preferences.hint || ''; view.update({ skin: preferences.orbSkin || 'whale-girl' }); document.documentElement.lang = preferences.language === 'en' ? 'en' : 'zh-CN'; if (!preferences.voiceInput?.hintSeen) showHint(); if (preferences.voiceInput?.mode === 'always') command({ action: 'enable' }); if (!preferences.wakeWordEnabled) stopLocal(); else void localWake() }
+function settings(value) { const previousMode = preferences.voiceInput?.mode; preferences = { ...preferences, ...value }; hint.textContent = preferences.hint || ''; view.update({ skin: preferences.orbSkin || 'whale-girl' }); document.documentElement.lang = preferences.language === 'en' ? 'en' : 'zh-CN'; if (!preferences.voiceInput?.hintSeen) showHint(); if (previousMode !== preferences.voiceInput?.mode) { void session.command('mute').then(()=>{if(preferences.voiceInput?.mode==='always')command({action:'enable'})}) } else if (preferences.voiceInput?.mode === 'always') command({ action: 'enable' }); if (!preferences.wakeWordEnabled) stopLocal(); else void localWake() }
 bridge.onPreferences?.(settings); void bridge.preferences?.().then(settings)
 bridge.onWake?.(state => { wakeReady = state.ready; if (wakeReady) void localWake(); else stopLocal() })
 bridge.onLifecycle?.(state => view.update({ state: state.state === 'active' ? 'waking' : 'hidden' })); bridge.onPresentation(value => view.update(value))

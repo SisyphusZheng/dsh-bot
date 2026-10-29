@@ -287,6 +287,11 @@ inputEl.addEventListener('pointerdown', event => {
   setInteractive(true)
   requestInputFocus(true)
 })
+content.addEventListener('pointerdown', event => {
+  requestInputFocus(true)
+  if (!event.target.closest('button,input')) content.focus({ preventScroll: true })
+})
+window.addEventListener('blur', () => { if (!hasInput) requestInputFocus(false) })
 
 // 气泡窗口默认穿透（forward:true 时 mousemove 仍会送达渲染层）；
 // 只有指针真正落在卡片上才让窗口接收点击。活动气泡永远保持穿透。

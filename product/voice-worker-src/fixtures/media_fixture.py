@@ -27,6 +27,7 @@ async def main():
     import aioice.ice
     aioice.ice.get_host_addresses = lambda use_ipv4, use_ipv6: ['127.0.0.1']
     from server import app
+    spoken = []
     async def provider(ws):
         assert ws.request.headers['Authorization'] == 'Bearer fixture-key'
         model = parse_qs(urlparse(ws.request.path).query)['model'][0]
@@ -45,6 +46,8 @@ async def main():
                 await asyncio.sleep(0.2)
                 await ws.send(json.dumps({'type':'conversation.item.input_audio_transcription.text','item_id':'intent-1','text':'请记录测试偏好','stash':''})); await asyncio.sleep(0.2)
                 await ws.send(json.dumps({'type':'conversation.item.input_audio_transcription.completed','item_id':'intent-1','transcript':'请记录测试偏好'}))
+            if kind == 'input_text_buffer.append':
+                spoken.append(event['text'])
             if kind == 'input_text_buffer.commit':
                 assert 'tts' in model
                 pcm = b''.join(struct.pack('<h',int(2500*math.sin(i*2*math.pi*440/24000))) for i in range(24000))
@@ -55,6 +58,19 @@ async def main():
     release = asyncio.Event()
     async def state(request):
         return web.json_response(lifecycle)
+    async def speech(request):
+        return web.json_response({'spoken':spoken})
+    async def interactions(request):
+        assert request.headers['Authorization']=='Bearer bridge-fixture'
+        if lifecycle['started'] != 1 or lifecycle['finished'] or not os.environ.get('MEDIA_INTERACTION'):
+            return web.json_response({'requests':[]})
+        question = os.environ['MEDIA_INTERACTION']=='question'
+        request = {'id':'question-1' if question else 'approval-1','sessionId':'media-session','kind':'question' if question else 'approval'}
+        if question:
+            request['questions']=[{'question':'文档用什么内容？','options':[{'label':'之前的文章'},{'label':'新文章'}]}]
+        else:
+            request['operation']={'arguments':{'command':'PRIVATE-COMMAND'}}
+        return web.json_response({'requests':[request]})
     async def resume(request):
         release.set(); return web.json_response({'ok': True})
     async def cancel(request):
@@ -63,7 +79,7 @@ async def main():
         assert request.headers['Authorization'] == 'Bearer bridge-fixture'; assert (await request.json())['text'] == '请记录测试偏好'
         lifecycle['started'] += 1
         response = web.StreamResponse(headers={'content-type':'application/x-ndjson'}); await response.prepare(request)
-        for event in [{'type':'admitted','requestId':'r1','sessionId':'media-session'},{'type':'assistant-start','turn':1},{'type':'text','text':'好的，已收到测试请求。'},{'type':'assistant-end'}]: await response.write((json.dumps(event)+'\n').encode())
+        for event in [{'type':'admitted','requestId':'r1','sessionId':'media-session'},{'type':'assistant-start','turn':1},{'type':'text','text':'**好的**，已收到测试请求。'},{'type':'assistant-end'}]: await response.write((json.dumps(event)+'\n').encode())
         if os.environ.get('MEDIA_HOLD_TURN') == '1':
             await release.wait()
         if request.transport is None or request.transport.is_closing():
@@ -72,7 +88,7 @@ async def main():
         await response.write((json.dumps({'type':'turn-end','reason':{'kind':'completed'}})+'\n').encode())
         lifecycle['finished'] += 1
         await response.write_eof(); return response
-    bridge = web.Application(); bridge.router.add_post('/voice/turn',turn); bridge.router.add_get('/fixture-state',state); bridge.router.add_post('/fixture-release',resume); bridge.router.add_post('/cancel',cancel); runner=web.AppRunner(bridge); await runner.setup(); await web.SockSite(runner,bridge_socket).start()
+    bridge = web.Application(); bridge.router.add_post('/voice/turn',turn); bridge.router.add_get('/fixture-state',state); bridge.router.add_get('/fixture-speech',speech); bridge.router.add_get('/interactions',interactions); bridge.router.add_post('/fixture-release',resume); bridge.router.add_post('/cancel',cancel); runner=web.AppRunner(bridge); await runner.setup(); await web.SockSite(runner,bridge_socket).start()
     descriptor.write_text(json.dumps({'port':bridge_port,'token':'bridge-fixture','workerPort':worker_port,'providerPort':provider_port}))
     try:
         async with serve(provider,sock=provider_socket): await uvicorn.Server(uvicorn.Config(app,host='127.0.0.1',port=worker_port,log_level='warning')).serve(sockets=[worker_socket])

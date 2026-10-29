@@ -105,6 +105,14 @@ try {
  await page.screenshot({path:join(output,'long-question-scroll.png')})
  await bubble.getByRole('button',{name:'提交',exact:true}).click();await renders
  assert.deepEqual(calls.at(-1)[1].answer.answers,[{id:'document',selected:['写一篇新的内容']}])
+ presentation.capture({kind:'input-confirmation',draftId:'ui-draft',captureId:'capture-ui',text:'这说不清楚'});await renders
+ await bubble.getByText('我听到（尚未发送）',{exact:true}).waitFor()
+ await bubble.getByRole('button',{name:'修改',exact:true}).click();await renders
+ await bubble.getByPlaceholder('纠正识别内容').fill('请整理报告')
+ await page.screenshot({path:join(output,'input-confirmation.png')})
+ await bubble.getByRole('button',{name:'确认发送',exact:true}).click();await renders
+ assert.deepEqual(calls.at(-1),['voice-input',{action:'confirm-input',id:'ui-draft',text:'请整理报告'}])
+ presentation.capture({kind:'input-confirmation-ended',draftId:'ui-draft'});await renders
  presentation.capture({kind:'capture-start',captureId:'silent',text:'正在听…'});await renders
  await bubble.getByRole('button',{name:'取消录音',exact:true}).waitFor({state:'visible'})
  const sentBeforeCancel=calls.length

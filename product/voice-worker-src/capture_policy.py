@@ -12,14 +12,20 @@ class CapturePolicy:
         self.items = {}
         self.audio_capture = ""
         self.dirty = False
+        self.modes = {}
 
-    def control(self, action, capture_id):
+    def control(self, action, capture_id, mode='always'):
         if action not in ("start", "finish", "discard") or not isinstance(capture_id, str) or not 0 < len(capture_id) <= 100:
             return False
         if action == "start":
+            if mode not in ('hold', 'toggle', 'always'):
+                return False
             if capture_id in self.revoked:
                 return False
             self.current = capture_id
+            self.modes[capture_id] = mode
+            if len(self.modes) > 256:
+                self.modes.pop(next(iter(self.modes)))
             self.enabled = True
         else:
             if action == "discard":

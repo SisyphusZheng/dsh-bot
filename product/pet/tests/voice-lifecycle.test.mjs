@@ -14,6 +14,17 @@ function capture() {
  const transcript=(utteranceId,text,final=false)=>c.message({type:'capture-transcript',captureId:c.snapshot().captureId,utteranceId,text,final})
  return {c,sent,mic,shown,ack,transcript}
 }
+test('capture conveys deliberate/passive mode and never labels an unconfirmed final as submitted',async()=>{
+ const sent=[],shown=[]
+ const c=createCaptureClient({send:(type,data)=>sent.push({type,...data}),setMic(){},mode:()=> 'always',id:()=> 'passive',publish:value=>shown.push(value)})
+ const opening=c.enable(true)
+ assert.equal(sent[0].mode,'always')
+ c.message({type:'capture-ack',action:'start',captureId:'passive'});await opening
+ c.message({type:'capture-transcript',captureId:'passive',utteranceId:'u',text:'这说不清楚',final:true,requiresConfirmation:true})
+ assert.equal(shown.at(-1).kind,'input')
+ assert.ok(!shown.some(value=>value.kind==='transcript'))
+ c.stop()
+})
 test('hold release before worker acknowledgement never opens the microphone',async()=>{
  const f=capture();const opening=f.c.enable(true);assert.deepEqual(f.mic,[])
  await f.c.enable(false);f.ack();await opening;assert.deepEqual(f.mic,[false]);assert.equal(f.sent.at(-1).action,'finish');f.c.stop()

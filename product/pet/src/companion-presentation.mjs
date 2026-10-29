@@ -44,6 +44,7 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
   let persistentDraft = false, manager = null, managerEpoch = 0, recovery = null, recoveryEpoch = 0
   let questionIndex = 0, answers = [], selected = [], customInput = false
   let voice = 'idle', working = false, startedAt = 0, inputSource = 'desktop', captureId = '', captureIdentity = '', captureTimer
+  let inputDraft = null, inputDraftTimer, inputDraftBusy = false
   const expiredInputs = new Set()
   const cancelTimer = () => { clearTimer(timer); timer = undefined }
   const animation = (cue = null) => animate({ state: requests.length ? 'awaiting-input' : voice !== 'idle' ? voice : working ? 'working' : 'idle', baseWorking: working, cue })
@@ -80,9 +81,9 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
     })
   }
   function notice(value, kind = 'status', duration = 4500, capture = '', options = {}) {
-    if (stopped || requests.length || manager || recovery) return
+    if (stopped || requests.length || manager || recovery || inputDraft) return
     cancelTimer()
-    show({ visible: true, kind, text: value, clickThrough: !['input', 'speech'].includes(kind) && !options.secondary?.length, ...(kind === 'input' ? { requestId: capture, cancel: { id: 'cancel-capture', label: '取消录音' }, inputLabel: '你说' } : {}), ...options })
+    show({ visible: true, kind, text: value, clickThrough: !['input', 'speech'].includes(kind) && !options.secondary?.length, ...(['input','transcript'].includes(kind) ? { title: kind === 'input' ? '我听到（识别中）' : '我听到（已提交）' } : {}), ...(kind === 'input' ? { requestId: capture, cancel: { id: 'cancel-capture', label: '取消录音' } } : {}), ...options })
     if (duration > 0) timer = setTimer(() => { if (!requests.length && !stopped) hide() }, duration)
   }
   function renderManager(hint = '') {
@@ -133,7 +134,7 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
         requests = requests.filter(item => item.id !== request.id)
         resetDraft()
         if (requests.length) render()
-        else { hide(); animation() }
+        else { if(inputDraft)renderInputDraft();else hide(); animation() }
       }
     } catch (error) {
       if (requests[0]?.id !== request.id) return
@@ -149,12 +150,30 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
       questionIndex++; selected = []; customInput = false; render()
     } else await submit(request, { answer: { answers } })
   }
+  function renderInputDraft() {
+    if (!inputDraft || stopped || requests.length || manager || recovery) return
+    cancelTimer()
+    show({visible:true,kind:'action',requestId:`voice:${inputDraft.id}`,title:'我听到（尚未发送）',text:inputDraft.text,busy:inputDraftBusy,clickThrough:false,
+      hint:'常听可能收进环境声。确认才会发送；可说“确认发送”或“取消输入”。',
+      input:inputDraft.edit ? {value:inputDraft.text,placeholder:'纠正识别内容',submitLabel:'确认发送'} : null,
+      secondary:[...(!inputDraft.edit ? [{id:'voice-confirm',label:'确认发送'},{id:'voice-edit',label:'修改'}] : []),{id:'voice-discard',label:'丢弃输入'}]})
+  }
+  function clearInputDraft() { inputDraft = null; inputDraftBusy = false; clearTimer(inputDraftTimer); inputDraftTimer = undefined }
   return {
     notice,
     managePolicies,
     recoverTask,
     capture(status) {
       if (stopped) return
+      if (status.kind === 'input-confirmation') {
+        clearInputDraft(); clearTimer(captureTimer); captureId = ''
+        inputDraft = {id:status.draftId,text:status.text,captureId:status.captureId,edit:false}
+        const own = inputDraft
+        inputDraftTimer = setTimer(()=>{if(inputDraft===own){clearInputDraft();if(!requests.length)hide()}},Math.min(30000,Math.max(1,status.ttlMs||30000)))
+        renderInputDraft();return
+      }
+      if (status.kind === 'input-confirmation-ended') { if(inputDraft?.id===status.draftId){clearInputDraft();if(!requests.length)hide()};return }
+      if (status.kind === 'capture-end' && inputDraft?.captureId === status.captureId) { clearInputDraft() }
       if (status.kind === 'capture-start' && status.captureId) {
         captureId = status.captureId
         captureIdentity = ''
@@ -178,6 +197,7 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
       if (stopped) return
       const nextIdentity = `${snapshot.pid}:${snapshot.sessionId}`
       const changedOwner = identity !== nextIdentity
+      if (changedOwner) clearInputDraft()
       identity = nextIdentity
       const previous = requests[0]?.id, previousCount = requests.length
       requests = snapshot.requests || []
@@ -186,7 +206,7 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
         resetDraft(); cancelTimer()
         if (changedOwner) { working = false; text = ''; voice = 'idle' }
         if (requests.length) render()
-        else { hide(); animation() }
+        else { if(inputDraft)renderInputDraft();else hide(); animation() }
       } else if (requests.length && previousCount !== requests.length) render()
     },
     event(event) {
@@ -212,6 +232,19 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
     state: () => ({ working, startedAt, inputSource, waiting: requests.length > 0 }),
     async action(action) {
       if (stopped) return
+      if (inputDraft && !requests.length && action.requestId === `voice:${inputDraft.id}` && !inputDraftBusy) {
+        if(action.type==='secondary'&&action.id==='voice-edit'){inputDraft.edit=true;renderInputDraft();return}
+        if(action.type==='secondary'&&action.id==='voice-discard'){const id=inputDraft.id;clearInputDraft();hide();await send('voice-input',{action:'discard-input',id});return}
+        if(action.type==='input'||action.type==='secondary'&&action.id==='voice-confirm'){
+          const text=action.type==='input'?String(action.value||'').trim():inputDraft.text
+          if(!text||text.length>20000)return
+          inputDraftBusy=true;renderInputDraft()
+          try { await send('voice-input',{action:'confirm-input',id:inputDraft.id,text}) }
+          catch { inputDraftBusy=false;renderInputDraft() }
+          return
+        }
+        return
+      }
       if (action.type === 'open') return send('open')
       if (action.type === 'secondary' && action.id === 'open') return send('open')
       if (action.type === 'secondary' && action.id === 'inspect-task') return send('inspect-task')
@@ -266,6 +299,6 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
         if (action.id === 'back' && questionIndex > 0) { questionIndex--; selected = answers[questionIndex]?.selected || []; render() }
       }
     },
-    stop() { stopped = true; manager = null; managerEpoch++; recovery = null; recoveryEpoch++; cancelTimer(); clearTimer(captureTimer); requests = []; hide() },
+    stop() { stopped = true; clearInputDraft(); manager = null; managerEpoch++; recovery = null; recoveryEpoch++; cancelTimer(); clearTimer(captureTimer); requests = []; hide() },
   }
 }

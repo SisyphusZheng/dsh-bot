@@ -305,7 +305,7 @@ async def run_dsh_pipeline(connection, session_id: str, session_state: dict) -> 
     asr = DashScopeASRService(api_key=API_KEY, model=ASR_MODEL)
     tts = DashScopeTTSService(api_key=API_KEY, model=TTS_MODEL, voice=TTS_VOICE)
     global DSH_PROCESSOR
-    bridge = DSHBridgeProcessor(DSH_BRIDGE_DESCRIPTOR)
+    bridge = DSHBridgeProcessor(DSH_BRIDGE_DESCRIPTOR, capture=asr.capture)
     DSH_PROCESSOR = bridge
     session_state["asr"] = asr
     session_state["tts"] = tts
@@ -331,25 +331,58 @@ async def run_dsh_pipeline(connection, session_id: str, session_state: dict) -> 
 
 
 async def _run_task(transport, task, session_id: str, session_state: dict) -> None:
+    interaction_task = None
+    async def interaction_prompts():
+        failed = False
+        while not session_state['dsh']._closing:
+            try:
+                await session_state['dsh'].announce_pending()
+                failed = False
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                if not failed:
+                    print(f'[voice] interaction announcement unavailable: {type(exc).__name__}', flush=True)
+                    await session_state['dsh']._control_notice('审批语音提醒暂不可用，请查看桌宠气泡。')
+                failed = True
+            await asyncio.sleep(0.75)
+
     if task.rtvi is not None and MODE == "dsh":
         @task.rtvi.event_handler("on_client_message")
         async def capture_control(rtvi, message):
+            if message.type == 'input-confirmation':
+                data = message.data if isinstance(message.data, dict) else {}
+                if not isinstance(data.get('id'), str) or len(data['id']) > 100:
+                    return
+                bridge = session_state['dsh']
+                if data.get('action') == 'confirm':
+                    await bridge.confirm_input(data['id'], data.get('text'))
+                elif data.get('action') == 'discard':
+                    await bridge.discard_input(data['id'])
+                return
             if message.type != "capture-state":
                 return
             data = message.data if isinstance(message.data, dict) else {}
             capture = session_state["asr"].capture
             action, capture_id = data.get("action"), data.get("captureId")
-            if not capture.control(action, capture_id):
+            if not capture.control(action, capture_id, data.get('mode', 'always')):
                 return
+            if action in ('finish', 'discard'):
+                bridge = session_state['dsh']
+                draft = bridge._input_admission.draft
+                if draft and draft['metadata'].get('capture_id') == capture_id:
+                    await bridge.discard_input(draft['id'])
             if action in ("finish", "discard"):
                 await task.queue_frames([VADUserStoppedSpeakingFrame()])
             await rtvi.send_server_message({"type": "capture-ack", "action": action, "captureId": capture_id})
 
         @task.rtvi.event_handler("on_client_ready")
         async def greet_once(rtvi):
+            nonlocal interaction_task
             if session_state.get("welcomed"):
                 return
             session_state["welcomed"] = True
+            interaction_task = asyncio.create_task(interaction_prompts())
             greeting = os.environ.get("DSH_VOICE_GREETING", "你好，我在呢。想聊什么，或者有什么需要我帮忙的？")
             if greeting:
                 session_state["dsh"].set_greeting(greeting)
@@ -405,6 +438,9 @@ async def _run_task(transport, task, session_id: str, session_state: dict) -> No
             await voice_errors.report(exc, source="session")
         print(f"[g1] session error session={session_id}: {exc!r}", flush=True)
     finally:
+        if interaction_task is not None:
+            interaction_task.cancel()
+            await asyncio.gather(interaction_task, return_exceptions=True)
         voice_errors.set_reporter(None)
         if CURRENT_TASK is task:
             CURRENT_TASK = None

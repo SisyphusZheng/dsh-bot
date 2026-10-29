@@ -8,6 +8,8 @@ import { createRequire } from 'node:module'
 import assert from 'node:assert/strict'
 const root = resolve(import.meta.dirname, '../..'), directory = mkdtempSync(join(tmpdir(), 'pet-media-'))
 const greeting = '你好，我在呢。想聊什么，或者有什么需要我帮忙的？'
+const passive = process.env.DSH_MEDIA_PASSIVE === '1', interaction = process.env.DSH_MEDIA_INTERACTION || ''
+const expectedResponses = interaction ? 3 : 2
 const { chromium } = createRequire(join(root, 'packages/experimental/inspector/package.json'))('playwright')
 let port, bridgePort
 let child, browser, log = '', statuses = [], requests = []
@@ -21,7 +23,7 @@ const server = createServer((req, res) => {
   res.setHeader('content-type', file.endsWith('.html') ? 'text/html' : file.endsWith('.js') ? 'text/javascript' : file.endsWith('.json') ? 'application/json' : 'image/webp'); res.end(readFileSync(file))
 })
 try {
-  child = spawn(resolve(process.argv[2] || '.mvv-build/voice-venv/bin/python'), [join(root, 'product/voice-worker-src/fixtures/media_fixture.py'), '0', '0', '0', join(directory, 'bridge.json')], { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, PYTHONUNBUFFERED: '1', MEDIA_HOLD_TURN: '1', DSH_VOICE_GREETING: greeting } })
+  child = spawn(resolve(process.argv[2] || '.mvv-build/voice-venv/bin/python'), [join(root, 'product/voice-worker-src/fixtures/media_fixture.py'), '0', '0', '0', join(directory, 'bridge.json')], { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, PYTHONUNBUFFERED: '1', MEDIA_HOLD_TURN: '1', MEDIA_INTERACTION: interaction, DSH_VOICE_GREETING: greeting } })
   child.stdout.on('data', d => { log += d }); child.stderr.on('data', d => { log += d })
   const deadline = Date.now() + 90000
   while (true) { try { const endpoints=JSON.parse(readFileSync(join(directory,'bridge.json'),'utf8')); port=endpoints.workerPort; bridgePort=endpoints.port; if ((await fetch(`http://127.0.0.1:${port}/health`)).ok) break } catch {} if (Date.now() > deadline || child.exitCode !== null || child.signalCode !== null) throw new Error('worker not ready\n' + log); await new Promise(r => setTimeout(r, 100)) }
@@ -29,14 +31,22 @@ try {
   browser = await chromium.launch({ headless: true, ...(process.env.DSH_CHROMIUM_EXECUTABLE ? { executablePath: process.env.DSH_CHROMIUM_EXECUTABLE } : {}), args: ['--no-sandbox', '--no-zygote', '--allow-loopback-in-peer-connection', '--disable-features=WebRtcHideLocalIpsWithMdns', '--disable-gpu', '--disable-dev-shm-usage', '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--autoplay-policy=no-user-gesture-required'] })
   const context = await browser.newContext({ viewport: { width: 172, height: 204 } }); await context.grantPermissions(['microphone'], { origin })
   await context.exposeBinding('reportVoice', (_source, value) => statuses.push(value))
-  await context.addInitScript(({ origin }) => { window.petBridge = { state: async () => ({ phase: 'available', offerUrl: origin + '/api/offer' }), voiceStatus: value => window.reportVoice(value), onVoice() {}, onVoiceCommand: f => { window.voiceCommand = f }, onPresentation() {}, hit() {}, dragStart() {}, dragMove() {}, dragEnd() {}, openMain() {}, menu() {}, cancel() {} } }, { origin })
+  await context.addInitScript(({ origin, passive }) => { window.petBridge = { preferences:async()=>({voiceInput:{mode:passive?'always':'hold'},language:'zh'}),state: async () => ({ phase: 'available', offerUrl: origin + '/api/offer' }), voiceStatus: value => window.reportVoice(value), onVoice() {}, onVoiceCommand: f => { window.voiceCommand = f }, onPresentation() {}, hit() {}, dragStart() {}, dragMove() {}, dragEnd() {}, openMain() {}, menu() {}, cancel() {} } }, { origin, passive })
   const page = await context.newPage(), errors = []; page.on('pageerror', e => errors.push(e.message)); page.on('console', message => { log += '\n[browser] ' + message.text() }); page.on('request', request => requests.push(request.url()))
-  await page.goto(origin + '/pet.html'); await page.locator('#pet').hover(); await page.waitForFunction(() => getComputedStyle(document.getElementById('controls')).opacity === '1'); await page.locator('#microphone').click()
+  await page.goto(origin + '/pet.html'); await page.locator('#pet').hover(); await page.waitForFunction(() => getComputedStyle(document.getElementById('controls')).opacity === '1'); if(!passive) await page.locator('#microphone').click()
   await page.waitForFunction(() => document.body.dataset.microphone === 'on', null, { timeout: 45000 })
   const until = async check => { const end = Date.now() + 20000; while (!check()) { if (Date.now() > end) throw new Error('voice output deadline'); await new Promise(r => setTimeout(r, 50)) } }
   await until(() => statuses.some(x => x.kind === 'speech' && /你好，我在呢/.test(x.text)))
   await until(() => statuses.some(x => x.kind === 'input' && /请记录测试偏好/.test(x.text)))
+  if(passive){
+    await until(()=>statuses.some(x=>x.kind==='input-confirmation'))
+    assert.equal((await (await fetch(`http://127.0.0.1:${bridgePort}/fixture-state`)).json()).started,0,'Passive transcript executed before confirmation')
+    assert.match(await page.locator('#voice-state').innerText(),/常听/)
+    const draft=statuses.find(x=>x.kind==='input-confirmation')
+    await page.evaluate(id=>{window.voiceCommand({action:'confirm-input',id});window.voiceCommand({action:'confirm-input',id})},draft.draftId)
+  }
   await until(() => statuses.some(x => x.kind === 'speech' && /已收到测试请求/.test(x.text)))
+  if(interaction) await until(()=>statuses.some(x=>x.kind==='speech'&& (interaction==='question'?/文档用什么内容/.test(x.text):/需要你批准/.test(x.text))))
   await page.waitForFunction(() => document.getElementById('speaker').currentTime > 0.1)
   await page.waitForFunction(() => Number(document.getElementById('level').getAttribute('aria-valuenow')) > 0)
   // Discard the current capture during an unfinished Bridge task. Media and task survive.
@@ -50,9 +60,12 @@ try {
   assert.equal(await page.evaluate(() => document.getElementById('speaker').srcObject.getTracks().some(t=>t.readyState==='live')),true)
   await fetch(`http://127.0.0.1:${bridgePort}/fixture-release`,{method:'POST'})
   let metrics
-  for (let attempt = 0; attempt < 100; attempt++) { const stats = await (await fetch(`http://127.0.0.1:${port}/stats`, { headers: { 'x-spike-token': 'media-fixture' } })).json(); metrics = Object.values(stats.sessions)[0]; if (metrics?.tts?.responses === 2 && metrics?.dsh?.turns_completed === 1) break; await new Promise(r => setTimeout(r, 50)) }
+  for (let attempt = 0; attempt < 100; attempt++) { const stats = await (await fetch(`http://127.0.0.1:${port}/stats`, { headers: { 'x-spike-token': 'media-fixture' } })).json(); metrics = Object.values(stats.sessions)[0]; if (metrics?.tts?.responses === expectedResponses && metrics?.dsh?.turns_completed === 1) break; await new Promise(r => setTimeout(r, 50)) }
   assert.deepEqual(await (await fetch(`http://127.0.0.1:${bridgePort}/fixture-state`)).json(),{started:1,finished:1,cancels:0,disconnects:0})
-  assert.equal(metrics.tts.responses, 2, 'one welcome synthesis and one Bridge response'); assert.equal(metrics.dsh.turns_completed, 1)
+  assert.equal(metrics.tts.responses, expectedResponses, 'welcome, Bridge response and optional interaction announcement'); assert.equal(metrics.dsh.turns_completed, 1)
+  const speech=await (await fetch(`http://127.0.0.1:${bridgePort}/fixture-speech`)).json()
+  assert.ok(speech.spoken.every(text=>!text.includes('**')&&!text.includes('PRIVATE-COMMAND')))
+  if(interaction) assert.equal(speech.spoken.filter(text=>interaction==='question'?text.includes('需要你回答'):text.includes('需要你批准')).length,1)
   assert.ok(requests.every(url => url.startsWith(origin + '/') || url.startsWith('blob:')), 'no media CDN or telemetry requests')
   assert.ok(!statuses.some(x=>x.kind==='input'&&(x.text===greeting||x.text==='嗯。')), 'full welcome echo/noise reached the input bubble')
   assert.ok(!log.includes('[g3-probe]'),'debug probes must be off by default')

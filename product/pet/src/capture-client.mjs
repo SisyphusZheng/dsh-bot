@@ -1,5 +1,5 @@
 /** A capture is admitted by the worker before enabling media; release never closes RTC. */
-export function createCaptureClient({ send, setMic, configure = async () => {}, publish = () => {}, timeoutMs = 5000, id = () => crypto.randomUUID() }) {
+export function createCaptureClient({ send, setMic, configure = async () => {}, publish = () => {}, mode = () => 'hold', timeoutMs = 5000, id = () => crypto.randomUUID() }) {
   let current = '', wanted = false, stopped = false, pending, inFlight
   const completed = new Set()
   function end(discard = false) {
@@ -17,7 +17,7 @@ export function createCaptureClient({ send, setMic, configure = async () => {}, 
         await new Promise((resolve, reject) => {
           const timer = setTimeout(() => { pending = undefined; reject(new Error('录音控制未就绪，请重新连接语音。')) }, timeoutMs)
           pending = { id: own, resolve: () => { clearTimeout(timer); resolve() }, reject: () => { clearTimeout(timer); reject(new Error('录音已关闭')) } }
-          send('capture-state', { action: 'start', captureId: own })
+          send('capture-state', { action: 'start', captureId: own, mode: mode() })
         })
         await configure()
         if (!stopped && wanted && current === own) {
@@ -34,7 +34,7 @@ export function createCaptureClient({ send, setMic, configure = async () => {}, 
       if (data.type !== 'capture-transcript' || data.captureId !== current || completed.has('discard:' + current) || data.type === 'capture-transcript' && completed.has(data.utteranceId)) return
       const final = data.final === true
       if (final) { completed.add(data.utteranceId); if (completed.size > 64) completed.delete(completed.values().next().value) }
-      publish({ kind: final ? 'transcript' : 'input', captureId: current, utteranceId: data.utteranceId, text: data.text })
+      publish({ kind: final && !data.requiresConfirmation ? 'transcript' : 'input', captureId: current, utteranceId: data.utteranceId, text: data.text })
     },
     stop() { stopped = true; end(true); pending?.reject(); pending = undefined },
     snapshot: () => ({ captureId: current, wanted }),

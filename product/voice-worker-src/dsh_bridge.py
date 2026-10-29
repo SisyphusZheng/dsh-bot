@@ -31,6 +31,7 @@ from difflib import SequenceMatcher
 import aiohttp
 from wake_phrase import WakePhrase
 from voice_commands import control_kind, normalize
+from input_admission import InputAdmission
 from loguru import logger
 
 
@@ -64,7 +65,7 @@ def _is_interrupt_command(text: str) -> bool:
 
 
 class DSHBridgeProcessor(FrameProcessor):
-    def __init__(self, descriptor_path: str = ""):
+    def __init__(self, descriptor_path: str = "", capture=None):
         super().__init__(name="DSHBridgeProcessor")
         self._wake_phrase = WakePhrase(os.environ.get("DSH_WAKE_PHRASE", ""))
         self._descriptor_path = descriptor_path or os.environ.get("DSH_BRIDGE_DESCRIPTOR", DEFAULT_DESCRIPTOR)
@@ -73,6 +74,10 @@ class DSHBridgeProcessor(FrameProcessor):
         self._pending: deque[str] = deque()
         self._utterance_targets = {}
         self._consumed_controls = {}
+        self._input_admission = InputAdmission()
+        self._capture = capture
+        self._announced_interactions = {}
+        self._spoken_prompts = deque(maxlen=4)
         self._greeting = ""
         self._greeting_until = 0.0
         self._turn_seq = 0
@@ -143,6 +148,8 @@ class DSHBridgeProcessor(FrameProcessor):
     def _input_noise(self, text):
         heard = re.sub(r"[^0-9A-Za-z\u4e00-\u9fff]", "", text or "").lower()
         if not heard or re.fullmatch(r"[嗯啊哦呃额唔]+", heard):
+            return True
+        if any(time.monotonic() < until and self._echo_like(heard, normalize(prompt)) for prompt, until in self._spoken_prompts):
             return True
         greeting = re.sub(r"[^0-9A-Za-z\u4e00-\u9fff]", "", self._greeting).lower()
         if time.monotonic() < self._greeting_until and self._echo_like(heard, greeting):
@@ -237,6 +244,10 @@ class DSHBridgeProcessor(FrameProcessor):
         await super().process_frame(frame, direction)
 
         if isinstance(frame, VADUserStartedSpeakingFrame):
+            if self._capture is not None and self._capture.modes.get(self._capture.current, 'always') == 'always':
+                # Passive VAD is neither speaker identity nor intent. Exact final
+                # controls remain available; background speech cannot stop TTS.
+                return
             cur = self._current
             probe_log(
                 f"[g3-probe] vad_started_bridge turn={cur.get('turn_key') if cur else None} "
@@ -361,7 +372,7 @@ class DSHBridgeProcessor(FrameProcessor):
                         target['task'] = {}
             capture_id = frame.metadata.get("capture_id")
             if capture_id:
-                await self._send_rtvi({"type": "capture-transcript", "text": frame.text, "final": isinstance(frame, TranscriptionFrame), "captureId": capture_id, "utteranceId": frame.metadata.get("utterance_id", capture_id)})
+                await self._send_rtvi({"type": "capture-transcript", "text": frame.text, "final": isinstance(frame, TranscriptionFrame), "requiresConfirmation": frame.metadata.get('input_mode') == 'always', "captureId": capture_id, "utteranceId": frame.metadata.get("utterance_id", capture_id)})
 
         if isinstance(frame, InterimTranscriptionFrame):
             cand = self._barge_candidate
@@ -400,7 +411,8 @@ class DSHBridgeProcessor(FrameProcessor):
                         logger.info(f"[dsh] barge-in candidate rejected as echo: asr={text!r} window_tail={spoken[-60:]!r}")
                         return
                     # Confirm explicit commands or a distinct utterance after echo and stabilization filters.
-                    if not (_is_interrupt_command(heard) or len(heard) >= 4):
+                    deliberate = frame.metadata.get('input_mode', 'hold') in ('hold', 'toggle')
+                    if not (_is_interrupt_command(heard) or deliberate and len(heard) >= 4):
                         self.metrics["barge_noncommand_pending"] += 1
                         logger.info(f"[dsh] barge-in non-command ASR pending: asr={text!r} age={age:.2f} window_tail={spoken[-50:]!r}")
                         if age > 3.0:
@@ -461,7 +473,27 @@ class DSHBridgeProcessor(FrameProcessor):
             if not text:
                 await self.push_frame(frame, direction)
                 return
+            passive = frame.metadata.get('input_mode') == 'always'
+            if passive and self._capture is not None and (not self._capture.enabled or frame.metadata.get('capture_id') != self._capture.current):
+                return
+            if passive and normalize(text) in ('确认发送', '发送这句'):
+                draft = self._input_admission.draft
+                if draft:
+                    await self.confirm_input(draft['id'])
+                else:
+                    await self._control_notice('没有等待发送的语音输入。')
+                return
+            if passive and normalize(text) in ('取消输入', '丢弃输入'):
+                draft = self._input_admission.draft
+                if draft:
+                    await self.discard_input(draft['id'])
+                return
             if await self._handle_control(text, frame.metadata):
+                return
+            if passive:
+                draft = self._input_admission.offer(text, frame.metadata)
+                if draft:
+                    await self._send_rtvi({'type': 'input-confirmation', 'id': draft['id'], 'text': text, 'captureId': frame.metadata.get('capture_id'), 'ttlMs': 30000})
                 return
             # P1: drop final transcripts that closely match the recent spoken window.
             # Short legitimate replies (你好/我在/想聊什么/是/否) must survive; only a
@@ -519,6 +551,61 @@ class DSHBridgeProcessor(FrameProcessor):
     def _utterance_key(metadata):
         return f"{metadata.get('capture_id')}:{metadata.get('utterance_id')}" if metadata.get('utterance_id') else None
 
+    async def confirm_input(self, draft_id, text=None):
+        draft = self._input_admission.take(draft_id, text)
+        if draft and self._capture is not None and (not self._capture.enabled or draft['metadata'].get('capture_id') != self._capture.current):
+            draft = None
+        if draft is None:
+            await self._control_notice('这条语音输入已过期或已处理，请重新说。')
+            await self._send_rtvi({'type': 'input-confirmation-ended', 'id': draft_id})
+            return False
+        await self._send_rtvi({'type': 'input-confirmation-ended', 'id': draft_id})
+        frame = TranscriptionFrame(draft['text'], 'confirmed-user', '')
+        frame.metadata.update(draft['metadata'], input_mode='hold')
+        await self.process_frame(frame, FrameDirection.DOWNSTREAM)
+        return True
+
+    async def discard_input(self, draft_id):
+        removed = self._input_admission.discard(draft_id)
+        if removed:
+            await self._send_rtvi({'type': 'input-confirmation-ended', 'id': draft_id})
+        return removed
+
+    async def announce_pending(self):
+        """Read authoritative pending requests; announce each first request once.
+
+        No tool parameters or private paths are spoken. This also observes work
+        started in the Desktop, outside this connection's voice-turn stream.
+        """
+        snapshot = await self._bridge_request('GET', '/interactions')
+        requests = snapshot.get('requests', [])
+        if not requests:
+            return
+        request = requests[0]
+        key = (request.get('sessionId'), request.get('id'))
+        if not all(key) or key in self._announced_interactions:
+            return
+        if request.get('kind') == 'approval':
+            passive = self._capture is not None and self._capture.modes.get(self._capture.current, 'always') == 'always'
+            prompt = '有一个操作需要你批准，请查看气泡中的详情。说“确认允许一次”或“拒绝”，也可以点击按钮。' if passive else '有一个操作需要你批准，请查看气泡中的详情。说“允许一次”或“拒绝”，也可以点击按钮。'
+        elif request.get('kind') == 'question' and request.get('questions'):
+            question = request['questions'][0]
+            prompt = '需要你回答：' + str(question.get('question') or '')[:160]
+            labels = [str(option.get('label') or '')[:35] for option in question.get('options', [])[:6]]
+            if labels:
+                prompt += '。可选：' + '；'.join(labels)
+            prompt += '。请在气泡中选择或填写回答。'
+        else:
+            return
+        if self._closing:
+            return
+        self._announced_interactions[key] = None
+        if len(self._announced_interactions) > 128:
+            self._announced_interactions.pop(next(iter(self._announced_interactions)))
+        self._spoken_prompts.append((prompt, time.monotonic() + max(15, len(prompt)/3+3)))
+        await self._send_rtvi({'type': 'interaction-prompt', 'id': request['id'], 'kind': request['kind']})
+        await self.push_frame(TTSSpeakFrame(text=prompt))
+
     async def _bridge_request(self, method, path, body=None):
         descriptor = self._load_descriptor()
         async with self._get_session().request(
@@ -538,6 +625,13 @@ class DSHBridgeProcessor(FrameProcessor):
         kind = control_kind(text)
         if kind is None:
             return False
+        if metadata.get('input_mode') == 'always':
+            if kind == 'approval-allow' and normalize(text) != '确认允许一次':
+                await self._control_notice('尚未授权。请明确说“确认允许一次”，或点击气泡。')
+                return True
+            if kind == 'task-stop' and normalize(text) != '确认停止任务':
+                await self._control_notice('任务继续。请说“确认停止任务”，或使用右键菜单停止。')
+                return True
         key = self._utterance_key(metadata)
         if key and key in self._consumed_controls:
             return True
