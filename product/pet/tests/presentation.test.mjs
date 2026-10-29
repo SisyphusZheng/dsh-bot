@@ -256,3 +256,17 @@ test('ambiguous voice options remain pending, explicit custom text and cancelled
  assert.equal(await p.voiceAnswer({answerId:'z',view:old,text:'最后一个'}),false)
  p.stop()
 })
+
+test('assistant text stays visible while TTS is still speaking after turn-end', () => {
+  const f=fixture()
+  f.presentation.event({type:'assistant.message',data:{text:'一条回答'}})
+  f.presentation.event({type:'turn.ended',ioSeq:1,data:{terminal:'completed'}})
+  assert.ok(f.timers.size>0)
+  f.presentation.voice('speaking')
+  assert.equal(f.timers.size,0,'speaking must cancel the short turn-end hide timer')
+  f.presentation.voice('idle')
+  assert.ok(f.timers.size>0,'idle after speaking must schedule a hide')
+  for(const fn of [...f.timers.values()])fn()
+  assert.ok(f.hidden()>0)
+  f.presentation.stop()
+})

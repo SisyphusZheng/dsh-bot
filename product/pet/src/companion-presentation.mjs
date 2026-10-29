@@ -45,6 +45,7 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
   let persistentDraft = false, manager = null, managerEpoch = 0, recovery = null, recoveryEpoch = 0
   let questionIndex = 0, answers = [], selected = [], customInput = false
   let voice = 'idle', working = false, startedAt = 0, inputSource = 'desktop', captureId = '', captureIdentity = '', captureTimer
+  let speechVisible = false, voiceWasSpeaking = false
   let inputDraft = null, inputDraftTimer, inputDraftBusy = false
   let queued = {revision:0,entries:[]}, queueView = null
   let questionView = null, questionSignature = '', questionRevision = 0
@@ -94,6 +95,7 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
   function notice(value, kind = 'status', duration = 4500, capture = '', options = {}) {
     if (stopped || requests.length || manager || recovery || inputDraft || queueView) return
     cancelTimer()
+    speechVisible = kind === 'speech'
     show({ visible: true, kind, text: value, clickThrough: !['input', 'speech'].includes(kind) && !options.secondary?.length, ...(['input','transcript'].includes(kind) ? { title: kind === 'input' ? '我听到（识别中）' : '我听到（已提交）' } : {}), ...(kind === 'input' ? { requestId: capture, cancel: { id: 'cancel-capture', label: '取消录音' } } : {}), ...options })
     if (duration > 0) timer = setTimer(() => { if (!requests.length && !stopped) hide() }, duration)
   }
@@ -262,7 +264,12 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
         const failed = ['failed','error','interrupted','blocked','max-tokens'].includes(event.data?.reason?.kind)
         animation({ id: `turn:${event.ioSeq}`, name: failed ? 'failed' : 'jumping' })
         if (failed) notice('上次任务未完成。先检查结果，再决定是否恢复。','error',0,'',{secondary:[{id:'recover-task',label:'恢复上次任务…'},{id:'inspect-task',label:'检查任务状态'},{id:'open',label:'打开主窗口'}]})
-        else if (!requests.length && !manager && !recovery) { cancelTimer(); timer = setTimer(hide, 1800) }
+        else if (!requests.length && !manager && !recovery) {
+          cancelTimer()
+          // Keep the reply visible while TTS is still playing; the Worker starts audio
+          // after the text turn ends. A fallback hides text-only replies.
+          timer = setTimer(hide, speechVisible ? 12000 : 1800)
+        }
       }
       if (event.type === 'error') {
         working = false
@@ -271,7 +278,17 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
       }
     },
     syncTaskState(state) {if(stopped)return;working=state?.status==='running';if(working&&!startedAt)startedAt=Date.now();animation()},
-    voice(state) { voice = state; animation() },
+    voice(state) {
+      voice = state
+      animation()
+      if (state === 'speaking') { voiceWasSpeaking = true; cancelTimer() }
+      else if (voiceWasSpeaking && (state === 'idle' || state === 'listening') && speechVisible
+        && !working && !requests.length && !inputDraft && !manager && !recovery && !queueView) {
+        voiceWasSpeaking = false
+        cancelTimer()
+        timer = setTimer(hide, 1200)
+      }
+    },
     state: () => ({ working, startedAt, inputSource, waiting: requests.length > 0, queued:queued.entries.length }),
     async action(action) {
       if (stopped) return
