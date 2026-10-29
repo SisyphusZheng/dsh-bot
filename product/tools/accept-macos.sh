@@ -42,7 +42,7 @@ trap cleanup EXIT
 start_app(){
   # LaunchServices need not inherit HOME. Isolation is through user-data-dir.
   node -e 'require("fs").rmSync(process.argv[1],{force:true})' "$RUN/user-data/DevToolsActivePort"
-  env -u ELECTRON_RUN_AS_NODE -u NODE_OPTIONS /usr/bin/open -n -W "$RUN/dsh-bot.app" --args --user-data-dir="$RUN/user-data" --remote-debugging-address=127.0.0.1 --remote-debugging-port=0 > "$RUN/launchservices-$1.log" 2>&1 & OPEN_PID=$!
+  env -u ELECTRON_RUN_AS_NODE -u NODE_OPTIONS /usr/bin/open -n -W --env ELECTRON_RUN_AS_NODE= --stdout "$RUN/launchservices-$1.log" --stderr "$RUN/launchservices-$1.log" "$RUN/dsh-bot.app" --args --user-data-dir="$RUN/user-data" --remote-debugging-address=127.0.0.1 --remote-debugging-port=0 > "$RUN/launchservices-$1.log" 2>&1 & OPEN_PID=$!
   for i in {1..90}; do
     PID=$(node product/tools/find-macos-app-pid.mjs "$RUN/user-data") || return 1
     if [[ -n "$PID" ]]; then return 0; fi
