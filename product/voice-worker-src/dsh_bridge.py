@@ -491,6 +491,8 @@ class DSHBridgeProcessor(FrameProcessor):
             if await self._handle_control(text, frame.metadata):
                 return
             if passive:
+                if self._wake_phrase.admit(text, active=self._current is not None, commit=False) is None:
+                    return
                 draft = self._input_admission.offer(text, frame.metadata)
                 if draft:
                     await self._send_rtvi({'type': 'input-confirmation', 'id': draft['id'], 'text': text, 'captureId': frame.metadata.get('capture_id'), 'ttlMs': 30000})
@@ -626,9 +628,6 @@ class DSHBridgeProcessor(FrameProcessor):
         if kind is None:
             return False
         if metadata.get('input_mode') == 'always':
-            if kind == 'approval-allow' and normalize(text) != '确认允许一次':
-                await self._control_notice('尚未授权。请明确说“确认允许一次”，或点击气泡。')
-                return True
             if kind == 'task-stop' and normalize(text) != '确认停止任务':
                 await self._control_notice('任务继续。请说“确认停止任务”，或使用右键菜单停止。')
                 return True
@@ -647,6 +646,8 @@ class DSHBridgeProcessor(FrameProcessor):
                     await self._control_notice('请明确说“允许一次”或“拒绝”，尚未授权。')
                 elif len(requests) != 1 or requests[0].get('kind') != 'approval':
                     await self._control_notice('没有唯一待批准操作，请在气泡里选择；尚未授权。')
+                elif metadata.get('input_mode') == 'always' and kind == 'approval-allow' and normalize(text) != '确认允许一次':
+                    await self._control_notice('尚未授权。请明确说“确认允许一次”，或点击气泡。')
                 else:
                     request = requests[0]
                     result = await self._bridge_request('POST', '/approval', {

@@ -8,14 +8,16 @@ class WakePhrase:
         self.window_seconds = window_seconds
         self.until = 0.0
 
-    def admit(self, text: str, *, active: bool = False, now: float | None = None) -> str | None:
+    def admit(self, text: str, *, active: bool = False, now: float | None = None, commit: bool = True) -> str | None:
         now = time.monotonic() if now is None else now
         if not self.phrase:
             return text
         if text.startswith(self.phrase):
-            self.until = now + self.window_seconds
+            if commit:
+                self.until = now + self.window_seconds
             return text[len(self.phrase):].lstrip(" ，,。.!！?？：:")
         if active or now < self.until:
-            self.until = now + self.window_seconds
+            if commit:
+                self.until = now + self.window_seconds
             return text
         return None

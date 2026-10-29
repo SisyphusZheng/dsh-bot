@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, patch
 from capture_policy import CapturePolicy
 from dsh_bridge import DSHBridgeProcessor
 from input_admission import InputAdmission
+from wake_phrase import WakePhrase
 from pipecat.frames.frames import TranscriptionFrame, InterimTranscriptionFrame, VADUserStartedSpeakingFrame, TTSSpeakFrame
 from pipecat.processors.frame_processor import FrameProcessor, FrameDirection
 
@@ -95,6 +96,22 @@ class PassiveBridge(unittest.IsolatedAsyncioTestCase):
         p._bridge_request.side_effect=[{'requests':[{'id':'a','sessionId':'s','kind':'approval'}]},{'ok':True}]
         await self.feed(p,'确认允许一次','u2')
         self.assertEqual(p._bridge_request.call_args.args,('POST','/approval',{'id':'a','sessionId':'s','decision':'allow'}))
+
+    async def test_short_yes_without_an_approval_remains_a_confirmable_chat_reply(self):
+        p=self.make();await self.feed(p,'是')
+        self.assertEqual(p._input_admission.draft['text'],'是')
+        p._start_next_turn.assert_not_awaited()
+
+    async def test_required_address_phrase_is_preserved_and_draft_does_not_open_its_window(self):
+        p=self.make();p._wake_phrase=WakePhrase('Nisse')
+        await self.feed(p,'房间里的其他人在说话')
+        self.assertIsNone(p._input_admission.draft)
+        await self.feed(p,'Nisse，请打开浏览器','u2')
+        draft=p._input_admission.draft
+        self.assertEqual(p._wake_phrase.until,0)
+        with patch.object(FrameProcessor,'process_frame',new=AsyncMock()):
+            self.assertTrue(await p.confirm_input(draft['id']))
+        self.assertEqual(list(p._pending),['请打开浏览器'])
 
     async def test_muted_or_superseded_capture_cannot_confirm_an_old_draft(self):
         capture=CapturePolicy(True);capture.control('start','c','always')

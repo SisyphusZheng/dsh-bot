@@ -1,7 +1,8 @@
 import { productPackagingInputs } from './fixtures/product-packaging-inputs.ts'
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
+import { join } from 'node:path'
 import type { NotarizeOptions } from '@electron/notarize'
 import {
   resolveDesktopAppId,
@@ -13,6 +14,13 @@ import {
   assertMacOSRuntimeSignatureDetails,
   assertMacOSSignatureDetails,
 } from '../scripts/verify-macos-signature.mjs'
+
+const adHocSign = vi.hoisted(() => vi.fn())
+vi.mock('../../../product/tools/verify-macos-app.mjs', async importOriginal => ({
+  ...await importOriginal<typeof import('../../../product/tools/verify-macos-app.mjs')>(),
+  signMacAppAdHoc: adHocSign,
+}))
+beforeEach(() => { adHocSign.mockReset() })
 
 const require = createRequire(import.meta.url)
 const { validateConfiguration } = require('app-builder-lib/out/util/config/config.js') as {
@@ -171,7 +179,12 @@ describe('desktop macOS release signature', () => {
     expect(config.dmg).toMatchObject({ sign: false, writeUpdateInfo: false })
     expect(config.publish).toBeNull()
     expect(config.extraMetadata).not.toHaveProperty('dshMandatoryUpdatePolicy')
-    await expect(config.afterSign({ electronPlatformName: 'darwin' } as Parameters<typeof config.afterSign>[0])).resolves.toBeUndefined()
+    const appOutDir = join(inputs.root, `unsigned-${arch}`)
+    const context = { electronPlatformName: 'darwin', appOutDir, packager: { appInfo: { productFilename: 'dsh-bot' } } }
+    await expect(config.afterSign(context as Parameters<typeof config.afterSign>[0])).resolves.toBeUndefined()
+    expect(adHocSign).toHaveBeenCalledExactlyOnceWith(join(appOutDir, 'dsh-bot.app'))
+    adHocSign.mockImplementationOnce(() => { throw new Error('fixture: invalid ad-hoc signature') })
+    await expect(config.afterSign(context as Parameters<typeof config.afterSign>[0])).rejects.toThrow('invalid ad-hoc signature')
     expect(config.artifactBuildCompleted({ file: '/tmp/local-unsigned.dmg' })).toBeUndefined()
   })
 
