@@ -207,8 +207,12 @@ export function createBubbleWindowController({
       },
     })
     try {
-      window.setAlwaysOnTop(true, 'floating')
-      window.setVisibleOnAllWorkspaces?.(true, { visibleOnFullScreen: true })
+      // `floating` is above normal windows but is ordered *behind* an active
+      // full-screen DSH window on macOS. The pet must remain visible over its
+      // own full-screen workspace, so use the screen-saver level and keep the
+      // process type stable with skipTransformProcessType.
+      window.setAlwaysOnTop(true, 'screen-saver')
+      window.setVisibleOnAllWorkspaces?.(true, { visibleOnFullScreen: true, skipTransformProcessType: true })
     } catch (error) {
       logger?.warn?.('desktop.bubble_window_flags_failed', { error: String(error?.message || error) })
     }
