@@ -21,6 +21,7 @@ import {
 import { smokePrimaryRuntime } from './prepare-primary-runtime.ts'
 import { smokePreparedRuntime } from './smoke-prepared-runtime.ts'
 import { prepareRuntimeManifests } from './prepare-runtime-manifests.ts'
+import { signAdHocResources } from '../../../product/tools/verify-macos-app.mjs'
 import { prepareRuntimePatches, verifyRuntimePatches } from './prepare-runtime-patches.ts'
 import { writeDesktopRuntime, verifyDesktopRuntime } from '../src/runtime-tree.ts'
 import {
@@ -149,6 +150,14 @@ async function main(): Promise<void> {
       name: '@deepseek-ai/dsh-desktop-runtime', private: true, version: release.version, type: 'module',
       dependencies: Object.fromEntries(packageSet.packages.map(entry => [entry.name, entry.version])),
     }, undefined, 2)}\n`)
+    // Ad-hoc repair must happen before the descriptor inventory is written: signing a
+    // Mach-O changes its bytes, and the ASAR integrity check compares those exact bytes.
+    if (process.platform === 'darwin' && process.env.DSH_DESKTOP_UNSIGNED === '1') {
+      await packagingStep(process.env.DSH_DESKTOP_PACKAGING_RUN_DIR, 'sign:dsh-ad-hoc', async () => {
+        signAdHocResources(DSH_OUTPUT_ROOT)
+        signAdHocResources(join(RUNTIME_ROOT, 'primary-runtime'))
+      })
+    }
     for (const file of DESKTOP_HOST_RUNTIME_FILES) {
       if (!existsSync(join(DSH_OUTPUT_ROOT, 'node_modules', DESKTOP_HOST_PACKAGE, file))) {
         throw new Error(`desktop runtime: missing private Host file ${file}`)
