@@ -4,6 +4,18 @@ umask 077
 export HF_HUB_DISABLE_XET=1
 export HINDSIGHT_API_EMBEDDINGS_PROVIDER=onnx HINDSIGHT_API_RERANKER_PROVIDER=rrf
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
+# Finder can recreate .DS_Store between rm and rmdir; retry and strip metadata.
+clean_dir() {
+  local dir="$1"
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    find "$dir" -name .DS_Store -delete 2>/dev/null || true
+    rm -rf "$dir" 2>/dev/null || true
+    [[ ! -e "$dir" ]] && return 0
+    sleep 0.2
+  done
+  rm -rf "$dir"
+}
+
 STAGE="$ROOT/.mvv-build"
 PYTHON="$STAGE/memory-venv/bin/python"
 export MACOSX_DEPLOYMENT_TARGET=14.0
@@ -34,11 +46,11 @@ cp -R "$STAGE/pg0-build-home/.pg0/installation/18.1.0" "$STAGE/memory/runtime/pg
 # an existing output tree between PyInstaller's cleanup attempts, which makes
 # --noconfirm fail with ENOTEMPTY. A fresh distpath avoids deleting anything.
 DIST_TMP="$STAGE/memory-dist-build.$$"
-rm -rf "$DIST_TMP"
+clean_dir "$DIST_TMP"
 (cd "$ROOT/product/memory" && "$STAGE/memory-venv/bin/pyinstaller" HindsightAPI.spec --distpath "$DIST_TMP" --workpath "$STAGE/memory-build" --noconfirm)
-rm -rf "$STAGE/memory-dist"
+clean_dir "$STAGE/memory-dist"
 mv "$DIST_TMP" "$STAGE/memory-dist"
-rm -rf "$STAGE/memory/runtime/hindsight"
+clean_dir "$STAGE/memory/runtime/hindsight"
 cp -R "$STAGE/memory-dist/HindsightAPI" "$STAGE/memory/runtime/hindsight"
 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 "$STAGE/memory/runtime/hindsight/HindsightAPI" --check-embeddings "$STAGE/memory/runtime/models/Xenova/multilingual-e5-small"
 for name in sidecar.mjs scripts adapter; do rm -rf "$STAGE/memory/$name"; cp -R "$ROOT/product/memory/$name" "$STAGE/memory/"; done
