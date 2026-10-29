@@ -1,0 +1,324 @@
+[
+  {
+    "text": "",
+    "phase": "idle",
+    "enabled": false,
+    "transportPhase": "off",
+    "notify": false,
+    "kind": "status",
+    "captureId": "",
+    "utteranceId": ""
+  },
+  {
+    "text": "正在连接语音…",
+    "phase": "processing",
+    "enabled": false,
+    "transportPhase": "connecting",
+    "notify": true,
+    "kind": "status",
+    "captureId": "",
+    "utteranceId": ""
+  },
+  {
+    "text": "你好，我在呢。想聊什么，或者有什么需要我帮忙的？",
+    "phase": "speaking",
+    "enabled": false,
+    "transportPhase": "connecting",
+    "notify": true,
+    "kind": "speech",
+    "captureId": "",
+    "utteranceId": ""
+  },
+  {
+    "text": "",
+    "phase": "speaking",
+    "enabled": false,
+    "transportPhase": "connecting",
+    "notify": false,
+    "kind": "status",
+    "captureId": "",
+    "utteranceId": ""
+  },
+  {
+    "text": "你好，我在呢。想聊什么，或者有什么需要我帮忙的？",
+    "phase": "speaking",
+    "enabled": false,
+    "transportPhase": "connecting",
+    "notify": true,
+    "kind": "speech",
+    "captureId": "",
+    "utteranceId": ""
+  },
+  {
+    "notify": false,
+    "kind": "media",
+    "mediaSettings": {
+      "echoCancellation": true,
+      "noiseSuppression": true,
+      "autoGainControl": true
+    }
+  },
+  {
+    "text": "",
+    "phase": "idle",
+    "enabled": false,
+    "transportPhase": "connecting",
+    "notify": false,
+    "kind": "status",
+    "captureId": "",
+    "utteranceId": ""
+  },
+  {
+    "text": "正在听…",
+    "phase": "listening",
+    "enabled": false,
+    "transportPhase": "connecting",
+    "notify": true,
+    "kind": "capture-start",
+    "captureId": "4b90e399-6db3-46ac-b06d-f974d496430b",
+    "utteranceId": ""
+  },
+  {
+    "text": "我在听，你说。",
+    "phase": "listening",
+    "enabled": true,
+    "transportPhase": "listening",
+    "notify": true,
+    "kind": "status",
+    "captureId": "",
+    "utteranceId": ""
+  },
+  {
+    "text": "",
+    "phase": "listening",
+    "enabled": true,
+    "transportPhase": "listening",
+    "notify": false,
+    "kind": "status",
+    "captureId": "",
+    "utteranceId": ""
+  },
+  {
+    "text": "",
+    "phase": "processing",
+    "enabled": true,
+    "transportPhase": "listening",
+    "notify": true,
+    "kind": "capture-end",
+    "captureId": "4b90e399-6db3-46ac-b06d-f974d496430b",
+    "utteranceId": ""
+  },
+  {
+    "text": "",
+    "phase": "processing",
+    "enabled": true,
+    "transportPhase": "listening",
+    "notify": true,
+    "kind": "capture-end",
+    "captureId": "4b90e399-6db3-46ac-b06d-f974d496430b",
+    "utteranceId": ""
+  },
+  {
+    "text": "请记录测试偏好",
+    "phase": "listening",
+    "enabled": true,
+    "transportPhase": "listening",
+    "notify": true,
+    "kind": "input",
+    "captureId": "4b90e399-6db3-46ac-b06d-f974d496430b",
+    "utteranceId": "intent-1"
+  },
+  {
+    "text": "请记录测试偏好",
+    "phase": "listening",
+    "enabled": true,
+    "transportPhase": "listening",
+    "notify": true,
+    "kind": "input",
+    "captureId": "4b90e399-6db3-46ac-b06d-f974d496430b",
+    "utteranceId": "intent-1"
+  },
+  {
+    "text": "请记录测试偏好",
+    "phase": "listening",
+    "enabled": true,
+    "transportPhase": "listening",
+    "notify": true,
+    "kind": "input-confirmation",
+    "captureId": "4b90e399-6db3-46ac-b06d-f974d496430b",
+    "utteranceId": "",
+    "draftId": "402af576ad44453698042659cfd1005a",
+    "ttlMs": 30000
+  },
+  {
+    "text": "",
+    "phase": "idle",
+    "enabled": true,
+    "transportPhase": "listening",
+    "notify": false,
+    "kind": "input-confirmation-ended",
+    "captureId": "",
+    "utteranceId": "",
+    "draftId": "402af576ad44453698042659cfd1005a"
+  },
+  {
+    "text": "这条语音输入已过期或已处理，请重新说。",
+    "phase": "listening",
+    "enabled": true,
+    "transportPhase": "listening",
+    "notify": true,
+    "kind": "status",
+    "captureId": "",
+    "utteranceId": ""
+  },
+  {
+    "text": "",
+    "phase": "idle",
+    "enabled": true,
+    "transportPhase": "listening",
+    "notify": false,
+    "kind": "input-confirmation-ended",
+    "captureId": "",
+    "utteranceId": "",
+    "draftId": "402af576ad44453698042659cfd1005a"
+  },
+  {
+    "text": "好的，已收到测试请求。",
+    "phase": "speaking",
+    "enabled": true,
+    "transportPhase": "listening",
+    "notify": true,
+    "kind": "speech",
+    "captureId": "",
+    "utteranceId": ""
+  },
+  {
+    "text": "需要你回答：文档用什么内容？。可选：之前的文章；新文章。请在气泡中选择或填写回答。",
+    "phase": "speaking",
+    "enabled": true,
+    "transportPhase": "listening",
+    "notify": true,
+    "kind": "speech",
+    "captureId": "",
+    "utteranceId": ""
+  },
+  {
+    "text": "",
+    "phase": "processing",
+    "enabled": true,
+    "transportPhase": "listening",
+    "notify": true,
+    "kind": "capture-end",
+    "captureId": "4b90e399-6db3-46ac-b06d-f974d496430b",
+    "utteranceId": ""
+  },
+  {
+    "text": "",
+    "phase": "processing",
+    "enabled": true,
+    "transportPhase": "listening",
+    "notify": true,
+    "kind": "capture-end",
+    "captureId": "4b90e399-6db3-46ac-b06d-f974d496430b",
+    "utteranceId": ""
+  },
+  {
+    "text": "",
+    "phase": "idle",
+    "enabled": false,
+    "transportPhase": "muted",
+    "notify": false,
+    "kind": "status",
+    "captureId": "",
+    "utteranceId": ""
+  },
+  {
+    "text": "",
+    "phase": "processing",
+    "enabled": false,
+    "transportPhase": "muted",
+    "notify": true,
+    "kind": "capture-end",
+    "captureId": "4b90e399-6db3-46ac-b06d-f974d496430b",
+    "utteranceId": ""
+  },
+  {
+    "text": "",
+    "phase": "idle",
+    "enabled": false,
+    "transportPhase": "muted",
+    "notify": false,
+    "kind": "status",
+    "captureId": "",
+    "utteranceId": ""
+  },
+  {
+    "notify": false,
+    "kind": "media",
+    "mediaSettings": {
+      "echoCancellation": true,
+      "noiseSuppression": true,
+      "autoGainControl": true
+    }
+  },
+  {
+    "text": "",
+    "phase": "idle",
+    "enabled": false,
+    "transportPhase": "muted",
+    "notify": false,
+    "kind": "status",
+    "captureId": "",
+    "utteranceId": ""
+  },
+  {
+    "text": "正在听…",
+    "phase": "listening",
+    "enabled": false,
+    "transportPhase": "muted",
+    "notify": true,
+    "kind": "capture-start",
+    "captureId": "75fb48cd-ca51-48a1-bf49-97261b3354be",
+    "utteranceId": ""
+  },
+  {
+    "text": "",
+    "phase": "listening",
+    "enabled": true,
+    "transportPhase": "listening",
+    "notify": false,
+    "kind": "status",
+    "captureId": "",
+    "utteranceId": ""
+  },
+  {
+    "text": "",
+    "phase": "processing",
+    "enabled": true,
+    "transportPhase": "listening",
+    "notify": true,
+    "kind": "capture-end",
+    "captureId": "75fb48cd-ca51-48a1-bf49-97261b3354be",
+    "utteranceId": ""
+  },
+  {
+    "text": "",
+    "phase": "processing",
+    "enabled": false,
+    "transportPhase": "listening",
+    "notify": true,
+    "kind": "capture-end",
+    "captureId": "75fb48cd-ca51-48a1-bf49-97261b3354be",
+    "utteranceId": ""
+  },
+  {
+    "text": "语音已关闭",
+    "phase": "idle",
+    "enabled": false,
+    "transportPhase": "off",
+    "notify": true,
+    "kind": "status",
+    "captureId": "",
+    "utteranceId": ""
+  }
+]

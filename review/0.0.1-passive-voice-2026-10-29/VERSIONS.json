@@ -1,0 +1,31 @@
+{
+  "sourceCommit": "973a5488b2d4f15c662645924da5dc536fcd56ca",
+  "sourceTree": "69955d4b53eb564199f127a04e20cca9ff6d07e7",
+  "product": "0.0.1-beta",
+  "runtime": "0.2.1-rc.3",
+  "platform": {
+    "system": "Linux",
+    "arch": "x86_64",
+    "node": "v24.22.1",
+    "python": "3.12.14"
+  },
+  "pythonPackages": {
+    "pipecat-ai": "1.13.0",
+    "aiortc": "1.15.0",
+    "av": "17.1.0",
+    "websockets": "16.1.1",
+    "pyinstaller": "6.20.0",
+    "markdown": "3.11.2"
+  },
+  "linuxWorker": {
+    "binarySha256": "98e8a097f114156576088304aea5d6de2991599b30d18601e13c7d22c0295835",
+    "files": 1565,
+    "totalFileBytes": 699819048
+  },
+  "inputHashes": {
+    "pnpm-lock.yaml": "df3fa728858b532d5177ccd55f6a124dcc65312008b7b1756a3dfea254ac816b",
+    "product/voice-worker-src/requirements.in": "24e62492ec4210c08212f7b717392cb416b3209cc08b33ccce676b42cd0f0a16",
+    "product/voice-worker-src/requirements-macos.lock": "25f50968d35614d5b05dd404c980e8b0f370dd02b3c3d99e5fec53f8b605fa38",
+    "product/voice-worker-src/VoiceWorker.spec": "0afc1b1b00ec55e1f2219d7fe7061fe623432368e1ba0c0b4597d176a9d0bd1e"
+  }
+}

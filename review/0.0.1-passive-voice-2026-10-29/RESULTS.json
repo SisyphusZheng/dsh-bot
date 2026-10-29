@@ -1,0 +1,141 @@
+{
+  "sourceCommit": "973a5488b2d4f15c662645924da5dc536fcd56ca",
+  "sourceTree": "69955d4b53eb564199f127a04e20cca9ff6d07e7",
+  "baseCommit": "1e9ebba613de11dea4ef14b72590c7969e146275",
+  "branch": "work/0.0.1-closure",
+  "status": "PASS",
+  "scope": "Cloud executable product gates only; MVP candidate for local Mac acceptance; unresolved issues remain explicitly listed in STATUS.zh.md",
+  "checks": {
+    "verifyLocal": {
+      "command": "bash product/tools/verify-local.sh",
+      "exitCode": 0,
+      "nodeTests": 82,
+      "vitestFiles": 22,
+      "vitestTests": 477,
+      "pythonTests": 61,
+      "typescriptGates": 5,
+      "buildGates": 9,
+      "mediaCases": [
+        "deliberate capture",
+        "passive confirmation + approval speech",
+        "passive confirmation + question speech"
+      ]
+    },
+    "upstream": {
+      "files": 16347,
+      "explicitOverrides": 43,
+      "status": "PASS"
+    },
+    "linuxFrozenWorker": {
+      "status": "PASS",
+      "macOSArtifact": false,
+      "cloudCertificateAdapter": true
+    },
+    "nativeMac": "BLOCKED-ENVIRONMENT",
+    "realAcoustics": "BLOCKED-ENVIRONMENT",
+    "realProviderAndPersonalMemory": "BLOCKED-EXTERNAL",
+    "historicalTranslationDebt": "DEFERRED"
+  },
+  "evidence": [
+    {
+      "path": "evidence/frozen-product-gate.log.gz",
+      "sha256": "2a40a4991b76ff3e168d98b8004d16f6be2a382f86d339e8e75138ec7c58c33e",
+      "bytes": 9428,
+      "scope": "Final frozen source; verify-local.sh exit 0",
+      "rawSha256": "f283842a61437d14c870de8a6919a7fd040fbfd0da60c18384c4d01e3a6e3961"
+    },
+    {
+      "path": "evidence/frozen-worker-build.log.gz",
+      "sha256": "085066cc28c10991b49d4cbdf6e5e4cdb5bff1c4dc172070b1c0dfa60ca88816",
+      "bytes": 5411,
+      "scope": "Final frozen source; actual Linux PyInstaller build",
+      "rawSha256": "27134fb714521ed811b4dafe9788c5aa40add2ccff6988273c623e1c4b370c2d"
+    },
+    {
+      "path": "evidence/frozen-worker-smoke.log.gz",
+      "sha256": "5202d69d6f73d787ee8127fe67af29a9112b2372f7889c9b33a44b6521dea081",
+      "bytes": 104,
+      "scope": "Final frozen source; actual Linux binary start/auth/exit with declared cloud certificate adapter",
+      "rawSha256": "97a8a19e17e0318752454accda5061216a55783ace094879bb1b700952db8016"
+    },
+    {
+      "path": "evidence/frozen-worker-archive.txt.gz",
+      "sha256": "973822c8d18a8146556bbb23f033b907b62934b0be63f448b67d128014c65cb2",
+      "bytes": 60750,
+      "scope": "Archive inventory; includes input_admission and Pipecat Markdown filter",
+      "rawSha256": "2628dc34158eaaac0949c9bc4549ec1c5895390b5d61b3ad3859645484846f7a"
+    },
+    {
+      "path": "evidence/first-gate-diagnosis.log.gz",
+      "sha256": "11b0fa9fa7f4161eabdab9ee6852c693317108d6f1fa0fb8408430f43d51fbd7",
+      "bytes": 5015,
+      "scope": "Earlier non-frozen diagnosis: two outdated macOS signature fixtures failed; not final-source evidence",
+      "rawSha256": "ca21ad429274550234b0e4b67227c36cd018b9de82839278a1bd00ba87adad55"
+    },
+    {
+      "path": "evidence/passive-admission-negative-control.log.gz",
+      "sha256": "1ad6a2016143ffe70dceb2c20cd1e16cd502547fa18bec4dd50e8a10d235f09e",
+      "bytes": 727,
+      "scope": "Earlier development negative control: unsafe automatic admission fails regression; restored afterward",
+      "rawSha256": "912b8222c14ddd5becf8fdad48a2c9c94b3f1fbf5cc683192e8ae9005ae65927"
+    },
+    {
+      "path": "evidence/earlier-host-web-smoke.log.gz",
+      "sha256": "ffdcc58ee264ba2682e981e9f8434d1aa605894028250b262a73411813fcec0e",
+      "bytes": 673,
+      "scope": "Additional real full Web boot/navigation at b2ba6634, not a final-source rerun",
+      "rawSha256": "21aa17d338dff99eeff7549ed7c330fdabcc876d39eeccee938693ed39f0184a"
+    },
+    {
+      "path": "evidence/frozen-cloud-adapter.json",
+      "sha256": "5a3eb25c85055ebf54d19ab38a2d12f315d87b11f5fd941a1e2547836834a496",
+      "bytes": 411,
+      "scope": "Unchanged cloud Python certificate policy; TLS checking preserved"
+    },
+    {
+      "path": "evidence/built-resources.json",
+      "sha256": "781c2e9ac12e25c596fa9610085d554ef54dd6ebf0b50c5a45b86612a14ac103",
+      "bytes": 6452,
+      "scope": "Final-source production resource hashes"
+    },
+    {
+      "path": "evidence/long-question-scroll.png",
+      "sha256": "8179af7c55d506e8f6b331699f392cf7e463f5deb0b3e8e692ded51c24bf4732",
+      "bytes": 218107,
+      "scope": "Final-source shipped Chromium renderer and dynamic viewport; explicit IPC fixture"
+    },
+    {
+      "path": "evidence/input-confirmation.png",
+      "sha256": "a31b3770dde892ab64666a278bfc20f64a647c98409660db7ce18aa1b76c0ff7",
+      "bytes": 118650,
+      "scope": "Final-source shipped correction UI; explicit IPC fixture"
+    },
+    {
+      "path": "evidence/question-media-metrics.json",
+      "sha256": "ffbb7c8072c406d2f113c03f27c6d154d15b622cb8e3190c90f708f2e74dfbe3",
+      "bytes": 2734,
+      "scope": "Last of three final-source media runs: passive confirmation plus question announcement"
+    },
+    {
+      "path": "evidence/question-media-statuses.json",
+      "sha256": "28eac292031f560ddacb8cb6718bffebd91fa3aba1a02e32af49c8137ef45e57",
+      "bytes": 7288,
+      "scope": "Last of three final-source media runs: SDK status projection; Provider/Bridge fixtures"
+    },
+    {
+      "path": "evidence/question-media-worker.log.gz",
+      "sha256": "f39805b661b1d9f69cdceecab02d40e6730c419b85876ff1132cd603971f0729",
+      "bytes": 4684,
+      "scope": "Last final-source media run raw worker/browser output",
+      "rawSha256": "a26da5c1f58466c886bac7ae385957a9543f4d7ed8a4c3a6b9fce81e5235cd77"
+    },
+    {
+      "path": "evidence/linux-worker-files.json.gz",
+      "sha256": "c9fe963c9805c550fcf10c145aa87f911548efccb352829ab982d0fb8ffb6e0a",
+      "bytes": 74442,
+      "scope": "Final-source Linux frozen distribution inventory; distribution itself is not committed or a Mac artifact",
+      "rawSha256": "adf28b0323c2a98cb08693249fa6fdb5116fe8af8049a6c4df4761c24857e72e"
+    }
+  ],
+  "recordedAt": "2026-10-29T07:09:51.571611+00:00"
+}
