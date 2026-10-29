@@ -28,6 +28,7 @@ type Presentation = {
   action(value: object): Promise<void>
   state(): { working: boolean; startedAt: number; inputSource: string; waiting: boolean }
   managePolicies(): Promise<void>
+  recoverTask(): Promise<void>
   stop(): void
 }
 type BubbleController = {
@@ -399,6 +400,7 @@ export class ProductPet {
       const active = this.presentation?.state().working === true
       Menu.buildFromTemplate([
         ...(this.experience?.menu() ?? []),
+        { label: '恢复上次任务…', click: () => { void this.presentation?.recoverTask() } },
         { label: '检查任务状态', click: () => { void this.inspectTask() } },
         { label: '管理持续授权…', click: () => { void this.presentation?.managePolicies() } },
         ...(active ? [{ label: '停止任务', click: () => { void this.request('/cancel', { source: 'task-stop' }).catch(() => this.presentation?.notice('停止失败，请打开 DSH 查看。', 'error')) } }] : []),

@@ -2367,7 +2367,7 @@ describe('ChatView', () => {
       '本轮运行失败plugin exploded',
       '本轮运行失败当前请求的额度已用尽QUOTA',
       '本轮运行失败当前请求的额度已用尽ACCOUNT_QUOTA',
-      '任务已停止DSH 进程在本轮完成前退出（例如被强制结束、崩溃或关闭超时），重新启动后本轮已中止。未完成的工具调用结果未知。',
+      '任务已停止上次任务被中断。已有内容已保留，但部分操作可能已执行；请先检查结果，再继续或重新提交。',
     ])
     // The transient notice is the frame-wide host's job; the failure row keeps
     // neither a recharge affordance nor a toast of its own.

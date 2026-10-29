@@ -42,7 +42,7 @@ try {
  assert.ok(await pet.locator('#microphone').isEnabled());await page.mouse.move(0,0)
  await bubble.waitForFunction(()=>getComputedStyle(document.getElementById('bubble')).opacity==='0')
  renders=Promise.resolve()
- presentation=createCompanionPresentation({show:payload=>{renders=renders.then(()=>bubble.evaluate(p=>window.receiveBubble(p),payload))},hide:()=>{renders=renders.then(()=>bubble.evaluate(()=>window.receiveBubble({visible:false})))},animate:payload=>{renders=renders.then(()=>pet.evaluate(p=>window.receivePresentation(p),payload))},send:async(...args)=>calls.push(args)})
+ presentation=createCompanionPresentation({show:payload=>{renders=renders.then(()=>bubble.evaluate(p=>window.receiveBubble(p),payload))},hide:()=>{renders=renders.then(()=>bubble.evaluate(()=>window.receiveBubble({visible:false})))},animate:payload=>{renders=renders.then(()=>pet.evaluate(p=>window.receivePresentation(p),payload))},send:async(...args)=>{calls.push(args);return args[0]==='/task/recovery'&&!args[1]?{token:'ui-recovery',originalText:'整理报告并核对已完成步骤',warning:'原操作可能已执行，请先检查副作用。'}:undefined}})
  await page.screenshot({path:join(output,'idle.png')})
  const snapshot=requests=>({pid:123,sessionId:'ui-session',requests})
  presentation.sync(snapshot([{id:'choice',kind:'question',sessionId:'ui-session',questions:[{id:'destination',question:'这次旅行想去哪里？',options:[{label:'杭州',description:'西湖边散步，行程轻松。'},{label:'上海'},{label:'苏州'},{label:'南京'},{label:'暂时不去'}]}]}]));await renders
@@ -119,6 +119,15 @@ try {
  assert.match(await bubble.locator('#bubble-text').textContent(),/运行命令/)
  await bubble.getByRole('button',{name:'拒绝',exact:true}).click();await renders
  assert.equal(calls.at(-1)[1].decision,'reject')
+ presentation.sync(snapshot([]));await renders
+ await presentation.recoverTask();await renders
+ await bubble.getByRole('button',{name:/^重新提交原指令/}).click();await renders
+ assert.equal(calls.at(-1)[1],undefined,'Mode selection executed before confirmation')
+ await bubble.getByRole('button',{name:'返回',exact:true}).click();await renders
+ await bubble.getByRole('button',{name:/^检查后继续/}).click();await renders
+ await page.screenshot({path:join(output,'recovery-confirm.png')})
+ await bubble.getByRole('button',{name:'确认检查后继续',exact:true}).click();await renders
+ assert.deepEqual(calls.at(-1),['/task/recovery',{token:'ui-recovery',mode:'continue',confirmSideEffects:true}])
  presentation.sync(snapshot([]));await renders
  await bubble.waitForFunction(()=>getComputedStyle(document.getElementById('bubble')).opacity==='0')
  experience=createPetExperience({home,window:{isDestroyed:()=>false,webContents:{send(){}}},emit(){},show:payload=>{renders=renders.then(()=>bubble.evaluate(p=>window.receiveBubble(p),payload))},hide:()=>{renders=renders.then(()=>bubble.evaluate(()=>window.receiveBubble({visible:false})))},shortcuts:{register:()=>true,unregister(){}},request:async()=>({ok:true,config:{}})})

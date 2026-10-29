@@ -41,7 +41,7 @@ import { activityBubblePayload } from './activity-bubble.mjs'
 
 export function createCompanionPresentation({ show, hide, animate, send, setTimer = setTimeout, clearTimer = clearTimeout }) {
   let requests = [], identity = '', text = '', timer, busy = false, stopped = false
-  let persistentDraft = false, manager = null, managerEpoch = 0
+  let persistentDraft = false, manager = null, managerEpoch = 0, recovery = null, recoveryEpoch = 0
   let questionIndex = 0, answers = [], selected = [], customInput = false
   let voice = 'idle', working = false, startedAt = 0, inputSource = 'desktop', captureId = '', captureIdentity = '', captureTimer
   const expiredInputs = new Set()
@@ -80,9 +80,9 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
     })
   }
   function notice(value, kind = 'status', duration = 4500, capture = '', options = {}) {
-    if (stopped || requests.length || manager) return
+    if (stopped || requests.length || manager || recovery) return
     cancelTimer()
-    show({ visible: true, kind, text: value, clickThrough: !['input', 'speech'].includes(kind), ...(kind === 'input' ? { requestId: capture, cancel: { id: 'cancel-capture', label: '取消录音' }, inputLabel: '你说' } : {}), ...options })
+    show({ visible: true, kind, text: value, clickThrough: !['input', 'speech'].includes(kind) && !options.secondary?.length, ...(kind === 'input' ? { requestId: capture, cancel: { id: 'cancel-capture', label: '取消录音' }, inputLabel: '你说' } : {}), ...options })
     if (duration > 0) timer = setTimer(() => { if (!requests.length && !stopped) hide() }, duration)
   }
   function renderManager(hint = '') {
@@ -95,6 +95,7 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
   async function managePolicies() {
     if (stopped) return
     if (requests.length || busy) { if (requests.length) render('请先处理当前请求，再管理持续授权。'); return }
+    recovery = null; recoveryEpoch++
     const epoch = ++managerEpoch
     try {
       const response = await send('/policies')
@@ -102,6 +103,26 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
       manager = { id: `grants:${epoch}`, rules: response.rules || [] }
       cancelTimer(); renderManager(response.error || '')
     } catch { notice('读取持续授权失败，请稍后重试。', 'error') }
+  }
+  function renderRecovery(hint = '') {
+    if (!recovery || requests.length || stopped) return
+    const mode = recovery.mode
+    show({visible:true,kind:'action',requestId:`recovery:${recovery.token}`,title:mode ? '确认恢复任务' : '恢复上次任务',busy,clickThrough:false,
+      text: mode === 'retry' ? '重新提交会开启新一轮任务，可能重复已经执行过的操作。确认结果和副作用后再执行。' : mode === 'continue' ? '将请 Nisse 先核对已完成内容和副作用，只继续未完成部分；无法确认时先询问你。' : recovery.warning,
+      details:[`原指令：${recovery.originalText}`], hint,
+      choices:mode ? [] : [{id:'continue',label:'检查后继续',description:'先核对结果，只处理未完成部分。'},{id:'retry',label:'重新提交原指令',description:'可能重复执行；下一步仍需确认。'}],
+      secondary:[...(mode ? [{id:'recovery-confirm',label:mode==='continue'?'确认检查后继续':'确认重新提交'},{id:'recovery-back',label:'返回'}] : []),{id:'recovery-close',label:'暂不恢复'}]})
+  }
+  async function recoverTask() {
+    if (stopped) return
+    if (requests.length || busy) { if (requests.length) render('请先处理当前请求。'); return }
+    manager = null; managerEpoch++
+    const epoch = ++recoveryEpoch
+    try {
+      const preview = await send('/task/recovery')
+      if (stopped || requests.length || epoch !== recoveryEpoch) return
+      recovery = {...preview,mode:null}; cancelTimer(); renderRecovery()
+    } catch { notice('暂时无法恢复：任务可能仍在执行、没有可恢复的文字指令或状态已变化。请先检查任务状态。','error',9000,'',{secondary:[{id:'inspect-task',label:'检查任务状态'},{id:'open',label:'打开主窗口'}]}) }
   }
   async function submit(request, body) {
     busy = true
@@ -131,6 +152,7 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
   return {
     notice,
     managePolicies,
+    recoverTask,
     capture(status) {
       if (stopped) return
       if (status.kind === 'capture-start' && status.captureId) {
@@ -159,7 +181,7 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
       identity = nextIdentity
       const previous = requests[0]?.id, previousCount = requests.length
       requests = snapshot.requests || []
-      if (changedOwner || requests.length) { manager = null; managerEpoch++ }
+      if (changedOwner || requests.length) { manager = null; managerEpoch++; recovery = null; recoveryEpoch++ }
       if (changedOwner || previous !== requests[0]?.id) {
         resetDraft(); cancelTimer()
         if (changedOwner) { working = false; text = ''; voice = 'idle' }
@@ -169,20 +191,21 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
     },
     event(event) {
       if (stopped) return
-      if (event.type === 'turn.started' || event.type === 'turn.accepted') { text = ''; if (!working) startedAt = Date.now(); working = true; inputSource = event.data?.inputSource || (event.type === 'turn.accepted' ? 'desktop' : inputSource); captureId = ''; clearTimer(captureTimer); animation() }
+      if (event.type === 'turn.started' || event.type === 'turn.accepted') { recovery = null; recoveryEpoch++; busy = false; text = ''; if (!working) startedAt = Date.now(); working = true; inputSource = event.data?.inputSource || (event.type === 'turn.accepted' ? 'desktop' : inputSource); captureId = ''; clearTimer(captureTimer); animation() }
       if (event.type === 'assistant.delta') { text += event.data?.text || ''; notice(text, 'speech', 6500) }
       if (event.type === 'assistant.message' && event.data?.text) notice(event.data.text, 'speech', 6500)
       if (event.type === 'tool.call') { const payload = activityBubblePayload(event); if (payload) notice(payload.text, 'activity') }
       if (event.type === 'turn.ended') {
         working = false
-        const failed = event.data?.reason?.kind === 'failed'
+        const failed = ['failed','error','interrupted','blocked','max-tokens'].includes(event.data?.reason?.kind)
         animation({ id: `turn:${event.ioSeq}`, name: failed ? 'failed' : 'jumping' })
-        if (!requests.length && !manager) { cancelTimer(); timer = setTimer(hide, 1800) }
+        if (failed) notice('上次任务未完成。先检查结果，再决定是否恢复。','error',0,'',{secondary:[{id:'recover-task',label:'恢复上次任务…'},{id:'inspect-task',label:'检查任务状态'},{id:'open',label:'打开主窗口'}]})
+        else if (!requests.length && !manager && !recovery) { cancelTimer(); timer = setTimer(hide, 1800) }
       }
       if (event.type === 'error') {
         working = false
         animation({ id: `error:${event.ioSeq}`, name: 'failed' })
-        notice(humanizeFailure(event.data?.message), 'error', 9000, '', { secondary: [{ id: 'inspect-task', label: '检查任务状态' }, { id: 'open', label: '打开主窗口' }] })
+        notice(humanizeFailure(event.data?.message), 'error', 9000, '', { secondary: [{ id: 'recover-task', label: '恢复上次任务…' }, { id: 'inspect-task', label: '检查任务状态' }, { id: 'open', label: '打开主窗口' }] })
       }
     },
     voice(state) { voice = state; animation() },
@@ -192,6 +215,20 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
       if (action.type === 'open') return send('open')
       if (action.type === 'secondary' && action.id === 'open') return send('open')
       if (action.type === 'secondary' && action.id === 'inspect-task') return send('inspect-task')
+      if (action.type === 'secondary' && action.id === 'recover-task') return recoverTask()
+      if (recovery && !requests.length && action.requestId === `recovery:${recovery.token}` && !busy) {
+        if (action.type === 'choice' && ['continue','retry'].includes(action.id)) { recovery.mode = action.id; renderRecovery(); return }
+        if (action.type !== 'secondary') return
+        if (action.id === 'recovery-close') { recovery = null; recoveryEpoch++; hide(); return }
+        if (action.id === 'recovery-back') { recovery.mode = null; renderRecovery(); return }
+        if (action.id !== 'recovery-confirm' || !recovery.mode) return
+        const own = recovery; busy = true; renderRecovery('正在提交…')
+        try {
+          await send('/task/recovery',{token:own.token,mode:own.mode,confirmSideEffects:true})
+          if (recovery === own) { recovery = null; busy = false; hide() }
+        } catch { if (recovery === own) { recovery = null; busy = false; notice('状态已变化或提交失败。请重新检查任务，不会自动重复执行。','error',9000,'',{secondary:[{id:'inspect-task',label:'检查任务状态'}]}) } }
+        return
+      }
       if (manager && !requests.length && action.requestId === manager.id && !busy) {
         if (action.type === 'secondary' && action.id === 'grant-close') { manager = null; managerEpoch++; hide(); return }
         const rule = manager.rules.find(item => item.id === action.id)
@@ -229,6 +266,6 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
         if (action.id === 'back' && questionIndex > 0) { questionIndex--; selected = answers[questionIndex]?.selected || []; render() }
       }
     },
-    stop() { stopped = true; manager = null; managerEpoch++; cancelTimer(); clearTimer(captureTimer); requests = []; hide() },
+    stop() { stopped = true; manager = null; managerEpoch++; recovery = null; recoveryEpoch++; cancelTimer(); clearTimer(captureTimer); requests = []; hide() },
   }
 }

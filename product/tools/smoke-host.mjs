@@ -93,6 +93,34 @@ try {
       }}
       assert.ok(approved,JSON.stringify(all));assert.equal(existsSync(target),decision==='allow',JSON.stringify(all));assert.ok(all.some(x=>x.type==='turn-end'))
     }
+    const recoveryGet=()=>fetch(`http://127.0.0.1:${descriptor.port}/task/recovery`,{headers,signal:AbortSignal.timeout(5000)})
+    assert.equal((await fetch(`http://127.0.0.1:${descriptor.port}/task/recovery`)).status,401)
+    const oldPreviewResponse=await recoveryGet();assert.equal(oldPreviewResponse.status,200,await oldPreviewResponse.clone().text());const oldPreview=await oldPreviewResponse.json();assert.match(oldPreview.originalText,/outside-cancel/)
+    assert.equal((await post('/task/recovery',{token:oldPreview.token,mode:'retry'})).status,400)
+    await(await post('/voice/turn',{text:'A newer ordinary task.'})).text()
+    assert.equal((await post('/task/recovery',{token:oldPreview.token,mode:'retry',confirmSideEffects:true})).status,409)
+    assert.equal((await recoveryGet()).status,409,'Completed work must not offer recovery')
+    for(const mode of ['retry','continue']){
+      const target=join(home,`recover-${mode}.txt`),original=`Write ${target}`
+      nextTool={file_path:target,content:'recovered-once'}
+      const interrupted=await post('/voice/turn',{text:original});let buffer=''
+      for await(const chunk of interrupted.body){buffer+=new TextDecoder().decode(chunk);let at;while((at=buffer.indexOf('\n'))>=0){const event=JSON.parse(buffer.slice(0,at));buffer=buffer.slice(at+1);if(event.type==='approval')assert.equal((await post('/cancel',{sessionId:event.sessionId,clientTurnId:event.requestId,source:'task-stop'})).status,200)}}
+      const previewResponse=await recoveryGet();assert.equal(previewResponse.status,200,await previewResponse.clone().text());const preview=await previewResponse.json();assert.equal(preview.originalText,original);assert.equal(existsSync(target),false)
+      if(mode==='retry')nextTool={file_path:target,content:'recovered-once'}
+      const admitted=await post('/task/recovery',{token:preview.token,mode,confirmSideEffects:true});assert.equal(admitted.status,200,await admitted.clone().text())
+      assert.equal((await post('/task/recovery',{token:preview.token,mode,confirmSideEffects:true})).status,409)
+      const limit=Date.now()+10000;let state,answered=false
+      do{
+        const pending=await(await fetch(`http://127.0.0.1:${descriptor.port}/interactions`,{headers})).json()
+        if(pending.requests.length&&!answered){assert.equal((await recoveryGet()).status,409);answered=true;assert.equal((await post('/approval',{id:pending.requests[0].id,sessionId:pending.sessionId,decision:'allow'})).status,200)}
+        state=await(await fetch(`http://127.0.0.1:${descriptor.port}/task-state`,{headers})).json()
+        if(state.status==='idle'&&state.lastTurn)break
+        await new Promise(r=>setTimeout(r,20))
+      }while(Date.now()<limit)
+      assert.equal(state.status,'idle');assert.equal(existsSync(target),mode==='retry')
+      if(mode==='continue')assert.match(JSON.stringify(requests.at(-1).messages),/不重复已经完成的操作/)
+    }
+    console.log('PASS persisted-task preview, confirmed retry/checked continuation, and stale/duplicate/busy/completed guards')
     const grantTarget=join(home,'exact-granted.txt'), originalArgs={file_path:grantTarget,content:'precise-grant'}
     const get=path=>fetch(`http://127.0.0.1:${descriptor.port}${path}`,{headers,signal:AbortSignal.timeout(30000)})
     for(const step of ['grant','reuse','changed','revoked']){

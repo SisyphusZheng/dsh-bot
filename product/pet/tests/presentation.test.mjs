@@ -110,7 +110,7 @@ test('interrupted upstream failure prose becomes a human notice with a working m
   const payload=f.shown.at(-1)
   assert.match(payload.text,/上次任务被中断/)
   assert.match(payload.text,/打开主窗口/)
-  assert.deepEqual(payload.secondary,[{id:'inspect-task',label:'检查任务状态'},{id:'open',label:'打开主窗口'}])
+  assert.deepEqual(payload.secondary,[{id:'recover-task',label:'恢复上次任务…'},{id:'inspect-task',label:'检查任务状态'},{id:'open',label:'打开主窗口'}])
   await f.presentation.action({type:'secondary',id:'open'})
   assert.deepEqual(calls,[['open']])
   f.presentation.stop()
@@ -157,3 +157,16 @@ test('late grant-manager load cannot replace a pending approval', async()=>{
  f.presentation.sync(snapshot([{id:'a',kind:'approval',sessionId:'s',toolName:'write'}]));resolve({rules:[]});await pending
  assert.equal(f.shown.at(-1).requestId,'a');f.presentation.stop()
 })
+
+test('recovery requires a second click and scopes the original token',async()=>{
+ const calls=[],f=fixture(async(path,body)=>{calls.push([path,body]);return {token:'r',originalText:'原始目标',warning:'检查副作用'}})
+ await f.presentation.recoverTask();const id=f.shown.at(-1).requestId
+ await f.presentation.action({type:'choice',id:'retry',requestId:id});assert.equal(calls.length,1)
+ await f.presentation.action({type:'secondary',id:'recovery-confirm',requestId:'stale'});assert.equal(calls.length,1)
+ await f.presentation.action({type:'secondary',id:'recovery-confirm',requestId:id});assert.deepEqual(calls.at(-1),['/task/recovery',{token:'r',mode:'retry',confirmSideEffects:true}]);f.presentation.stop()
+})
+test('recovery preview yields to pending approval',async()=>{
+ let resolve;const f=fixture(()=>new Promise(r=>resolve=r));const pending=f.presentation.recoverTask()
+ f.presentation.sync(snapshot([{id:'a',kind:'approval',sessionId:'s',toolName:'write'}]));resolve({token:'r',originalText:'old'});await pending;assert.equal(f.shown.at(-1).requestId,'a');f.presentation.stop()
+})
+test('notices with visible actions accept pointer interaction',()=>{const f=fixture();f.presentation.notice('fixture','error',9000,'',{secondary:[{id:'open',label:'打开主窗口'}]});assert.equal(f.shown.at(-1).clickThrough,false);f.presentation.stop()})

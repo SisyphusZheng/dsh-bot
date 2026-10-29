@@ -2,6 +2,7 @@
 import { appendFileSync, chmodSync, existsSync, mkdirSync, readFileSync, realpathSync, unlinkSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { createInteractionMirror, validateAnswer } from './interactions.mjs'
+import { createTaskRecovery } from './task-recovery.mjs'
 import { createApprovalPolicies } from './approval-policies.mjs'
 import { randomUUID } from 'node:crypto'
 import { basename, dirname, join, relative, resolve } from 'node:path'
@@ -312,6 +313,7 @@ export function apply(ctx, config = {}) {
   let persona = loadPersona()
   let currentDigest = ''
   let turnMemory = ''
+  let admission = null
   let pendingSubmission = null
   let bridgeMessageId = null
   const interactions = createInteractionMirror({
@@ -989,10 +991,36 @@ export function apply(ctx, config = {}) {
     return agent
   }
 
-  async function submitTurn(text, { clientTurnId = '', source = 'desktop' } = {}) {
+  const recoveryCurrent = snapshot => snapshot.owner === agent && snapshot.sessionId === sessionId && snapshot.seq === agent?.session?.seq && agent?.status === 'idle'
+  const taskRecovery = createTaskRecovery({
+    load: async () => {
+      await ensureAgent()
+      if (admission || pendingSubmission || agent.status !== 'idle') throw Object.assign(new Error('Task is still active'), {status:409})
+      const snapshot = { owner:agent, sessionId, seq:agent.session.seq, status:agent.status, pending:false }
+      const persistence = ctx.get?.('sessionPersistence')
+      if (!persistence?.open) throw Object.assign(new Error('Session history is unavailable'), {status:503})
+      const signal = AbortSignal.timeout(3000)
+      const reader = await persistence.open(sessionId, 'read', {signal})
+      try { snapshot.events = (await reader.read(Math.max(0,snapshot.seq-5000),5000,{signal})).events }
+      finally { await reader.close() }
+      return snapshot
+    },
+    isCurrent: recoveryCurrent,
+    execute: (text, snapshot, mode) => {
+      auditEvent('task.recovery.confirmed', {sessionId:snapshot.sessionId, sourceSeq:snapshot.seq, mode})
+      return submitTurn(text, {clientTurnId:randomUUID(),source:'desktop',guard:()=>recoveryCurrent(snapshot)})
+    },
+  })
+
+  async function submitTurn(text, { clientTurnId = '', source = 'desktop', guard } = {}) {
     const trimmed = String(text || '').trim()
     if (!trimmed) throw new Error('text required')
+    if (admission) throw Object.assign(new Error('Agent admission is busy'), {status:409})
+    const ownAdmission = {}; admission = ownAdmission
+    try {
     await ensureConversationForTurn()
+    if (agent.status !== 'idle' || (guard && !guard())) throw Object.assign(new Error('Task changed before admission'), {status:409})
+    taskRecovery.clear()
     lastTurn = null
     submitted += 1
     submittedText = trimmed
@@ -1015,10 +1043,12 @@ export function apply(ctx, config = {}) {
         push('turn.ended', {data:{reason:{kind:'cancelled',cause:{kind:'user'}},cancellationSource}})
         return {sessionId,messageId:message.id,cancelled:true}
       }
+      if (agent.status !== 'idle' || (guard && !guard())) throw Object.assign(new Error('Task changed while preparing; no instruction was resubmitted'), {status:409})
       bridgeMessageId = message.id
       agent.followup(message)
     } finally { if(pendingSubmission === submission) pendingSubmission = null }
     return { sessionId, messageId: message.id }
+    } finally { if (admission === ownAdmission) admission = null }
   }
 
   async function cancelTurn(source = 'task-stop') {
@@ -1114,6 +1144,8 @@ export function apply(ctx, config = {}) {
       if (!authorized) return json(res, 401, { error: 'unauthorized' })
 
       // ---- dsh-nisse bridge protocol subset (for the real Qwen voice client) ----
+      if (url.pathname === '/task/recovery' && req.method === 'GET') return json(res, 200, await taskRecovery.preview())
+      if (url.pathname === '/task/recovery' && req.method === 'POST') return json(res, 200, {ok:true,...await taskRecovery.submit(await readBody(req))})
       if (url.pathname === '/task-state' && req.method === 'GET') {
         return json(res, 200, { sessionId, clientTurnId: activeClientTurnId || null, turn: currentTurn, status: String(agent?.status || 'starting'), waiting: interactions.snapshot().length > 0, lastTurn })
       }
@@ -1364,7 +1396,7 @@ export function apply(ctx, config = {}) {
       return json(res, 404, { error: 'not_found' })
     } catch (error) {
       log('request failed: ' + messageOf(error))
-      return json(res, 500, { error: messageOf(error) })
+      return json(res, error.status === 409 || error.status === 400 || error.status === 503 ? error.status : 500, { error: messageOf(error) })
     }
   })
 
@@ -1406,6 +1438,7 @@ export function apply(ctx, config = {}) {
   })
 
   ctx.effect?.(() => async () => {
+    taskRecovery.clear()
     interactions.dispose()
     await handle?.dispose?.()
     for (const subscriber of sseSubscribers) { try { subscriber.res.end() } catch {} }
