@@ -77,6 +77,7 @@ const session = createVoiceSession({
       onBotTtsText: data => { if (data.text) report(data.text, 'speaking', true, 'speech') },
       onServerMessage(data) {
         if (data.type === 'voice-error') { reportVoiceError(data); return }
+        if (data.type === 'task-error') { report(`任务连接异常，执行结果需要检查。诊断 ID：${data.diagId}`, 'idle', true, 'task-error'); return }
         if (data.type === 'interaction-prompt') { audio.muted = false; audio.volume = 1; return }
         if (data.type === 'input-confirmation') { report(data.text, 'listening', true, 'input-confirmation', data.captureId, '', { draftId: data.id, ttlMs: data.ttlMs }); return }
         if (data.type === 'input-confirmation-ended') { report('', 'idle', false, 'input-confirmation-ended', '', '', { draftId: data.id }); return }

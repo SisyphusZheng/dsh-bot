@@ -13,3 +13,5 @@ Node 入口为 `lib/index.js`。浏览器源码为 `src/client/index.js`；Deskt
 原生打包启动和退出仍由 `bash product/tools/accept-macos.sh <new.dmg>` 验收。Provider 凭据、真实音频和真实 Hindsight 数据库需要各自的运行时验收；Mock Provider 和 HTTP 夹具结果不能代替。
 
 任务恢复通过只读句柄读取官方持久化 Session。先给出有有效期的预览，再要求明确确认，才将检查后继续或重新提交作为新的用户指令。任务仍在运行、Session 历史已变化、预览过期和重复提交均被拒绝。适配器不自行重放工具调用。
+
+取消请求与 Agent 已确认空闲分别记录，超时不会合成空闲状态。语音终态事件在已知时携带取消来源。Bridge 失败包含诊断 ID、异常类型和任务身份；执行结果未知时保持隔离，直到权威任务状态确认结果。

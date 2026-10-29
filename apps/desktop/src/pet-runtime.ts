@@ -447,6 +447,7 @@ export class ProductPet {
         if (['idle', 'listening', 'speaking', 'processing'].includes(status.phase || '')) this.presentation?.voice(status.phase || 'idle')
         const retry = status.retryable === false ? {} : { secondary: [{ id: 'retry-voice', label: '重试' }] }
         if (['capture-start', 'input', 'transcript', 'capture-end', 'input-confirmation', 'input-confirmation-ended'].includes(status.kind || '')) this.presentation?.capture(status)
+        else if (status.kind === 'task-error' && status.text) this.presentation?.notice(status.text, 'error', 0, '', { secondary: [{ id: 'inspect-task', label: '检查任务状态' }, { id: 'recover-task', label: '恢复上次任务…' }] })
         else if (status.kind === 'error' && status.text) this.presentation?.notice(status.text, 'error', 15_000, '', retry)
         else if (status.phase === 'failed') {
           // Prefer the worker's classified failure over the opaque transport text.

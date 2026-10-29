@@ -32,6 +32,7 @@ import aiohttp
 from wake_phrase import WakePhrase
 from voice_commands import control_kind, normalize
 from input_admission import InputAdmission
+from voice_errors import build_payload, redact
 from loguru import logger
 
 
@@ -76,6 +77,7 @@ class DSHBridgeProcessor(FrameProcessor):
         self._consumed_controls = {}
         self._input_admission = InputAdmission()
         self._capture = capture
+        self._stop_confirmation = None
         self._announced_interactions = {}
         self._spoken_prompts = deque(maxlen=4)
         self._greeting = ""
@@ -412,7 +414,7 @@ class DSHBridgeProcessor(FrameProcessor):
                         return
                     # Confirm explicit commands or a distinct utterance after echo and stabilization filters.
                     deliberate = frame.metadata.get('input_mode', 'hold') in ('hold', 'toggle')
-                    if not (_is_interrupt_command(heard) or deliberate and len(heard) >= 4):
+                    if not _is_interrupt_command(heard):
                         self.metrics["barge_noncommand_pending"] += 1
                         logger.info(f"[dsh] barge-in non-command ASR pending: asr={text!r} age={age:.2f} window_tail={spoken[-50:]!r}")
                         if age > 3.0:
@@ -629,12 +631,25 @@ class DSHBridgeProcessor(FrameProcessor):
             return False
         if metadata.get('input_mode') == 'always':
             if kind == 'task-stop' and normalize(text) != '确认停止任务':
-                await self._control_notice('任务继续。请说“确认停止任务”，或使用右键菜单停止。')
+                target = {'current':self._current,'task':None}
+                if self._current is None:
+                    try: target['task'] = await self._bridge_request('GET','/task-state')
+                    except Exception: target['task'] = {}
+                self._stop_confirmation = target
+                self._stop_confirmation['expires'] = time.monotonic() + 30
+                await self._control_notice('尚未请求取消。请说“确认停止任务”，或使用右键菜单停止。', action='task-stop', phase='confirmation-required')
                 return True
         key = self._utterance_key(metadata)
         if key and key in self._consumed_controls:
             return True
         target = self._utterance_targets.get(key, {'current': self._current, 'requests': None, 'task': None})
+        if kind == 'task-stop' and normalize(text) == '确认停止任务' and self._stop_confirmation is not None:
+            if time.monotonic() >= self._stop_confirmation['expires']:
+                self._stop_confirmation = None
+                await self._control_notice('停止确认已过期，尚未取消任务。请重新确认目标。')
+                return True
+            target = {**self._stop_confirmation, 'requests':None}
+            self._stop_confirmation = None
         try:
             if kind.startswith('approval-'):
                 requests = target['requests']
@@ -663,7 +678,7 @@ class DSHBridgeProcessor(FrameProcessor):
                     await self._control_notice('原任务已结束，这条迟到指令不会影响新任务。')
                 elif kind == 'task-stop' and current is not None:
                     await self._cancel_current()
-                    await self._control_notice('已请求停止任务，正在等待执行器确认。')
+                    await self._control_notice('已请求停止任务，正在等待执行器确认。', action='task-stop', phase='requested', turnKey=current.get('turn_key'), requestId=current.get('request_id'))
                 elif kind == 'task-stop':
                     state = target['task']
                     if state is None:
@@ -679,7 +694,7 @@ class DSHBridgeProcessor(FrameProcessor):
                         result = await self._bridge_request('POST', '/cancel', body)
                         if result.get('ok') is not True:
                             raise RuntimeError('Cancellation not confirmed')
-                        await self._control_notice('已请求停止当前任务。')
+                        await self._control_notice('任务已停止。' if result.get('confirmed') else '已请求停止任务，正在等待执行器确认。', action='task-stop', phase='confirmed' if result.get('confirmed') else 'requested', sessionId=state.get('sessionId'), turn=state.get('turn'))
                     else:
                         await self._control_notice('暂时无法确认任务身份，请在主窗口检查；尚未取消任务。')
                 else:
@@ -691,7 +706,7 @@ class DSHBridgeProcessor(FrameProcessor):
                     self._barge_candidate = None
                     await self.broadcast_interruption()
                     await self._send_rtvi({'type': 'stop-playback'})
-                    await self._control_notice('已停止播报，任务继续。')
+                    await self._control_notice('已停止播报；没有请求取消任务。', action='playback-stop', phase='confirmed', turnKey=current.get('turn_key') if current else None)
             else:
                 state = await self._bridge_request('GET', '/task-state')
                 await self._control_notice('正在等待你的批准或回答。' if state.get('waiting') else
@@ -762,7 +777,7 @@ class DSHBridgeProcessor(FrameProcessor):
             token = descriptor["token"]
             url = f"http://127.0.0.1:{port}/voice/turn"
             headers = {"Authorization": f"Bearer {token}", "content-type": "application/json"}
-            logger.info(f"[dsh] turn {turn_key} -> DSH: {text!r}")
+            logger.info(f"[dsh] turn {turn_key} -> DSH: {redact(text)!r} input={json.dumps(current.get('input', {}), ensure_ascii=False)}")
             async with self._get_session().post(
                 url, json={"text": text}, headers=headers, timeout=aiohttp.ClientTimeout(total=180)
             ) as response:
@@ -777,7 +792,9 @@ class DSHBridgeProcessor(FrameProcessor):
                     return
                 if response.status != 200:
                     body = await response.text()
-                    raise RuntimeError(f"bridge HTTP {response.status}: {body[:200]}")
+                    error = RuntimeError(f"Bridge HTTP {response.status}: {redact(body, 1000)}")
+                    error.http_status = response.status
+                    raise error
                 async for raw in response.content:
                     line = raw.decode("utf-8").strip()
                     if not line:
@@ -799,8 +816,12 @@ class DSHBridgeProcessor(FrameProcessor):
             raise
         except Exception as exc:
             self.metrics["errors"] += 1
-            logger.warning(f"[dsh] turn {turn_key} failed: {exc}")
-            await self.push_error_frame(ErrorFrame(error=f"DSH turn failed: {exc}"))
+            diagnostic = build_payload(exc, source='bridge')
+            diagnostic.update(turnKey=turn_key, sessionId=current.get('session_id'), requestId=current.get('request_id'), turn=current.get('dsh_turn'), httpStatus=getattr(exc, 'http_status', None), exceptionType=type(exc).__name__)
+            current['diagnostic'] = diagnostic
+            logger.warning('[dsh-error] ' + json.dumps(diagnostic, ensure_ascii=False))
+            await self._send_rtvi({'type':'task-error', **{key:value for key,value in diagnostic.items() if key != 'detail'}})
+            await self.push_error_frame(ErrorFrame(error=f"任务连接异常（{diagnostic['diagId']}），执行结果需检查。"))
             if current.get("request_id"):
                 current["execution_unknown"] = True
                 self._quarantine(current, 'execution-unknown')
@@ -940,6 +961,11 @@ class DSHBridgeProcessor(FrameProcessor):
                 logger.info(f"[dsh] {current['turn_key']} finalized reason={reason}")
         elif kind == "turn-end":
             current['terminal_received'] = True
+            current['terminal_reason'] = event.get('reason')
+            current['cancellation_source'] = event.get('cancellationSource')
+            logger.info('[task-terminal] ' + json.dumps({'turnKey':current.get('turn_key'),'sessionId':session_id,'requestId':current.get('request_id'),'turn':current.get('dsh_turn'),'reason':event.get('reason'),'source':event.get('cancellationSource')}, ensure_ascii=False))
+            if (event.get('reason') or {}).get('kind') == 'aborted':
+                await self._control_notice('任务已停止，未执行的等待项仍保留。', action='task-stop', phase='confirmed', turnKey=current.get('turn_key'), requestId=current.get('request_id'), source=event.get('cancellationSource') or 'unattributed')
             current["completed"] = (event.get("reason") or {}).get("kind") == "completed"
             if current.get("submitted_at"):
                 self.metrics["dsh_turn_epoch_samples"].append({
@@ -957,6 +983,8 @@ class DSHBridgeProcessor(FrameProcessor):
             logger.info(
                 f"[dsh] {current['turn_key']} turn-end dsh_turn={event.get('turn')} reason={event.get('reason')} turn_ms={current.get('turn_ms')}"
             )
+        elif kind == 'error':
+            raise RuntimeError('DSH: ' + (event.get('message') or event.get('code') or 'Agent reported an unspecified error'))
         elif kind == "session-event":
             event_type = event.get("eventType") or ""
             if event_type.startswith("approval") or event.get("approval"):

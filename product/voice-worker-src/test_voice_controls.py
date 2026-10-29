@@ -49,6 +49,37 @@ class Controls(unittest.IsolatedAsyncioTestCase):
         await p._handle_control('停止任务', {'capture_id': 'c', 'utterance_id': 'u'})
         p._cancel_current.assert_not_awaited(); p._bridge_request.assert_not_awaited()
 
+    async def test_two_part_stop_confirmation_is_bound_and_expires(self):
+        p=self.make();old={'turn_key':'old'};p._current=old
+        await p._handle_control('停止任务',{'input_mode':'always'})
+        p._current={'turn_key':'new'}
+        await p._handle_control('确认停止任务',{'input_mode':'always'})
+        p._cancel_current.assert_not_awaited()
+        await p._handle_control('停止任务',{'input_mode':'always'})
+        p._stop_confirmation['expires']=0
+        await p._handle_control('确认停止任务',{'input_mode':'always'})
+        p._cancel_current.assert_not_awaited()
+
+    async def test_empty_timeout_has_diagnostic_identity_and_keeps_unknown_task_quarantined(self):
+        p=self.make();p._load_descriptor=Mock(return_value={'port':1,'token':'fixture'})
+        p._get_session=Mock(return_value=SimpleNamespace(post=Mock(side_effect=TimeoutError())))
+        current={'turn_key':'v','request_id':'r','session_id':'s','audible':False}
+        p._current=current
+        await p._run_turn(current,'fixture')
+        diagnostic=current['diagnostic']
+        self.assertEqual(diagnostic['exceptionType'],'TimeoutError')
+        self.assertTrue(diagnostic['detail']);self.assertTrue(diagnostic['diagId'])
+        self.assertEqual(diagnostic['requestId'],'r');self.assertTrue(p._quarantined)
+
+    async def test_normal_partial_is_never_logged_or_treated_as_a_command(self):
+        p=self.make();p._current={'turn_key':'v','audible':True,'text_started':True,'reply_text':'完全不同的播报内容'}
+        with patch.object(FrameProcessor,'process_frame',new=AsyncMock()):
+            await p.process_frame(VADUserStartedSpeakingFrame(),FrameDirection.DOWNSTREAM)
+            p._barge_candidate['started_mono']=time.monotonic()-.7
+            await p.process_frame(InterimTranscriptionFrame('啊，听一下','u','now'),FrameDirection.DOWNSTREAM)
+        self.assertTrue(p._current['audible']);p.broadcast_interruption.assert_not_awaited()
+        self.assertEqual(p.metrics['barge_command_confirmed'],0)
+
     async def test_voice_approval_bypasses_queue_and_only_answers_once(self):
         p = self.make(); p._current = {}; p._pending.append('next')
         p._utterance_targets['c:u'] = {'current': p._current, 'requests': [{'id': 'a', 'sessionId': 's', 'kind': 'approval'}], 'task': None}

@@ -26,8 +26,8 @@ class VoiceContract(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(p.metrics['late_text_dropped'], 1)
         p._cancel_barge_timeout()
         await asyncio.sleep(0)
-    async def test_natural_barge_in(self):
-        await self.exercise('我想换一个话题', True)
+    async def test_natural_partial_waits_for_complete_intent(self):
+        await self.exercise('我想换一个话题', False)
     async def test_explicit_interrupt(self):
         await self.exercise('等一下', True)
     async def test_echo_and_short_noise(self):

@@ -3,5 +3,5 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write nisse/packages/host-integration/README.md
 /host-integration:
-  en: cc51998812172991
-  zh: 7f26b0f0dd27da00
+  en: a76cf31388541998
+  zh: 7d801e48dc7b9d1f

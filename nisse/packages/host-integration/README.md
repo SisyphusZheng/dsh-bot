@@ -13,3 +13,5 @@ Build: `node apps/desktop/scripts/build-pet-client.mjs`. Source tests: `node --t
 Native packaged startup and shutdown remain owned by `bash product/tools/accept-macos.sh <new.dmg>`. Provider credentials, actual audio and the real Hindsight database require their corresponding runtime acceptance; mock-provider or HTTP-fixture results do not qualify them.
 
 Task recovery reads the official persisted Session through a read-only handle. It offers an expiring preview, then requires explicit confirmation for checked continuation or resubmission as a new user instruction. Active work, changed Session history, expired previews and duplicate submissions are rejected. The adapter never replays tool calls itself.
+
+Cancellation distinguishes a request from confirmed Agent idle; a timeout never synthesizes idle. Voice terminal events carry the cancellation source when known. Bridge failures include a diagnostic ID, exception type and task identifiers; an unknown outcome stays quarantined until authoritative task state resolves it.

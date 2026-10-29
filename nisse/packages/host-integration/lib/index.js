@@ -1076,11 +1076,8 @@ export function apply(ctx, config = {}) {
           new Promise((resolve) => setTimeout(resolve, 5000)),
         ])
       } catch { /* ignore */ }
-      if (String(agent.status || 'idle') !== 'idle') {
-        push('agent.status', { sessionId, data: { status: 'idle', synthesized: true } })
-      }
     }
-    return { ok: true, cancelled, sessionId: sessionId || '', settledApprovals: settledApprovals }
+    return { ok: true, cancelled, confirmed: cancelled && agent.status === 'idle', sessionId: sessionId || '', settledApprovals: settledApprovals }
   }
 
   function health() {
@@ -1347,7 +1344,7 @@ export function apply(ctx, config = {}) {
           if (record.type === 'tool.call' || record.type === 'tool.result') frame({ type: record.type, ...data })
           if (record.type === 'error') frame({ type: 'error', message: data.message || record.note })
           if (record.type === 'turn.ended') {
-            frame({ type: 'turn-end', reason: data.reason })
+            frame({ type: 'turn-end', reason: data.reason, cancellationSource: data.cancellationSource || null, turn: record.turn })
             frame({ type: 'finalized', reason: 'turn-ended', turnReason: data.reason })
             voiceSubscribers.delete(subscriber); res.end()
           }
