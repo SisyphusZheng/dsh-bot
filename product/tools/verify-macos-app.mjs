@@ -35,6 +35,17 @@ export function signAdHocResources(resources,run=spawnSync) {
  }
  return {nativeFiles:files.length,repaired:signed}
 }
+/** Ad-hoc sign the outer App and its frameworks without re-signing the DSH runtime
+ *  (whose signed bytes are recorded in the ASAR inventory). */
+export function signMacAppAdHoc(app, run = spawnSync) {
+ const frameworks = join(app, 'Contents', 'Frameworks')
+ const executables = join(app, 'Contents', 'MacOS')
+ signAdHocResources(frameworks, run)
+ signAdHocResources(executables, run)
+ codesign(['--force', '--sign', '-', app], run)
+ codesign(['--verify', '--deep', '--strict', '--verbose=2', app], run)
+}
+
 export function verifyMacApp(app,run=spawnSync) {
  codesign(['--verify','--deep','--strict','--verbose=2',app],run)
  const files=machOFiles(app);if(!files.length)throw new Error('No native executable found')

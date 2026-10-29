@@ -1,4 +1,4 @@
-import { signAdHocResources } from '../../../product/tools/verify-macos-app.mjs'
+import { signAdHocResources, signMacAppAdHoc } from '../../../product/tools/verify-macos-app.mjs'
 import { officePackageDirectories } from '../../../scripts/libreoffice-packages.mjs'
 import { X509Certificate } from 'node:crypto'
 import { readFileSync } from 'node:fs'
@@ -263,8 +263,15 @@ export function createElectronBuilderConfig(
         })
         await verifyWindowsAsarUnpack(buildPaths.dsh, context.packager.getResourcesDir(context.appOutDir), windowsCode)
       }
-      if (context.electronPlatformName !== 'darwin' || unsigned) return
+      if (context.electronPlatformName !== 'darwin') return
       const appPath = join(context.appOutDir, `${context.packager.appInfo.productFilename}.app`)
+      if (unsigned) {
+        // electron-builder's ad-hoc pass leaves Electron frameworks invalid on current
+        // macOS; sign them and the outer App here, before the DMG is created. The DSH
+        // runtime bytes stay untouched so the ASAR inventory remains valid.
+        signMacAppAdHoc(appPath)
+        return
+      }
       if (update !== undefined) {
         await verifyMacOSAppUpdateConfig(appPath, resolveMacOSAppUpdateFeed(context.packager.config.publish),
           context.packager.appInfo.updaterCacheDirName)

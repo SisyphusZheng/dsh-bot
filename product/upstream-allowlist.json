@@ -30,7 +30,7 @@
     "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
   },
   "apps/desktop/scripts/electron-builder-config.mjs": {
-    "sha": "99eb230e6519033fec2ab7b628fa8ec9baa6a930",
+    "sha": "222b6abcb2d44f061214859514634c8cfb77f547",
     "mode": "100644",
     "reason": "Product package resources and independent version; repair invalid internal ad-hoc native resource signatures before sealing the outer App"
   },
