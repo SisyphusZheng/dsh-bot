@@ -1,0 +1,29 @@
+{
+  "sourceCommit": "261654e65ff6abe65e282aa6fbcce6551482b650",
+  "dmg": {
+    "path": "<HOME>/Documents/projects/dsh-bot-0.0.1/apps/desktop/.desktop-build/targets/mac-arm64/unsigned-artifacts/dsh-bot-0.0.1-beta-261654e6-mac-arm64-unsigned.dmg",
+    "sha256": "8ec5d4a4b02ff8a563bd32eb4a9eb1ca5c89ddc7df73dd5d26d4a2010e9f84f8"
+  },
+  "status": "PASS",
+  "phases": {
+    "native-signatures": "PASS",
+    "first-launchservices": "PASS",
+    "first-bridge": "PASS",
+    "first-web-boot-and-navigation": "PASS",
+    "first-memory": "PASS",
+    "memory-write-and-cross-session": "PASS",
+    "first-shutdown": "PASS",
+    "first-descriptor-cleanup": "PASS",
+    "restart-launchservices": "PASS",
+    "restart-bridge": "PASS",
+    "restart-web-boot-and-navigation": "PASS",
+    "restart-memory": "PASS",
+    "memory-restart-recall": "PASS",
+    "restart-shutdown": "PASS",
+    "restart-descriptor-cleanup": "PASS"
+  },
+  "scope": "packaged macOS App with isolated user-data (not a HOME sandbox), strict inner signatures and normal LaunchServices startup, real web boot, sprite double-click, official Bot Session selection, Bridge and Hindsight persistence",
+  "voice": "BLOCKED-EXTERNAL: real provider/microphone not exercised",
+  "nativePointerAndTcc": "DEFERRED: physical click-through, Spaces and TCC require manual acceptance",
+  "updatedAt": "2026-10-29T07:41:50.371Z"
+}
