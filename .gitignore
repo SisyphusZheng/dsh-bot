@@ -95,3 +95,4 @@ apps/desktop/resources/pet/skin-catalog.mjs
 apps/desktop/resources/pet/legacy-preferences.mjs
 apps/desktop/resources/pet/wake-word/
 apps/desktop/resources/pet/wake-model/
+apps/desktop/resources/pet/question-voice.mjs

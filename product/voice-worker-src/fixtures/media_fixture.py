@@ -28,9 +28,11 @@ async def main():
     aioice.ice.get_host_addresses = lambda use_ipv4, use_ipv6: ['127.0.0.1']
     from server import app
     spoken = []
+    asr_peers=set(); answers=[]
     async def provider(ws):
         assert ws.request.headers['Authorization'] == 'Bearer fixture-key'
         model = parse_qs(urlparse(ws.request.path).query)['model'][0]
+        if 'asr' in model: asr_peers.add(ws)
         await ws.send(json.dumps({'type':'session.created'})); seen = False
         async for raw in ws:
             event = json.loads(raw); kind = event['type']
@@ -64,15 +66,28 @@ async def main():
         return web.json_response({'sessionId':'media-session','status':'running' if lifecycle['started']>lifecycle['finished'] else 'idle'})
     async def interactions(request):
         assert request.headers['Authorization']=='Bearer bridge-fixture'
-        if lifecycle['started'] != 1 or lifecycle['finished'] or not os.environ.get('MEDIA_INTERACTION'):
+        if lifecycle['started'] != 1 or lifecycle['finished'] or answers or not os.environ.get('MEDIA_INTERACTION'):
             return web.json_response({'requests':[]})
         question = os.environ['MEDIA_INTERACTION']=='question'
         request = {'id':'question-1' if question else 'approval-1','sessionId':'media-session','kind':'question' if question else 'approval'}
         if question:
-            request['questions']=[{'question':'文档用什么内容？','options':[{'label':'之前的文章'},{'label':'新文章'}]}]
+            request['questions']=[{'id':'content','question':'文档用什么内容？','options':[{'label':'之前的文章'},{'label':'新文章'}]}]
         else:
             request['operation']={'arguments':{'command':'PRIVATE-COMMAND'}}
         return web.json_response({'requests':[request]})
+    async def inject_answer(request):
+        assert os.environ.get('MEDIA_INTERACTION')=='question'
+        for ws in asr_peers:
+            await ws.send(json.dumps({'type':'conversation.item.input_audio_transcription.completed','item_id':'answer-1','transcript':'最后一个选项'}))
+        return web.json_response({'ok':True})
+    async def answer(request):
+        assert request.headers['Authorization']=='Bearer bridge-fixture'
+        value=await request.json()
+        assert value=={'id':'question-1','sessionId':'media-session','answer':{'answers':[{'id':'content','selected':['新文章']}]}}
+        answers.append(value)
+        return web.json_response({'ok':True})
+    async def answer_state(request):
+        return web.json_response({'answers':answers})
     async def resume(request):
         release.set(); return web.json_response({'ok': True})
     async def cancel(request):
@@ -90,7 +105,7 @@ async def main():
         await response.write((json.dumps({'type':'turn-end','reason':{'kind':'completed'}})+'\n').encode())
         lifecycle['finished'] += 1
         await response.write_eof(); return response
-    bridge = web.Application(); bridge.router.add_post('/voice/turn',turn); bridge.router.add_get('/fixture-state',state); bridge.router.add_get('/fixture-speech',speech); bridge.router.add_get('/task-state',task_state); bridge.router.add_get('/interactions',interactions); bridge.router.add_post('/fixture-release',resume); bridge.router.add_post('/cancel',cancel); runner=web.AppRunner(bridge); await runner.setup(); await web.SockSite(runner,bridge_socket).start()
+    bridge = web.Application(); bridge.router.add_post('/fixture-inject-answer',inject_answer);bridge.router.add_post('/questions/answer',answer);bridge.router.add_get('/fixture-answers',answer_state); bridge.router.add_post('/voice/turn',turn); bridge.router.add_get('/fixture-state',state); bridge.router.add_get('/fixture-speech',speech); bridge.router.add_get('/task-state',task_state); bridge.router.add_get('/interactions',interactions); bridge.router.add_post('/fixture-release',resume); bridge.router.add_post('/cancel',cancel); runner=web.AppRunner(bridge); await runner.setup(); await web.SockSite(runner,bridge_socket).start()
     descriptor.write_text(json.dumps({'port':bridge_port,'token':'bridge-fixture','workerPort':worker_port,'providerPort':provider_port}))
     try:
         async with serve(provider,sock=provider_socket): await uvicorn.Server(uvicorn.Config(app,host='127.0.0.1',port=worker_port,log_level='warning')).serve(sockets=[worker_socket])

@@ -1,6 +1,6 @@
 {
   ".gitignore": {
-    "sha": "94f51f92221101d5ea1d992a86e7826d0eb50205",
+    "sha": "0ddef8e7ba7de7fd51bd91e71130de8e295e7493",
     "mode": "100644",
     "reason": "Product startup, menu/About expectations and generated pet renderer assets; preserves official runtime source"
   },

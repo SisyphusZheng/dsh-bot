@@ -68,7 +68,7 @@ class VoiceAdmissionTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(p._start_next_turn.await_count, 6)
 
     async def test_short_reply_is_not_mistaken_for_active_reply_echo(self):
-        p = DSHBridgeProcessor('/unused')
+        p = DSHBridgeProcessor('/unused');p._bridge_request=AsyncMock(return_value={'requests':[]})
         p.push_frame = AsyncMock(); p._start_next_turn = AsyncMock(); p._cancel_current = AsyncMock(); p._send_rtvi = AsyncMock()
         p._current = None
         p._last_barge_context = {
@@ -94,7 +94,7 @@ class VoiceAdmissionTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(current.get("completed"))
 
     async def test_valid_transcript_preserves_capture_identity(self):
-        p = DSHBridgeProcessor('/unused'); p.push_frame = AsyncMock(); p._start_next_turn = AsyncMock(); p._send_rtvi = AsyncMock()
+        p = DSHBridgeProcessor('/unused');p._bridge_request=AsyncMock(return_value={'requests':[]}); p.push_frame = AsyncMock(); p._start_next_turn = AsyncMock(); p._send_rtvi = AsyncMock()
         frame = TranscriptionFrame('打开浏览器', 'u', 'now'); frame.metadata.update(capture_id='c1', utterance_id='u1')
         with patch.object(FrameProcessor, 'process_frame', new=AsyncMock()):
             await p.process_frame(frame, FrameDirection.DOWNSTREAM)

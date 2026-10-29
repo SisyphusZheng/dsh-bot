@@ -31,6 +31,7 @@ type Presentation = {
   recoverTask(): Promise<void>
   manageQueue(): Promise<void>
   queue(value: object): void
+  voiceAnswer(value: object): Promise<boolean>
   stop(): void
 }
 type BubbleController = {
@@ -310,10 +311,12 @@ export class ProductPet {
         hide(): void
         animate(payload: object): void
         send(path: string, body?: object): Promise<unknown>
+        publishQuestion(view: object | null): void
       }): Presentation
     }
     this.presentation = presenter.createCompanionPresentation({
       show: (payload) => { if (this.experience?.state().onboarding) return; this.positionBubble(); this.bubble?.show(payload) },
+      publishQuestion: view => window.webContents.send('pet:voice-command', { action:'question-view',view }),
       hide: () => { if (!this.experience?.state().onboarding) this.bubble?.hide() },
       animate: payload => this.window?.webContents.send('pet:presentation', payload),
       send: async (path, body) => {
@@ -437,6 +440,7 @@ export class ProductPet {
       assertOwner(e.sender)
       if (message && typeof message === 'object') {
         if ('kind' in message && message.kind === 'queue-state' && 'state' in message && message.state && typeof message.state === 'object') { this.presentation?.queue(message.state); return }
+        if ('kind' in message && message.kind === 'question-answer' && 'data' in message && message.data && typeof message.data === 'object') { const accepted=await this.presentation?.voiceAnswer(message.data); window.webContents.send('pet:voice-command',{ action:'question-receipt',accepted:accepted===true }); return }
         const status = message as {
           text?: string
           phase?: string

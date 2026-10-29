@@ -30,6 +30,21 @@ class Controls(unittest.IsolatedAsyncioTestCase):
             await p._close_session()
         await asyncio.sleep(0)
 
+    async def test_question_routing_is_bound_to_shared_view_and_does_not_create_task(self):
+        p=self.make();p._start_next_turn=AsyncMock()
+        view={'requestId':'q','sessionId':'s','questionId':'one','index':0,'revision':1}
+        p.set_question_view(view)
+        p._bridge_request.return_value={'requests':[{'kind':'question','id':'q','sessionId':'s','questions':[{'id':'one'}]}]}
+        self.assertTrue(await p._answer_question('最后一个选项',{'assembled':True,'question_view':view}))
+        event=p._send_rtvi.call_args.args[0]
+        self.assertEqual(event['type'],'question-answer');self.assertEqual(event['view'],view)
+        p.set_question_view({**view,'revision':2})
+        self.assertTrue(await p._answer_question('第一个选项',{'question_view':view}))
+        self.assertEqual(p._send_rtvi.call_args.args[0]['type'],'control-result')
+        p.set_question_view(None)
+        self.assertTrue(await p._answer_question('最后一个选项',{}))
+        self.assertFalse(p._pending);p._start_next_turn.assert_not_awaited()
+
     async def test_stop_aliases_are_consumed_without_new_turn_or_task_cancellation(self):
         p = self.make(); p._current = {'turn_key': 'v', 'audible': True}; p._start_next_turn = AsyncMock()
         with patch.object(FrameProcessor, 'process_frame', new=AsyncMock()):

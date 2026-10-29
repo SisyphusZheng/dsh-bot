@@ -1,4 +1,5 @@
 /** Shipped SDK -> real WebRTC/Pipecat -> explicit local provider and Bridge fixtures. */
+import {createCompanionPresentation} from '../pet/src/companion-presentation.mjs'
 import { createServer, request as httpRequest } from 'node:http'
 import { spawn } from 'node:child_process'
 import { mkdtempSync, readFileSync, rmSync, mkdirSync, writeFileSync } from 'node:fs'
@@ -12,6 +13,7 @@ const passive = process.env.DSH_MEDIA_PASSIVE === '1', interaction = process.env
 const expectedResponses = interaction ? 3 : 2
 const { chromium } = createRequire(join(root, 'packages/experimental/inspector/package.json'))('playwright')
 let port, bridgePort
+let questionPresenter
 let child, browser, log = '', statuses = [], requests = []
 const evidence = resolve(root, '.mvv-build/evidence/voice-media'); mkdirSync(evidence, { recursive: true })
 const files = new Map(['pet.html', 'voice-client.js'].map(name => ['/' + name, join(root, 'apps/desktop/resources/pet', name)]))
@@ -30,7 +32,7 @@ try {
   await new Promise(r => server.listen(0, '127.0.0.1', r)); const origin = `http://127.0.0.1:${server.address().port}`
   browser = await chromium.launch({ headless: true, ...(process.env.DSH_CHROMIUM_EXECUTABLE ? { executablePath: process.env.DSH_CHROMIUM_EXECUTABLE } : {}), args: ['--no-sandbox', '--no-zygote', '--allow-loopback-in-peer-connection', '--disable-features=WebRtcHideLocalIpsWithMdns', '--disable-gpu', '--disable-dev-shm-usage', '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--autoplay-policy=no-user-gesture-required'] })
   const context = await browser.newContext({ viewport: { width: 172, height: 204 } }); await context.grantPermissions(['microphone'], { origin })
-  await context.exposeBinding('reportVoice', (_source, value) => statuses.push(value))
+  await context.exposeBinding('reportVoice', async (_source, value) => {statuses.push(value);if(value.kind==='question-answer')await questionPresenter?.voiceAnswer(value.data)})
   await context.addInitScript(({ origin, passive }) => { window.petBridge = { preferences:async()=>({voiceInput:{mode:passive?'always':'hold'},language:'zh'}),state: async () => ({ phase: 'available', offerUrl: origin + '/api/offer' }), voiceStatus: value => window.reportVoice(value), onVoice() {}, onVoiceCommand: f => { window.voiceCommand = f }, onPresentation() {}, hit() {}, dragStart() {}, dragMove() {}, dragEnd() {}, openMain() {}, menu() {}, cancel() {} } }, { origin, passive })
   const page = await context.newPage(), errors = []; page.on('pageerror', e => errors.push(e.message)); page.on('console', message => { log += '\n[browser] ' + message.text() }); page.on('request', request => requests.push(request.url()))
   await page.goto(origin + '/pet.html'); await page.locator('#pet').hover(); await page.waitForFunction(() => getComputedStyle(document.getElementById('controls')).opacity === '1'); if(!passive) await page.locator('#microphone').click()
@@ -47,6 +49,21 @@ try {
   }
   await until(() => statuses.some(x => x.kind === 'speech' && /已收到测试请求/.test(x.text)))
   if(interaction) await until(()=>statuses.some(x=>x.kind==='speech'&& (interaction==='question'?/文档用什么内容/.test(x.text):/需要你批准/.test(x.text))))
+  if(interaction==='question'){
+    const commands=[]
+    questionPresenter=createCompanionPresentation({show:()=>{},hide:()=>{},animate:()=>{},publishQuestion:view=>{commands.push(page.evaluate(view=>window.voiceCommand({action:'question-view',view}),view))},send:async(path,body)=>{
+      const response=await fetch(`http://127.0.0.1:${bridgePort}${path}`,{method:'POST',headers:{Authorization:'Bearer bridge-fixture','content-type':'application/json'},body:JSON.stringify(body)})
+      assert.equal(response.status,200);return response.json()
+    }})
+    const pending=await (await fetch(`http://127.0.0.1:${bridgePort}/interactions`,{headers:{Authorization:'Bearer bridge-fixture'}})).json()
+    questionPresenter.sync({pid:1,sessionId:'media-session',requests:pending.requests});await Promise.all(commands)
+    await fetch(`http://127.0.0.1:${bridgePort}/fixture-inject-answer`,{method:'POST'})
+    await until(()=>statuses.some(x=>x.kind==='question-answer'))
+    await until(()=>commands.length>1)
+    const answered=await (await fetch(`http://127.0.0.1:${bridgePort}/fixture-answers`)).json()
+    assert.equal(answered.answers.length,1);assert.equal(answered.answers[0].answer.answers[0].selected[0],'新文章')
+    assert.equal((await (await fetch(`http://127.0.0.1:${bridgePort}/fixture-state`)).json()).started,1,'Question answer must not create a new task')
+  }
   await page.waitForFunction(() => document.getElementById('speaker').currentTime > 0.1)
   await page.waitForFunction(() => Number(document.getElementById('level').getAttribute('aria-valuenow')) > 0)
   // Discard the current capture during an unfinished Bridge task. Media and task survive.
@@ -77,7 +94,7 @@ try {
   console.log('PASS shipped SDK + real Pipecat/WebRTC handshake, microphone meter, ASR text, one welcome, Bridge reply, audio-track playback, AEC constraints, capture discard during an active task (zero cancel/disconnect), mute/resume/disconnect. Provider/Bridge fixtures; not macOS or real-provider acceptance.')
 } catch (error) { throw new Error(`${error.stack}\n${log.slice(-16000)}`) }
 finally {
-  await browser?.close(); await new Promise(r => { server.close(r); server.closeAllConnections() })
+  questionPresenter?.stop();await browser?.close(); await new Promise(r => { server.close(r); server.closeAllConnections() })
   if (child && child.exitCode === null && child.signalCode === null) { child.kill('SIGTERM'); await Promise.race([new Promise(r => child.once('close', r)), new Promise(r => setTimeout(r, 5000))]); if (child.exitCode === null && child.signalCode === null) { const ended = new Promise(r => child.once('close', r)); child.kill('SIGKILL'); await ended } }
   writeFileSync(join(evidence, 'worker.log'), log); writeFileSync(join(evidence, 'statuses.json'), JSON.stringify(statuses, null, 2)); rmSync(directory, { recursive: true, force: true })
 }

@@ -37,20 +37,30 @@ export function humanizeFailure(message) {
   return raw || '任务执行失败。'
 }
 
+import { questionVoiceAction } from './question-voice.mjs'
 import { activityBubblePayload } from './activity-bubble.mjs'
 
-export function createCompanionPresentation({ show, hide, animate, send, setTimer = setTimeout, clearTimer = clearTimeout }) {
+export function createCompanionPresentation({ show, hide, animate, send, setTimer = setTimeout, clearTimer = clearTimeout, publishQuestion = () => {} }) {
   let requests = [], identity = '', text = '', timer, busy = false, stopped = false
   let persistentDraft = false, manager = null, managerEpoch = 0, recovery = null, recoveryEpoch = 0
   let questionIndex = 0, answers = [], selected = [], customInput = false
   let voice = 'idle', working = false, startedAt = 0, inputSource = 'desktop', captureId = '', captureIdentity = '', captureTimer
   let inputDraft = null, inputDraftTimer, inputDraftBusy = false
   let queued = {revision:0,entries:[]}, queueView = null
+  let questionView = null, questionSignature = '', questionRevision = 0
+  const consumedAnswers=new Set()
+  function updateQuestion() {
+    const request=requests[0], question=request?.kind==='question'?request.questions[questionIndex]:null
+    const view=question?{requestId:request.id,sessionId:request.sessionId,questionId:question.id,index:questionIndex,question:question.question,options:question.options||[],multiSelect:question.multiSelect===true,selected:[...selected],busy}:null
+    const signature=JSON.stringify(view)
+    if(signature!==questionSignature){questionSignature=signature;questionView=view?{...view,revision:++questionRevision}:null;publishQuestion(questionView)}
+  }
   const expiredInputs = new Set()
   const cancelTimer = () => { clearTimer(timer); timer = undefined }
   const animation = (cue = null) => animate({ state: requests.length ? 'awaiting-input' : voice !== 'idle' ? voice : working ? 'working' : 'idle', baseWorking: working, cue })
   const resetDraft = () => { questionIndex = 0; answers = []; selected = []; customInput = false; busy = false; persistentDraft = false }
   function render(hint = '') {
+    updateQuestion()
     const request = requests[0]
     if (!request) return
     cancelTimer()
@@ -137,7 +147,7 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
         requests = requests.filter(item => item.id !== request.id)
         resetDraft()
         if (requests.length) render()
-        else { if(inputDraft)renderInputDraft();else hide(); animation() }
+        else { updateQuestion(); if(inputDraft)renderInputDraft();else hide(); animation() }
       }
     } catch (error) {
       if (requests[0]?.id !== request.id) return
@@ -177,6 +187,16 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
     managePolicies,
     recoverTask,
     manageQueue,
+    async voiceAnswer(value) {
+      if(stopped||!questionView||busy||!value||typeof value.answerId!=='string'||consumedAnswers.has(value.answerId))return false
+      const view=value.view
+      if(!view||['requestId','sessionId','questionId','index','revision'].some(k=>view[k]!==questionView[k]))return false
+      consumedAnswers.add(value.answerId);if(consumedAnswers.size>128)consumedAnswers.delete(consumedAnswers.values().next().value)
+      const question=requests[0].questions[questionIndex], action=questionVoiceAction(value.text,question)
+      if(!action||action.id==='submit'&&!question.multiSelect||action.id==='skip'&&question.multiSelect){render('没有识别到唯一选项。请说“第几个选项”、选项原文，或“其他回答…”；也可点击。');return false}
+      await this.action({...action,requestId:questionView.requestId})
+      return true
+    },
     queue(value) {
       if(stopped||!value||!Array.isArray(value.entries)||!Number.isInteger(value.revision))return
       queued={revision:value.revision,entries:value.entries.slice(0,20)}
@@ -227,8 +247,9 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
         resetDraft(); cancelTimer()
         if (changedOwner) { working = false; text = ''; voice = 'idle' }
         if (requests.length) render()
-        else { if(inputDraft)renderInputDraft();else hide(); animation() }
+        else { updateQuestion(); if(inputDraft)renderInputDraft();else hide(); animation() }
       } else if (requests.length && previousCount !== requests.length) render()
+      const before=questionSignature;updateQuestion();if(requests.length&&before!==questionSignature)render()
     },
     event(event) {
       if (stopped) return
@@ -329,6 +350,6 @@ export function createCompanionPresentation({ show, hide, animate, send, setTime
         if (action.id === 'back' && questionIndex > 0) { questionIndex--; selected = answers[questionIndex]?.selected || []; render() }
       }
     },
-    stop() { stopped = true; clearInputDraft(); manager = null; managerEpoch++; recovery = null; recoveryEpoch++; cancelTimer(); clearTimer(captureTimer); requests = []; hide() },
+    stop() { stopped = true; clearInputDraft(); manager = null; managerEpoch++; recovery = null; recoveryEpoch++; cancelTimer(); clearTimer(captureTimer); requests = []; updateQuestion(); hide() },
   }
 }

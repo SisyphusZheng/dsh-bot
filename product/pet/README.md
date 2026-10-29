@@ -21,3 +21,7 @@ The pet's waiting-input button opens the unsubmitted queue, with position, elaps
 Run `node product/tools/smoke-pet-ui.mjs` after building for renderer screenshots and layout/interaction assertions. `DSH_CHROMIUM_EXECUTABLE` selects an installed Chromium when Playwright's browser is unavailable. `product/tools/verify-local.sh` includes this check, the startup suites and the existing voice/Host checks. Physical macOS pointer behavior, microphone permissions and room acoustics require native acceptance.
 
 Recovery appears in the context menu and failed-task bubble. Choosing a mode does not execute work: the next card shows the original instruction and side-effect warning before a separate confirmation. New work or pending approvals invalidate an older draft. Any notice with visible action buttons accepts pointer interaction.
+
+## Voice answers to questions
+
+The pet question controller is shared by pointer and voice input. Say an exact option label, “第几个选项” or “最后一个选项”; select multiple options individually and finish with “提交选择”. Use “其他回答 …” for custom text. Answers carry the session, request, question and view revision. Changed or expired views are rejected, and ambiguous answers stay in the question instead of becoming new Agent work. The Worker keeps no independent question index or answer set.

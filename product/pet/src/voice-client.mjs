@@ -1,3 +1,4 @@
+let questionView = null
 /** Official Pipecat media in the independent sprite document. */
 import { PipecatClient } from '@pipecat-ai/client-js'
 import { SmallWebRTCTransport, WavMediaManager } from '@pipecat-ai/small-webrtc-transport'
@@ -69,7 +70,7 @@ const session = createVoiceSession({
     mediaManager.setUserAudioCallback(buffer => { const samples = new Int16Array(buffer); let energy = 0; for (const sample of samples) energy += (sample / 32768) ** 2; level(Math.sqrt(energy / Math.max(1, samples.length))) })
     const own = new PipecatClient({ transport: new SmallWebRTCTransport({ mediaManager, iceServers: [], waitForICEGathering: true }), enableMic: false, enableCam: false, callbacks: {
       onTrackStarted(track, participant) { if (participant?.local || track.kind !== 'audio') return; audio.muted = false; audio.volume = 1; audio.srcObject = new MediaStream([track]); void audio.play().catch(() => report('声音播放失败，请重新连接。')) },
-      onBotReady: callbacks.ready, onDisconnected: callbacks.disconnected, onError: callbacks.error,
+      onBotReady: () => { own.sendClientMessage('question-view',{view:questionView});callbacks.ready() }, onDisconnected: callbacks.disconnected, onError: callbacks.error,
       onDeviceError: error => callbacks.error(new Error(error?.error?.message || '麦克风设备不可用或权限被拒绝')),
       onMediaStateChanged: state => { if (state.mic?.state === 'error') callbacks.error(new Error('麦克风设备不可用或权限被拒绝')) },
       onLocalAudioLevel: level,
@@ -80,6 +81,7 @@ const session = createVoiceSession({
       onBotTtsText: data => { if (data.text) report(data.text, 'speaking', true, 'speech') },
       onServerMessage(data) {
         if(epoch!==mediaEpoch)return
+        if(data.type==='question-answer'){void bridge.voiceStatus({kind:'question-answer',data});return}
         if(data.type==='queue-state') { const button=document.getElementById('queue-status');if(button){button.hidden=!data.entries?.length;button.textContent=`等待 ${data.entries?.length||0}`};void bridge.voiceStatus({kind:'queue-state',state:data});return }
         if (data.type === 'voice-error') { reportVoiceError(data); return }
         if (data.type === 'task-error') { report(`任务连接异常，执行结果需要检查。诊断 ID：${data.diagId}`, 'idle', true, 'task-error'); return }
@@ -97,11 +99,11 @@ const session = createVoiceSession({
       publish: value => report(value.kind === 'capture-start' ? text('正在听…', 'Listening…') : value.text, ['input', 'capture-start'].includes(value.kind) ? 'listening' : 'processing', true, value.kind, value.captureId, value.utteranceId),
     })
     const ownCapture = capture
-    return { queueControl: data => own.sendClientMessage('queue-control',data), confirmInput: data => own.sendClientMessage('input-confirmation', data), connect: endpoint => own.connect({ webrtcRequestParams: { endpoint } }), disconnect: async () => { ownCapture.stop(); const tracks = Object.values(own.tracks()?.local || {}).filter(Boolean); try { await own.disconnect() } finally { for (const track of tracks) track.stop(); if(epoch===mediaEpoch){mediaEpoch++;audio.srcObject = null;level(0);const button=document.getElementById('queue-status');if(button)button.hidden=true;void bridge.voiceStatus({kind:'queue-state',state:{revision:0,entries:[]}})} } }, enableMic: enabled => ownCapture.enable(enabled) }
+    return { questionView: view => own.sendClientMessage('question-view',{view}), queueControl: data => own.sendClientMessage('queue-control',data), confirmInput: data => own.sendClientMessage('input-confirmation', data), connect: endpoint => own.connect({ webrtcRequestParams: { endpoint } }), disconnect: async () => { ownCapture.stop(); const tracks = Object.values(own.tracks()?.local || {}).filter(Boolean); try { await own.disconnect() } finally { for (const track of tracks) track.stop(); if(epoch===mediaEpoch){mediaEpoch++;audio.srcObject = null;level(0);const button=document.getElementById('queue-status');if(button)button.hidden=true;void bridge.voiceStatus({kind:'queue-state',state:{revision:0,entries:[]}})} } }, enableMic: enabled => ownCapture.enable(enabled) }
   },
 })
 async function apply(state) { if (state.notice && state.notice !== current?.notice) report(state.notice); current = state; await session.update(state.phase === 'available' ? state.offerUrl : undefined); if (['failed', 'unconfigured'].includes(state.phase) && session.snapshot().wanted) report(state.error || '语音服务尚未就绪。') }
-function command(value) { if(value.action==='queue-control'){void session.queueControl(value.data);return}; if (value.action === 'confirm-input' || value.action === 'discard-input') { session.confirmInput({ id: value.id, action: value.action === 'confirm-input' ? 'confirm' : 'discard', ...(value.text === undefined ? {} : { text: value.text }) }); return }; if (value.action === 'discard') { if (capture?.discard(value.captureId)) void session.command('mute'); return }; if (value.action === 'retry') { lastVoiceErrorAt = 0; void session.retry(); return }; if (value.action === 'enable' || value.action === 'toggle') { stopLocal(); if (!session.snapshot().wanted) captureMode = preferences.voiceInput?.mode === 'always' ? 'always' : preferences.voiceInput?.mode === 'hold' && value.action === 'enable' && value.source === 'gesture' ? 'hold' : 'toggle' }; void session.command(value.action || 'toggle'); if (current?.phase === 'unconfigured') report(current.error || '请先配置语音。') }
+function command(value) { if(value.action==='question-view'){questionView=value.view;void session.questionView(value.view);return};if(value.action==='question-receipt'){report(value.accepted?'回答已接收。':'未提交回答：选项可能已变化，请查看气泡。',session.snapshot().enabled?'listening':'idle',true,'status');return}; if(value.action==='queue-control'){void session.queueControl(value.data);return}; if (value.action === 'confirm-input' || value.action === 'discard-input') { session.confirmInput({ id: value.id, action: value.action === 'confirm-input' ? 'confirm' : 'discard', ...(value.text === undefined ? {} : { text: value.text }) }); return }; if (value.action === 'discard') { if (capture?.discard(value.captureId)) void session.command('mute'); return }; if (value.action === 'retry') { lastVoiceErrorAt = 0; void session.retry(); return }; if (value.action === 'enable' || value.action === 'toggle') { stopLocal(); if (!session.snapshot().wanted) captureMode = preferences.voiceInput?.mode === 'always' ? 'always' : preferences.voiceInput?.mode === 'hold' && value.action === 'enable' && value.source === 'gesture' ? 'hold' : 'toggle' }; void session.command(value.action || 'toggle'); if (current?.phase === 'unconfigured') report(current.error || '请先配置语音。') }
 micButton.addEventListener('click', event => { event.stopPropagation(); command({ action: 'toggle' }) }); micButton.addEventListener('mousedown', event => event.stopPropagation())
 document.getElementById('queue-status')?.addEventListener('click',event=>{event.stopPropagation();void bridge.queue()})
 bridge.onVoice(state => { void apply(state) }); bridge.onVoiceCommand(command)

@@ -25,6 +25,7 @@ import json
 import os
 import re
 import time
+import uuid
 from collections import deque
 from difflib import SequenceMatcher
 
@@ -83,6 +84,7 @@ class DSHBridgeProcessor(FrameProcessor):
         self._input_admission = InputAdmission()
         self._capture = capture
         self._stop_confirmation = None
+        self._question_view = None
         self._announced_interactions = {}
         self._spoken_prompts = deque(maxlen=4)
         self._greeting = ""
@@ -365,6 +367,8 @@ class DSHBridgeProcessor(FrameProcessor):
                 self._utterance_targets[key] = {'current': self._current, 'requests': None, 'task': None}
                 if len(self._utterance_targets) > 128:
                     self._utterance_targets.pop(next(iter(self._utterance_targets)))
+            if 'question_view' not in frame.metadata and not frame.metadata.get('assembled'):
+                frame.metadata['question_view']=self._question_view
             kind = control_kind(frame.text)
             if key and kind in ('approval-allow', 'approval-reject', 'approval-ambiguous'):
                 target = self._utterance_targets[key]
@@ -498,6 +502,8 @@ class DSHBridgeProcessor(FrameProcessor):
                 if draft:
                     await self.discard_input(draft['id'])
                 return
+            if control_kind(text) not in ('playback-stop','task-stop','task-status') and await self._answer_question(text,frame.metadata):
+                return
             if await self._handle_control(text, frame.metadata):
                 return
             if frame.metadata.get('input_mode') and frame.metadata.get('capture_id') and not frame.metadata.get('assembled'):
@@ -505,6 +511,8 @@ class DSHBridgeProcessor(FrameProcessor):
                     self._speech.add(text, frame.metadata)
                     self._schedule_speech()
                 except ValueError as exc: await self._control_notice(str(exc))
+                return
+            if await self._answer_question(text,frame.metadata):
                 return
             if not frame.metadata.get('input_confirmed') and (passive or frame.metadata.get('assembled') and needs_confirmation(text)):
                 if self._wake_phrase.admit(text, active=self._current is not None, commit=False) is None:
@@ -642,6 +650,38 @@ class DSHBridgeProcessor(FrameProcessor):
             await self.publish_queue(str(exc));return False
         await self.publish_queue();await self._start_next_turn();return True
 
+    def set_question_view(self, view):
+        if view is None: self._question_view=None;return
+        if not isinstance(view,dict) or not all(isinstance(view.get(k),str) and 0<len(view[k])<=200 for k in ('requestId','sessionId','questionId')) or not isinstance(view.get('revision'),int): return
+        self._question_view={**view}
+
+    async def _answer_question(self,text,metadata):
+        # Keep partial provider finals in the shared utterance assembler.
+        if metadata.get('input_mode') and metadata.get('capture_id') and not metadata.get('assembled'): return False
+        view=metadata.get('question_view',self._question_view)
+        if not view:
+            if self._question_view:
+                await self._control_notice('问题刚有变化，请重新回答；这句话没有另建任务。');return True
+            if re.fullmatch(r'(?:嗯[，,]?就)?(?:选|选择)?(?:第[一二三四五六七八九十0-9]+个?|最后一个)(?:选项)?[吧。！! ]*',text.strip()):
+                await self._control_notice('没有可确认的当前选项，这句话没有作为新任务发送。请查看气泡。');return True
+            try:
+                waiting=(await self._bridge_request('GET','/interactions')).get('requests',[])
+                if waiting and waiting[0].get('kind')=='question':
+                    await self._control_notice('问题界面尚未同步，请在气泡出现后重新回答；没有另建任务。');return True
+            except Exception:
+                await self._control_notice('无法确认是否在等待回答，尚未发送这句话，请检查任务状态。');return True
+            return False
+        try:
+            requests=(await self._bridge_request('GET','/interactions')).get('requests',[])
+            current=requests[0] if requests else {}
+            matching=(self._question_view and all(view.get(k)==self._question_view.get(k) for k in ('requestId','sessionId','questionId','index','revision')) and current.get('kind')=='question' and current.get('id')==view['requestId'] and current.get('sessionId')==view['sessionId'] and any(q.get('id')==view['questionId'] for q in current.get('questions',[])))
+            if not matching:
+                await self._control_notice('问题已变化，这条回答没有提交，也不会另建任务。');return True
+            await self._send_rtvi({'type':'question-answer','answerId':str(uuid.uuid4()),'view':view,'text':text})
+        except Exception:
+            await self._control_notice('暂时不能确认当前问题，尚未提交回答，请查看气泡。')
+        return True
+
     async def announce_pending(self):
         """Read authoritative pending requests; announce each first request once.
 
@@ -653,8 +693,11 @@ class DSHBridgeProcessor(FrameProcessor):
         if not requests:
             return
         request = requests[0]
-        key = (request.get('sessionId'), request.get('id'))
-        if not all(key) or key in self._announced_interactions:
+        view=self._question_view
+        if request.get('kind')=='question' and view and view.get('requestId')==request.get('id') and view.get('sessionId')==request.get('sessionId'):
+            request={**request,'questions':[q for q in request.get('questions',[]) if q.get('id')==view.get('questionId')]}
+        key = (request.get('sessionId'), request.get('id'), request.get('questions',[{}])[0].get('id') if request.get('questions') else None)
+        if not all(key[:2]) or key in self._announced_interactions:
             return
         if request.get('kind') == 'approval':
             passive = self._capture is not None and self._capture.modes.get(self._capture.current, 'always') == 'always'
@@ -664,8 +707,8 @@ class DSHBridgeProcessor(FrameProcessor):
             prompt = '需要你回答：' + str(question.get('question') or '')[:160]
             labels = [str(option.get('label') or '')[:35] for option in question.get('options', [])[:6]]
             if labels:
-                prompt += '。可选：' + '；'.join(labels)
-            prompt += '。请在气泡中选择或填写回答。'
+                prompt += '。可选：' + '；'.join(f'第{i+1}项，{label}' for i,label in enumerate(labels))
+            prompt += '。可以说第几个或最后一个选项；多选可逐项选择，最后说提交选择。其他答案请说其他回答，再说内容。也可点击气泡。'
         else:
             return
         if self._closing:
@@ -722,6 +765,7 @@ class DSHBridgeProcessor(FrameProcessor):
                 requests = target['requests']
                 if requests is None:
                     requests = (await self._bridge_request('GET', '/interactions')).get('requests', [])
+                if requests and requests[0].get('kind')=='question': return False
                 if not requests and normalize(text) in ('是', '否', '好', '可以'):
                     return False
                 if kind == 'approval-ambiguous':
