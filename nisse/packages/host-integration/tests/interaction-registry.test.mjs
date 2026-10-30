@@ -903,6 +903,67 @@ test('an approval decision is bound to the operation summary it was shown for', 
 })
 
 // ---------------------------------------------------------------------------
+// Presentation projection: official request label (toolName/reason)
+// ---------------------------------------------------------------------------
+
+test('the approval projection carries the official toolName and reason; questions keep both null', async (t) => {
+  const f = fixture(t)
+  askApproval(f.mirror, { toolName: 'write', reason: 'write outside workspace: /etc/hosts', callId: 'call-label-1' })
+  await tick()
+  const approval = f.registry.snapshot().pending[0]
+  assert.equal(approval.kind, 'approval')
+  assert.equal(approval.toolName, 'write')
+  assert.equal(approval.reason, 'write outside workspace: /etc/hosts')
+  assert.equal(approval.questions, null)
+  assert.equal(approval.operation, null)
+
+  const q = fixture(t)
+  q.mirror.ask('question', { agent: agent(), questions: OFFICIAL_ID_QUESTIONS() }).catch(() => {})
+  await tick()
+  const question = q.registry.snapshot().pending[0]
+  assert.equal(question.kind, 'question')
+  assert.equal(question.toolName, null)
+  assert.equal(question.reason, null)
+})
+
+test('an official approval/asked binding fills a missing toolName/reason and operation supplies the fallback tool name', async (t) => {
+  let officialCalls = 0
+  const registry = createInteractionRegistry({
+    mirror: null,
+    hostEpoch: HOST_EPOCH,
+    getSessionId: () => SESSION,
+    officialAnswer: () => { officialCalls += 1; return true },
+  })
+  t.after(() => registry.dispose())
+  // Adopted from a bare official projection: no label yet.
+  registry.syncOfficialRequests([{ interactionId: 'int-approval-label', kind: 'approval', sessionId: SESSION, callId: 'call-label-late' }])
+  assert.equal(registry.snapshot().pending[0].toolName, null)
+  assert.equal(registry.snapshot().pending[0].reason, null)
+  // The durable approval/asked names the tool and reason; binding preserves them.
+  assert.equal(registry.observeOfficial({
+    type: 'approval/asked',
+    data: { id: 'official-label-1', callId: 'call-label-late', toolName: 'terminal', reason: 'run: rm -rf /tmp/scratch', sessionId: SESSION },
+  }), true)
+  const bound = registry.snapshot().pending[0]
+  assert.equal(bound.toolName, 'terminal')
+  assert.equal(bound.reason, 'run: rm -rf /tmp/scratch')
+
+  // An operation summary is a fallback source for the tool name.
+  registry.syncOfficialRequests([{
+    interactionId: 'int-approval-op',
+    kind: 'approval',
+    sessionId: SESSION,
+    callId: 'call-label-op',
+    operation: { toolName: 'write', arguments: { path: '/etc/hosts' }, cwd: '/tmp' },
+  }])
+  const withOperation = registry.snapshot().pending.find((item) => item.id === 'int-approval-op')
+  assert.equal(withOperation.toolName, 'write')
+  assert.equal(withOperation.reason, null)
+  assert.deepEqual(withOperation.operation, { toolName: 'write', arguments: { path: '/etc/hosts' }, cwd: '/tmp' })
+  assert.equal(officialCalls, 0)
+})
+
+// ---------------------------------------------------------------------------
 // main-window-initiated interactions observed through official projections
 // ---------------------------------------------------------------------------
 

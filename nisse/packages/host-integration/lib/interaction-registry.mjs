@@ -394,6 +394,11 @@ export function createInteractionRegistry({
       officialCallId: record.officialRequestId || record.officialCallId || null,
       createdAt: isoOf(record.createdAt),
       expiresAt: isoOf(record.expiresAt),
+      // Top-level official request label. The presentation layer prefers these
+      // over the richer operation summary so a localized approval bubble never
+      // degrades to generic text; questions carry null for both.
+      toolName: record.toolName || null,
+      reason: record.reason || null,
       operation: record.kind === 'approval' ? record.operation : null,
       questions: record.kind === 'question' ? questionsProjection(record) : null,
     }
@@ -486,7 +491,30 @@ export function createInteractionRegistry({
     return record
   }
 
-  function createRecord({ id, mirrorId = null, kind, sessionId, officialCallId = null, operation = null, questions = [], createdAt = null }) {
+  /**
+   * The official request's own label (tool name + asker reason). The mirror view
+   * and the original request source both carry it; some adapters nest one under
+   * the other, so every accepted shape is checked. Blank values fall through so
+   * a later official event (approval/asked) can still fill them in.
+   */
+  function requestMeta(view, source) {
+    const toolName = stringOrEmpty(view?.toolName)
+      || stringOrEmpty(source?.toolName)
+      || stringOrEmpty(source?.source?.toolName)
+      || stringOrEmpty(source?.operation?.toolName)
+    const reason = stringOrEmpty(view?.reason)
+      || stringOrEmpty(source?.reason)
+      || stringOrEmpty(source?.source?.reason)
+    return {
+      toolName: toolName.slice(0, 200),
+      reason: reason.slice(0, 4000),
+    }
+  }
+
+  function createRecord({
+    id, mirrorId = null, kind, sessionId, officialCallId = null, operation = null,
+    questions = [], toolName = '', reason = '', createdAt = null,
+  }) {
     const record = {
       id,
       mirrorId,
@@ -495,6 +523,8 @@ export function createInteractionRegistry({
       officialRequestId: null,
       officialCallId: officialCallId || null,
       toolCallId: officialCallId || null,
+      toolName: stringOrEmpty(toolName).slice(0, 200),
+      reason: stringOrEmpty(reason).slice(0, 4000),
       operation: kind === 'approval' ? normalizeOperation(operation) : null,
       operationDigest: null,
       semanticRevision: 1,
@@ -955,6 +985,8 @@ export function createInteractionRegistry({
       mirrorId: record.mirrorId,
       officialCallId: record.officialCallId,
       officialRequestId: record.officialRequestId,
+      toolName: record.toolName,
+      reason: record.reason,
       operation: record.operation,
       semanticRevision: record.semanticRevision,
       viewRevision: record.viewRevision,
@@ -1086,6 +1118,7 @@ export function createInteractionRegistry({
     if (existingId) return interactions.get(existingId) || null
     const request = isPlainObject(payload.source) ? payload.source : {}
     const officialCallId = kind === 'approval' ? (view.callId || request.callId || null) : (view.callId || request.wait?.callId || null)
+    const meta = requestMeta(view, request)
     return createRecord({
       id,
       mirrorId: id,
@@ -1094,6 +1127,8 @@ export function createInteractionRegistry({
       officialCallId,
       operation: request.operation,
       questions: normalizeQuestions(view.questions || request.questions),
+      toolName: meta.toolName,
+      reason: meta.reason,
       createdAt: clock(),
     })
   }
@@ -1140,6 +1175,11 @@ export function createInteractionRegistry({
       byOfficialRequestId.set(officialId, record.id)
       byOfficialCallId.set(officialId, record.id)
       if (callId) byOfficialCallId.set(callId, record.id)
+      // Binding must never drop the official label if the record was adopted
+      // before the approval/asked event named the tool.
+      const meta = requestMeta(data, data)
+      if (!record.toolName && meta.toolName) record.toolName = meta.toolName
+      if (!record.reason && meta.reason) record.reason = meta.reason
       persistState()
       return true
     }
@@ -1292,6 +1332,7 @@ export function createInteractionRegistry({
       if (!isPlainObject(raw)) continue
       const kind = raw.kind === 'approval' ? 'approval' : raw.kind === 'question' ? 'question' : null
       if (!kind) continue
+      const meta = requestMeta(raw, raw)
       const explicitId = stringOrEmpty(raw.interactionId)
       const rawId = stringOrEmpty(raw.id) || stringOrEmpty(raw.mirrorId)
       const mirrorId = explicitId && interactions.has(explicitId) ? explicitId
@@ -1319,6 +1360,8 @@ export function createInteractionRegistry({
           officialCallId,
           operation: raw.operation,
           questions: normalizeQuestions(raw.questions),
+          toolName: meta.toolName,
+          reason: meta.reason,
           createdAt: clock(),
         })
         changed += 1
@@ -1329,6 +1372,8 @@ export function createInteractionRegistry({
         record.toolCallId = officialCallId
         byOfficialCallId.set(officialCallId, record.id)
       }
+      if (!record.toolName && meta.toolName) record.toolName = meta.toolName
+      if (!record.reason && meta.reason) record.reason = meta.reason
       if (!record.officialRequestId && raw.officialRequestId) {
         record.officialRequestId = String(raw.officialRequestId)
         byOfficialRequestId.set(record.officialRequestId, record.id)
