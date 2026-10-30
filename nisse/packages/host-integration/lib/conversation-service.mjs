@@ -629,6 +629,11 @@ export function createConversationService({
   async function acceptInput(segment, utterance) {
     const text = String(segment.text || '').trim()
     if (!text) return { outcome: 'ignore', detail: { reason: 'empty' } }
+    if (utterance.legacyDirect === true) {
+      if (turn.isBusy() || isMainWindowTurn()) return { outcome: 'busy', detail: { reason: 'agent-busy' } }
+      const direct = await admitDirect(text, { source: 'voice', clientTurnId: utterance.clientTurnId || '', metadata: { captureId: utterance.captureId } })
+      return { outcome: direct.ok ? 'submitted' : 'submit-failed', detail: { error: direct.error || null } }
+    }
     const confirmation = segment.requiresConfirmation === true
       ? { needed: true, reason: 'segment-requires-confirmation' }
       : needsConfirmation(text, { mode: utterance.mode || capture.mode, assembled: utterance.assembled !== false })
@@ -670,7 +675,7 @@ export function createConversationService({
    * Adapter entry for transports that already deliver one assembled final utterance
    * (the pre-v2 worker's /voice/turn). The business decision is still made here.
    */
-  async function handleFinalUtterance({ text, captureId = null, utteranceId = null, mode = 'hold', clientTurnId = '', source = 'voice', connectionId = null } = {}) {
+  async function handleFinalUtterance({ text, captureId = null, utteranceId = null, mode = 'hold', clientTurnId = '', source = 'voice', connectionId = null, direct = false } = {}) {
     const trimmed = String(text || '').trim()
     if (!trimmed) return { routed: [], commands: [], utterances: 0 }
     if (connectionId) {
@@ -680,7 +685,7 @@ export function createConversationService({
     }
     const utterance = {
       utteranceId: utteranceId || newId('utt-'), captureId: captureId || newId('cap-'),
-      mode, text: trimmed, assembled: true, late: false, clientTurnId,
+      mode, text: trimmed, assembled: true, late: false, clientTurnId, legacyDirect: direct === true,
       segments: [{ segmentId: 'final', text: trimmed, itemIds: [], revision: 0 }],
       createdAt: now(),
     }
@@ -732,6 +737,7 @@ export function createConversationService({
   function drainQueue() {
     if (disposed || admission || admissionTask) return
     if (turn.isBusy() || isMainWindowTurn()) return
+    if (typeof runtime.agentReady === 'function' && runtime.agentReady() !== true) return
     let item = null
     try { item = queue.take() } catch { item = null }
     if (!item) return
@@ -861,6 +867,23 @@ export function createConversationService({
       }
       drainQueue()
     }
+  }
+
+  /**
+   * The Bot conversation was rotated or its Agent was disposed for refresh. Execution
+   * state must not stay 'working' (a disposed Agent never emits a turn/end), and any
+   * unsubmitted queue entry must require explicit confirmation instead of being drained
+   * into a half-created Agent.
+   */
+  function onConversationRotated(reason = 'rotation') {
+    if (disposed) return
+    turn.reset()
+    try {
+      const quarantined = queue.quarantineAll('conversation-' + String(reason))
+      if (quarantined?.quarantined) emit('queue.changed', { data: queue.snapshot() })
+    } catch (error) { log('queue quarantine on rotation failed: ' + String(error?.message || error)) }
+    emit('execution.changed', { data: turn.snapshot(), dataReason: reason })
+    persistState('conversation-rotated')
   }
 
   // ---------------- commands ----------------
@@ -1169,6 +1192,7 @@ export function createConversationService({
     handleCommand, handleFinalUtterance,
     snapshotSections,
     onTurnStarted, onTurnEnded, onAssistantDelta, onAssistantEnded, onAgentStatus,
+    onConversationRotated,
     addNotice, listInteractions,
     // test/inspection helpers (not used as authority by clients)
     inspect: () => ({ queue: queue.snapshot(), draft: draft.snapshot(), turn: turn.snapshot(), capture: { ...capture }, playback: { ...playback }, pendingCancel }),

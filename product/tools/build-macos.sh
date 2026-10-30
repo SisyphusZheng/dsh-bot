@@ -16,7 +16,7 @@ mkdir -p "$STAGE/evidence" "$STAGE/inputs"
 exec > >(tee "$STAGE/evidence/build-macos.log") 2>&1
 # Current source and hash-locked wheels; no old app or DMG is a build input.
 rm -rf "$STAGE/pet" "$STAGE/pet-unpacked"
-rm -f "$STAGE/inputs/dsh-bot-0.0.1-beta-mac-arm64-unsigned.dmg" "$STAGE/inputs/inject-bundle.js"
+rm -f "$STAGE/inputs/dsh-bot-0.0.1-beta2-mac-arm64-unsigned.dmg" "$STAGE/inputs/inject-bundle.js"
 bash product/tools/build-memory.sh
 export NISSE_MEMORY_DIR="$STAGE/memory"
 export DSH_HOME="$STAGE/dsh-home" DSH_TELEMETRY_DISABLED=1

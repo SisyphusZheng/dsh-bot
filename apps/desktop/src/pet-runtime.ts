@@ -1,5 +1,5 @@
 /** Own the pet window and Pipecat worker within the desktop Electron process. */
-import { BrowserWindow, ipcMain, screen, session, systemPreferences, Menu, powerMonitor, globalShortcut, dialog, Notification } from 'electron'
+import { app, BrowserWindow, ipcMain, screen, session, systemPreferences, Menu, powerMonitor, globalShortcut, dialog, Notification } from 'electron'
 import { createServer, request as httpRequest, type Server } from 'node:http'
 import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
@@ -17,23 +17,69 @@ type WorkerModule = {
     logger: { info(message: string, detail?: unknown): void }
   }): Worker
 }
-type PendingInteraction = { id: string; kind: string; sessionId: string; questions?: object[] }
+type PendingInteraction = {
+  id: string
+  kind: string
+  sessionId: string
+  semanticRevision?: number
+  questions?: { id?: string; options?: { id?: string; label?: string }[] }[]
+}
+type PresentationState = {
+  working: boolean
+  startedAt: number
+  inputSource: string
+  waiting: boolean
+  queued: number
+  mode?: string
+  hostEpoch?: string
+  snapshotSeq?: number
+  lastEventSeq?: number
+}
+type KernelResult = { applied?: boolean; resync?: boolean; duplicate?: boolean; stale?: boolean; staleEpoch?: boolean; reason?: string }
 type Presentation = {
+  applySnapshot(snapshot: object): KernelResult
+  applyEvent(event: object): KernelResult
   sync(snapshot: { pid: number; sessionId: string; requests: PendingInteraction[] }): void
-  event(event: { ioSeq: number; type: string }): void
+  event(event: { ioSeq?: number; seq?: number; type: string; data?: object }): KernelResult | void
   notice(text: string, kind?: string, duration?: number, capture?: string, options?: object): void
   capture(status: object): void
   cancelCapture(id: string): boolean
   voice(state: string): void
   syncTaskState(state: object): void
   action(value: object): Promise<void>
-  state(): { working: boolean; startedAt: number; inputSource: string; waiting: boolean }
+  state(): PresentationState
   managePolicies(): Promise<void>
   recoverTask(): Promise<void>
   manageQueue(): Promise<void>
   queue(value: object): void
   voiceAnswer(value: object): Promise<boolean>
   stop(): void
+}
+type KernelEvent = {
+  seq?: number
+  type?: string
+  sessionId?: string | null
+  turn?: number | null
+  turnId?: string | null
+  data?: Record<string, unknown>
+}
+type KernelSnapshot = {
+  hostEpoch?: string
+  snapshotSeq?: number
+  identity?: { sessionId?: string | null; hostPid?: number }
+  interactions?: { pending?: PendingInteraction[] }
+  presentation?: { bubblePolicy?: { placement?: string; anchorGapPx?: number } }
+}
+type KernelReceipt = { status?: string; result?: Record<string, unknown>; error?: { code?: string; message?: string } | null }
+type ProcessType = 'foreground' | 'uielement'
+type WindowPolicyModule = {
+  windowLayerPlan?(options: { role: string; platform: string; processType: string }): {
+    alwaysOnTop?: boolean
+    level?: string | null
+    spaces?: { visibleOnAllWorkspaces?: boolean; visibleOnFullScreen?: boolean; skipTransformProcessType?: boolean }
+    focus?: { focusable?: boolean }
+    clickThrough?: { defaultIgnoreMouseEvents?: boolean; forwardMouseEvents?: boolean }
+  } | null
 }
 type BubbleController = {
   show(payload: object): void
@@ -46,11 +92,19 @@ type BubbleController = {
   setInputMode(value: boolean): void
 }
 type PetModules = {
-  createBubbleWindowController(options: { BrowserWindow: typeof BrowserWindow; preloadPath: string; pageUrl: string }): BubbleController
+  createBubbleWindowController(options: {
+    BrowserWindow: typeof BrowserWindow
+    preloadPath: string
+    pageUrl: string
+    processType?: ProcessType | (() => ProcessType)
+  }): BubbleController
   orbBubbleWindowBounds(options: {
     orbBounds: Electron.Rectangle
     workArea: Electron.Rectangle
     avoidBounds?: Electron.Rectangle[]
+    displays?: Electron.Display[]
+    placement?: string
+    anchorGapPx?: number
   }): Electron.Rectangle
 }
 type ExperienceState = {
@@ -94,6 +148,11 @@ export class ProductPet {
   private requests = new AbortController()
   private lastSeq = 0
   private identity = ''
+  private mode: 'unknown' | 'v2' | 'legacy' = 'unknown'
+  private kernel = { lastSeq: 0, hostEpoch: '', snapshotSeq: -1, needsSnapshot: false, legacyNoticeShown: false }
+  private kernelSnapshot: KernelSnapshot | null = null
+  private legacyRequests: PendingInteraction[] = []
+  private processType: (() => ProcessType) | null = null
   private bubble: BubbleController | null = null
   private bubbleModule: PetModules | null = null
   private presentation: Presentation | null = null
@@ -165,6 +224,21 @@ export class ProductPet {
   }
   private async inspectTask(): Promise<void> {
     try {
+      if (this.mode === 'v2') {
+        const receipt = await this.sendKernelCommand('task.status', {})
+        const execution = (receipt.result?.execution || {}) as { state?: string; lastTurn?: { terminal?: string } }
+        const waiting = Boolean(this.kernelSnapshot?.interactions?.pending?.length)
+        const state = execution.state || 'idle'
+        const summary = waiting
+          ? '任务正在等你处理审批或回答。'
+          : state === 'idle'
+            ? (execution.lastTurn?.terminal ? '当前没有任务在执行。上次任务已结束；请确认结果和副作用后再决定是否重试。' : '当前没有任务在执行。')
+            : ['submitting', 'working'].includes(state)
+              ? '任务仍在执行。停止播报不会停止任务；需要取消时请选择「停止任务」。'
+              : '任务状态未知或正在取消；不会自动重试，请打开主窗口确认。'
+        this.presentation?.notice(summary, 'status', 9000)
+        return
+      }
       const response = await this.request('/task-state')
       if (!response.ok) throw new Error('Unavailable')
       const state = await response.json() as { waiting?: boolean; status?: string; lastTurn?: { terminal?: string } }
@@ -314,11 +388,43 @@ export class ProductPet {
       },
     })
     this.window = window
-    window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
-    window.setIgnoreMouseEvents(true, { forward: true })
+    this.processType = () => (process.platform === 'darwin' && app.dock && app.dock.isVisible() === false ? 'uielement' : 'foreground')
+    try {
+      const policy = await import(pathToFileURL(join(root, 'pet/window-layer-policy.mjs')).href) as WindowPolicyModule
+      const plan = typeof policy.windowLayerPlan === 'function'
+        ? policy.windowLayerPlan({ role: 'pet', platform: process.platform, processType: this.processType() })
+        : null
+      if (plan) {
+        if (plan.alwaysOnTop && plan.level) window.setAlwaysOnTop(true, plan.level as Parameters<typeof window.setAlwaysOnTop>[1])
+        if (plan.spaces?.visibleOnAllWorkspaces !== false) {
+          window.setVisibleOnAllWorkspaces(true, {
+            visibleOnFullScreen: plan.spaces?.visibleOnFullScreen !== false,
+            skipTransformProcessType: plan.spaces?.skipTransformProcessType !== false,
+          })
+        }
+        if (typeof plan.focus?.focusable === 'boolean') window.setFocusable(plan.focus.focusable)
+        if (typeof plan.clickThrough?.defaultIgnoreMouseEvents === 'boolean') {
+          window.setIgnoreMouseEvents(plan.clickThrough.defaultIgnoreMouseEvents, {
+            forward: plan.clickThrough.forwardMouseEvents !== false,
+          })
+        }
+      } else {
+        window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+        window.setIgnoreMouseEvents(true, { forward: true })
+      }
+    } catch (error) {
+      this.log('window.policy_unavailable', error instanceof Error ? error.message : String(error))
+      window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+      window.setIgnoreMouseEvents(true, { forward: true })
+    }
     const geometry = await import(pathToFileURL(join(root, 'pet/bubble-window.mjs')).href) as PetModules
     this.bubbleModule = geometry
-    this.bubble = geometry.createBubbleWindowController({ BrowserWindow, preloadPath: join(root, 'pet/bubble-preload.cjs'), pageUrl: `${origin}/${nonce}/bubble.html` })
+    this.bubble = geometry.createBubbleWindowController({
+      BrowserWindow,
+      preloadPath: join(root, 'pet/bubble-preload.cjs'),
+      pageUrl: `${origin}/${nonce}/bubble.html`,
+      processType: this.processType,
+    })
     const presenter = await import(pathToFileURL(join(root, 'pet/companion-presentation.mjs')).href) as {
       createCompanionPresentation(options: {
         show(payload: object): void
@@ -333,16 +439,7 @@ export class ProductPet {
       publishQuestion: view => window.webContents.send('pet:voice-command', { action:'question-view',view }),
       hide: () => { if (!this.experience?.state().onboarding) this.bubble?.hide() },
       animate: payload => this.window?.webContents.send('pet:presentation', payload),
-      send: async (path, body) => {
-        if (path === 'open') { this.options.toggleMain(true); return }
-        if (path === 'inspect-task') { await this.inspectTask(); return }
-        if (path === 'voice-input') { window.webContents.send('pet:voice-command', body); return }
-        if (path === 'voice-queue') { window.webContents.send('pet:voice-command', { action:'queue-control', data:body }); return }
-        const method = path.startsWith('/policies') ? (body && 'method' in body ? String(body.method) : 'GET') : undefined
-        const response = await this.request(path, method === 'DELETE' ? undefined : body, method)
-        if (!response.ok) throw Object.assign(new Error(`DSH request failed: ${response.status}`), { stale: response.status === 409 })
-        return response.json()
-      },
+      send: async (path: string, body?: object) => this.dispatchPresentationCall(path, body),
     })
     const experienceModule = await import(pathToFileURL(join(root, 'pet/experience-runtime.mjs')).href) as {
       createPetExperience(options: object): Experience
@@ -423,7 +520,21 @@ export class ProductPet {
       if (sender !== this.window?.webContents) throw new Error('Unowned pet renderer')
     }
     const assertBubble = (sender: Electron.WebContents): void => { if (!this.bubble?.owns(sender)) throw new Error('Unowned bubble renderer') }
-    ipcMain.handle('pet:bubble-action', (e, value: unknown) => { assertBubble(e.sender); if (!value || typeof value !== 'object') throw new Error('Invalid action'); if ('type' in value && value.type === 'cancel' && 'id' in value && value.id === 'cancel-capture') { if ('requestId' in value && typeof value.requestId === 'string' && this.presentation?.cancelCapture(value.requestId)) window.webContents.send('pet:voice-command', { action: 'discard', captureId: value.requestId }); return } if ('type' in value && value.type === 'secondary' && 'id' in value && value.id === 'retry-voice') { window.webContents.send('pet:voice-command', { action: 'retry' }); this.presentation?.notice('正在重新连接语音…'); return } return this.experience?.action(value).then(handled => handled ? undefined : this.presentation?.action(value)) })
+    ipcMain.handle('pet:bubble-action', (e, value: unknown) => {
+      assertBubble(e.sender)
+      if (!value || typeof value !== 'object') throw new Error('Invalid action')
+      // Capture cancel must take effect on the same tick as the click (old bubble behavior),
+      // so it routes straight to the projection instead of the async experience dispatcher.
+      if ('type' in value && value.type === 'cancel' && 'id' in value && value.id === 'cancel-capture') {
+        return this.presentation?.action(value)
+      }
+      if ('type' in value && value.type === 'secondary' && 'id' in value && value.id === 'retry-voice') {
+        this.window?.webContents.send('pet:voice-command', { action: 'retry' })
+        this.presentation?.notice('正在重新连接语音…')
+        return undefined
+      }
+      return this.experience?.action(value).then(handled => (handled ? undefined : this.presentation?.action(value)))
+    })
     ipcMain.handle('pet:bubble-interactive', (e, value: unknown) => { assertBubble(e.sender); this.bubble?.setInteractive(value === true) })
     ipcMain.handle('pet:bubble-focus', (e, value: unknown) => { assertBubble(e.sender); this.bubble?.setInputMode(value === true) })
     ipcMain.handle('pet:bubble-resize', (e, value: unknown) => { assertBubble(e.sender); if (typeof value === 'number') this.bubble?.resize(value) })
@@ -439,7 +550,7 @@ export class ProductPet {
         { label: '检查任务状态', click: () => { void this.inspectTask() } },
         { label: '管理持续授权…', click: () => { void this.presentation?.managePolicies() } },
         { label: '查看等待输入…', click: () => { void this.presentation?.manageQueue() } },
-        ...(active ? [{ label: '停止任务', click: () => { void this.request('/cancel', { source: 'task-stop' }).catch(() => this.presentation?.notice('停止失败，请打开 DSH 查看。', 'error')) } }] : []),
+        ...(active ? [{ label: '停止任务', click: () => { void this.stopTask().catch(() => this.presentation?.notice('停止失败，请打开 DSH 查看。', 'error')) } }] : []),
         ...(this.options.quit ? [{ type: 'separator' as const }, { label: '退出 dsh-bot', click: () => this.options.quit?.() }] : []),
       ]).popup({ window })
     })
@@ -457,11 +568,21 @@ export class ProductPet {
     ipcMain.handle('pet:approval', async (e, id: unknown, decision: unknown) => {
       assertOwner(e.sender)
       if (typeof id !== 'string' || !['allow', 'reject'].includes(String(decision))) throw new Error('Invalid approval')
+      if (this.mode === 'v2') {
+        const pending = (this.kernelSnapshot?.interactions?.pending || []).find(item => item.id === id)
+        if (!pending) throw new Error('Approval no longer pending')
+        await this.sendKernelCommand('interaction.resolve', {
+          interactionId: id,
+          semanticRevision: pending.semanticRevision,
+          decision: decision === 'allow' ? 'allowed-once' : 'rejected',
+        })
+        return
+      }
       if (!(await this.request('/approval', { id, decision })).ok) throw new Error('Approval failed')
     })
     ipcMain.handle('pet:cancel', async (e) => {
       assertOwner(e.sender)
-      if (!(await this.request('/cancel', { source: 'task-stop' })).ok) throw new Error('Cancellation failed')
+      await this.stopTask()
     })
     ipcMain.handle('pet:voice-status', async (e, message: unknown) => {
       assertOwner(e.sender)
@@ -522,50 +643,300 @@ export class ProductPet {
     this.window.webContents.on('did-finish-load', () => { if (experienceStarted) return; experienceStarted = true; this.experience?.start(); if (this.experience) { this.options.showDockIcon?.(this.experience.state().showDockIcon!==false);void this.configureWake(this.experience.state()) } })
     await this.window.loadURL(`${origin}/${nonce}/index.html`)
     this.poll = setInterval(() => {
-      if (!this.pollTask) this.pollTask = this.pollEvents().finally(() => { this.pollTask = null })
+      if (!this.pollTask) this.pollTask = this.pollKernel().finally(() => { this.pollTask = null })
     }, 300)
     void this.configure(config).catch(error => this.publish({ phase: 'failed', error: String(error) }))
   }
-  private async pollEvents(): Promise<void> {
+  /** One poll tick: probe the v2 kernel once, then follow that mode until restart. */
+  private async pollKernel(): Promise<void> {
     if (this.polling || this.stopped) return
     this.polling = true
     try {
-      const d = this.descriptor(),
-        identity = `${d.pid}:${d.port}`
-      const changedOwner = identity !== this.identity
-      if (changedOwner) {
-        this.lastSeq = 0
-        this.identity = identity
-        this.window?.webContents.send('pet:agent-event', { type: 'runtime.owner' })
-      }
-      const response = await this.request(`/events?after=${this.lastSeq}`)
-      if (!response.ok) return
-      const payload = (await response.json()) as { events?: { ioSeq: number; type: string }[] }
-      const pending = await this.request('/interactions')
-      if (pending.ok) {
-        const snapshot = await pending.json() as { pid: number; sessionId: string; requests: PendingInteraction[] }
-        if (Array.isArray(snapshot.requests)) {
-          this.experience?.sync(snapshot); this.presentation?.sync(snapshot);this.attention?.sync(snapshot)
-        }
-      }
-      if(changedOwner){const task=await this.request('/task-state');if(task.ok)this.presentation?.syncTaskState(await task.json())}
-      this.positionBubble()
-      for (const event of payload.events || []) {
-        if (event.ioSeq <= this.lastSeq) continue
-        this.lastSeq = event.ioSeq
-        if (!changedOwner) { this.presentation?.event(event); this.window?.webContents.send('pet:agent-event', event) }
-      }
-    } catch {
-      this.presentation?.sync({ pid: 0, sessionId: '', requests: [] });this.attention?.sync({ requests:[] })
+      if (this.mode === 'unknown') await this.probeKernel()
+      if (this.mode === 'v2') await this.pollKernelV2()
+      else if (this.mode === 'legacy') await this.pollLegacy()
+    } catch (error) {
+      this.log('kernel.poll_failed', error instanceof Error ? error.message : String(error))
     } finally {
       this.polling = false
     }
   }
+  /** Only a missing v2 surface (404 / unavailable endpoint) selects the migration bridge. */
+  private async probeKernel(): Promise<void> {
+    let response: Response
+    try {
+      response = await this.request('/v2/snapshot')
+    } catch (error) {
+      this.log('kernel.probe_unreachable', error instanceof Error ? error.message : String(error))
+      return
+    }
+    if (response.status === 401 || response.status === 403) { this.log('kernel.probe_unauthorized', response.status); return }
+    if (response.status === 404) { this.enterLegacyMode('v2 snapshot 404'); return }
+    if (!response.ok) { this.enterLegacyMode(`v2 snapshot ${response.status}`); return }
+    let body: KernelSnapshot
+    try { body = await response.json() as KernelSnapshot } catch { this.enterLegacyMode('invalid v2 snapshot json'); return }
+    if ((body as { schema?: string }).schema !== 'snapshot@1') {
+      this.enterLegacyMode('Host does not expose snapshot@1')
+      return
+    }
+    this.mode = 'v2'
+    this.applyKernelSnapshot(body)
+    this.log('kernel.v2_connected', { snapshotSeq: this.kernel.snapshotSeq })
+  }
+  private enterLegacyMode(reason: string): void {
+    if (this.mode === 'legacy') return
+    this.mode = 'legacy'
+    this.log('kernel.legacy_fallback', reason)
+    if (!this.kernel.legacyNoticeShown) {
+      this.kernel.legacyNoticeShown = true
+      this.presentation?.notice('Host v2 未就绪，使用兼容投影。', 'status', 9000)
+    }
+  }
+  private applyKernelSnapshot(body: KernelSnapshot | null | undefined): void {
+    if (!body || typeof body !== 'object') return
+    this.kernelSnapshot = body
+    const result = this.presentation?.applySnapshot(body)
+    if (!result?.applied) return
+    this.kernel.hostEpoch = body.hostEpoch || ''
+    this.kernel.snapshotSeq = body.snapshotSeq || 0
+    this.kernel.lastSeq = Math.max(this.kernel.lastSeq, this.kernel.snapshotSeq)
+    const requests = body.interactions?.pending || []
+    const compat = {
+      pid: body.identity?.hostPid || 0,
+      sessionId: body.identity?.sessionId || '',
+      requests,
+    }
+    this.experience?.sync(compat)
+    this.attention?.sync(compat)
+  }
+  private async refreshKernelSnapshot(): Promise<boolean> {
+    this.kernel.needsSnapshot = false
+    const response = await this.request('/v2/snapshot')
+    if (!response.ok) return false
+    let body: KernelSnapshot
+    try { body = await response.json() as KernelSnapshot } catch { return false }
+    if ((body as { schema?: string }).schema !== 'snapshot@1') return false
+    this.applyKernelSnapshot(body)
+    return true
+  }
+  private async pollKernelV2(): Promise<void> {
+    if (this.kernel.needsSnapshot) {
+      if (!(await this.refreshKernelSnapshot())) return
+    }
+    const response = await this.request(`/v2/events?after=${this.kernel.lastSeq}`)
+    if (response.status === 409) {
+      // Retention gap or stale epoch: take a new snapshot and continue from its seq.
+      this.kernel.needsSnapshot = true
+      return
+    }
+    if (!response.ok) { this.log('kernel.events_failed', response.status); return }
+    const payload = await response.json() as { events?: KernelEvent[]; next?: number; resyncRequired?: boolean }
+    if (payload.resyncRequired) { this.kernel.needsSnapshot = true; return }
+    let resync = false
+    for (const event of payload.events || []) {
+      if (event.type === 'command') continue
+      const result = this.presentation?.applyEvent(event)
+      if (result?.resync) { resync = true; break }
+      this.window?.webContents.send('pet:agent-event', this.legacyEventOf(event))
+    }
+    if (Number.isInteger(payload.next)) this.kernel.lastSeq = Math.max(this.kernel.lastSeq, Number(payload.next))
+    if (resync) this.kernel.needsSnapshot = true
+    this.positionBubble()
+  }
+  /** Compact legacy-shaped events for the pet window task cards. */
+  private legacyEventOf(event: KernelEvent): {
+    type?: string | undefined
+    ioSeq?: number | undefined
+    turnId?: string | null
+    data?: object | undefined
+  } {
+    const data = event.data || {}
+    const turnId = `${event.sessionId || ''}:${event.turn ?? ''}`
+    if (event.type === 'turn.tool') {
+      return {
+        type: (typeof data.phase === 'string' ? data.phase : '') === 'result' ? 'tool.result' : 'tool.call',
+        ioSeq: event.seq,
+        turnId,
+        data: {
+          name: data.name,
+          toolName: data.name,
+          argumentsPreview: data.argumentsPreview,
+          resultPreview: data.resultPreview,
+          isError: data.isError,
+        },
+      }
+    }
+    if (event.type === 'turn.ended') {
+      const reason = data.reason && typeof data.reason === 'object'
+        ? data.reason
+        : { kind: typeof data.terminal === 'string' ? data.terminal : 'unknown' }
+      return { type: 'turn.ended', ioSeq: event.seq, turnId, data: { reason } }
+    }
+    return { type: event.type, ioSeq: event.seq, turnId, data }
+  }
+  /** Legacy migration bridge: poll the pre-v2 REST surface until the Host kernel is live. */
+  private async pollLegacy(): Promise<void> {
+    const d = this.descriptor()
+    const identity = `${d.pid}:${d.port}`
+    const changedOwner = identity !== this.identity
+    if (changedOwner) {
+      this.lastSeq = 0
+      this.identity = identity
+      this.window?.webContents.send('pet:agent-event', { type: 'runtime.owner' })
+    }
+    const response = await this.request(`/events?after=${this.lastSeq}`)
+    if (!response.ok) return
+    const payload = (await response.json()) as { events?: { ioSeq: number; type: string }[] }
+    const pending = await this.request('/interactions')
+    if (pending.ok) {
+      const snapshot = await pending.json() as { pid: number; sessionId: string; requests: PendingInteraction[] }
+      if (Array.isArray(snapshot.requests)) {
+        this.legacyRequests = snapshot.requests
+        this.experience?.sync(snapshot); this.presentation?.sync(snapshot); this.attention?.sync(snapshot)
+      }
+    }
+    if (changedOwner) {
+      const task = await this.request('/task-state')
+      if (task.ok) this.presentation?.syncTaskState(await task.json() as object)
+    }
+    this.positionBubble()
+    for (const event of payload.events || []) {
+      if (event.ioSeq <= this.lastSeq) continue
+      this.lastSeq = event.ioSeq
+      if (!changedOwner) { this.presentation?.event(event); this.window?.webContents.send('pet:agent-event', event) }
+    }
+  }
+  /** Presentation `send` bridge: UI-local actions, legacy adapters, and v2 commands. */
+  private async dispatchPresentationCall(path: string, body?: object): Promise<unknown> {
+    if (path === 'open') { this.options.toggleMain(true); return undefined }
+    if (path === 'inspect-task') { await this.inspectTask(); return undefined }
+    if (path === 'retry-voice') {
+      this.window?.webContents.send('pet:voice-command', { action: 'retry' })
+      this.presentation?.notice('正在重新连接语音…')
+      return undefined
+    }
+    if (path === 'voice-input') { this.window?.webContents.send('pet:voice-command', body); return undefined }
+    if (path === 'voice-queue') { this.window?.webContents.send('pet:voice-command', { action: 'queue-control', data: body }); return undefined }
+    if (path.startsWith('/')) {
+      // Legacy adapters sharing the same Host owner: /policies (durable grants) and /task/recovery.
+      const method = path.startsWith('/policies') && body && 'method' in body ? String((body as { method?: string }).method) : undefined
+      const response = await this.request(path, method === 'DELETE' ? undefined : body, method)
+      if (!response.ok) throw Object.assign(new Error(`DSH request failed: ${response.status}`), { stale: response.status === 409 })
+      return response.json()
+    }
+    if (this.mode !== 'v2') return this.dispatchLegacyCall(path, body || {})
+    return this.sendKernelCommand(path, body || {})
+  }
+  private async sendKernelCommand(type: string, payload: object): Promise<KernelReceipt> {
+    const commandId = randomUUID()
+    const sessionId = this.kernelSnapshot?.identity?.sessionId ?? null
+    this.log('kernel.command', { type })
+    const response = await this.request('/v2/command', {
+      protocolVersion: 'dsh-bot-v1',
+      commandId,
+      hostEpoch: this.kernel.hostEpoch,
+      sourceConnectionId: 'desktop',
+      sessionId,
+      type,
+      payload,
+    })
+    let receipt: KernelReceipt = {}
+    try { receipt = await response.json() as KernelReceipt } catch { receipt = {} }
+    if (!response.ok) {
+      receipt = { status: 'rejected', error: receipt.error || { code: `HTTP_${response.status}`, message: `Host command failed: ${response.status}` } }
+    }
+    if (receipt.status === 'rejected' || receipt.status === 'unknown') {
+      const code = receipt.error?.code || 'COMMAND_REJECTED'
+      const stale = /MISMATCH|STALE|CONFLICT|EXPIRED|IN_FLIGHT|NOT_FOUND/.test(code)
+      if (stale) this.kernel.needsSnapshot = true
+      throw Object.assign(new Error(receipt.error?.message || code), { code, stale })
+    }
+    return receipt
+  }
+  private legacyOptionLabel(interactionId: string, questionId: string, optionId: string): string {
+    const request = this.legacyRequests.find(item => item.id === interactionId)
+    const question = (request?.questions || []).find(candidate => candidate.id === questionId)
+    const option = (question?.options || []).find(candidate => candidate.id === optionId)
+    if (typeof option?.label === 'string' && option.label) return option.label
+    const parts = optionId.split(':')
+    return parts[0] === 'legacy' && parts.length >= 5 ? parts.slice(4).join(':') : optionId
+  }
+  private async dispatchLegacyCall(type: string, payload: object): Promise<unknown> {
+    const value = payload as Record<string, unknown>
+    if (type === 'interaction.resolve') {
+      if (typeof value.decision === 'string') {
+        const decision = value.decision === 'rejected' ? 'reject' : 'allow'
+        const response = await this.request('/approval', { id: value.interactionId, sessionId: this.kernelSnapshot?.identity?.sessionId ?? undefined, decision })
+        if (!response.ok) throw Object.assign(new Error(`DSH request failed: ${response.status}`), { stale: response.status === 409 })
+        return response.json()
+      }
+      const answer = value.answer as { answers?: { id?: string; selected?: string[]; custom?: string }[] } | undefined
+      const translated = (answer?.answers || []).map(entry => ({
+        id: entry.id,
+        selected: (entry.selected || []).map(optionId => this.legacyOptionLabel(
+          typeof value.interactionId === 'string' ? value.interactionId : '',
+          entry.id || '',
+          optionId,
+        )),
+        ...(entry.custom ? { custom: entry.custom } : {}),
+      }))
+      const response = await this.request('/questions/answer', { id: value.interactionId, sessionId: this.kernelSnapshot?.identity?.sessionId ?? undefined, answer: { answers: translated } })
+      if (!response.ok) throw Object.assign(new Error(`DSH request failed: ${response.status}`), { stale: response.status === 409 })
+      return response.json()
+    }
+    if (type === 'interaction.draft.select' || type === 'interaction.draft.custom') return { status: 'accepted', result: {} }
+    if (type === 'queue.list' || type === 'queue.edit' || type === 'queue.delete' || type === 'queue.confirm') {
+      const action = type === 'queue.list' ? 'snapshot' : type.split('.')[1]
+      this.window?.webContents.send('pet:voice-command', { action: 'queue-control', data: { action, ...value } })
+      return { status: 'accepted', result: {} }
+    }
+    if (type === 'input.confirm') {
+      this.window?.webContents.send('pet:voice-command', { action: 'confirm-input', id: value.id, ...(typeof value.text === 'string' ? { text: value.text } : {}) })
+      return { status: 'accepted', result: {} }
+    }
+    if (type === 'input.edit' || type === 'input.reject') {
+      this.window?.webContents.send('pet:voice-command', { action: 'discard-input', id: value.id })
+      return { status: 'accepted', result: {} }
+    }
+    if (type === 'control.cancel-capture') {
+      this.window?.webContents.send('pet:voice-command', { action: 'discard', captureId: value.captureId })
+      return { status: 'accepted', result: {} }
+    }
+    if (type === 'control.cancel-task') { return this.legacyCancelTask() }
+    if (type === 'control.stop-playback') {
+      this.window?.webContents.send('pet:voice-command', { action: 'stop-playback' })
+      return { status: 'accepted', result: {} }
+    }
+    if (type === 'control.playback-style') {
+      this.window?.webContents.send('pet:voice-command', { action: 'playback-style', style: value.style })
+      return { status: 'accepted', result: {} }
+    }
+    if (type === 'session.open-main') { this.options.toggleMain(true); return { status: 'accepted', result: {} } }
+    throw Object.assign(new Error(`unsupported legacy command: ${type}`), { code: 'UNKNOWN_COMMAND' })
+  }
+  private async legacyCancelTask(): Promise<{ ok?: boolean }> {
+    const response = await this.request('/cancel', { source: 'task-stop' })
+    if (!response.ok) throw new Error('Cancellation failed')
+    return { ok: true }
+  }
+  private async stopTask(): Promise<void> {
+    if (this.mode === 'v2') {
+      try { await this.sendKernelCommand('control.cancel-task', {}); return }
+      catch (error) { this.log('kernel.cancel_task_failed', error instanceof Error ? error.message : String(error)) }
+    }
+    await this.legacyCancelTask()
+  }
   private positionBubble(): void {
     if (!this.window || !this.bubbleModule) return
     const orbBounds = this.window.getBounds()
+    const bubblePolicy = this.kernelSnapshot?.presentation?.bubblePolicy
     this.bubble?.reposition(this.bubbleModule.orbBubbleWindowBounds({
-      orbBounds, workArea: screen.getDisplayMatching(orbBounds).workArea, avoidBounds:this.options.mainBounds?.()||[],
+      orbBounds,
+      workArea: screen.getDisplayMatching(orbBounds).workArea,
+      avoidBounds: this.options.mainBounds?.() || [],
+      displays: screen.getAllDisplays(),
+      ...(bubblePolicy?.placement ? { placement: bubblePolicy.placement } : {}),
+      ...(Number.isFinite(bubblePolicy?.anchorGapPx) ? { anchorGapPx: Number(bubblePolicy?.anchorGapPx) } : {}),
     }))
   }
   updateBehavior(config: BotRuntimeConfig): void { this.config = config }

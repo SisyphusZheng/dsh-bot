@@ -1,8 +1,8 @@
 {
   ".gitignore": {
-    "sha": "2a16b9c494e6ad4f6e40251293ff345f1f224955",
+    "sha": "9e9ef507209d1557cd433ac46b4bba8664bb15ce",
     "mode": "100644",
-    "reason": "Generated pet controller modules; source remains under product/pet/src"
+    "reason": "Generated pet controller modules (incl. beta2 window-layer-policy) and product build outputs; source remains under product/pet/src"
   },
   "apps/desktop/electron-builder.config.d.mts": {
     "sha": "3ffa7f7724fe9f1b022c695d45b0a2400c81a0db",
@@ -10,9 +10,9 @@
     "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
   },
   "apps/desktop/package.json": {
-    "sha": "927e4bc8b5c07afffe2889f8e4d9c28818361569",
+    "sha": "46c59b0b204bcf1adb99fa8cc456145c03b17330",
     "mode": "100644",
-    "reason": "Restore pet presentation, native wake/shortcut dependencies and owned Electron integration; DSH core unchanged"
+    "reason": "Product beta2 version metadata (0.0.1-beta2); desktop integration otherwise unchanged"
   },
   "apps/desktop/scripts/desktop-package-environment.mjs": {
     "sha": "52dfc9d748429440c53b1db735847223e01b88bb",
@@ -140,9 +140,9 @@
     "reason": "Expose validated DSH runtime identity to product dev launcher"
   },
   "apps/desktop/tests/development-project.spec.ts": {
-    "sha": "0455975f25b266f090a232d0cd7d2c291a7ad624",
+    "sha": "66ac9ac809cafdd13d3aa04e1eeb8ea9d31783d1",
     "mode": "100644",
-    "reason": "Regression for separate desktop product and DSH runtime versions"
+    "reason": "beta2 product version contract 0.0.1-beta2 (test expectation follows product metadata)"
   },
   ".github/workflows/e2e.yml": {
     "sha": "147b5630f9524b2fd5a49f88310cafc991522191",

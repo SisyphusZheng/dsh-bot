@@ -270,3 +270,474 @@ test('assistant text stays visible while TTS is still speaking after turn-end', 
   assert.ok(f.hidden()>0)
   f.presentation.stop()
 })
+
+// ---------------------------------------------------------------------------
+// beta2 v2 projection: Host Snapshot + versioned events (plan §11 B2-G11/G12)
+// ---------------------------------------------------------------------------
+
+const OPTION = (id, label) => ({ id, label, description: '' })
+
+const v2Question = (overrides = {}) => ({
+  id: 'choose', kind: 'question', sessionId: 's', semanticRevision: 1, viewRevision: 1,
+  officialCallId: 'call-q', createdAt: '2026-10-30T00:00:00.000Z', expiresAt: null, operation: null,
+  questions: [{
+    id: 'drink', header: '', question: '喝什么？', detail: '', multiSelect: false,
+    options: [OPTION('official:latte', '拿铁'), OPTION('official:americano', '美式'), OPTION('official:tea', '茶')],
+  }],
+  ...overrides,
+})
+
+const v2Approval = (overrides = {}) => ({
+  id: 'approve', kind: 'approval', sessionId: 's', semanticRevision: 2, viewRevision: 1,
+  officialCallId: 'call-a', createdAt: '2026-10-30T00:00:00.000Z', expiresAt: null, questions: null,
+  operation: { toolName: 'bash', cwd: '/work', arguments: { command: 'ls' } },
+  ...overrides,
+})
+
+const v2Notice = (overrides = {}) => ({
+  id: 'n1', kind: 'status', severity: 'info', text: '提示',
+  createdAt: '2026-10-30T00:00:00.000Z', expiresAt: new Date(Date.now() + 60000).toISOString(),
+  diagnosticId: null, actions: [],
+  ...overrides,
+})
+
+const v2DraftState = (overrides = {}) => ({
+  semanticRevision: 1, selectionRevision: 0, answers: { drink: { selected: [] } }, updatedAt: '2026-10-30T00:00:00.000Z', ...overrides,
+})
+
+const v2InputDraft = (overrides = {}) => ({
+  id: 'd1', text: '这说不清楚', source: 'voice', captureId: 'c1',
+  createdAt: '2026-10-30T00:00:00.000Z', expiresAt: '2026-10-30T00:00:30.000Z',
+  revision: 3, status: 'pending', needsConfirmation: true,
+  ...overrides,
+})
+
+const v2QueueItem = (overrides = {}) => ({
+  id: 'q1', text: '写报告', position: 1, source: 'voice',
+  createdAt: '2026-10-30T00:00:00.000Z', expiresAt: null, waitedSeconds: 5,
+  needsConfirmation: false, status: 'waiting',
+  ...overrides,
+})
+
+function v2snapshot(overrides = {}) {
+  return {
+    protocolVersion: 'dsh-bot-v1', schema: 'snapshot@1', hostEpoch: 'epoch-a', snapshotSeq: 1,
+    identity: { sessionId: 's', hostPid: 99, botSessionReady: true, workspace: '/w' },
+    capture: { state: 'off', mode: 'hold', captureId: null, preview: null },
+    playback: { state: 'idle', playbackId: null, sourceTurnId: null, style: 'full' },
+    execution: { state: 'idle', sessionId: 's', requestId: null, clientTurnId: null, turn: null, startedAt: null, inputSource: 'desktop', lastTurn: { turn: null, terminal: null, reason: null } },
+    interactions: { focusedId: null, pending: [], drafts: {}, recentlyResolved: [] },
+    inputDraft: null,
+    queue: { revision: 0, items: [] },
+    notices: [],
+    presentation: {
+      displayMode: 'idle',
+      priority: ['interactions', 'inputDraft', 'queue', 'execution', 'playback', 'notices'],
+      bubble: { visible: false, requestId: null, kind: null },
+      bubblePolicy: { placement: 'above', anchorGapPx: 24 },
+    },
+    ...overrides,
+  }
+}
+
+function v2(options = {}) {
+  const shown = [], animations = [], timers = new Map(), commands = [], views = []
+  let hidden = 0, seq = 0, snapshotSeq = 0
+  const send = async (type, payload) => {
+    commands.push(payload === undefined ? [type] : [type, payload])
+    if (typeof options.send === 'function') return options.send(type, payload)
+    return { protocolVersion: 'dsh-bot-v1', commandId: 'cmd', hostEpoch: 'epoch-a', status: 'accepted', result: {}, error: null }
+  }
+  const presentation = createCompanionPresentation({
+    show: payload => shown.push({ ...payload }), hide: () => hidden++, animate: payload => animations.push(payload), send,
+    setTimer(fn) { const id = ++seq; timers.set(id, fn); return id },
+    clearTimer(id) { timers.delete(id) },
+    publishQuestion: view => views.push(view),
+  })
+  return {
+    presentation, shown, animations, timers, commands, views,
+    hidden: () => hidden,
+    nextSnapshot(overrides = {}) { snapshotSeq += 1; return v2snapshot({ snapshotSeq, ...overrides }) },
+    fireTimers() { for (const fn of [...timers.values()]) fn() },
+    timerCallbacks() { return [...timers.values()] },
+  }
+}
+
+const interactionSnapshot = (f, pending, drafts = {}, extra = {}) => f.nextSnapshot({
+  interactions: { focusedId: pending[0]?.id ?? null, pending, drafts, recentlyResolved: [] },
+  ...extra,
+})
+
+test('v2 snapshot projects the focused interaction first and retains every pending item', () => {
+  const f = v2()
+  const approval = v2Approval()
+  const question = v2Question({ id: 'ask' })
+  f.presentation.applySnapshot(f.nextSnapshot({
+    interactions: { focusedId: 'approve', pending: [approval, question], drafts: { ask: v2DraftState() }, recentlyResolved: [] },
+  }))
+  let payload = f.shown.at(-1)
+  assert.equal(payload.requestId, 'approve')
+  assert.match(payload.title, /还有 1 项/)
+  assert.ok(payload.details.some(line => line.includes('实际参数')))
+  f.presentation.applySnapshot(f.nextSnapshot({
+    interactions: { focusedId: 'ask', pending: [approval, question], drafts: { ask: v2DraftState() }, recentlyResolved: [] },
+  }))
+  payload = f.shown.at(-1)
+  assert.equal(payload.requestId, 'ask')
+  assert.equal(payload.choices.length, 3)
+  assert.equal(payload.progress, '')
+  assert.equal(f.presentation.state().waiting, true)
+  f.presentation.applySnapshot(f.nextSnapshot({
+    interactions: { focusedId: null, pending: [question], drafts: { ask: v2DraftState() }, recentlyResolved: [] },
+  }))
+  assert.equal(f.shown.at(-1).requestId, 'ask')
+  f.presentation.stop()
+})
+
+test('snapshot replay is stable; older snapshotSeq and old hostEpoch never roll the UI back', () => {
+  const f = v2()
+  const first = f.nextSnapshot({ notices: [v2Notice({ text: '第一条提示' })] })
+  assert.equal(f.presentation.applySnapshot(first).applied, true)
+  assert.equal(f.shown.at(-1).text, '第一条提示')
+  const shownCount = f.shown.length
+  assert.equal(f.presentation.applySnapshot(first).stale, true)
+  assert.equal(f.shown.length, shownCount)
+  const stale = { ...first, snapshotSeq: 0, notices: [v2Notice({ id: 'old', text: '不应出现' })] }
+  assert.equal(f.presentation.applySnapshot(stale).applied, false)
+  assert.equal(f.shown.at(-1).text, '第一条提示')
+  assert.equal(f.presentation.applySnapshot({ ...first, snapshotSeq: 2 }).applied, true)
+  assert.equal(f.shown.length, shownCount, 'a same-content snapshot must not duplicate the surface')
+  f.presentation.applySnapshot(f.nextSnapshot({ hostEpoch: 'epoch-b', interactions: { focusedId: 'approve', pending: [v2Approval()], drafts: {}, recentlyResolved: [] } }))
+  assert.equal(f.shown.at(-1).requestId, 'approve')
+  assert.equal(f.presentation.applySnapshot({ ...first, hostEpoch: 'epoch-a', snapshotSeq: 99 }).applied, false)
+  assert.equal(f.shown.at(-1).requestId, 'approve')
+  f.presentation.stop()
+})
+
+test('notice UX timers only hide their own display; approvals and newer notices survive (B2-G11)', () => {
+  const f = v2()
+  f.presentation.applySnapshot(f.nextSnapshot({ notices: [v2Notice({ id: 'n1', text: '旧提示' })] }))
+  assert.equal(f.shown.at(-1).text, '旧提示')
+  assert.equal(f.timers.size, 1)
+  const oldTimer = f.timerCallbacks()[0]
+  f.presentation.applySnapshot(f.nextSnapshot({ notices: [], interactions: { focusedId: 'approve', pending: [v2Approval()], drafts: {}, recentlyResolved: [] } }))
+  assert.equal(f.shown.at(-1).requestId, 'approve')
+  oldTimer()
+  assert.equal(f.shown.at(-1).requestId, 'approve', 'an expired notice timer must not hide a newer approval')
+  const f2 = v2()
+  f2.presentation.applySnapshot(f2.nextSnapshot({ notices: [v2Notice({ id: 'n1', text: '旧提示' })] }))
+  const older = f2.timerCallbacks()[0]
+  f2.presentation.applySnapshot(f2.nextSnapshot({ notices: [v2Notice({ id: 'n2', text: '新提示' })] }))
+  assert.equal(f2.shown.at(-1).text, '新提示')
+  older()
+  assert.equal(f2.shown.at(-1).text, '新提示', 'the older timer must not hide the newer notice')
+  f2.fireTimers()
+  assert.ok(f2.hidden() > 0)
+  const f3 = v2()
+  f3.presentation.applySnapshot(f3.nextSnapshot({ notices: [v2Notice({ id: 'n1', text: '临时提示' })] }))
+  const noticeTimer = f3.timerCallbacks()[0]
+  f3.presentation.applySnapshot(f3.nextSnapshot({ inputDraft: v2InputDraft() }))
+  assert.equal(f3.shown.at(-1).title, '我听到（尚未发送）')
+  noticeTimer()
+  assert.equal(f3.shown.at(-1).title, '我听到（尚未发送）', 'a notice timer must not hide a confirmation draft')
+  f.presentation.stop(); f2.presentation.stop(); f3.presentation.stop()
+})
+
+test('v2 notice events apply to the last snapshot; notice.expired removes the projection', () => {
+  const f = v2()
+  f.presentation.applySnapshot(f.nextSnapshot({ snapshotSeq: 5 }))
+  const at = f.presentation.state().snapshotSeq
+  assert.equal(f.presentation.applyEvent({ protocolVersion: 'dsh-bot-v1', eventId: 'e1', hostEpoch: 'epoch-a', seq: at + 1, type: 'notice.added', data: { notice: v2Notice({ id: 'n9', text: '事件提示' }) } }).applied, true)
+  assert.equal(f.shown.at(-1).text, '事件提示')
+  assert.equal(f.presentation.applyEvent({ protocolVersion: 'dsh-bot-v1', eventId: 'e2', hostEpoch: 'epoch-a', seq: at + 2, type: 'notice.expired', data: { id: 'n9' } }).applied, true)
+  assert.ok(f.hidden() > 0)
+  f.presentation.stop()
+})
+
+test('v2 snapshot updates never overwrite text currently being edited (B2-G12)', async () => {
+  const f = v2()
+  // queue edit
+  f.presentation.applySnapshot(f.nextSnapshot({ queue: { revision: 3, items: [v2QueueItem({ id: 'q1', text: '旧文本' })] } }))
+  await f.presentation.manageQueue()
+  f.presentation.action({ type: 'choice', requestId: 'queue:3', id: 'q1' })
+  await f.presentation.action({ type: 'secondary', requestId: 'queue:3', id: 'queue-edit' })
+  assert.equal(f.shown.at(-1).input.value, '旧文本')
+  f.presentation.applySnapshot(f.nextSnapshot({ queue: { revision: 4, items: [v2QueueItem({ id: 'q1', text: 'Host 侧新文本' })] } }))
+  assert.equal('value' in f.shown.at(-1).input, false, 'a snapshot must not reseed an open queue editor')
+  await f.presentation.action({ type: 'input', requestId: 'queue:4', value: '用户改写' })
+  assert.deepEqual(f.commands.pop(), ['queue.edit', { revision: 4, id: 'q1', text: '用户改写' }])
+  f.presentation.stop()
+  // input draft edit
+  const f2 = v2()
+  f2.presentation.applySnapshot(f2.nextSnapshot({ inputDraft: v2InputDraft() }))
+  assert.equal(f2.shown.at(-1).title, '我听到（尚未发送）')
+  await f2.presentation.action({ type: 'secondary', requestId: 'voice:d1', id: 'voice-edit' })
+  assert.equal(f2.shown.at(-1).input.value, '这说不清楚')
+  f2.presentation.applySnapshot(f2.nextSnapshot({ inputDraft: v2InputDraft({ revision: 4, text: 'Host 更新后' }) }))
+  assert.equal('value' in f2.shown.at(-1).input, false, 'a snapshot must not overwrite the draft editor')
+  assert.match(f2.shown.at(-1).hint, /Host 已更新/)
+  await f2.presentation.action({ type: 'input', requestId: 'voice:d1', value: '用户纠正' })
+  assert.deepEqual(f2.commands.pop(), ['input.confirm', { id: 'd1', revision: 4, text: '用户纠正' }])
+  f2.presentation.stop()
+  // custom answer text + semantic conflict keeps the user text and never silently maps it
+  const f3 = v2()
+  f3.presentation.applySnapshot(interactionSnapshot(f3, [v2Question()], { choose: v2DraftState() }))
+  await f3.presentation.action({ type: 'secondary', requestId: 'choose', id: 'other' })
+  assert.equal(f3.shown.at(-1).input.value, '')
+  f3.presentation.applySnapshot(interactionSnapshot(f3, [v2Question({ viewRevision: 2 })], { choose: v2DraftState({ updatedAt: '2026-10-30T00:00:01.000Z' }) }))
+  assert.equal('value' in f3.shown.at(-1).input, false, 'a view-only snapshot update must not reset typed text')
+  f3.presentation.applySnapshot(interactionSnapshot(f3, [v2Question({ semanticRevision: 2 })], {
+    choose: { semanticRevision: 2, selectionRevision: 0, answers: { drink: { selected: [] } }, updatedAt: '2026-10-30T00:00:02.000Z' },
+  }))
+  const conflict = f3.shown.at(-1)
+  assert.ok(conflict.input, 'the custom editor stays open on a semantic change')
+  assert.equal('value' in conflict.input, false)
+  assert.match(conflict.hint, /问题已更新/)
+  assert.equal(f3.commands.length, 0, 'a semantic change must not submit old answers')
+  await f3.presentation.action({ type: 'input', requestId: 'choose', value: '我的自定义回答' })
+  const resolve = f3.commands.pop()
+  assert.deepEqual(resolve, ['interaction.resolve', { interactionId: 'choose', semanticRevision: 2, answer: { answers: [{ id: 'drink', selected: [], custom: '我的自定义回答' }] } }])
+  f3.presentation.stop()
+})
+
+test('v2 queue manager edit/delete/confirm go through revision-bound queue commands', async () => {
+  const f = v2()
+  const items = [
+    v2QueueItem({ id: 'q1', text: '第一项', needsConfirmation: true, status: 'confirming' }),
+    v2QueueItem({ id: 'q2', text: '第二项', position: 2 }),
+  ]
+  f.presentation.applySnapshot(f.nextSnapshot({ queue: { revision: 3, items } }))
+  await f.presentation.manageQueue()
+  let payload = f.shown.at(-1)
+  assert.equal(payload.title, '等待输入 · 2')
+  assert.match(payload.choices[0].description, /第 1 位 · 已等 5 秒 · 待确认/)
+  await f.presentation.action({ type: 'choice', requestId: 'queue:3', id: 'q1' })
+  assert.match(f.shown.at(-1).hint, /需要重新确认/)
+  await f.presentation.action({ type: 'secondary', requestId: 'queue:3', id: 'queue-edit' })
+  await f.presentation.action({ type: 'input', requestId: 'queue:3', value: '改写后的第一项' })
+  assert.deepEqual(f.commands.pop(), ['queue.edit', { revision: 3, id: 'q1', text: '改写后的第一项' }])
+  f.presentation.applySnapshot(f.nextSnapshot({ queue: { revision: 4, items: [v2QueueItem({ id: 'q1', text: '改写后的第一项' }), v2QueueItem({ id: 'q2', text: '第二项', position: 2 })] } }))
+  await f.presentation.action({ type: 'secondary', requestId: 'queue:4', id: 'queue-confirm' })
+  assert.deepEqual(f.commands.pop(), ['queue.confirm', { revision: 4, id: 'q1' }])
+  await f.presentation.action({ type: 'secondary', requestId: 'queue:4', id: 'queue-back' })
+  await f.presentation.action({ type: 'choice', requestId: 'queue:4', id: 'q2' })
+  await f.presentation.action({ type: 'secondary', requestId: 'queue:4', id: 'queue-delete' })
+  assert.deepEqual(f.commands.pop(), ['queue.delete', { revision: 4, id: 'q2' }])
+  f.presentation.stop()
+})
+
+test('v2 input draft confirm/edit/reject map to input.* commands', async () => {
+  for (const [actionId, expected] of [
+    ['voice-confirm', ['input.confirm', { id: 'd1', revision: 3 }]],
+    ['voice-discard', ['input.reject', { id: 'd1', revision: 3 }]],
+  ]) {
+    const f = v2()
+    f.presentation.applySnapshot(f.nextSnapshot({ inputDraft: v2InputDraft() }))
+    assert.equal(f.shown.at(-1).title, '我听到（尚未发送）')
+    assert.match(f.shown.at(-1).hint, /尚未发送/)
+    await f.presentation.action({ type: 'secondary', requestId: 'voice:d1', id: actionId })
+    assert.deepEqual(f.commands.pop(), expected)
+    f.presentation.stop()
+  }
+  const f = v2()
+  f.presentation.applySnapshot(f.nextSnapshot({ inputDraft: v2InputDraft() }))
+  await f.presentation.action({ type: 'secondary', requestId: 'voice:d1', id: 'voice-edit' })
+  await f.presentation.action({ type: 'input', requestId: 'voice:d1', value: '纠正后的内容' })
+  assert.deepEqual(f.commands.pop(), ['input.confirm', { id: 'd1', revision: 3, text: '纠正后的内容' }])
+  // The Host removes the confirmed draft; the projection closes with it (no local timer).
+  f.presentation.applySnapshot(f.nextSnapshot({ inputDraft: null }))
+  assert.ok(f.hidden() > 0)
+  f.presentation.stop()
+})
+
+test('v2 multi-select uses set-selected and submit binds the confirmed selectionRevision', async () => {
+  const f = v2()
+  const question = v2Question({
+    questions: [{ id: 'drink', header: '', question: '喝什么？', detail: '', multiSelect: true, options: [OPTION('official:latte', '拿铁'), OPTION('official:americano', '美式')] }],
+  })
+  const drafts = { choose: { semanticRevision: 1, selectionRevision: 2, answers: { drink: { selected: [] } }, updatedAt: '2026-10-30T00:00:00.000Z' } }
+  f.presentation.applySnapshot(f.nextSnapshot({ interactions: { focusedId: 'choose', pending: [question], drafts, recentlyResolved: [] } }))
+  await f.presentation.action({ type: 'choice', requestId: 'choose', id: '0' })
+  assert.deepEqual(f.commands.pop(), ['interaction.draft.select', { interactionId: 'choose', semanticRevision: 1, selectionRevision: 2, questionId: 'drink', optionId: 'official:latte', selected: true }])
+  assert.equal(f.shown.at(-1).choices[0].selected, true)
+  await f.presentation.action({ type: 'choice', requestId: 'choose', id: '0' })
+  assert.deepEqual(f.commands.pop(), ['interaction.draft.select', { interactionId: 'choose', semanticRevision: 1, selectionRevision: 3, questionId: 'drink', optionId: 'official:latte', selected: false }])
+  await f.presentation.action({ type: 'choice', requestId: 'choose', id: '1' })
+  f.commands.pop()
+  const seq = f.presentation.state().snapshotSeq
+  f.presentation.applyEvent({
+    protocolVersion: 'dsh-bot-v1', eventId: 'e1', hostEpoch: 'epoch-a', seq: seq + 1, type: 'interaction.draft.changed',
+    data: { id: 'choose', interactionId: 'choose', kind: 'question', semanticRevision: 1, selectionRevision: 5, answers: { drink: { selected: ['official:americano'] } } },
+  })
+  await f.presentation.action({ type: 'secondary', requestId: 'choose', id: 'submit' })
+  assert.deepEqual(f.commands.pop(), ['interaction.resolve', {
+    interactionId: 'choose', semanticRevision: 1, selectionRevision: 5,
+    answer: { answers: [{ id: 'drink', selected: ['official:americano'] }] },
+  }])
+  f.presentation.stop()
+})
+
+test('v2 multi-question progress comes from Host drafts and submits one complete batch (B2-G12)', async () => {
+  const f = v2()
+  const questions = [
+    { id: 'drink', header: '', question: '喝什么？', detail: '', multiSelect: false, options: [OPTION('official:latte', '拿铁'), OPTION('official:tea', '茶')] },
+    { id: 'note', header: '', question: '加什么？', detail: '', multiSelect: false, options: [OPTION('official:sugar', '糖'), OPTION('official:milk', '奶')] },
+  ]
+  const interaction = v2Question({ id: 'choose', questions })
+  const drafts = { choose: { semanticRevision: 1, selectionRevision: 4, answers: { drink: { selected: ['official:tea'] }, note: { selected: [] } }, updatedAt: '2026-10-30T00:00:00.000Z' } }
+  f.presentation.applySnapshot(f.nextSnapshot({ interactions: { focusedId: 'choose', pending: [interaction], drafts, recentlyResolved: [] } }))
+  assert.equal(f.shown.at(-1).progress, '2 / 2')
+  await f.presentation.action({ type: 'choice', requestId: 'choose', id: '1' })
+  assert.deepEqual(f.commands.pop(), ['interaction.resolve', {
+    interactionId: 'choose', semanticRevision: 1,
+    answer: { answers: [{ id: 'drink', selected: ['official:tea'] }, { id: 'note', selected: ['official:milk'] }] },
+  }])
+  f.presentation.stop()
+})
+
+test('every visible v2 button has a real result and in-flight submits are serialized (B2-G12)', async () => {
+  const known = new Set([
+    'grant-confirm', 'grant-back', 'other', 'back', 'skip', 'submit', 'voice-confirm', 'voice-edit', 'voice-discard',
+    'queue-close', 'queue-back', 'queue-edit', 'queue-confirm', 'queue-delete', 'open', 'inspect-task', 'recover-task',
+    'retry-voice', 'confirm-input', 'cancel-input', 'close',
+  ])
+  const assertButtons = (payload) => {
+    // Secondary buttons map to named actions; choices are option indexes / queue item ids.
+    for (const button of payload.secondary || []) {
+      assert.ok(known.has(button.id), `unknown secondary button ${button.id}`)
+      assert.ok(button.label, `secondary button ${button.id} needs a label`)
+    }
+    for (const button of payload.choices || []) {
+      assert.ok(button.id !== undefined && button.id !== '', 'choice buttons need a target id')
+      assert.ok(button.label, 'choice buttons need a label')
+    }
+  }
+  // approval: persistent grant + allow/reject all produce a command receipt
+  let f = v2()
+  f.presentation.applySnapshot(interactionSnapshot(f, [v2Approval()]))
+  assertButtons(f.shown.at(-1))
+  await f.presentation.action({ type: 'secondary', requestId: 'approve', id: 'grant-confirm' })
+  assert.equal(f.commands.length, 0)
+  assert.equal(f.shown.at(-1).approval.allowLabel, '确认持续允许')
+  await f.presentation.action({ type: 'approval', requestId: 'approve', decision: 'allow' })
+  assert.deepEqual(f.commands.pop(), ['/approval', { id: 'approve', sessionId: 's', decision: 'always-allow', confirmExact: true }])
+  for (const [decision, expected] of [['allow', 'allowed-once'], ['reject', 'rejected']]) {
+    f = v2()
+    f.presentation.applySnapshot(interactionSnapshot(f, [v2Approval()]))
+    await f.presentation.action({ type: 'approval', requestId: 'approve', decision })
+    assert.deepEqual(f.commands.pop(), ['interaction.resolve', { interactionId: 'approve', semanticRevision: 2, decision: expected }])
+  }
+  // every rendered question option resolves to a complete answer batch
+  for (const [index, optionId] of ['official:latte', 'official:americano', 'official:tea'].entries()) {
+    f = v2()
+    f.presentation.applySnapshot(interactionSnapshot(f, [v2Question()], { choose: v2DraftState() }))
+    assertButtons(f.shown.at(-1))
+    await f.presentation.action({ type: 'choice', requestId: 'choose', id: String(index) })
+    assert.deepEqual(f.commands.pop(), ['interaction.resolve', { interactionId: 'choose', semanticRevision: 1, answer: { answers: [{ id: 'drink', selected: [optionId] }] } }])
+  }
+  // input draft buttons
+  f = v2()
+  f.presentation.applySnapshot(f.nextSnapshot({ inputDraft: v2InputDraft() }))
+  assertButtons(f.shown.at(-1))
+  // notice actions map to desktop actions and unknown ids are dropped (no dead buttons)
+  f = v2()
+  f.presentation.applySnapshot(f.nextSnapshot({ notices: [v2Notice({ actions: [{ id: 'open-main', label: '打开主窗口' }, { id: 'definitely-not-handled', label: '死按钮' }] })] }))
+  assert.deepEqual(f.shown.at(-1).secondary, [{ id: 'open', label: '打开主窗口' }])
+  await f.presentation.action({ type: 'secondary', id: 'open' })
+  assert.deepEqual(f.commands.pop(), ['open'])
+  // busy: a second click while a submission is in flight sends nothing
+  let release
+  f = v2({ send: () => new Promise(resolve => { release = resolve }) })
+  f.presentation.applySnapshot(interactionSnapshot(f, [v2Question()], { choose: v2DraftState() }))
+  const pending = f.presentation.action({ type: 'choice', requestId: 'choose', id: '0' })
+  assert.equal(f.shown.at(-1).busy, true)
+  await f.presentation.action({ type: 'choice', requestId: 'choose', id: '1' })
+  assert.equal(f.commands.length, 1)
+  release({ status: 'accepted', result: {} })
+  await pending
+  assert.equal(f.shown.at(-1).busy, false)
+  f.presentation.stop()
+})
+
+test('long options, Markdown text and approval details reach the bubble renderer intact (B2-G12)', () => {
+  const longLabel = '选项'.repeat(400)
+  const question = v2Question({
+    questions: [{
+      id: 'drink', header: '**标题**', question: '请阅读：\n\n- 第一项\n- 第二项\n\n`code`', detail: '补充说明',
+      multiSelect: false, options: [OPTION('official:long', longLabel), OPTION('official:short', '短')],
+    }],
+  })
+  const f = v2()
+  const operation = { toolName: 'write', cwd: '/outside', arguments: { path: '/outside/report.md', content: 'x'.repeat(500) } }
+  f.presentation.applySnapshot(interactionSnapshot(f, [v2Approval({ operation })]))
+  const approval = f.shown.at(-1)
+  assert.match(approval.text, /写入或修改/)
+  assert.ok(approval.details.some(line => line.includes('/outside/report.md')))
+  assert.ok(approval.details.some(line => line.includes('实际参数')))
+  f.presentation.applySnapshot(interactionSnapshot(f, [question], { choose: v2DraftState() }))
+  const payload = f.shown.at(-1)
+  assert.ok(payload.text.includes('- 第一项'))
+  assert.ok(payload.text.includes('`code`'))
+  assert.equal(payload.title, '**标题**')
+  assert.equal(payload.choices.length, 2)
+  assert.equal(payload.choices[0].label.length, 800)
+  assert.equal(payload.choices[1].label, '短')
+  for (const key of ['visible', 'kind', 'requestId', 'busy', 'clickThrough']) assert.ok(key in payload)
+  f.presentation.stop()
+})
+
+test('v2 capture preview is a projection: cancel sends control.cancel-capture only for the shown capture', async () => {
+  const f = v2()
+  f.presentation.applySnapshot(f.nextSnapshot({ capture: { state: 'listening', mode: 'hold', captureId: 'cap-1', preview: { text: '正在说的话', revision: 1 } } }))
+  const payload = f.shown.at(-1)
+  assert.equal(payload.kind, 'input')
+  assert.equal(payload.text, '正在说的话')
+  assert.equal(payload.cancel.id, 'cancel-capture')
+  await f.presentation.action({ type: 'cancel', id: 'cancel-capture', requestId: 'stale-capture' })
+  assert.equal(f.commands.length, 0)
+  await f.presentation.action({ type: 'cancel', id: 'cancel-capture', requestId: 'cap-1' })
+  assert.deepEqual(f.commands.pop(), ['control.cancel-capture', { captureId: 'cap-1' }])
+  f.presentation.applySnapshot(f.nextSnapshot({ capture: { state: 'off', captureId: null, preview: null } }))
+  assert.ok(f.hidden() > 0)
+  f.presentation.stop()
+})
+
+test('v2 events drive reply/tool display and request resync on gaps or epoch changes', () => {
+  const f = v2()
+  f.presentation.applySnapshot(f.nextSnapshot({ snapshotSeq: 10, execution: { state: 'working', inputSource: 'voice', startedAt: '2026-10-30T00:00:00.000Z', lastTurn: null } }))
+  let seq = 10
+  const ev = (type, data = {}) => {
+    seq += 1
+    return { protocolVersion: 'dsh-bot-v1', eventId: `e${seq}`, hostEpoch: 'epoch-a', seq, type, source: 'dsh', sessionId: 's', turn: 1, causedByCommandId: null, at: '2026-10-30T00:00:01.000Z', data }
+  }
+  assert.equal(f.presentation.applyEvent(ev('turn.started', { inputSource: 'voice' })).applied, true)
+  assert.equal(f.presentation.applyEvent(ev('turn.delta', { text: '你' })).applied, true)
+  assert.equal(f.presentation.applyEvent(ev('turn.delta', { text: '好' })).applied, true)
+  assert.equal(f.shown.at(-1).text, '你好')
+  assert.equal(f.presentation.applyEvent(ev('turn.tool', { phase: 'call', name: 'read', argumentsPreview: '{"path":"notes.md"}' })).applied, true)
+  assert.equal(f.shown.at(-1).kind, 'activity')
+  assert.match(f.shown.at(-1).text, /notes\.md/)
+  const lastEventSeq = seq
+  assert.equal(f.presentation.applyEvent({ ...ev('turn.delta', { text: '重复' }), seq: lastEventSeq }).duplicate, true)
+  const gap = f.presentation.applyEvent({ ...ev('turn.delta', { text: '缺口' }), seq: seq + 5 })
+  assert.equal(gap.resync, true)
+  const epoch = f.presentation.applyEvent({ ...ev('turn.delta', { text: '旧 epoch' }), hostEpoch: 'epoch-stale' })
+  assert.equal(epoch.resync, true)
+  f.presentation.stop()
+  // readable hold after a clean turn end, then a higher-priority interaction replaces it
+  const g = v2()
+  g.presentation.applySnapshot(g.nextSnapshot({ snapshotSeq: 20 }))
+  let gseq = 20
+  const gev = (type, data = {}) => {
+    gseq += 1
+    return { protocolVersion: 'dsh-bot-v1', eventId: `g${gseq}`, hostEpoch: 'epoch-a', seq: gseq, type, source: 'dsh', sessionId: 's', turn: 2, causedByCommandId: null, at: '2026-10-30T00:00:02.000Z', data }
+  }
+  g.presentation.applyEvent(gev('turn.started'))
+  g.presentation.applyEvent(gev('turn.delta', { text: '一条回答' }))
+  g.presentation.applyEvent(gev('turn.ended', { terminal: 'completed', reason: { kind: 'completed' } }))
+  assert.equal(g.shown.at(-1).text, '一条回答')
+  assert.ok(g.timers.size > 0, 'a finished reply keeps a readable hold timer')
+  g.presentation.applySnapshot(g.nextSnapshot({ snapshotSeq: gseq + 1, interactions: { focusedId: 'approve', pending: [v2Approval()], drafts: {}, recentlyResolved: [] } }))
+  assert.equal(g.shown.at(-1).requestId, 'approve')
+  g.presentation.stop()
+})

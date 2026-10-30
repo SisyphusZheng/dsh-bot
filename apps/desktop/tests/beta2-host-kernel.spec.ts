@@ -213,7 +213,7 @@ it('reaches the v2 handshake, idempotent receipts, one official decision and mai
 it('routes mixed control + work through the Host without dropping the remaining task', async () => {
   const home = mkdtempSync(join(tmpdir(), 'beta2-control-'))
   const workspaceDir = join(home, 'workspace')
-  const memory = createServer((req, res) => {
+  const memory = createServer((_req, res) => {
     res.setHeader('content-type', 'application/json')
     res.end(JSON.stringify({ ok: true }))
   })

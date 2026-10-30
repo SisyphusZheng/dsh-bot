@@ -1,5 +1,4 @@
 /** Shipped SDK -> real WebRTC/Pipecat -> explicit local provider and Bridge fixtures. */
-import {createCompanionPresentation} from '../pet/src/companion-presentation.mjs'
 import { createServer, request as httpRequest } from 'node:http'
 import { spawn } from 'node:child_process'
 import { mkdtempSync, readFileSync, rmSync, mkdirSync, writeFileSync } from 'node:fs'
@@ -10,10 +9,8 @@ import assert from 'node:assert/strict'
 const root = resolve(import.meta.dirname, '../..'), directory = mkdtempSync(join(tmpdir(), 'pet-media-'))
 const greeting = '你好，我在呢。想聊什么，或者有什么需要我帮忙的？'
 const passive = process.env.DSH_MEDIA_PASSIVE === '1', interaction = process.env.DSH_MEDIA_INTERACTION || ''
-const expectedResponses = interaction ? 3 : 2
 const { chromium } = createRequire(join(root, 'packages/experimental/inspector/package.json'))('playwright')
 let port, bridgePort
-let questionPresenter
 let child, browser, log = '', statuses = [], requests = []
 const evidence = resolve(root, '.mvv-build/evidence/voice-media'); mkdirSync(evidence, { recursive: true })
 const files = new Map(['pet.html', 'voice-client.js'].map(name => ['/' + name, join(root, 'apps/desktop/resources/pet', name)]))
@@ -38,31 +35,32 @@ try {
   await page.goto(origin + '/pet.html'); await page.locator('#pet').hover(); await page.waitForFunction(() => getComputedStyle(document.getElementById('controls')).opacity === '1'); if(!passive) await page.locator('#microphone').click()
   await page.waitForFunction(() => document.body.dataset.microphone === 'on', null, { timeout: 45000 })
   const until = async check => { const end = Date.now() + 20000; while (!check()) { if (Date.now() > end) throw new Error('voice output deadline'); await new Promise(r => setTimeout(r, 50)) } }
-  await until(() => statuses.some(x => x.kind === 'speech' && /你好，我在呢/.test(x.text)))
+  // Worker v2 contract: business text (greeting/reply/prompt) comes from the fixture Host as
+  // speech.append commands and is spoken as TTS. The worker no longer emits RTVI greeting /
+  // input-confirmation / question-answer business statuses; those are asserted from the Host
+  // fixture state/speech and from /stats metrics instead.
+  const fixtureJson = async path => (await fetch(`http://127.0.0.1:${bridgePort}${path}`, { headers: { Authorization: 'Bearer bridge-fixture' } })).json()
+  const spokenTexts = async () => (await fixtureJson('/fixture-speech')).spoken
+  const diagnostics = async () => { try { const health = await (await fetch(`http://127.0.0.1:${port}/health`)).json(); const stats = await (await fetch(`http://127.0.0.1:${port}/stats`, { headers: { 'x-spike-token': 'media-fixture' } })).json(); const state = await fixtureJson('/fixture-state'); const speech = await fixtureJson('/fixture-speech'); return JSON.stringify({ worker: { mode: health.mode, transport: health.transport, host: health.host, last_error: health.last_error }, stats: Object.values(stats.sessions || {})[0]?.dsh, fixtureState: state, spoken: speech.spoken, statuses: statuses.map(x => x.kind) }) } catch (error) { return 'diagnostics failed: ' + error.message } }
+  const untilSpoken = async (pattern, label) => { const end = Date.now() + 30000; while (Date.now() < end) { if ((await spokenTexts()).some(text => pattern.test(text))) return; await new Promise(r => setTimeout(r, 100)) } throw new Error('Host speech.append deadline: ' + label + '\n' + await diagnostics()) }
   await until(() => statuses.some(x => x.kind === 'input' && /请记录测试偏好/.test(x.text)))
-  if(passive){
-    await until(()=>statuses.some(x=>x.kind==='input-confirmation'))
-    assert.equal((await (await fetch(`http://127.0.0.1:${bridgePort}/fixture-state`)).json()).started,0,'Passive transcript executed before confirmation')
-    assert.match(await page.locator('#voice-state').innerText(),/常听/)
-    const draft=statuses.find(x=>x.kind==='input-confirmation')
-    await page.evaluate(id=>{window.voiceCommand({action:'confirm-input',id});window.voiceCommand({action:'confirm-input',id})},draft.draftId)
-  }
-  await until(() => statuses.some(x => x.kind === 'speech' && /已收到测试请求/.test(x.text)))
-  if(interaction) await until(()=>statuses.some(x=>x.kind==='speech'&& (interaction==='question'?/文档用什么内容/.test(x.text):/需要你批准/.test(x.text))))
+  await untilSpoken(/你好，我在呢/, 'welcome greeting')
+  assert.equal((await spokenTexts()).filter(text => /你好，我在呢/.test(text)).length, 1, 'welcome greeting must be spoken exactly once')
+  assert.ok(!statuses.some(x => x.kind === 'greeting' || x.kind === 'input-confirmation' || x.kind === 'question-answer' || x.kind === 'queue-state'), 'legacy RTVI business statuses must be gone after the worker v2 migration')
+  await untilSpoken(/已收到测试请求/, 'Bridge reply')
+  if(interaction) await untilSpoken(interaction==='question'?/需要你回答/:/需要你批准/, 'interaction prompt')
+  if(passive) assert.match(await page.locator('#voice-state').innerText(),/常听/)
   if(interaction==='question'){
-    const commands=[]
-    questionPresenter=createCompanionPresentation({show:()=>{},hide:()=>{},animate:()=>{},publishQuestion:view=>{commands.push(page.evaluate(view=>window.voiceCommand({action:'question-view',view}),view))},send:async(path,body)=>{
-      const response=await fetch(`http://127.0.0.1:${bridgePort}${path}`,{method:'POST',headers:{Authorization:'Bearer bridge-fixture','content-type':'application/json'},body:JSON.stringify(body)})
-      assert.equal(response.status,200);return response.json()
-    }})
-    const pending=await (await fetch(`http://127.0.0.1:${bridgePort}/interactions`,{headers:{Authorization:'Bearer bridge-fixture'}})).json()
-    questionPresenter.sync({pid:1,sessionId:'media-session',requests:pending.requests});await Promise.all(commands)
+    // The desktop answer path is covered by the Host kernel tests; here the fixture Host records the
+    // answer only after the injected final ASR fact reaches it through the worker's voice.facts.
     await fetch(`http://127.0.0.1:${bridgePort}/fixture-inject-answer`,{method:'POST'})
-    await until(()=>statuses.some(x=>x.kind==='question-answer'))
-    await until(()=>commands.length>1)
-    const answered=await (await fetch(`http://127.0.0.1:${bridgePort}/fixture-answers`)).json()
-    assert.equal(answered.answers.length,1);assert.equal(answered.answers[0].answer.answers[0].selected[0],'新文章')
-    assert.equal((await (await fetch(`http://127.0.0.1:${bridgePort}/fixture-state`)).json()).started,1,'Question answer must not create a new task')
+    let answered={answers:[]}
+    const answerEnd=Date.now()+20000
+    while(Date.now()<answerEnd){ answered=await fixtureJson('/fixture-answers'); if(answered.answers.length) break; await new Promise(r=>setTimeout(r,100)) }
+    assert.equal(answered.answers.length,1,'fixture Host must receive exactly one answer through voice.facts')
+    assert.equal(answered.answers[0].answer.answers[0].selected[0],'新文章')
+    assert.equal((await fixtureJson('/fixture-state')).started,1,'Question answer must not create a new task')
+    await untilSpoken(/已记录你的选择/, 'answer receipt')
   }
   await page.waitForFunction(() => document.getElementById('speaker').currentTime > 0.1)
   await page.waitForFunction(() => Number(document.getElementById('level').getAttribute('aria-valuenow')) > 0)
@@ -76,15 +74,29 @@ try {
   assert.deepEqual(before,{started:1,finished:0,cancels:0,disconnects:0})
   assert.equal(await page.evaluate(() => document.getElementById('speaker').srcObject.getTracks().some(t=>t.readyState==='live')),true)
   await fetch(`http://127.0.0.1:${bridgePort}/fixture-release`,{method:'POST'})
-  let metrics
-  for (let attempt = 0; attempt < 100; attempt++) { const stats = await (await fetch(`http://127.0.0.1:${port}/stats`, { headers: { 'x-spike-token': 'media-fixture' } })).json(); metrics = Object.values(stats.sessions)[0]; if (metrics?.tts?.responses === expectedResponses && metrics?.dsh?.turns_completed === 1) break; await new Promise(r => setTimeout(r, 50)) }
-  assert.deepEqual(await (await fetch(`http://127.0.0.1:${bridgePort}/fixture-state`)).json(),{started:1,finished:1,cancels:0,disconnects:0})
-  assert.equal(metrics.tts.responses, expectedResponses, 'welcome, Bridge response and optional interaction announcement'); assert.equal(metrics.dsh.turns_completed, 1)
-  const speech=await (await fetch(`http://127.0.0.1:${bridgePort}/fixture-speech`)).json()
+  const expectedMinResponses = interaction ? 3 : 2
+  let metrics, stats
+  for (let attempt = 0; attempt < 200; attempt++) { stats = await (await fetch(`http://127.0.0.1:${port}/stats`, { headers: { 'x-spike-token': 'media-fixture' } })).json(); metrics = Object.values(stats.sessions)[0]; const state = await fixtureJson('/fixture-state'); if ((metrics?.tts?.responses ?? 0) >= expectedMinResponses && state.finished === 1) break; await new Promise(r => setTimeout(r, 50)) }
+  assert.deepEqual(await fixtureJson('/fixture-state'),{started:1,finished:1,cancels:0,disconnects:0})
+  assert.ok(metrics.tts.responses >= expectedMinResponses, `welcome, Bridge reply and optional interaction prompt must be spoken (got ${metrics.tts.responses}, expected >= ${expectedMinResponses})`)
+  // Worker v2 /stats contract: business turn counters are gone; media/fact/command counters are the evidence.
+  const dsh = metrics.dsh
+  assert.equal(dsh.turns_completed, undefined, 'dsh.turns_completed must be removed by the worker v2 migration')
+  assert.ok(dsh.final_facts >= 1, 'final ASR facts were sent to the Host')
+  assert.ok(dsh.facts_sent >= 1, 'voice.facts batches were sent')
+  assert.ok(dsh.playbacks_started >= 1, 'Host speech.append started a playback')
+  assert.ok(dsh.playbacks_ended >= 1, 'playbacks reported ended')
+  assert.ok(dsh.speech_appends >= 1, 'speech.append commands were applied')
+  assert.ok(dsh.commands_applied >= 1, 'Host commands were applied')
+  assert.ok(dsh.transport_connected >= 1, 'voice.session connected was sent')
+  assert.equal(dsh.facts_failed, 0)
+  assert.equal(dsh.ack_failures, 0)
+  const speech=await fixtureJson('/fixture-speech')
   assert.ok(speech.spoken.every(text=>!text.includes('**')&&!text.includes('PRIVATE-COMMAND')))
+  assert.equal(speech.spoken.filter(text=>/你好，我在呢/.test(text)).length,1,'welcome greeting spoken once (no duplicate TTS for the ASR echo)')
   if(interaction) assert.equal(speech.spoken.filter(text=>interaction==='question'?text.includes('需要你回答'):text.includes('需要你批准')).length,1)
   assert.ok(requests.every(url => url.startsWith(origin + '/') || url.startsWith('blob:')), 'no media CDN or telemetry requests')
-  assert.ok(!statuses.some(x=>x.kind==='input'&&(x.text===greeting||x.text==='嗯。')), 'full welcome echo/noise reached the input bubble')
+  assert.equal((await fixtureJson('/fixture-state')).started,1,'ASR echo/noise fragments must not start an extra Host turn')
   assert.ok(!log.includes('[g3-probe]'),'debug probes must be off by default')
   writeFileSync(join(evidence, 'metrics.json'), JSON.stringify(metrics, null, 2)); await page.screenshot({ path: join(evidence, 'listening.png') })
   await page.evaluate(() => window.voiceCommand({ action: 'mute' })); await page.waitForFunction(() => document.body.dataset.microphone === 'off')
@@ -94,7 +106,7 @@ try {
   console.log('PASS shipped SDK + real Pipecat/WebRTC handshake, microphone meter, ASR text, one welcome, Bridge reply, audio-track playback, AEC constraints, capture discard during an active task (zero cancel/disconnect), mute/resume/disconnect. Provider/Bridge fixtures; not macOS or real-provider acceptance.')
 } catch (error) { throw new Error(`${error.stack}\n${log.slice(-16000)}`) }
 finally {
-  questionPresenter?.stop();await browser?.close(); await new Promise(r => { server.close(r); server.closeAllConnections() })
+await browser?.close(); await new Promise(r => { server.close(r); server.closeAllConnections() })
   if (child && child.exitCode === null && child.signalCode === null) { child.kill('SIGTERM'); await Promise.race([new Promise(r => child.once('close', r)), new Promise(r => setTimeout(r, 5000))]); if (child.exitCode === null && child.signalCode === null) { const ended = new Promise(r => child.once('close', r)); child.kill('SIGKILL'); await ended } }
   writeFileSync(join(evidence, 'worker.log'), log); writeFileSync(join(evidence, 'statuses.json'), JSON.stringify(statuses, null, 2)); rmSync(directory, { recursive: true, force: true })
 }

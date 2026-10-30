@@ -4,6 +4,7 @@ The worker executes media only. A late stop for an old playback never mutes a
 new one, a media disconnect never cancels DSH work, and every command is acked
 by commandId exactly once (duplicates are no-ops).
 """
+import asyncio
 import inspect
 import unittest
 from unittest.mock import AsyncMock, patch
@@ -221,6 +222,62 @@ class NoticeAndBoundary(unittest.IsolatedAsyncioTestCase):
         texts = [frame.text for frame in pushed(self.bridge, TextFrame)]
         self.assertEqual(texts, ["完整回答。"])
         self.assertEqual(self.bridge.metrics["late_speech_dropped"], 1)
+
+
+class StreamConcurrency(unittest.IsolatedAsyncioTestCase):
+    """The persistent SSE reader must execute commands while a POST is in flight."""
+
+    async def asyncSetUp(self):
+        self.bridge, self.host = make_bridge()
+
+    async def asyncTearDown(self):
+        await teardown_bridge(self.bridge)
+
+    def _gated_send(self, command_type: str):
+        original = self.host.send_command
+        started, gate = asyncio.Event(), asyncio.Event()
+
+        async def gated(inner_type, payload=None, **kwargs):
+            if inner_type == command_type:
+                started.set()
+                await gate.wait()
+            return await original(inner_type, payload, **kwargs)
+
+        self.host.send_command = gated
+        return started, gate
+
+    async def _assert_stream_command_runs_while(self, command_type: str, start_request):
+        started, gate = self._gated_send(command_type)
+        request_task = asyncio.create_task(start_request())
+        await asyncio.wait_for(started.wait(), timeout=5)
+        self.assertFalse(request_task.done(), "request task must still be in flight")
+        await self.bridge._handle_host_event({
+            "protocolVersion": "dsh-bot-v1",
+            "eventId": "evt-inflight",
+            "hostEpoch": self.bridge._host_epoch,
+            "seq": 1,
+            "type": "command",
+            "data": {"commandId": "stream-inflight-1", "type": "speech.append",
+                     "payload": append(TURN_1, "并发播报。", 1)},
+        })
+        self.assertEqual([frame.text for frame in pushed(self.bridge, TextFrame)],
+                         ["并发播报。"])
+        self.assertEqual([ack["commandId"] for ack in ack_payloads(self.host)],
+                         ["stream-inflight-1"])
+        gate.set()
+        await asyncio.wait_for(request_task, timeout=5)
+        return request_task
+
+    async def test_stream_command_executes_while_voice_facts_post_in_flight(self):
+        await self._assert_stream_command_runs_while(
+            "voice.facts", lambda: feed(self.bridge, frame("打开浏览器")))
+        self.assertEqual(self.host.payloads("voice.facts")[0]["items"][0]["text"],
+                         "打开浏览器")
+
+    async def test_stream_command_executes_while_voice_session_post_in_flight(self):
+        await self._assert_stream_command_runs_while(
+            "voice.session", lambda: self.bridge.report_transport("connected"))
+        self.assertEqual(self.host.payloads("voice.session")[-1]["transport"], "connected")
 
 
 class SourceBoundary(unittest.TestCase):

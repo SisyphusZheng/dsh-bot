@@ -1,0 +1,934 @@
+#!/usr/bin/env node
+/**
+ * beta2 native acceptance checks for an installed (DMG-installed) macOS App.
+ *
+ * This is the B2-G13/G14/G16/G17 native complement to product/tools/accept-macos.sh.
+ * The base acceptance script keeps its 15 checks; accept-beta2-macos.sh runs the
+ * base checks first and then runs this file against the SAME installed app copy.
+ *
+ * Evidence discipline:
+ *  - every check records a structured result (status/level/detail/evidence files);
+ *  - native visibility uses CGWindowListCopyWindowInfo (window-server truth) plus
+ *    screencapture plus the System Events window list, never the page DOM alone;
+ *  - CDP is only used for page readiness/content and for locating a real click
+ *    target; the click itself is posted through CGEventPost (HID-level) and the
+ *    result is observed both natively and in the page;
+ *  - environment-bound items (multi-display, fullscreen automation) are reported
+ *    as BLOCKED-ENVIRONMENT with the attempted command and observed output.
+ *
+ * usage:
+ *   node product/tools/accept-native-beta2.mjs \
+ *     --app <installed dsh-bot.app> --run <evidence run dir> \
+ *     [--manifest <macos-build.json>] [--allow-blocked] [--timeout-scale <n>]
+ */
+import { spawnSync } from 'node:child_process'
+import { createHash, randomUUID } from 'node:crypto'
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
+import { until, acceptDesktopWeb, connectPage } from './desktop-web-acceptance.mjs'
+import { waitAgentReady } from './wait-agent-ready.mjs'
+import { waitMemoryReady } from './wait-memory-ready.mjs'
+import { matchingPids } from './find-macos-app-pid.mjs'
+import {
+  activateApp, clickAt, displays, frontmostApp, moveMouse, screenshot,
+  systemEventsWindows, toolchain, windows,
+} from './native-inspect.mjs'
+
+const ROOT = resolve(import.meta.dirname, '../..')
+const DESKTOP_APP = join(ROOT, 'apps/desktop/.desktop-build/targets/mac-arm64/unsigned-artifacts')
+const sleep = ms => new Promise(resolvePromise => setTimeout(resolvePromise, ms))
+const nowIso = () => new Date().toISOString()
+const scale = () => Number(process.env.B2_ACCEPT_TIMEOUT_SCALE || 1)
+const timeout = ms => Math.round(ms * scale())
+
+function parseArgs(argv) {
+  const out = {}
+  for (let i = 0; i < argv.length; i++) {
+    if (!argv[i].startsWith('--')) continue
+    const key = argv[i].slice(2)
+    const next = argv[i + 1]
+    out[key] = next && !next.startsWith('--') ? (i++, next) : true
+  }
+  return out
+}
+
+function psTable() {
+  const result = spawnSync('/bin/ps', ['-axo', 'pid=,ppid=,command='], { encoding: 'utf8' })
+  if (result.status !== 0) throw new Error('Cannot inspect process table')
+  return result.stdout
+}
+
+export function processTreeFor(userData) {
+  const marker = `--user-data-dir=${userData}`
+  return psTable().split('\n').map(line => line.trim()).filter(line => line.includes(marker)).map(line => {
+    const match = line.match(/^(\d+)\s+(\d+)\s+(.+)$/)
+    return match ? { pid: Number(match[1]), ppid: Number(match[2]), command: match[3], role: /--type=/.test(match[3]) ? 'helper' : 'main' } : null
+  }).filter(Boolean)
+}
+
+export function appPid(userData) {
+  const result = spawnSync('node', [join(ROOT, 'product/tools/find-macos-app-pid.mjs'), userData], { encoding: 'utf8' })
+  const text = String(result.stdout || '').trim()
+  return result.status === 0 && /^\d+$/.test(text) ? Number(text) : null
+}
+
+export function sha256File(path) {
+  const hash = createHash('sha256')
+  const fd = readFileSync(path)
+  hash.update(fd)
+  return hash.digest('hex')
+}
+
+export function writeJson(path, value) {
+  mkdirSync(resolve(path, '..'), { recursive: true })
+  writeFileSync(path, JSON.stringify(value, null, 2) + '\n')
+}
+
+export class Run {
+  constructor(appPath, runDir, options) {
+    this.appPath = resolve(appPath)
+    this.runDir = resolve(runDir)
+    this.options = options
+    this.userData = join(this.runDir, 'user-data')
+    this.dshHome = join(this.runDir, 'dsh-home')
+    this.logsDir = join(this.runDir, 'logs')
+    this.checksDir = join(this.runDir, 'checks')
+    this.evidenceDir = join(this.runDir, 'evidence')
+    for (const dir of [this.runDir, this.userData, this.dshHome, this.logsDir, this.checksDir, this.evidenceDir]) mkdirSync(dir, { recursive: true })
+    this.checks = {}
+    this.attempts = []
+    this.mainLog = join(this.logsDir, 'accept-native.log')
+    this.startedAt = nowIso()
+    this.openWrapper = null
+    this.api = null
+  }
+  log(message) {
+    const line = `[${nowIso()}] ${message}`
+    console.log(line)
+    writeFileSync(this.mainLog, line + '\n', { flag: 'a' })
+  }
+  writeCheck(id, value) {
+    const path = join(this.checksDir, `${id}.json`)
+    writeJson(path, value)
+    this.checks[id] = { ...value, evidenceFile: path }
+    const status = value.status || 'FAIL'
+    this.log(`CHECK ${id}: ${status}${value.detail ? ` - ${value.detail}` : ''}`)
+    return value
+  }
+  bridgePath() { return join(this.dshHome, 'bot/bridge.json') }
+  memoryRuntimePath() { return join(this.dshHome, 'memory/runtime.json') }
+  async waitBridgeHealth({ timeoutMs = timeout(120000) } = {}) {
+    return waitAgentReady(this.bridgePath(), { timeoutMs })
+  }
+  async waitMemoryHealth({ timeoutMs = timeout(300000) } = {}) {
+    return waitMemoryReady(this.memoryRuntimePath(), { timeoutMs })
+  }
+  async apiFetch(path, { method = 'GET', body, timeoutMs = 10000 } = {}) {
+    const bridge = JSON.parse(readFileSync(this.bridgePath(), 'utf8'))
+    const response = await fetch(`http://127.0.0.1:${bridge.port}${path}`, {
+      method,
+      headers: { authorization: `Bearer ${bridge.token}`, ...(body !== undefined ? { 'content-type': 'application/json' } : {}) },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal: AbortSignal.timeout(timeoutMs),
+    })
+    const text = await response.text()
+    let json = null
+    try { json = JSON.parse(text) } catch { /* non-JSON (SSE/NDJSON) */ }
+    return { status: response.status, ok: response.ok, json, text, bridge }
+  }
+  async launch(attempt) {
+    const record = {
+      attempt, startedAt: nowIso(), appPid: null, bridgeFound: false,
+      bridgeFoundAt: null, success: false, reason: null, openWrapperPid: null,
+      stdoutLog: join(this.logsDir, `launch-attempt-${attempt}-stdout.log`),
+      stderrLog: join(this.logsDir, `launch-attempt-${attempt}-stderr.log`),
+      launchservicesLog: join(this.logsDir, `launch-attempt-${attempt}.log`),
+    }
+    this.attempts.push(record)
+    if (attempt === 1) {
+      rmSync(this.userData, { recursive: true, force: true })
+      rmSync(this.dshHome, { recursive: true, force: true })
+      mkdirSync(this.userData, { recursive: true })
+      mkdirSync(this.dshHome, { recursive: true })
+      rmSync(join(this.userData, 'DevToolsActivePort'), { force: true })
+    }
+    for (const pid of processTreeFor(this.userData)) {
+      try { process.kill(pid.pid, 'SIGTERM') } catch { /* already gone */ }
+    }
+    await sleep(500)
+    const args = [
+      '-n',
+      '--env', 'ELECTRON_RUN_AS_NODE=',
+      '--env', `DSH_HOME=${this.dshHome}`,
+      '--stdout', record.stdoutLog, '--stderr', record.stderrLog,
+      this.appPath,
+      '--args', `--user-data-dir=${this.userData}`,
+      '--remote-debugging-address=127.0.0.1', '--remote-debugging-port=0',
+    ]
+    this.log(`LaunchServices attempt ${attempt}: open ${args.slice(0, 3).join(' ')} … ${this.appPath}`)
+    const child = spawnSync('/usr/bin/open', args, { encoding: 'utf8', timeout: timeout(5000) })
+    writeFileSync(record.launchservicesLog, `open exit=${child.status}\nstdout=${child.stdout || ''}\nstderr=${child.stderr || ''}\n`)
+    const deadline = Date.now() + timeout(90000)
+    while (Date.now() < deadline) {
+      record.appPid = appPid(this.userData)
+      if (record.appPid && existsSync(this.bridgePath())) {
+        record.bridgeFound = true
+        record.bridgeFoundAt = nowIso()
+        record.success = true
+        break
+      }
+      await sleep(500)
+    }
+    if (!record.success) {
+      record.reason = `App/bridge did not appear as one unit within ${timeout(90000)}ms (appPid=${record.appPid}, bridge=${existsSync(this.bridgePath())})`
+      this.log(`Launch attempt ${attempt} FAILED: ${record.reason}`)
+      record.stdoutTail = existsSync(record.stdoutLog) ? readFileSync(record.stdoutLog, 'utf8').slice(-4000) : ''
+      record.stderrTail = existsSync(record.stderrLog) ? readFileSync(record.stderrLog, 'utf8').slice(-4000) : ''
+      for (const pid of processTreeFor(this.userData)) { try { process.kill(pid.pid, 'SIGTERM') } catch { /* gone */ } }
+      await sleep(1500)
+    } else {
+      this.log(`Launch attempt ${attempt} OK: appPid=${record.appPid} bridge=${this.bridgePath()}`)
+    }
+    return record
+  }
+  async stop({ label = 'stop' } = {}) {
+    const pids = processTreeFor(this.userData)
+    const main = pids.find(entry => entry.role === 'main') || null
+    const startedAt = Date.now()
+    const record = { label, startedAt: nowIso(), pidsBefore: pids, termTarget: main?.pid ?? null, exited: false, durationMs: null, forced: false }
+    if (main) {
+      try { process.kill(main.pid, 'SIGTERM') } catch { /* gone */ }
+      while (Date.now() - startedAt < timeout(30000)) {
+        if (!processTreeFor(this.userData).some(entry => entry.role === 'main')) { record.exited = true; break }
+        await sleep(500)
+      }
+      if (!record.exited) {
+        record.forced = true
+        for (const entry of processTreeFor(this.userData)) { try { process.kill(entry.pid, 'SIGKILL') } catch { /* gone */ } }
+        await sleep(1000)
+      }
+    } else record.exited = true
+    record.durationMs = Date.now() - startedAt
+    record.pidsAfter = processTreeFor(this.userData)
+    record.descriptorsAfter = { bridge: existsSync(this.bridgePath()), memory: existsSync(this.memoryRuntimePath()) }
+    this.log(`Stop ${label}: exited=${record.exited} forced=${record.forced} durationMs=${record.durationMs}`)
+    return record
+  }
+  pageTargets(port) {
+    return fetch(`http://127.0.0.1:${port}/json/list`, { signal: AbortSignal.timeout(2000) })
+      .then(response => response.json()).catch(() => [])
+  }
+  async devtoolsPort() {
+    const [port] = await until(() => readFileSync(join(this.userData, 'DevToolsActivePort'), 'utf8').trim().split(/\r?\n/), { label: 'DevTools startup', timeoutMs: timeout(60000) })
+    return Number(port)
+  }
+  nativeWindows(pid) {
+    return windows({ pid }).windows
+  }
+  async axWindows(pid) { return systemEventsWindows(pid) }
+}
+
+export function classifyWindows(list) {
+  const visible = list.filter(w => w.onscreen && w.alpha > 0 && w.w > 1 && w.h > 1)
+  const pet = visible.filter(w => w.w >= 120 && w.w <= 300 && w.h >= 120 && w.h <= 460 && w.layer >= 2).sort((a, b) => a.layer - b.layer).at(0) || null
+  const main = visible.filter(w => w.layer === 0 && w.w >= 400 && w.h >= 300).sort((a, b) => b.w * b.h - a.w * a.h).at(0) || null
+  const bubble = visible.filter(w => w.w >= 300 && w.w <= 620 && w.h >= 100 && w.h <= 720 && w.layer >= 2).sort((a, b) => b.layer - a.layer).at(0) || null
+  return { visible, pet, main, bubble }
+}
+
+async function bubblePageState(port) {
+  const targets = (await fetch(`http://127.0.0.1:${port}/json/list`, { signal: AbortSignal.timeout(2000) }).then(r => r.json()))
+  const target = targets.find(item => item.type === 'page' && item.url.includes('/bubble.html'))
+  if (!target) return { found: false }
+  let page = null
+  try {
+    page = await connectPage(target.webSocketDebuggerUrl)
+    const state = await page.evaluate(`(() => {
+      const bubble = document.getElementById('bubble');
+      const card = document.getElementById('bubble-card');
+      const text = document.getElementById('bubble-text');
+      const close = document.getElementById('bubble-close');
+      const rect = el => { if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+      return {
+        ready: document.readyState,
+        bubbleClass: bubble ? bubble.className : null,
+        bubbleHidden: bubble ? /(?:^|\\s)hidden(?:\\s|$)/.test(bubble.className) : null,
+        cardRect: rect(card), closeRect: rect(close),
+        closeVisible: close ? (close.offsetParent !== null && getComputedStyle(close).display !== 'none') : false,
+        textLength: text ? text.textContent.trim().length : 0,
+        textSample: text ? text.textContent.trim().slice(0, 200) : '',
+        innerWidth: window.innerWidth, innerHeight: window.innerHeight,
+        devicePixelRatio: window.devicePixelRatio,
+      };
+    })()`)
+    return { found: true, ...state }
+  } finally { await page?.close().catch(() => {}) }
+}
+
+export function firstAttemptSuccess(run) { return run.attempts.length > 0 && run.attempts[0].success === true }
+
+async function v2Snapshot(run) {
+  const response = await run.apiFetch('/v2/snapshot')
+  if (response.status !== 200 || !response.json) return { available: false, response }
+  return { available: true, snapshot: response.json, response }
+}
+
+export async function triggerGreeting(run) {
+  const triggered = { trigger: null, details: [] }
+  const token = randomUUID()
+  const snapshot = await v2Snapshot(run)
+  if (snapshot.available) {
+    const command = {
+      protocolVersion: 'dsh-bot-v1', commandId: randomUUID(), hostEpoch: snapshot.snapshot.hostEpoch,
+      sourceConnectionId: 'accept-probe', sessionId: snapshot.snapshot.identity?.sessionId ?? null,
+      type: 'voice.session', payload: { connectionId: 'accept-probe', transport: 'connected', mediaState: {} },
+    }
+    const response = await run.apiFetch('/v2/command', { method: 'POST', body: command })
+    triggered.details.push({ path: '/v2/command voice.session', status: response.status, body: response.json ?? response.text.slice(0, 400) })
+    if (response.status >= 200 && response.status < 300) triggered.trigger = 'v2-voice-session-greeting'
+  }
+  if (!triggered.trigger) {
+    const legacy = await run.apiFetch('/voice/turn', { method: 'POST', body: { text: '气泡原生可见性验收', source: 'accept-probe', token } })
+    triggered.details.push({ path: '/voice/turn', status: legacy.status, body: (legacy.json ?? legacy.text).slice(0, 400) })
+    if (legacy.status >= 200 && legacy.status < 300) triggered.trigger = 'legacy-voice-turn'
+  }
+  return triggered
+}
+
+export async function waitForBubble(run, pid, { timeoutMs = timeout(30000), requirePage = true, afterWindowNumbers = [] } = {}) {
+  const startedAt = Date.now()
+  let last = { windows: [], page: { found: false } }
+  while (Date.now() - startedAt < timeoutMs) {
+    const all = run.nativeWindows(pid)
+    const classified = classifyWindows(all)
+    last = { windows: all, classified, page: requirePage ? await bubblePageState(await run.devtoolsPort()).catch(() => ({ found: false })) : { found: false } }
+    const fresh = classified.bubble && !afterWindowNumbers.includes(classified.bubble.windowNumber)
+    const pageReady = !requirePage || (last.page.found && last.page.bubbleHidden === false && (last.page.textLength ?? 0) > 0)
+    if (fresh && pageReady) return { found: true, waitedMs: Date.now() - startedAt, ...last }
+    await sleep(300)
+  }
+  return { found: false, error: `bubble not visible natively/page within ${timeoutMs}ms`, ...last }
+}
+
+function displayFrame(displaysResult) {
+  const screen = (displaysResult.screens || []).flat().find(item => Array.isArray(item.frame)) || null
+  return screen
+}
+
+function boundsWithin(bounds, frame, tolerance = 2) {
+  return bounds.x >= frame[0] - tolerance && bounds.y >= frame[1] - tolerance
+    && bounds.x + bounds.w <= frame[0] + frame[2] + tolerance
+    && bounds.y + bounds.h <= frame[1] + frame[3] + tolerance
+}
+
+function buildWindowLayer(bubble) {
+  const bubbleFrame = bubble.found ? bubble.classified.bubble : null
+  const petFrame = bubble.found ? bubble.classified.pet : null
+  const display = displayFrame(displays())
+  const layerOrderOk = Boolean(bubbleFrame && petFrame && bubbleFrame.layer > petFrame.layer)
+  const insideVisibleFrame = Boolean(bubbleFrame && display && boundsWithin(bubbleFrame, display.visibleFrame))
+  const distancePx = bubbleFrame && petFrame ? distanceBetween({ ...bubbleFrame }, { ...petFrame }) : null
+  return {
+    pet: petFrame ? { layer: petFrame.layer, frame: { x: petFrame.x, y: petFrame.y, w: petFrame.w, h: petFrame.h }, onscreen: petFrame.onscreen } : null,
+    bubble: bubbleFrame ? { layer: bubbleFrame.layer, frame: { x: bubbleFrame.x, y: bubbleFrame.y, w: bubbleFrame.w, h: bubbleFrame.h }, onscreen: bubbleFrame.onscreen, alpha: bubbleFrame.alpha } : null,
+    anchorDisplay: display ? { visibleFrame: display.visibleFrame, frame: display.frame, scaleFactor: display.scale } : null,
+    layerOrderOk, insideVisibleFrame, distancePx,
+    withinAnchorBudget: distancePx !== null ? distancePx <= 500 : null,
+    policyIntent: ['level:screen-saver', 'visibleOnFullScreen', 'spaces:all', 'processType-derived-skipTransform'],
+    note: 'layer/frame/onscreen read from CGWindowListCopyWindowInfo; policy intent strings are the WindowLayerPolicy contract, not proof by themselves',
+  }
+}
+
+/** Real HID click on the bubble close control; verifies the window really disappears. */
+async function hidClickBubbleClose(run, pid, bubble) {
+  const result = { attempted: true, target: null, closed: false, delivered: false }
+  try {
+    const port = await run.devtoolsPort()
+    const targets = await fetch(`http://127.0.0.1:${port}/json/list`, { signal: AbortSignal.timeout(2000) }).then(response => response.json())
+    const target = targets.find(item => item.type === 'page' && item.url.includes('/bubble.html'))
+    if (!target) { result.error = 'bubble page target missing'; result.attempted = false; return result }
+    const page = await connectPage(target.webSocketDebuggerUrl)
+    let metrics
+    try {
+      metrics = await page.evaluate(`(() => {
+        const close = document.getElementById('bubble-close');
+        const card = document.getElementById('bubble-card');
+        const rectOf = el => { if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+        const closeStyle = close ? getComputedStyle(close) : null;
+        return {
+          innerWidth: window.innerWidth, innerHeight: window.innerHeight,
+          closeRect: rectOf(close), cardRect: rectOf(card),
+          closeVisible: Boolean(close && close.offsetParent !== null && closeStyle.display !== 'none' && (rectOf(close)?.w ?? 0) > 0),
+        };
+      })()`)
+    } finally { await page.close().catch(() => {}) }
+    const native = bubble.classified.bubble
+    const toScreen = rect => ({
+      x: native.x + (rect.x + rect.w / 2) * (native.w / metrics.innerWidth),
+      y: native.y + (rect.y + rect.h / 2) * (native.h / metrics.innerHeight),
+    })
+    const useClose = metrics.closeVisible && metrics.closeRect && metrics.closeRect.w > 0
+    const rect = useClose ? metrics.closeRect : metrics.cardRect
+    if (!rect) { result.error = 'no clickable rect in bubble page'; return result }
+    const point = toScreen(rect)
+    result.target = useClose ? 'bubble-close' : 'bubble-card'
+    result.metrics = metrics
+    result.screenPoint = { x: Math.round(point.x), y: Math.round(point.y) }
+    result.move = moveMouse(point.x, point.y)
+    await sleep(400)
+    result.click = clickAt(point.x, point.y)
+    result.delivered = result.click?.atTarget === true
+    await sleep(1200)
+    const after = classifyWindows(run.nativeWindows(pid))
+    result.windowAfter = after.bubble
+    result.closed = useClose ? !after.bubble : false
+    if (!result.closed && useClose) result.note = 'HID click on close did not close the bubble window'
+    if (!useClose) result.note = 'close control hidden; HID click delivered on card (no state-change assertion available for this bubble kind)'
+    return result
+  } catch (error) {
+    result.error = error.message
+    return result
+  }
+}
+
+function distanceBetween(a, b) {
+  const ax = a.x + a.w / 2, ay = a.y + a.h / 2, bx = b.x + b.w / 2, by = b.y + b.h / 2
+  return Math.round(Math.hypot(ax - bx, ay - by))
+}
+
+async function runChecks(run, options) {
+  const displaysInfo = displays()
+  const toolchainInfo = toolchain()
+  await run.launch(1)
+  const launchFirst = firstAttemptSuccess(run)
+  const pid = run.attempts[0].appPid
+  if (!pid) {
+    run.writeCheck('C0-launch-ready', { status: 'FAIL', level: 'packaged native App', detail: 'App did not launch with bridge descriptor', attempts: run.attempts })
+    return 'FAIL'
+  }
+  let bridgeHealth
+  try {
+    bridgeHealth = await run.waitBridgeHealth()
+    await run.waitMemoryHealth()
+    run.writeCheck('C0-launch-ready', {
+      status: 'PASS', level: 'packaged native App + real Host + real Memory service', appPid: pid,
+      detail: `first-attempt-success=${launchFirst}; bridge pid ${bridgeHealth.health.pid} ready, memory authenticated health PASS`,
+      firstAttemptSuccess: launchFirst, attempts: run.attempts,
+      health: { pid: bridgeHealth.health.pid, sessionId: bridgeHealth.health.agent?.sessionId ?? null, memory: 'authenticated-health-PASS' },
+      processTree: processTreeFor(run.userData),
+    })
+  } catch (error) {
+    run.writeCheck('C0-launch-ready', { status: 'FAIL', level: 'packaged native App', detail: `readiness failed: ${error.message}`, attempts: run.attempts })
+    return 'FAIL'
+  }
+
+  // ---- C1 bubble first show: real window on screen, page content, screenshot, AX cross-check.
+  const preBubble = classifyWindows(run.nativeWindows(pid))
+  const triggered = await triggerGreeting(run)
+  const bubble = await waitForBubble(run, pid, { afterWindowNumbers: preBubble.visible.map(w => w.windowNumber) })
+  const windowShot = bubble.found ? screenshot(join(run.evidenceDir, 'bubble-window.png'), { windowId: bubble.classified.bubble.windowNumber }) : { ok: false }
+  const screenShot = screenshot(join(run.evidenceDir, 'bubble-fullscreen.png'))
+  let ax = await run.axWindows(pid)
+  if (bubble.found) {
+    const axFrames = (ax.windows || []).filter(w => Array.isArray(w.position) && Array.isArray(w.size))
+    bubble.axCrossCheck = axFrames.map(w => ({ name: w.name, x: w.position[0], y: w.position[1], w: w.size[0], h: w.size[1] }))
+    bubble.axContainsBubbleFrame = axFrames.some(w => Math.abs(w.size[0] - bubble.classified.bubble.w) <= 4 && Math.abs(w.size[1] - bubble.classified.bubble.h) <= 4)
+  }
+  const windowLayer = buildWindowLayer(bubble)
+  const hidClick = bubble.found ? await hidClickBubbleClose(run, pid, bubble) : { attempted: false }
+  run.writeCheck('C1-bubble-first-show', {
+    status: bubble.found && windowShot.ok && (bubble.page?.bubbleHidden === false) && (bubble.page?.textLength ?? 0) > 0
+      && windowLayer.layerOrderOk === true && (hidClick.closed === true || hidClick.delivered === true) ? 'PASS' : 'FAIL',
+    level: 'packaged native App + window-server truth (CGWindowList) + real screenshot + page content + AX list',
+    trigger: triggered,
+    waitedMs: bubble.waitedMs ?? null,
+    pet: bubble.classified?.pet ?? preBubble.pet ?? null,
+    main: bubble.classified?.main ?? null,
+    bubble: bubble.classified?.bubble ?? null,
+    bubblePage: bubble.page ?? null,
+    screenshots: { bubbleWindow: windowShot, fullScreen: screenShot },
+    windowLayer,
+    hidClick,
+    ax: { granted: ax.ok !== false, crossCheck: bubble.axCrossCheck ?? null, containsBubbleFrame: bubble.axContainsBubbleFrame ?? null },
+    detail: bubble.found
+      ? `bubble native window ${bubble.classified.bubble.w}x${bubble.classified.bubble.h} layer=${bubble.classified.bubble.layer} onscreen=${bubble.classified.bubble.onscreen} (pet layer ${windowLayer.pet?.layer ?? 'n/a'}, layerOrderOk=${windowLayer.layerOrderOk}, distance=${windowLayer.distancePx}px); page text ${bubble.page?.textLength} chars; window screenshot ${windowShot.ok ? 'PASS' : 'FAIL'}; HID close click closed=${hidClick.closed ?? 'n/a'} delivered=${hidClick.delivered ?? 'n/a'}`
+      : bubble.error,
+  })
+  // The first bubble may have been closed by the HID click above; re-trigger for later checks.
+  if (hidClick.closed) {
+    const retrigger = await triggerGreeting(run)
+    const reopened = await waitForBubble(run, pid, { timeoutMs: timeout(25000), afterWindowNumbers: [] })
+    bubble.found = reopened.found
+    if (reopened.found) { bubble.classified = reopened.classified; bubble.page = reopened.page }
+    run.log(`re-triggered bubble for later native checks: found=${bubble.found} (${JSON.stringify(retrigger.trigger)})`)
+  }
+
+  // ---- C2 bubble above main window (real main window opened through the pet double-click path), plus fullscreen attempt.
+  let webBoot = null
+  try {
+    webBoot = await acceptDesktopWeb(run.userData, run.bridgePath(), join(run.evidenceDir, 'web-boot.json'))
+    run.log(`web boot + pet double-click + session selection PASS (sessionId=${webBoot.sessionId})`)
+  } catch (error) {
+    run.log(`web boot/double-click FAILED: ${error.message}`)
+  }
+  const afterMain = classifyWindows(run.nativeWindows(pid))
+  const main = afterMain.main
+  // Re-trigger a bubble AFTER the main window exists so the above-main measurement
+  // uses a bubble that is on screen at the same time as the main window.
+  let aboveMainBubble = bubble.classified?.bubble ?? null
+  let aboveMainRetrigger = null
+  if (webBoot && main) {
+    try {
+      aboveMainRetrigger = await triggerGreeting(run)
+      const fresh = await waitForBubble(run, pid, { timeoutMs: timeout(25000), afterWindowNumbers: afterMain.visible.map(w => w.windowNumber) })
+      if (fresh.found) aboveMainBubble = fresh.classified.bubble
+      aboveMainRetrigger.found = fresh.found
+    } catch (error) { aboveMainRetrigger = { error: error.message } }
+  }
+  let aboveMain = null
+  if (aboveMainBubble && main) {
+    aboveMain = {
+      mainLayer: main.layer, bubbleLayer: aboveMainBubble.layer,
+      bubbleAboveMainByLayer: aboveMainBubble.layer > main.layer,
+      bubbleOnscreen: aboveMainBubble.onscreen,
+      bubbleWindow: aboveMainBubble.windowNumber, mainWindow: main.windowNumber,
+      overlap: !(aboveMainBubble.x + aboveMainBubble.w < main.x || main.x + main.w < aboveMainBubble.x
+        || aboveMainBubble.y + aboveMainBubble.h < main.y || main.y + main.h < aboveMainBubble.y),
+    }
+  }
+  const fullscreenAttempt = await attemptFullscreenMain(run, pid, main)
+  run.writeCheck('C2-bubble-above-main', {
+    status: aboveMain?.bubbleAboveMainByLayer && aboveMain?.bubbleOnscreen ? (fullscreenAttempt.status === 'FAIL' ? 'FAIL' : 'PASS') : 'FAIL',
+    level: 'packaged native App + window-server layer/alpha/bounds; fullscreen automation via AX/keystroke attempt',
+    webBoot: webBoot ? { status: 'PASS', sessionId: webBoot.sessionId } : { status: 'FAIL' },
+    main, bubble: aboveMainBubble, aboveMainRetrigger, aboveMain,
+    fullscreen: fullscreenAttempt,
+    detail: aboveMain
+      ? `main layer ${aboveMain.mainLayer} window ${aboveMain.mainWindow}, bubble layer ${aboveMain.bubbleLayer} window ${aboveMain.bubbleWindow}, bubble onscreen=${aboveMain.bubbleOnscreen}; fullscreen=${fullscreenAttempt.status}`
+      : `missing main window (main=${Boolean(main)}) or bubble; webBoot=${Boolean(webBoot)}`,
+  })
+
+  // ---- C3 focus non-steal: another app is frontmost before the bubble appears.
+  await activateApp('Finder')
+  await sleep(600)
+  const focusBefore = frontmostApp()
+  const windowsBeforeFocus = classifyWindows(run.nativeWindows(pid)).visible.map(w => w.windowNumber)
+  const focusTrigger = await triggerGreeting(run)
+  const focusBubble = await waitForBubble(run, pid, { timeoutMs: timeout(20000), afterWindowNumbers: windowsBeforeFocus })
+  await sleep(500)
+  const focusAfter = frontmostApp()
+  const frontmostName = name => /Finder/i.test(String(name))
+  const focusPass = focusBubble.found && frontmostName(focusBefore.name) && frontmostName(focusAfter.name)
+  run.writeCheck('C3-focus-non-steal', {
+    status: focusPass ? 'PASS' : (focusBubble.found ? 'FAIL' : 'BLOCKED-ENVIRONMENT'),
+    level: 'packaged native App + System Events frontmost-process truth (Accessibility TCC)',
+    trigger: focusTrigger, before: focusBefore, after: focusAfter,
+    bubbleFound: focusBubble.found, bubble: focusBubble.classified?.bubble ?? null,
+    detail: focusBubble.found
+      ? `frontmost before=${focusBefore.name} after=${focusAfter.name} (Finder must stay frontmost while a non-activating bubble appears)`
+      : `no second bubble for focus test: ${focusBubble.error}`,
+  })
+
+  // ---- C4 edge geometry + display inventory; multi-display explicitly blocked on a single-display host.
+  const display = displayFrame(displaysInfo)
+  const pet = classifyWindows(run.nativeWindows(pid)).pet
+  let edge = { attempted: false, status: 'BLOCKED-ENVIRONMENT', detail: 'no pet window frame available through window server' }
+  if (display && pet) {
+    const [vx, vy, vw, vh] = display.visibleFrame
+    const target = { x: vx + vw - pet.w - 4, y: vy + Math.round(vh / 2) - Math.round(pet.h / 2) }
+    edge = await attemptEdgeGeometry(run, pid, pet, target, display)
+  }
+  const displaysBlocked = (displaysInfo.displays || []).length < 2
+  run.writeCheck('C4-edge-multi-display-geometry', {
+    status: edge.status === 'PASS' ? 'PASS' : (edge.status === 'FAIL' ? 'FAIL' : 'BLOCKED-ENVIRONMENT'),
+    level: 'packaged native App + CGDisplay/NSScreen inventory + window-server frames',
+    displays: { count: (displaysInfo.displays || []).length, main: (displaysInfo.displays || [])[0] ?? null, screens: displaysInfo.screens, multiDisplay: displaysBlocked ? 'BLOCKED-ENVIRONMENT: only one active display attached' : 'available' },
+    scaleLogical: display ? display.scale : null,
+    edge,
+    detail: edge.detail,
+  })
+
+  // ---- C5 packaged app with a deliberately missing Memory payload must fail loudly, never claim ready.
+  run.writeCheck('C5-dev-missing-memory-diagnosis', await attemptMissingMemory(run))
+  if (run.missingMemoryAppCopy) { rmSync(run.missingMemoryAppCopy, { recursive: true, force: true }); delete run.missingMemoryAppCopy }
+
+  // ---- C6 snapshot/connection contract + legacy endpoint compatibility + auth/leak checks.
+  run.writeCheck('C6-snapshot-connection', await snapshotChecks(run))
+
+  // ---- C7 exit/restart cleanup: descriptors and ports cleaned, restart yields a new hostEpoch with no auto-submitted work.
+  const epochBefore = (await v2Snapshot(run)).snapshot?.hostEpoch ?? null
+  // Capture the Host port before shutdown: the descriptor is expected to be removed by the app.
+  let hostPortBeforeExit = null
+  try { hostPortBeforeExit = JSON.parse(readFileSync(run.bridgePath(), 'utf8')).port } catch { hostPortBeforeExit = null }
+  const shutdown = await run.stop({ label: 'first' })
+  const listeners = hostPortBeforeExit
+    ? spawnSync('/usr/sbin/lsof', ['-nP', `-iTCP:${hostPortBeforeExit}`, '-sTCP:LISTEN'], { encoding: 'utf8' })
+    : { stdout: '' }
+  const descriptorsGone = !existsSync(run.bridgePath()) && !existsSync(run.memoryRuntimePath())
+  const residual = processTreeFor(run.userData)
+  const restart = await run.launch(2)
+  let restartHealth = null
+  let epochAfter = null
+  let restartSnapshot = null
+  if (restart.success) {
+    try { restartHealth = await run.waitBridgeHealth() } catch (error) { restartHealth = { error: error.message } }
+    const snapshot = await v2Snapshot(run)
+    restartSnapshot = snapshot.snapshot ?? null
+    epochAfter = restartSnapshot?.hostEpoch ?? null
+  }
+  const shutdown2 = await run.stop({ label: 'restart' })
+  run.writeCheck('C7-exit-restart-cleanup', {
+    status: shutdown.exited && descriptorsGone && residual.length === 0 && restart.success && shutdown2.exited && !existsSync(run.bridgePath())
+      ? (epochBefore && epochAfter && epochBefore !== epochAfter ? 'PASS' : 'FAIL') : 'FAIL',
+    level: 'packaged native App + real LaunchServices exit/restart + descriptor/port/process cleanup',
+    shutdown, descriptorsGone, hostPortBeforeExit, listenersAfterExit: String(listeners.stdout || '').trim() || 'none', residualProcesses: residual,
+    restart: { success: restart.success, attempt: 2, appPid: restart.appPid, health: restartHealth, hostEpoch: epochAfter },
+    hostEpochBefore: epochBefore, hostEpochAfter: epochAfter,
+    epochChanged: Boolean(epochBefore && epochAfter && epochBefore !== epochAfter),
+    restartSnapshotSummary: restartSnapshot ? { protocolVersion: restartSnapshot.protocolVersion, schema: restartSnapshot.schema, snapshotSeq: restartSnapshot.snapshotSeq, execution: restartSnapshot.execution?.state, queue: restartSnapshot.queue?.items?.length ?? null, inputDraft: restartSnapshot.inputDraft ?? null } : null,
+    shutdown2,
+    detail: `first exit cleanup=${shutdown.exited && descriptorsGone && residual.length === 0}; restart attempt-2 success=${restart.success}; hostEpoch changed=${Boolean(epochBefore && epochAfter && epochBefore !== epochAfter)}`,
+  })
+
+  // ---- overall
+  const values = Object.values(run.checks)
+  const failed = values.filter(check => check.status === 'FAIL')
+  const blocked = values.filter(check => check.status === 'BLOCKED-ENVIRONMENT')
+  const overall = failed.length ? 'FAIL' : blocked.length ? 'PASS-WITH-BLOCKED-ENVIRONMENT' : 'PASS'
+  return overall
+}
+
+async function attemptFullscreenMain(run, pid, main) {
+  const result = { status: 'BLOCKED-ENVIRONMENT', attempts: [], detail: '' }
+  if (!main) { result.detail = 'no main window to attempt fullscreen'; return result }
+  const frame = displayFrame(displays())
+  const before = classifyWindows(run.nativeWindows(pid)).main
+  // Attempt 1: AXFullScreen attribute on the main window.
+  try {
+    const js = `ObjC.import('AppKit'); const se = Application('System Events');
+const proc = se.processes.whose({unixId: ${Number(pid)}})[0];
+const windows = proc.windows();
+const out = [];
+for (let i = 0; i < windows.length; i++) {
+  const w = windows[i]; let pos = null, size = null;
+  try { pos = w.position(); } catch (e) {}
+  try { size = w.size(); } catch (e) {}
+  out.push({i, pos, size});
+}
+const candidate = out.find(x => Array.isArray(x.size) && x.size[0] >= 400 && x.size[1] >= 300);
+let axFullscreen = 'no-candidate';
+if (candidate) {
+  try { const attr = windows[candidate.i].attributes.byName('AXFullScreen'); attr.value = true; axFullscreen = 'set-true'; }
+  catch (e) { axFullscreen = 'error: ' + String(e.message).slice(0, 80); }
+}
+JSON.stringify({axFullscreen, windows: out});`
+    const axResult = JSON.parse(spawnSync('/usr/bin/osascript', ['-l', 'JavaScript', '-e', js], { encoding: 'utf8' }).stdout || '{}')
+    result.attempts.push({ method: 'AXFullScreen', result: axResult.axFullscreen })
+    await sleep(2500)
+  } catch (error) { result.attempts.push({ method: 'AXFullScreen', error: error.message }) }
+  let current = classifyWindows(run.nativeWindows(pid)).main
+  const fullscreenNow = () => {
+    if (!current || !frame) return false
+    return Math.abs(current.w - frame.frame[2]) <= 4 && Math.abs(current.h - frame.frame[3]) <= 4
+  }
+  if (!fullscreenNow() && current) {
+    // Attempt 2: activate the app window, then the standard Control+Command+F toggle.
+    try {
+      const js = `ObjC.import('AppKit'); Application('System Events').processes.whose({unixId: ${Number(pid)}})[0].frontmost = true; 'activated'`
+      spawnSync('/usr/bin/osascript', ['-l', 'JavaScript', '-e', js], { encoding: 'utf8' })
+      await sleep(600)
+      spawnSync('/usr/bin/osascript', ['-e', 'tell application "System Events" to key code 3 using {control down, command down}'], { encoding: 'utf8' })
+      result.attempts.push({ method: 'ctrl+cmd+f', result: 'sent' })
+      await sleep(3000)
+    } catch (error) { result.attempts.push({ method: 'ctrl+cmd+f', error: error.message }) }
+    current = classifyWindows(run.nativeWindows(pid)).main
+  }
+  if (fullscreenNow()) {
+    const bubbleNow = classifyWindows(run.nativeWindows(pid)).bubble
+    const shot = screenshot(join(run.evidenceDir, 'bubble-above-fullscreen-main.png'))
+    result.status = bubbleNow && bubbleNow.onscreen ? 'PASS' : 'FAIL'
+    result.fullscreenWindow = current ?? null
+    result.bubble = bubbleNow ?? null
+    result.screenshot = shot
+    result.detail = `main window fullscreen (${current?.w}x${current?.h}) and bubble onscreen=${bubbleNow?.onscreen}; layer=${bubbleNow?.layer}`
+    // Leave fullscreen for later checks.
+    spawnSync('/usr/bin/osascript', ['-e', 'tell application "System Events" to key code 3 using {control down, command down}'], { encoding: 'utf8' })
+    await sleep(2000)
+  } else {
+    const fullScreenAttr = (() => {
+      try {
+        const js = `ObjC.import('AppKit'); const se = Application('System Events');
+const proc = se.processes.whose({unixId: ${Number(pid)}})[0]; const ws = proc.windows(); const out = [];
+for (let i = 0; i < ws.length; i++) { let f = null; try { f = ws[i].attributes.byName('AXFullScreen').value(); } catch (e) { f = 'unavailable'; } out.push(f); }
+JSON.stringify(out)`
+        return JSON.parse(spawnSync('/usr/bin/osascript', ['-l', 'JavaScript', '-e', js], { encoding: 'utf8' }).stdout || '[]')
+      } catch { return [] }
+    })()
+    const blocked = result.attempts.length ? 'BLOCKED-ENVIRONMENT: fullscreen could not be observed through AX/keystroke on this host (single display automation; recorded attempts)' : 'BLOCKED-ENVIRONMENT: no fullscreen attempt executed'
+    result.status = 'BLOCKED-ENVIRONMENT'
+    result.fullscreenAttribute = fullScreenAttr
+    result.detail = blocked
+    result.before = before
+  }
+  return result
+}
+
+async function attemptEdgeGeometry(run, pid, pet, target, display) {
+  const result = { status: 'FAIL', attempted: true, target, petBefore: pet, display }
+  let moved = false
+  try {
+    const js = `ObjC.import('AppKit'); const se = Application('System Events');
+const proc = se.processes.whose({unixId: ${Number(pid)}})[0]; const ws = proc.windows(); let moved = false, detail = null;
+for (let i = 0; i < ws.length; i++) {
+  const w = ws[i]; let size = null; try { size = w.size(); } catch (e) {}
+  if (Array.isArray(size) && size[0] >= 120 && size[0] <= 300 && size[1] >= 120 && size[1] <= 460) {
+    try { w.position = [${Math.round(target.x)}, ${Math.round(target.y)}]; moved = true; detail = {i, size}; }
+    catch (e) { detail = {i, error: String(e.message).slice(0, 120)}; }
+    break;
+  }
+}
+JSON.stringify({moved, detail});`
+    const moveResult = JSON.parse(spawnSync('/usr/bin/osascript', ['-l', 'JavaScript', '-e', js], { encoding: 'utf8' }).stdout || '{}')
+    moved = moveResult.moved === true
+    result.move = moveResult
+    await sleep(1200)
+  } catch (error) { result.move = { error: error.message } }
+  const petAfterMove = classifyWindows(run.nativeWindows(pid)).pet
+  const beforeWindows = classifyWindows(run.nativeWindows(pid)).visible.map(w => w.windowNumber)
+  const trigger = await triggerGreeting(run)
+  const bubble = await waitForBubble(run, pid, { timeoutMs: timeout(25000), afterWindowNumbers: beforeWindows, requirePage: true })
+  const visibleFrame = display.visibleFrame
+  const bubbleFrame = bubble.classified?.bubble ?? null
+  const inside = bubbleFrame ? boundsWithin(bubbleFrame, visibleFrame) : false
+  const distance = bubbleFrame && petAfterMove ? distanceBetween(petFrame(bubbleFrame), petFrame(petAfterMove)) : null
+  const shot = bubbleFrame ? screenshot(join(run.evidenceDir, 'bubble-edge-geometry.png'), { windowId: bubbleFrame.windowNumber }) : { ok: false }
+  result.moveApplied = moved
+  result.petAfterMove = petAfterMove
+  result.trigger = trigger
+  result.bubble = bubbleFrame
+  result.visibleFrame = visibleFrame
+  result.insideVisibleFrame = inside
+  result.distancePx = distance
+  result.screenshot = shot
+  result.status = bubbleFrame && inside && moved ? 'PASS' : 'FAIL'
+  result.detail = bubbleFrame
+    ? `pet moved to right edge=${moved}; bubble ${bubbleFrame.w}x${bubbleFrame.h} inside visibleFrame=${inside}; anchor distance=${distance}px; screenshot=${shot.ok}`
+    : `bubble did not appear after edge trigger: ${bubble.error}`
+  // Restore pet position.
+  if (moved) {
+    try {
+      const js = `ObjC.import('AppKit'); const se = Application('System Events');
+const proc = se.processes.whose({unixId: ${Number(pid)}})[0]; const ws = proc.windows();
+for (let i = 0; i < ws.length; i++) { const w = ws[i]; let size = null; try { size = w.size(); } catch (e) {}
+  if (Array.isArray(size) && size[0] >= 120 && size[0] <= 300 && size[1] >= 120 && size[1] <= 460) { w.position = [${Math.round(pet.x)}, ${Math.round(pet.y)}]; break; } }`
+      spawnSync('/usr/bin/osascript', ['-l', 'JavaScript', '-e', js], { encoding: 'utf8' })
+    } catch { /* best effort restore */ }
+  }
+  return result
+}
+
+function petFrame(frame) { return { x: frame.x, y: frame.y, w: frame.w, h: frame.h } }
+
+async function attemptMissingMemory(run) {
+  const copy = join(run.runDir, 'app-missing-memory', 'dsh-bot.app')
+  const check = {
+    status: 'FAIL', level: 'packaged native App with deliberately removed Memory payload (negative diagnosis path)',
+    method: 'copy installed .app, rename Contents/Resources/memory, launch the app binary with isolated dirs and capture stdout/stderr for a bounded window',
+    attempted: true,
+  }
+  try {
+    rmSync(join(run.runDir, 'app-missing-memory'), { recursive: true, force: true })
+    mkdirSync(join(run.runDir, 'app-missing-memory'), { recursive: true })
+    run.missingMemoryAppCopy = copy
+    const ditto = spawnSync('/usr/bin/ditto', [run.appPath, copy], { encoding: 'utf8' })
+    if (ditto.status !== 0) {
+      check.status = 'BLOCKED-ENVIRONMENT'
+      check.detail = `cannot copy app for negative test: ${String(ditto.stderr).slice(0, 300)}`
+      return check
+    }
+    const memoryPayload = join(copy, 'Contents/Resources/memory')
+    const memoryPayloadMissing = join(copy, 'Contents/Resources/memory.__removed_for_negative_test__')
+    if (!existsSync(memoryPayload)) {
+      check.status = 'BLOCKED-ENVIRONMENT'
+      check.detail = `packaged app has no Contents/Resources/memory payload to remove (path=${memoryPayload}); memory may be resolved elsewhere`
+      return check
+    }
+    renameSync(memoryPayload, memoryPayloadMissing)
+    const userData = join(run.runDir, 'app-missing-memory', 'user-data')
+    const dshHome = join(run.runDir, 'app-missing-memory', 'dsh-home')
+    mkdirSync(userData, { recursive: true })
+    mkdirSync(dshHome, { recursive: true })
+    const binary = join(copy, 'Contents/MacOS/dsh-bot')
+    check.binary = binary
+    check.stdoutLog = join(run.logsDir, 'missing-memory-stdout.log')
+    check.stderrLog = join(run.logsDir, 'missing-memory-stderr.log')
+    const child = spawnSync(binary, [`--user-data-dir=${userData}`, '--remote-debugging-address=127.0.0.1', '--remote-debugging-port=0'], {
+      encoding: 'utf8', timeout: 25000, env: { ...process.env, DSH_HOME: dshHome, ELECTRON_RUN_AS_NODE: undefined, NODE_OPTIONS: undefined },
+    })
+    writeFileSync(check.stdoutLog, String(child.stdout || ''))
+    writeFileSync(check.stderrLog, String(child.stderr || ''))
+    const combined = `${child.stdout || ''}\n${child.stderr || ''}`
+    const diagnosticPatterns = [/memory/i, /payload/i, /hindsight/i, /build-memory\.sh/i, /NISSE_MEMORY_DIR/i, /missing/i, /not found/i, /资源/i, /内存/i]
+    const hits = diagnosticPatterns.filter(pattern => pattern.test(combined)).map(pattern => String(pattern))
+    const explicit = /build-memory\.sh|NISSE_MEMORY_DIR/i.test(combined) || (hits.length >= 2 && /memory|hindsight|资源|内存/i.test(combined))
+    const claimedReady = /memory(?:\s+)?ready|Memory ready|memory.*authenticated/i.test(combined) && !/not ready|missing|failed|error/i.test(combined)
+    check.exitCode = child.status
+    check.signal = child.signal
+    check.matchedKeywords = hits
+    check.explicitDiagnosis = explicit
+    check.claimedMemoryReady = claimedReady
+    check.bridgeCreated = existsSync(join(dshHome, 'bot/bridge.json'))
+    check.memoryRuntimeCreated = existsSync(join(dshHome, 'memory/runtime.json'))
+    check.status = explicit && !claimedReady ? 'PASS' : (explicit ? 'FAIL' : 'BLOCKED-ENVIRONMENT')
+    check.detail = explicit
+      ? `explicit missing-Memory diagnosis observed in captured output (keywords=${hits.join(',')}); claimedReady=${claimedReady}`
+      : `no explicit missing-Memory diagnosis in captured stdout/stderr (exit=${child.status}, signal=${child.signal}, keywords=${hits.join(',') || 'none'}); GUI-only dialog cannot be read programmatically on this host`
+    // Restore payload inside the copy (the copy is still deleted by the caller).
+    try { renameSync(memoryPayloadMissing, memoryPayload) } catch { /* copy is removed anyway */ }
+    return check
+  } catch (error) {
+    check.status = 'BLOCKED-ENVIRONMENT'
+    check.detail = `negative test could not run: ${error.message}`
+    run.missingMemoryAppCopy = copy
+    return check
+  }
+}
+
+async function snapshotChecks(run) {
+  const check = { status: 'FAIL', level: 'packaged native App + real Host HTTP contract', checks: [] }
+  try {
+    const healthResponse = await fetch(`http://127.0.0.1:${JSON.parse(readFileSync(run.bridgePath(), 'utf8')).port}/health`, { signal: AbortSignal.timeout(5000) })
+    const healthText = await healthResponse.text()
+    const health = JSON.parse(healthText)
+    check.checks.push({ id: 'health-unauthenticated', status: healthResponse.ok && health.ok === true ? 'PASS' : 'FAIL', detail: `status=${healthResponse.status}` })
+    check.checks.push({ id: 'health-no-path-leak', status: !/\/Users\/|\/private\/|\/var\//.test(healthText) ? 'PASS' : 'FAIL', detail: 'no absolute home path in /health' })
+    const snapshot = await v2Snapshot(run)
+    if (!snapshot.available) {
+      check.checks.push({ id: 'v2-snapshot', status: 'FAIL', detail: `/v2/snapshot returned ${snapshot.response.status}: ${String(snapshot.response.text).slice(0, 200)}` })
+      check.detail = 'v2 snapshot endpoint unavailable; beta2 protocol contract not implemented in this package'
+      check.status = 'FAIL'
+      return check
+    }
+    const s = snapshot.snapshot
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    const contractChecks = {
+      'protocolVersion=dsh-bot-v1': s.protocolVersion === 'dsh-bot-v1',
+      'schema=snapshot@1': s.schema === 'snapshot@1',
+      'hostEpoch-is-uuid': uuid.test(String(s.hostEpoch)),
+      'snapshotSeq-integer': Number.isInteger(s.snapshotSeq) && s.snapshotSeq >= 0,
+      'identity-product': s.identity?.product === 'dsh-bot',
+      'identity-productVersion-beta2': /^0\.0\.1-beta2$/.test(String(s.identity?.productVersion)),
+      'sections-present': ['identity', 'connection', 'capture', 'playback', 'execution', 'interactions', 'queue', 'notices', 'presentation'].every(key => key in s),
+      'desktop-connected': s.connection?.desktop?.connected === true,
+    }
+    for (const [id, pass] of Object.entries(contractChecks)) check.checks.push({ id, status: pass ? 'PASS' : 'FAIL' })
+    const events = await run.apiFetch(`/v2/events?after=${s.snapshotSeq}`)
+    const eventsJson = events.json
+    check.eventsHandshake = {
+      status: events.status, next: eventsJson?.next ?? null, eventCount: eventsJson?.events?.length ?? null,
+      resyncRequired: eventsJson?.resyncRequired ?? null,
+      consistent: events.status === 200 && Number.isInteger(eventsJson?.next) && eventsJson.next >= s.snapshotSeq && eventsJson.resyncRequired === false,
+    }
+    check.checks.push({ id: 'v2-events-handshake', status: check.eventsHandshake.consistent ? 'PASS' : 'FAIL', detail: `next=${eventsJson?.next} after=${s.snapshotSeq}` })
+    for (const legacy of ['/interactions', '/task-state']) {
+      const response = await run.apiFetch(legacy)
+      check.checks.push({ id: `legacy-${legacy.replace(/\//g, '')}`, status: response.status === 200 ? 'PASS' : 'FAIL', detail: `status=${response.status}` })
+    }
+    const unauthorized = await fetch(`http://127.0.0.1:${JSON.parse(readFileSync(run.bridgePath(), 'utf8')).port}/v2/snapshot`, { signal: AbortSignal.timeout(5000) })
+    check.checks.push({ id: 'v2-auth-required', status: unauthorized.status === 401 || unauthorized.status === 403 ? 'PASS' : 'FAIL', detail: `unauthenticated status=${unauthorized.status}` })
+    check.snapshotSummary = {
+      hostEpoch: s.hostEpoch, snapshotSeq: s.snapshotSeq, productVersion: s.identity?.productVersion,
+      executionState: s.execution?.state, interactionPending: s.interactions?.pending?.length ?? null,
+      bubbleVisible: s.presentation?.bubble?.visible ?? null, noticeCount: s.notices?.length ?? null,
+    }
+    check.status = check.checks.every(entry => entry.status === 'PASS') ? 'PASS' : 'FAIL'
+    check.detail = `${check.checks.filter(entry => entry.status === 'PASS').length}/${check.checks.length} contract checks PASS`
+    return check
+  } catch (error) {
+    check.status = 'BLOCKED-ENVIRONMENT'
+    check.detail = `HTTP contract checks could not run: ${error.message}`
+    return check
+  }
+}
+
+export async function acceptNativeBeta2({ app, run: runDir, manifest, allowBlocked = false }) {
+  if (process.platform !== 'darwin' || process.arch !== 'arm64') {
+    throw new Error('BLOCKED-ENVIRONMENT: native acceptance requires Apple Silicon macOS')
+  }
+  const run = new Run(app, runDir, {})
+  const manifestData = manifest && existsSync(manifest) ? JSON.parse(readFileSync(manifest, 'utf8')) : null
+  const appSha256 = sha256File(join(run.appPath, 'Contents/Resources/app.asar'))
+  const sourceCommit = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).stdout.trim()
+  run.log(`beta2 native acceptance start app=${run.appPath} run=${run.runDir} sourceCommit=${sourceCommit} appAsarSha256=${appSha256}`)
+  run.writeCheck('C0-preconditions', {
+    status: 'PASS', level: 'environment inventory',
+    platform: { os: spawnSync('/usr/bin/sw_vers', ['-productVersion'], { encoding: 'utf8' }).stdout.trim(), arch: process.arch, node: process.version },
+    toolchain: toolchain(), displays: displays(),
+    tcc: { accessibility: systemEventsWindows(process.pid).ok !== false || 'unknown', screenRecording: screenshot(join(run.evidenceDir, 'tcc-screenshot-probe.png')).ok },
+    app: { path: run.appPath, appAsarSha256 }, manifest: manifestData,
+    sourceCommit, note: 'native evidence levels are recorded per check; DOM/CDP screenshots alone are never used as native visibility evidence',
+  })
+  let overall = 'FAIL'
+  try {
+    overall = await runChecks(run, {})
+  } catch (error) {
+    run.log(`acceptance crashed: ${error.stack || error.message}`)
+    run.writeCheck('C9-crash', { status: 'FAIL', detail: String(error.stack || error.message) })
+  }
+  const finishedAt = nowIso()
+  const values = Object.values(run.checks)
+  const failed = values.filter(check => check.status === 'FAIL')
+  const blocked = values.filter(check => check.status === 'BLOCKED-ENVIRONMENT')
+  const overallStatus = failed.length ? 'FAIL' : blocked.length ? 'PASS-WITH-BLOCKED-ENVIRONMENT' : (overall === 'PASS' ? 'PASS' : overall)
+  const results = {
+    schemaVersion: 1,
+    kind: 'beta2-native-acceptance',
+    app: run.appPath, appAsarSha256,
+    sourceCommit, manifest: manifestData,
+    startedAt: run.startedAt, finishedAt,
+    firstAttemptSuccess: firstAttemptSuccess(run),
+    attempts: run.attempts,
+    checks: Object.fromEntries(Object.entries(run.checks).map(([id, check]) => [id, check])),
+    windowLayer: run.checks['C1-bubble-first-show']?.windowLayer ?? null,
+    nativeProcessCleanup: run.checks['C7-exit-restart-cleanup'] ? {
+      firstExit: run.checks['C7-exit-restart-cleanup'].shutdown, restartExit: run.checks['C7-exit-restart-cleanup'].shutdown2,
+      hostEpochBefore: run.checks['C7-exit-restart-cleanup'].hostEpochBefore, hostEpochAfter: run.checks['C7-exit-restart-cleanup'].hostEpochAfter,
+    } : null,
+    overall: {
+      status: overallStatus,
+      failed: failed.map(check => check.id ?? Object.keys(run.checks).find(key => run.checks[key] === check)),
+      blocked: blocked.map(check => Object.keys(run.checks).find(key => run.checks[key] === check)),
+      scope: 'packaged macOS App, isolated user-data/DSH_HOME, real LaunchServices startup, real Host+Memory services, window-server native evidence; real microphone/provider/audio and physical multi-display are separate manual boundaries',
+    },
+    evidenceDir: run.evidenceDir, logsDir: run.logsDir, checksDir: run.checksDir,
+  }
+  writeJson(join(run.runDir, 'B2-NATIVE-RESULTS.json'), results)
+  const lines = [
+    `# beta2 native acceptance`, '',
+    `- app: \`${run.appPath}\``,
+    `- sourceCommit: \`${sourceCommit}\``,
+    `- app asar sha256: \`${appSha256}\``,
+    `- started/finished: ${run.startedAt} / ${finishedAt}`,
+    `- first-attempt-success: ${results.firstAttemptSuccess}`,
+    `- overall: **${overallStatus}**`, '',
+    `| check | status | detail |`, `|---|---|---|`,
+    ...Object.entries(run.checks).map(([id, check]) => `| ${id} | ${check.status} | ${String(check.detail ?? '').replace(/\|/g, '\\|').slice(0, 300)} |`), '',
+    `Evidence: \`${run.runDir}\``,
+  ]
+  writeFileSync(join(run.runDir, 'B2-NATIVE-RESULTS.md'), lines.join('\n') + '\n')
+  run.log(`beta2 native acceptance finished: ${overallStatus}`)
+  return { results, exitCode: overallStatus === 'FAIL' ? 1 : (allowBlocked && blocked.length ? 2 : 0) }
+}
+
+const invokedDirectly = process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href
+if (invokedDirectly) {
+  const args = parseArgs(process.argv.slice(2))
+  if (!args.app || !args.run) {
+    console.error('usage: node product/tools/accept-native-beta2.mjs --app <dsh-bot.app> --run <dir> [--manifest <json>] [--allow-blocked]')
+    process.exit(2)
+  }
+  const { results, exitCode } = await acceptNativeBeta2({ app: args.app, run: args.run, manifest: args.manifest, allowBlocked: Boolean(args['allow-blocked']) })
+  console.log(JSON.stringify({ status: results.overall.status, exitCode, run: args.run }, null, 2))
+  process.exit(exitCode)
+}

@@ -85,6 +85,12 @@ async def main():
         return {'commandId': 'host-' + uuid.uuid4().hex, 'type': command_type,
                 'payload': payload}
 
+    def emit_command(cmd):
+        """Real Host behavior: command events travel on /v2/stream; receipts
+        only carry reference hints ({commandId,type})."""
+        emit('command', cmd)
+        return {'commandId': cmd['commandId'], 'type': cmd['type']}
+
     def interaction_commands():
         if not interaction or host_state['prompted']:
             return []
@@ -213,12 +219,10 @@ async def main():
         return response
 
     def finish_held_turn():
-        turn_id = host_state['held_turn']
-        if not turn_id:
+        if not host_state['held_turn']:
             return
         host_state['held_turn'] = None
         lifecycle['finished'] += 1
-        emit('command', command('speech.end', {'turnId': turn_id, 'reason': 'turn-end'}))
 
     async def v2_command(request):
         assert request.headers.get('Authorization') == 'Bearer bridge-fixture'
@@ -228,7 +232,20 @@ async def main():
         commands = []
         if command_type == 'voice.session':
             if payload.get('transport') == 'connected':
-                commands += greeting_commands()
+                for greeting in greeting_commands():
+                    emit_command(greeting)
+            # Real Host voice.session receipt is {connectionId} only; commands are
+            # delivered exclusively as /v2/stream `command` events.
+            return web.json_response({
+                'protocolVersion': PROTOCOL_VERSION,
+                'commandId': body.get('commandId'),
+                'hostEpoch': HOST_EPOCH,
+                'status': 'accepted',
+                'result': {'connectionId': payload.get('connectionId')
+                           or (body.get('sourceConnectionId') or '')},
+                'error': None,
+                'at': iso_now(),
+            })
         elif command_type == 'voice.facts':
             for item in payload.get('items') or []:
                 if item.get('kind') != 'asr.final':
@@ -237,24 +254,33 @@ async def main():
                 if '请记录测试偏好' in text and lifecycle['started'] == 0:
                     lifecycle['started'] += 1
                     turn_id = 'media-session:1'
-                    commands.append(command('speech.append', {
-                        'turnId': turn_id, 'text': '**好的**，已收到测试请求。', 'seq': 1}))
-                    commands += interaction_commands()
+                    reply_commands = [
+                        command('speech.append', {
+                            'turnId': turn_id, 'text': '**好的**，已收到测试请求。', 'seq': 1}),
+                        command('speech.end', {'turnId': turn_id, 'reason': 'turn-end'}),
+                        *interaction_commands(),
+                    ]
+                    for reply in reply_commands:
+                        commands.append(emit_command(reply))
+                    # MEDIA_HOLD_TURN only keeps the fixture-Host turn open (finished
+                    # counter) so the capture-discard-during-task assertion stays real;
+                    # the media commands are already delivered via /v2/stream.
                     if hold_turn:
                         host_state['held_turn'] = turn_id
                     else:
-                        commands.append(command('speech.end', {
-                            'turnId': turn_id, 'reason': 'turn-end'}))
                         lifecycle['finished'] += 1
                 elif '最后一个选项' in text and interaction == 'question' and not answers:
                     answers.append({
                         'id': 'question-1', 'sessionId': 'media-session',
                         'answer': {'answers': [{'id': 'content', 'selected': ['新文章']}]},
                     })
-                    commands.append(command('speech.append', {
-                        'turnId': 'media-session:answer', 'text': '已记录你的选择。', 'seq': 1}))
-                    commands.append(command('speech.end', {
-                        'turnId': 'media-session:answer', 'reason': 'answer'}))
+                    for answer_command in (
+                        command('speech.append', {
+                            'turnId': 'media-session:answer', 'text': '已记录你的选择。', 'seq': 1}),
+                        command('speech.end', {
+                            'turnId': 'media-session:answer', 'reason': 'answer'}),
+                    ):
+                        commands.append(emit_command(answer_command))
         elif command_type == 'presentation.ack':
             acks.append(payload)
         return web.json_response(receipt(body, commands))

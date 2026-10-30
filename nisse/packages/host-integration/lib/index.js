@@ -974,6 +974,7 @@ export function apply(ctx, config = {}) {
     conversationIndex = recorded && recorded.workspace === canonicalWorkspaceDir() ? previousIndex + 1 : 1
     persistBotSession('', canonicalWorkspaceDir(), conversationIndex, 0)
     const next = await ensureAgent()
+    try { conversation?.onConversationRotated(reason) } catch (error) { log('conversation rotation projection failed: ' + messageOf(error)) }
     push('conversation.new', { sessionId, data: { reason, index: conversationIndex, previous } })
     return { sessionId, index: conversationIndex, previous, agent: Boolean(next) }
   }
@@ -1414,6 +1415,7 @@ export function apply(ctx, config = {}) {
           agent = null
           handle = null
           sessionId = oldSession
+          try { conversation?.onConversationRotated('persona-refresh') } catch (error) { log('conversation reset projection failed: ' + messageOf(error)) }
           log('persona updated; agent disposed for refresh', { sessionId: oldSession })
         } catch (error) { log('persona agent dispose failed: ' + messageOf(error)) }
         auditEvent('persona.changed', { name: persona.name })
@@ -1638,6 +1640,7 @@ export function apply(ctx, config = {}) {
             clientTurnId: requestId,
             source: 'voice',
             connectionId: 'legacy-voice',
+            direct: true,
           })
           if (!admitted) {
             for (const route of routed?.routed || []) frame({ type: 'route', path: route.path, reason: route.reason || '' })

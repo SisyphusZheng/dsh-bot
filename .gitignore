@@ -78,6 +78,7 @@ apps/desktop/resources/pet/bubble-window.mjs
 apps/desktop/resources/pet/desktop-surface-layout.mjs
 apps/desktop/resources/pet/orb-placement.mjs
 apps/desktop/resources/pet/companion-presentation.mjs
+apps/desktop/resources/pet/window-layer-policy.mjs
 apps/desktop/resources/pet/activity-bubble.mjs
 apps/desktop/resources/pet/pause-on-input.mjs
 apps/desktop/resources/pet/APACHE-2.0.txt
