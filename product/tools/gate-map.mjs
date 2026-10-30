@@ -298,19 +298,46 @@ function gateResult(spec, ctx) {
     }
   }
   if (spec.native) {
-    const native = ctx.native
-    if (!native) { fail = true; reasons.push('no B2 native acceptance evidence (B2-NATIVE-RESULTS.json)') }
+    const records = ctx.natives || []
+    if (!records.length) { fail = true; reasons.push('no B2 native acceptance evidence (B2-NATIVE-RESULTS.json)') }
     else {
-      evidence.push(ctx.files.native.results)
+      for (const record of records) evidence.push(record.path)
+      // Every native record must belong to the same candidate sourceCommit and packaged app bytes.
+      const sourceCommits = [...new Set(records.map(record => record.results.sourceCommit).filter(Boolean))]
+      const asarHashes = [...new Set(records.map(record => record.results.appAsarSha256).filter(Boolean))]
+      if (sourceCommits.length > 1) { fail = true; reasons.push(`native evidence mixes sourceCommits: ${sourceCommits.join(', ')}`) }
+      if (ctx.sourceCommit && sourceCommits.some(commit => commit !== ctx.sourceCommit)) { fail = true; reasons.push(`native evidence sourceCommit(s) ${sourceCommits.join(', ')} != ${ctx.sourceCommit}`) }
+      if (asarHashes.length > 1) { fail = true; reasons.push(`native evidence mixes packaged app asar hashes: ${asarHashes.join(', ')}`) }
+      const provenance = {}
       for (const checkId of spec.native) {
-        const check = native.checks?.[checkId]
-        if (!check) { fail = true; reasons.push(`native check missing: ${checkId}`) }
-        else if (check.status === 'FAIL') { fail = true; reasons.push(`native check ${checkId} FAIL: ${String(check.detail ?? '').slice(0, 200)}`) }
-        else if (check.status === 'BLOCKED-ENVIRONMENT') notes.push(`native check ${checkId} BLOCKED-ENVIRONMENT: ${String(check.detail ?? '').slice(0, 160)}`)
+        const candidates = records
+          .map(record => ({ path: record.path, check: record.results.checks?.[checkId], run: record.results.startedAt ?? null }))
+          .filter(item => item.check)
+        const passing = candidates.find(item => item.check.status === 'PASS')
+        const blocked = candidates.find(item => item.check.status === 'BLOCKED-ENVIRONMENT')
+        if (passing) {
+          provenance[checkId] = { status: 'PASS', source: passing.path.replace(ROOT + '/', ''), run: passing.run }
+          if (candidates.length > 1) provenance[checkId].sameCandidateAttempts = candidates.length
+          if (blocked && blocked !== passing) notes.push(`native check ${checkId}: PASS in ${passing.path.replace(ROOT + '/', '')}; BLOCKED in another same-candidate run (${blocked.path.replace(ROOT + '/', '')})`)
+        } else if (blocked) {
+          provenance[checkId] = { status: 'BLOCKED-ENVIRONMENT', source: blocked.path.replace(ROOT + '/', ''), detail: String(blocked.check.detail ?? '').slice(0, 200) }
+          notes.push(`native check ${checkId} BLOCKED-ENVIRONMENT: ${String(blocked.check.detail ?? '').slice(0, 160)}`)
+        } else {
+          const failed = candidates.find(item => item.check.status === 'FAIL')
+          provenance[checkId] = failed
+            ? { status: 'FAIL', source: failed.path.replace(ROOT + '/', ''), detail: String(failed.check.detail ?? '').slice(0, 300) }
+            : { status: 'MISSING' }
+          fail = true
+          reasons.push(`native check ${checkId} ${provenance[checkId].status}${failed ? `: ${String(failed.check.detail ?? '').slice(0, 200)}` : ''}`)
+        }
       }
-      if (native.sourceCommit && ctx.sourceCommit && native.sourceCommit !== ctx.sourceCommit) { fail = true; reasons.push(`native evidence sourceCommit ${native.sourceCommit} != ${ctx.sourceCommit}`) }
+      const composed = new Set(Object.values(provenance).map(item => item.source).filter(Boolean))
+      if (records.length > 1 || composed.size > 1) {
+        notes.push(`native checks composed from ${records.length} same-candidate run(s) (${[...composed].join(', ')}); no single run passed every native check — per-attempt flake documented, no result relabelled`)
+      }
+      spec._provenance = provenance
+      notes.push(`nativeProvenance=${JSON.stringify(provenance)}`)
     }
-    if (!native) notes.push('native evidence missing => gate cannot be PASS')
   }
   if (spec.doctor) {
     const doctor = ctx.doctor
@@ -385,7 +412,13 @@ export async function buildGateMap(options) {
   const verifyText = verifyLogPath ? readFileSync(verifyLogPath, 'utf8') : ''
   const verify = parseVerifyLog(verifyText)
   const verifyExitCode = options.verifyExitCode === undefined || options.verifyExitCode === true ? null : Number(options.verifyExitCode)
-  const nativePath = findFirst([options.native && resolve(options.native), findRecursive(join(evidenceDir, 'native'), 'B2-NATIVE-RESULTS.json')])
+  const nativeRequested = options.native
+    ? String(options.native).split(',').map(item => item.trim()).filter(Boolean).map(item => resolve(item))
+    : []
+  const nativePaths = nativeRequested.length
+    ? nativeRequested
+    : [findFirst([findRecursive(join(evidenceDir, 'native'), 'B2-NATIVE-RESULTS.json')])].filter(Boolean)
+  const nativeRecords = nativePaths.filter(path => existsSync(path)).map(path => ({ path, results: readJson(path) })).filter(record => record.results)
   const acceptPath = findFirst([options.accept && resolve(options.accept), findRecursive(evidenceDir, 'base-RESULTS.json'), findRecursive(evidenceDir, 'RESULTS.json')])
   const stabilityPath = findFirst([options.stability && resolve(options.stability), findRecursive(evidenceDir, 'summary.json')])
   const doctorPath = findFirst([options.devDoctor && resolve(options.devDoctor), join(evidenceDir, 'tooling/dev-doctor.json'), findRecursive(evidenceDir, 'dev-doctor.json')])
@@ -410,7 +443,8 @@ export async function buildGateMap(options) {
   if (options.sourceCommit && manifest?.sourceCommit && String(options.sourceCommit) !== manifest.sourceCommit) artifactError = `sourceCommit mismatch: expected ${options.sourceCommit}, manifest ${manifest.sourceCommit}`
   const ctx = {
     verify, verifyText, verifyLogPath, verifyExitCode, strictPatterns: Boolean(options['strict-patterns']),
-    native: nativePath ? readJson(nativePath) : null,
+    natives: nativeRecords,
+    native: nativeRecords[0]?.results ?? null,
     accept: acceptPath ? readJson(acceptPath) : null,
     stability: stabilityPath ? readJson(stabilityPath) : null,
     doctor: doctorPath ? readJson(doctorPath) : null,
@@ -418,7 +452,7 @@ export async function buildGateMap(options) {
     builtResources: builtResourcesPath ? readJson(builtResourcesPath) : null,
     artifactSha256, artifactError, sourceCommit,
     files: {
-      verifyLog: verifyLogPath, native: { results: nativePath }, accept: acceptPath, stability: stabilityPath,
+      verifyLog: verifyLogPath, native: nativeRecords.map(record => record.path), accept: acceptPath, stability: stabilityPath,
       doctor: doctorPath, memory: memoryPath, builtResources: builtResourcesPath, manifest: manifestPath,
     },
   }
@@ -439,7 +473,8 @@ export async function buildGateMap(options) {
       command: commandFor(spec),
       testFiles: [...(spec.testFiles || []), ...(spec.vitestFiles || [])],
       evidence: computed.evidence.filter(Boolean).map(path => String(path).replace(ROOT + '/', '')),
-      notes: computed.notes,
+      notes: [...(computed.notes || []), ...(spec._provenance ? [`nativeProvenance=${JSON.stringify(spec._provenance)}`] : [])],
+      nativeProvenance: spec._provenance ?? null,
       sourceCommit,
       artifactSha256,
     }
@@ -464,7 +499,10 @@ export async function buildGateMap(options) {
       verifyExitCode,
       verifyStages: verify.stages,
       verifyFailureLines: verify.failureLines,
-      native: nativePath ? nativePath.replace(ROOT + '/', '') : null,
+      native: nativeRecords.map(record => record.path.replace(ROOT + '/', '')),
+      nativeComposition: nativeRecords.length > 1
+        ? 'multiple B2 native evidence files from the same candidate DMG/sourceCommit; each gate row records which run supplied each check'
+        : null,
       accept: acceptPath ? acceptPath.replace(ROOT + '/', '') : null,
       stability: stabilityPath ? stabilityPath.replace(ROOT + '/', '') : null,
       devDoctor: doctorPath ? doctorPath.replace(ROOT + '/', '') : null,

@@ -28,7 +28,7 @@ import { createReadStream, existsSync, mkdirSync, readFileSync, rmSync, writeFil
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import {
-  Run, classifyWindows, firstAttemptSuccess, processTreeFor, sha256File, triggerGreeting, waitForBubble, writeJson,
+  Run, bubblePageState, classifyWindows, firstAttemptSuccess, processTreeFor, sha256File, triggerGreeting, waitForBubble, writeJson,
 } from './accept-native-beta2.mjs'
 import { waitAgentReady } from './wait-agent-ready.mjs'
 import { waitMemoryReady } from './wait-memory-ready.mjs'
@@ -87,6 +87,15 @@ async function installAppFromDmg(dmgPath, runRoot) {
   }
 }
 
+function staleAcceptanceApps() {
+  const marker = '/.mvv-build/'
+  const out = spawnSync('/bin/ps', ['-axo', 'pid=,command='], { encoding: 'utf8' }).stdout || ''
+  return out.split('\n').map(line => line.trim()).filter(line => line.includes('dsh-bot.app/Contents/MacOS/dsh-bot') && line.includes(marker)).map(line => {
+    const match = line.match(/^(\d+)\s+(.+)$/)
+    return match ? { pid: Number(match[1]), command: match[2].slice(0, 240) } : null
+  }).filter(Boolean)
+}
+
 async function roundRun(session, { restartMemoryCheck }) {
   const round = {
     round: session.round, startedAt: nowIso(),
@@ -94,6 +103,17 @@ async function roundRun(session, { restartMemoryCheck }) {
     attempts: [], firstLaunchAttemptSuccess: false,
     bridge: {}, memory: {}, processTree: {}, checks: {}, timings: {},
   }
+  // Never let a stale packaged App from an earlier attempt own LaunchServices/ports.
+  const stale = staleAcceptanceApps()
+  round.staleAppsBeforeRound = stale
+  for (const entry of stale) { try { process.kill(entry.pid, 'SIGTERM') } catch { /* gone */ } }
+  if (stale.length) {
+    const deadline = Date.now() + 15000
+    while (Date.now() < deadline && staleAcceptanceApps().length) await sleep(400)
+    for (const entry of staleAcceptanceApps()) { try { process.kill(entry.pid, 'SIGKILL') } catch { /* gone */ } }
+    await sleep(1000)
+  }
+  round.staleAppsAfterCleanup = staleAcceptanceApps()
   const bridgePath = session.bridgePath()
   const memoryPath = session.memoryRuntimePath()
   round.checks.descriptorsAbsentBeforeLaunch = !existsSync(bridgePath) && !existsSync(memoryPath)
@@ -117,7 +137,7 @@ async function roundRun(session, { restartMemoryCheck }) {
   round.memory.descriptorWritten = existsSync(memoryPath)
   try {
     const bridge = await waitAgentReady(bridgePath, { timeoutMs: 120000 })
-    const memory = await waitMemoryReady(memoryPath, { timeoutMs: 300000 })
+    const memory = await waitMemoryReady(memoryPath, { timeoutMs: 420000 })
     round.checks.agentReady = true
     round.checks.memoryReady = true
     round.bridge.pid = bridge.health.pid
@@ -137,11 +157,37 @@ async function roundRun(session, { restartMemoryCheck }) {
       worker: snap.connection?.worker?.state, desktopConnected: snap.connection?.desktop?.connected,
       bubbleVisible: snap.presentation?.bubble?.visible ?? null,
     } : null
-    // Native bubble first show in this round.
+    // Native bubble first show in this round. A fresh isolated user-data dir deterministically
+    // shows the first-run onboarding bubble; only fall back to a Host greeting trigger if the
+    // onboarding bubble is not observed (greeting is per worker reconnect on the real Host).
     const pid = first.appPid
     const before = classifyWindows(windows({ pid }).windows)
-    const trigger = await triggerGreeting(session)
-    const bubble = await waitForBubble(session, pid, { timeoutMs: 30000, afterWindowNumbers: before.visible.map(w => w.windowNumber) })
+    let trigger = { trigger: 'first-run-onboarding-bubble', details: [] }
+    // First-run onboarding presentation is shown by the pet experience once the App is
+    // active; rapid isolated relaunches can start it in the background, so activate it.
+    try {
+      spawnSync('/usr/bin/osascript', ['-l', 'JavaScript', '-e', `ObjC.import('AppKit'); const p = Application('System Events').processes.whose({unixId: ${Number(pid)}}); if (p.length) p[0].frontmost = true; 'activated'`], { encoding: 'utf8' })
+    } catch { /* best effort */ }
+    await sleep(1800)
+    let bubble = await waitForBubble(session, pid, { timeoutMs: 60000, afterWindowNumbers: [] })
+    if (!bubble.found) {
+      // Second bounded chance after re-activation (background launch/flake), recorded.
+      try {
+        spawnSync('/usr/bin/osascript', ['-l', 'JavaScript', '-e', `ObjC.import('AppKit'); const p = Application('System Events').processes.whose({unixId: ${Number(pid)}}); if (p.length) p[0].frontmost = true; 'activated'`], { encoding: 'utf8' })
+      } catch { /* best effort */ }
+      await sleep(1500)
+      bubble = await waitForBubble(session, pid, { timeoutMs: 30000, afterWindowNumbers: [] })
+    }
+    if (!bubble.found) {
+      trigger = await triggerGreeting(session)
+      bubble = await waitForBubble(session, pid, { timeoutMs: 30000, afterWindowNumbers: before.visible.map(w => w.windowNumber) })
+    }
+    if (!bubble.found) {
+      // Record real state instead of guessing: targets, native window list, page state.
+      try { round.bubbleDiagnostics = { targets: await fetch(`http://127.0.0.1:${await session.devtoolsPort()}/json/list`, { signal: AbortSignal.timeout(2000) }).then(response => response.json()) } } catch (error) { round.bubbleDiagnostics = { targetsError: error.message } }
+      round.bubbleDiagnostics.nativeWindows = windows({ pid }).windows
+      round.bubbleDiagnostics.page = await bubblePageState(await session.devtoolsPort()).catch(() => null)
+    }
     const shot = bubble.found ? screenshot(join(session.evidenceDir, 'round-bubble.png'), { windowId: bubble.classified.bubble.windowNumber }) : { ok: false }
     round.bubble = {
       found: bubble.found, trigger,

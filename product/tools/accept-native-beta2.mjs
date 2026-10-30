@@ -239,7 +239,7 @@ export function classifyWindows(list) {
   return { visible, pet, main, bubble }
 }
 
-async function bubblePageState(port) {
+export async function bubblePageState(port) {
   const targets = (await fetch(`http://127.0.0.1:${port}/json/list`, { signal: AbortSignal.timeout(2000) }).then(r => r.json()))
   const target = targets.find(item => item.type === 'page' && item.url.includes('/bubble.html'))
   if (!target) return { found: false }
@@ -266,6 +266,54 @@ async function bubblePageState(port) {
     })()`)
     return { found: true, ...state }
   } finally { await page?.close().catch(() => {}) }
+}
+
+/** First-run presentation readiness: bridge + pet document target available before any trigger. */
+async function waitForPresentationReady(run, pid, { timeoutMs = timeout(60000) } = {}) {
+  const deadline = Date.now() + timeoutMs
+  let last = { pet: false, bubble: false, bridge: false }
+  while (Date.now() < deadline) {
+    try {
+      const port = await run.devtoolsPort()
+      const targets = await fetch(`http://127.0.0.1:${port}/json/list`, { signal: AbortSignal.timeout(2000) }).then(response => response.json())
+      const pet = targets.some(item => item.type === 'page' && /^http:\/\/127\.0\.0\.1:\d+\/[^/]+\/index\.html$/.test(item.url))
+      const bubble = targets.some(item => item.type === 'page' && item.url.includes('/bubble.html'))
+      const bridge = existsSync(run.bridgePath())
+      last = { pet, bubble, bridge, port }
+      if (pet && bridge) {
+        await sleep(1200)
+        return { ready: true, ...last }
+      }
+    } catch (error) { last = { ...last, error: error.message } }
+    await sleep(300)
+  }
+  return { ready: false, ...last, error: last.error ?? `presentation not ready within ${timeoutMs}ms` }
+}
+
+async function waitForBubbleHidden(run, pid, { timeoutMs = timeout(12000) } = {}) {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const page = await bubblePageState(await run.devtoolsPort()).catch(() => ({ found: false }))
+    const native = classifyWindows(run.nativeWindows(pid)).bubble
+    if (!native && (!page.found || page.bubbleHidden || (page.textLength ?? 0) === 0)) return { hidden: true, page, native }
+    await sleep(250)
+  }
+  return { hidden: false, page: await bubblePageState(await run.devtoolsPort()).catch(() => ({ found: false })), native: classifyWindows(run.nativeWindows(pid)).bubble }
+}
+
+/** Diagnostics when the first bubble never appears: page targets, all windows, App stdout/stderr tails. */
+async function presentationDiagnostics(run, pid) {
+  const diagnostics = { windows: [], windowsAll: [], targets: [], bubblePage: null, stdoutTail: null, stderrTail: null }
+  try { diagnostics.windows = run.nativeWindows(pid) } catch (error) { diagnostics.windowsError = error.message }
+  try { diagnostics.windowsAll = windows({ pid, onscreenOnly: false }).windows } catch (error) { diagnostics.windowsAllError = error.message }
+  try {
+    const port = await run.devtoolsPort()
+    diagnostics.targets = await fetch(`http://127.0.0.1:${port}/json/list`, { signal: AbortSignal.timeout(2000) }).then(response => response.json())
+  } catch (error) { diagnostics.targetsError = error.message }
+  try { diagnostics.bubblePage = await bubblePageState(await run.devtoolsPort()) } catch (error) { diagnostics.bubblePageError = error.message }
+  try { diagnostics.stdoutTail = readFileSync(run.attempts[0].stdoutLog, 'utf8').slice(-4000) } catch { /* optional */ }
+  try { diagnostics.stderrTail = readFileSync(run.attempts[0].stderrLog, 'utf8').slice(-4000) } catch { /* optional */ }
+  return diagnostics
 }
 
 /** Distance between two rectangles (0 when they touch or overlap): the real anchor metric. */
@@ -343,15 +391,25 @@ export async function triggerGreeting(run) {
   const connectionId = `accept-probe-${randomUUID()}`
   const snapshot = await v2Snapshot(run)
   if (snapshot.available) {
-    const command = {
-      protocolVersion: 'dsh-bot-v1', commandId: randomUUID(), hostEpoch: snapshot.snapshot.hostEpoch,
-      sourceConnectionId: 'accept-probe', sessionId: snapshot.snapshot.identity?.sessionId ?? null,
-      type: 'voice.session', payload: { connectionId, transport: 'connected', mediaState: {} },
-    }
+    const base = { protocolVersion: 'dsh-bot-v1', hostEpoch: snapshot.snapshot.hostEpoch,
+      sourceConnectionId: 'accept-probe', sessionId: snapshot.snapshot.identity?.sessionId ?? null, type: 'voice.session' }
+    // The Host greets once per disconnected->connected transition, so model a worker
+    // reconnect: report disconnected, then connected with the fresh connectionId.
+    const disconnectId = `accept-probe-disc-${randomUUID()}`
+    const disconnect = await run.apiFetch('/v2/command', {
+      method: 'POST',
+      body: { ...base, commandId: randomUUID(), payload: { connectionId: disconnectId, transport: 'disconnected', mediaState: {} } },
+    })
+    triggered.details.push({ path: '/v2/command voice.session(disc)', status: disconnect.status, body: disconnect.json ?? disconnect.text.slice(0, 300) })
+    const command = { ...base, commandId: randomUUID(), payload: { connectionId, transport: 'connected', mediaState: {} } }
     triggered.connectionId = connectionId
     const response = await run.apiFetch('/v2/command', { method: 'POST', body: command })
-    triggered.details.push({ path: '/v2/command voice.session', status: response.status, body: response.json ?? response.text.slice(0, 400) })
-    if (response.status >= 200 && response.status < 300) triggered.trigger = 'v2-voice-session-greeting'
+    triggered.details.push({ path: '/v2/command voice.session(connected)', status: response.status, body: response.json ?? response.text.slice(0, 400) })
+    if (response.status >= 200 && response.status < 300) {
+      triggered.trigger = 'v2-voice-session-reconnect-greeting'
+      triggered.simulatedTransportReconnect = true
+      triggered.note = 'voice.session disconnected->connected with a fresh connectionId simulates a real worker reconnect (the packaged real worker was already connected); no microphone or real worker process is exercised by this probe'
+    }
   }
   if (!triggered.trigger) {
     const legacy = await run.apiFetch('/voice/turn', { method: 'POST', body: { text: '气泡原生可见性验收', source: 'accept-probe', token } })
@@ -460,6 +518,44 @@ async function hidClickBubbleClose(run, pid, bubble) {
   }
 }
 
+/** Wait until the native bubble window has finished its fade-in (alpha ~1) for a stable screenshot. */
+async function waitForSettledBubble(run, pid, { timeoutMs = timeout(5000), minAlpha = 0.9 } = {}) {
+  const deadline = Date.now() + timeoutMs
+  let last = null
+  while (Date.now() < deadline) {
+    last = classifyWindows(run.nativeWindows(pid)).bubble
+    if (last && last.onscreen && last.alpha >= minAlpha) return { settled: true, bubble: last }
+    await sleep(200)
+  }
+  return { settled: false, bubble: last, error: `bubble alpha did not reach ${minAlpha} within ${timeoutMs}ms` }
+}
+
+/**
+ * Real screenshot evidence for a bubble. Preferred: window capture once the fade-in
+ * settles. Fallback (window capture refused mid-animation or for a translucent window):
+ * a full-desktop screenshot that shows the bubble in the real desktop composition.
+ */
+async function settledBubbleScreenshot(run, pid, path) {
+  const fullPath = path.replace(/\.png$/, '.fullscreen.png')
+  let lastAlpha = null
+  let lastError = null
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    const settled = await waitForSettledBubble(run, pid, { timeoutMs: timeout(3500) })
+    if (settled.bubble) {
+      lastAlpha = settled.bubble.alpha
+      const windowShot = screenshot(path, { windowId: settled.bubble.windowNumber })
+      if (windowShot.ok) return { ...windowShot, mode: 'window', settled: settled.settled, alpha: settled.bubble.alpha, attempts: attempt }
+      lastError = windowShot.error
+      const desktopShot = screenshot(fullPath)
+      if (desktopShot.ok) return { ...desktopShot, mode: 'full-desktop-fallback', settled: settled.settled, alpha: settled.bubble.alpha, attempts: attempt, windowShotError: lastError }
+    }
+    await sleep(350)
+  }
+  const final = classifyWindows(run.nativeWindows(pid)).bubble
+  const desktopShot = screenshot(fullPath)
+  return { ...desktopShot, mode: 'full-desktop-fallback', windowId: final?.windowNumber ?? null, alpha: lastAlpha ?? final?.alpha ?? null, windowShotError: lastError, error: desktopShot.ok ? null : 'no bubble screenshot could be captured' }
+}
+
 /** Close any visible bubble through a real HID click (used to make the next show a fresh event). */
 async function closeVisibleBubble(run, pid) {
   const current = classifyWindows(run.nativeWindows(pid)).bubble
@@ -489,7 +585,14 @@ export async function ensureBubble(run, pid, { timeoutMs = timeout(30000), attem
       timeoutMs: attempt === 1 ? Math.min(timeout(12000), timeoutMs) : Math.max(5000, Math.round(timeoutMs / attempts)),
       afterWindowNumbers: [],
     })
-    if (found.found) return { ...found, trigger, triggerAttempts, close }
+    if (found.found) {
+      const settled = await waitForSettledBubble(run, pid, { timeoutMs: timeout(5000) })
+      if (settled.settled) {
+        found.classified = classifyWindows(run.nativeWindows(pid))
+        if (found.classified.bubble) found.found = true
+      }
+      return { ...found, trigger, triggerAttempts, close, settled: settled.settled }
+    }
     await sleep(400)
   }
   return { found: false, error: `bubble did not show natively after ${attempts} trigger attempts`, triggerAttempts, close }
@@ -503,6 +606,10 @@ function distanceBetween(a, b) {
 async function runChecks(run, options) {
   const displaysInfo = displays()
   const toolchainInfo = toolchain()
+  // Baseline user frontmost app, captured before launching the product App, so the
+  // focus test can restore a non-product baseline without guessing.
+  const userFrontmostAtStart = frontmostApp()
+  run.userFrontmostAtStart = userFrontmostAtStart
   await run.launch(1)
   const launchFirst = firstAttemptSuccess(run)
   const pid = run.attempts[0].appPid
@@ -527,10 +634,21 @@ async function runChecks(run, options) {
   }
 
   // ---- C1 bubble first show: first-run onboarding bubble, then the Host greeting bubble.
+  const presentationReadiness = await waitForPresentationReady(run, pid, { timeoutMs: timeout(60000) })
   const preBubble = classifyWindows(run.nativeWindows(pid))
-  let firstBubble = await waitForBubble(run, pid, { timeoutMs: timeout(25000), afterWindowNumbers: [] })
-  if (!firstBubble.found) firstBubble = await ensureBubble(run, pid, { timeoutMs: timeout(25000), attempts: 2 })
-  const firstShot = firstBubble.found ? screenshot(join(run.evidenceDir, 'bubble-first-show.png'), { windowId: firstBubble.classified.bubble.windowNumber }) : { ok: false }
+  let firstBubble = await waitForBubble(run, pid, { timeoutMs: timeout(30000), afterWindowNumbers: [] })
+  if (!firstBubble.found) firstBubble = await ensureBubble(run, pid, { timeoutMs: timeout(30000), attempts: 2 })
+  let firstShowDiagnostics = null
+  if (!firstBubble.found) {
+    // Give the first-run experience a bounded second chance, then dump real state instead of guessing.
+    await sleep(2500)
+    firstBubble = await waitForBubble(run, pid, { timeoutMs: timeout(20000), afterWindowNumbers: [] })
+    if (!firstBubble.found) {
+      firstShowDiagnostics = await presentationDiagnostics(run, pid)
+      firstShowDiagnostics.presentationReadiness = presentationReadiness
+    }
+  }
+  const firstShot = firstBubble.found ? await settledBubbleScreenshot(run, pid, join(run.evidenceDir, 'bubble-first-show.png')) : { ok: false }
   const firstLayer = firstBubble.found ? buildWindowLayer(firstBubble) : null
   const firstPage = firstBubble.page ?? { found: false }
   const firstIsOnboarding = /鲸鱼娘|称呼|你好，我是/.test(String(firstPage.textSample ?? ''))
@@ -543,8 +661,23 @@ async function runChecks(run, options) {
   const onboardingFirstPass = firstBubble.found && firstShot.ok && firstPage.bubbleHidden === false && (firstPage.textLength ?? 0) > 0 && firstLayer?.layerOrderOk === true
   // Finish first-run onboarding through the real UI before the Host greeting can show.
   const onboardingCompletion = firstIsOnboarding ? await completeOnboarding(run, pid) : { skipped: true, reason: 'first show was already a Host greeting, not first-run onboarding' }
-  const greeting = await ensureBubble(run, pid, { timeoutMs: timeout(35000), attempts: 3 })
-  const greetingShot = greeting.found ? screenshot(join(run.evidenceDir, 'bubble-greeting-after-onboarding.png'), { windowId: greeting.classified.bubble.windowNumber }) : { ok: false }
+  // The onboarding bubble must be gone before the greeting is triggered.
+  let hiddenAfterOnboarding = await waitForBubbleHidden(run, pid, { timeoutMs: timeout(12000) })
+  if (firstIsOnboarding && !hiddenAfterOnboarding.hidden) {
+    const closeAttempt = await closeVisibleBubble(run, pid)
+    hiddenAfterOnboarding = { ...(await waitForBubbleHidden(run, pid, { timeoutMs: timeout(8000) })), closeAttempt }
+  }
+  // Let the first-run experience settle after its final UI step before requesting the
+  // Host greeting; then retry the simulated reconnect trigger a bounded number of times.
+  await sleep(2500)
+  let greeting = await ensureBubble(run, pid, { timeoutMs: timeout(45000), attempts: 5 })
+  let greetingDiagnostics = null
+  if (!greeting.found) {
+    greetingDiagnostics = await presentationDiagnostics(run, pid)
+    await sleep(1500)
+    greeting = await ensureBubble(run, pid, { timeoutMs: timeout(30000), attempts: 3 })
+  }
+  const greetingShot = greeting.found ? await settledBubbleScreenshot(run, pid, join(run.evidenceDir, 'bubble-greeting-after-onboarding.png')) : { ok: false }
   const greetingLayer = greeting.found ? buildWindowLayer(greeting) : null
   const greetingPage = greeting.page ?? { found: false }
   const greetingPass = greeting.found && greetingShot.ok && greetingPage.bubbleHidden === false && (greetingPage.textLength ?? 0) > 0 && greetingLayer?.layerOrderOk === true
@@ -560,7 +693,11 @@ async function runChecks(run, options) {
       pet: firstBubble.classified?.pet ?? preBubble.pet ?? null, main: firstBubble.classified?.main ?? null,
       ax: { granted: ax.ok !== false, crossCheck: axCrossCheck, containsFirstFrame: axContainsFirstFrame },
     },
+    presentationReadiness,
+    firstShowDiagnostics,
     onboardingCompletion,
+    hiddenAfterOnboarding,
+    greetingDiagnostics,
     greeting: {
       found: greeting.found, error: greeting.error ?? null, waitedMs: greeting.waitedMs ?? null,
       trigger: { trigger: greeting.trigger?.trigger ?? null, attempts: greeting.triggerAttempts ?? [], close: greeting.close ?? null },
@@ -587,7 +724,7 @@ async function runChecks(run, options) {
   const main = afterMain.main
   // Show a bubble AFTER the main window exists so the above-main measurement uses a
   // bubble whose native window is on screen at the same time as the main window.
-  let aboveMainBubble = bubble.classified?.bubble ?? null
+  let aboveMainBubble = greeting.classified?.bubble ?? firstBubble.classified?.bubble ?? null
   let aboveMainRetrigger = null
   if (webBoot && main) {
     try {
@@ -619,35 +756,57 @@ async function runChecks(run, options) {
       : `missing main window (main=${Boolean(main)}) or bubble; webBoot=${Boolean(webBoot)}`,
   })
 
-  // ---- C3 focus non-steal: another app is frontmost before the bubble appears.
+  // ---- C3 focus non-steal: explicitly activate Finder, then a non-activating bubble must not steal focus.
   const focusClose = await closeVisibleBubble(run, pid)
-  await activateApp('Finder')
-  await sleep(800)
+  const focusActivation = []
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    try { spawnSync('/usr/bin/open', ['-a', 'Finder'], { encoding: 'utf8' }) } catch { /* best effort */ }
+    try {
+      spawnSync('/usr/bin/osascript', ['-l', 'JavaScript', '-e', `ObjC.import('AppKit'); const p = Application('System Events').processes.whose({name: 'Finder'}); if (p.length) p[0].frontmost = true; 'ok'`], { encoding: 'utf8' })
+    } catch { /* best effort */ }
+    await sleep(900)
+    const current = frontmostApp()
+    focusActivation.push({ attempt, frontmost: current.name ?? null })
+    if (/Finder/i.test(String(current.name))) break
+  }
   const focusBefore = frontmostApp()
+  const baselineIsFinder = /Finder/i.test(String(focusBefore.name))
   const focusBubble = await ensureBubble(run, pid, { timeoutMs: timeout(30000), attempts: 3 })
-  const focusTrigger = { trigger: focusBubble.trigger?.trigger ?? null, attempts: focusBubble.triggerAttempts ?? [], close: focusClose }
-  await sleep(500)
+  await sleep(900)
   const focusAfter = frontmostApp()
-  const frontmostName = name => /Finder/i.test(String(name))
-  const focusPass = focusBubble.found && frontmostName(focusBefore.name) && frontmostName(focusAfter.name)
+  const afterIsFinder = /Finder/i.test(String(focusAfter.name))
+  const productStoleFocus = Boolean(focusBubble.found && baselineIsFinder && !afterIsFinder)
+  const focusPass = Boolean(focusBubble.found && baselineIsFinder && afterIsFinder)
+  const focusTrigger = { trigger: focusBubble.trigger?.trigger ?? null, attempts: focusBubble.triggerAttempts ?? [], close: focusClose }
   run.writeCheck('C3-focus-non-steal', {
-    status: focusPass ? 'PASS' : (focusBubble.found ? 'FAIL' : 'BLOCKED-ENVIRONMENT'),
-    level: 'packaged native App + System Events frontmost-process truth (Accessibility TCC)',
-    trigger: focusTrigger, before: focusBefore, after: focusAfter,
-    bubbleFound: focusBubble.found, bubble: focusBubble.classified?.bubble ?? null,
+    status: focusPass ? 'PASS' : (!baselineIsFinder ? 'BLOCKED-ENVIRONMENT' : (focusBubble.found ? 'FAIL' : 'BLOCKED-ENVIRONMENT')),
+    level: 'packaged native App + System Events frontmost-process truth; Finder explicitly activated and polled',
+    focusActivation, before: focusBefore, after: focusAfter,
+    baselineIsFinder, afterIsFinder, productStoleFocus,
+    trigger: focusTrigger, bubbleFound: focusBubble.found, bubble: focusBubble.classified?.bubble ?? null,
     detail: focusBubble.found
-      ? `frontmost before=${focusBefore.name} after=${focusAfter.name} (Finder must stay frontmost while a non-activating bubble appears)`
-      : `no second bubble for focus test: ${focusBubble.error}`,
+      ? `frontmost before=${focusBefore.name} after=${focusAfter.name}; baselineIsFinder=${baselineIsFinder} afterIsFinder=${afterIsFinder} productStoleFocus=${productStoleFocus}`
+      : (baselineIsFinder
+        ? `no bubble for focus test: ${focusBubble.error}`
+        : `could not establish Finder as the frontmost baseline (activation attempts ${JSON.stringify(focusActivation)}); BLOCKED not faked`),
   })
 
   // ---- C4 edge geometry + display inventory; multi-display explicitly blocked on a single-display host.
   const display = displayFrame(displaysInfo)
-  const pet = classifyWindows(run.nativeWindows(pid)).pet
+  let pet = classifyWindows(run.nativeWindows(pid)).pet
+  if (!pet) {
+    await ensureWindowsOnCurrentSpace(run, pid)
+    pet = classifyWindows(run.nativeWindows(pid)).pet
+  }
   let edge = { attempted: false, status: 'BLOCKED-ENVIRONMENT', detail: 'no pet window frame available through window server' }
   if (display && pet) {
     const [vx, vy, vw, vh] = display.visibleFrame
     const target = { x: vx + vw - pet.w - 4, y: vy + Math.round(vh / 2) - Math.round(pet.h / 2) }
     edge = await attemptEdgeGeometry(run, pid, pet, target, display)
+  } else if (display) {
+    edge.offscreenDiagnostics = windows({ pid, onscreenOnly: false }).windows
+      .filter(window => window.layer >= 2)
+      .map(window => ({ name: window.name, layer: window.layer, alpha: window.alpha, onscreen: window.onscreen, w: window.w, h: window.h }))
   }
   const displaysBlocked = (displaysInfo.displays || []).length < 2
   run.writeCheck('C4-edge-multi-display-geometry', {
@@ -709,77 +868,98 @@ async function runChecks(run, options) {
   return overall
 }
 
+/** Bring the product App to the front so its windows are on the current Space (returns fresh classification). */
+async function ensureWindowsOnCurrentSpace(run, pid) {
+  try {
+    spawnSync('/usr/bin/osascript', ['-l', 'JavaScript', '-e', `ObjC.import('AppKit'); Application('System Events').processes.whose({unixId: ${Number(pid)}})[0].frontmost = true; 'activated'`], { encoding: 'utf8' })
+  } catch { /* best effort */ }
+  await sleep(1200)
+  return classifyWindows(run.nativeWindows(pid))
+}
+
+/**
+ * Fullscreen check kept read-mostly and state-restoring: only when the AXFullScreen
+ * attribute is readable do we attempt a toggle, and in every case we restore the
+ * previous window state (Space/fullscreen) before later native checks run.
+ */
 async function attemptFullscreenMain(run, pid, main) {
   const result = { status: 'BLOCKED-ENVIRONMENT', attempts: [], detail: '' }
   if (!main) { result.detail = 'no main window to attempt fullscreen'; return result }
   const frame = displayFrame(displays())
   const before = classifyWindows(run.nativeWindows(pid)).main
-  // Attempt 1: AXFullScreen attribute on the main window.
-  try {
-    const js = `ObjC.import('AppKit'); const se = Application('System Events');
-const proc = se.processes.whose({unixId: ${Number(pid)}})[0];
-const windows = proc.windows();
-const out = [];
-for (let i = 0; i < windows.length; i++) {
-  const w = windows[i]; let pos = null, size = null;
-  try { pos = w.position(); } catch (e) {}
-  try { size = w.size(); } catch (e) {}
-  out.push({i, pos, size});
-}
-const candidate = out.find(x => Array.isArray(x.size) && x.size[0] >= 400 && x.size[1] >= 300);
-let axFullscreen = 'no-candidate';
-if (candidate) {
-  try { const attr = windows[candidate.i].attributes.byName('AXFullScreen'); attr.value = true; axFullscreen = 'set-true'; }
-  catch (e) { axFullscreen = 'error: ' + String(e.message).slice(0, 80); }
-}
-JSON.stringify({axFullscreen, windows: out});`
-    const axResult = JSON.parse(spawnSync('/usr/bin/osascript', ['-l', 'JavaScript', '-e', js], { encoding: 'utf8' }).stdout || '{}')
-    result.attempts.push({ method: 'AXFullScreen', result: axResult.axFullscreen })
-    await sleep(2500)
-  } catch (error) { result.attempts.push({ method: 'AXFullScreen', error: error.message }) }
-  let current = classifyWindows(run.nativeWindows(pid)).main
-  const fullscreenNow = () => {
-    if (!current || !frame) return false
-    return Math.abs(current.w - frame.frame[2]) <= 4 && Math.abs(current.h - frame.frame[3]) <= 4
-  }
-  if (!fullscreenNow() && current) {
-    // Attempt 2: activate the app window, then the standard Control+Command+F toggle.
+  const readAttribute = () => {
     try {
-      const js = `ObjC.import('AppKit'); Application('System Events').processes.whose({unixId: ${Number(pid)}})[0].frontmost = true; 'activated'`
-      spawnSync('/usr/bin/osascript', ['-l', 'JavaScript', '-e', js], { encoding: 'utf8' })
-      await sleep(600)
-      spawnSync('/usr/bin/osascript', ['-e', 'tell application "System Events" to key code 3 using {control down, command down}'], { encoding: 'utf8' })
-      result.attempts.push({ method: 'ctrl+cmd+f', result: 'sent' })
-      await sleep(3000)
-    } catch (error) { result.attempts.push({ method: 'ctrl+cmd+f', error: error.message }) }
-    current = classifyWindows(run.nativeWindows(pid)).main
-  }
-  if (fullscreenNow()) {
-    const bubbleNow = classifyWindows(run.nativeWindows(pid)).bubble
-    const shot = screenshot(join(run.evidenceDir, 'bubble-above-fullscreen-main.png'))
-    result.status = bubbleNow && bubbleNow.onscreen ? 'PASS' : 'FAIL'
-    result.fullscreenWindow = current ?? null
-    result.bubble = bubbleNow ?? null
-    result.screenshot = shot
-    result.detail = `main window fullscreen (${current?.w}x${current?.h}) and bubble onscreen=${bubbleNow?.onscreen}; layer=${bubbleNow?.layer}`
-    // Leave fullscreen for later checks.
-    spawnSync('/usr/bin/osascript', ['-e', 'tell application "System Events" to key code 3 using {control down, command down}'], { encoding: 'utf8' })
-    await sleep(2000)
-  } else {
-    const fullScreenAttr = (() => {
-      try {
-        const js = `ObjC.import('AppKit'); const se = Application('System Events');
+      const js = `ObjC.import('AppKit'); const se = Application('System Events');
 const proc = se.processes.whose({unixId: ${Number(pid)}})[0]; const ws = proc.windows(); const out = [];
-for (let i = 0; i < ws.length; i++) { let f = null; try { f = ws[i].attributes.byName('AXFullScreen').value(); } catch (e) { f = 'unavailable'; } out.push(f); }
+for (let i = 0; i < ws.length; i++) {
+  let value = 'unavailable';
+  try { value = ws[i].attributes.byName('AXFullScreen').value(); } catch (e) { value = 'unavailable'; }
+  let size = null; try { size = ws[i].size(); } catch (e) {}
+  out.push({ value, size });
+}
 JSON.stringify(out)`
-        return JSON.parse(spawnSync('/usr/bin/osascript', ['-l', 'JavaScript', '-e', js], { encoding: 'utf8' }).stdout || '[]')
-      } catch { return [] }
-    })()
-    const blocked = result.attempts.length ? 'BLOCKED-ENVIRONMENT: fullscreen could not be observed through AX/keystroke on this host (single display automation; recorded attempts)' : 'BLOCKED-ENVIRONMENT: no fullscreen attempt executed'
-    result.status = 'BLOCKED-ENVIRONMENT'
-    result.fullscreenAttribute = fullScreenAttr
-    result.detail = blocked
+      return JSON.parse(spawnSync('/usr/bin/osascript', ['-l', 'JavaScript', '-e', js], { encoding: 'utf8' }).stdout || '[]')
+    } catch { return [] }
+  }
+  const attributes = readAttribute()
+  const mainIndexAttribute = attributes.find(item => Array.isArray(item.size) && item.size[0] >= 400 && item.size[1] >= 300)
+  result.axFullscreenAttribute = mainIndexAttribute?.value ?? 'unavailable'
+  const observable = mainIndexAttribute && mainIndexAttribute.value !== 'unavailable'
+  if (!observable) {
+    // Do not blind-keystroke the user's frontmost app: no AX-observable fullscreen control here.
+    result.detail = 'BLOCKED-ENVIRONMENT: AXFullScreen is not readable for the packaged App window on this host; no keystroke was sent and no window state was changed'
     result.before = before
+    result.attributes = attributes
+    return result
+  }
+  const restore = async () => {
+    try {
+      const js = `ObjC.import('AppKit'); const se = Application('System Events');
+const proc = se.processes.whose({unixId: ${Number(pid)}})[0]; const ws = proc.windows();
+for (let i = 0; i < ws.length; i++) { let size = null; try { size = ws[i].size(); } catch (e) {}
+  if (Array.isArray(size) && size[0] >= 400 && size[1] >= 300) { try { ws[i].attributes.byName('AXFullScreen').value = false; } catch (e) {} break; } }`
+      spawnSync('/usr/bin/osascript', ['-l', 'JavaScript', '-e', js], { encoding: 'utf8' })
+    } catch { /* best effort */ }
+    await sleep(1500)
+    const current = classifyWindows(run.nativeWindows(pid)).main
+    if (current && frame && Math.abs(current.w - frame.frame[2]) <= 4 && Math.abs(current.h - frame.frame[3]) <= 4) {
+      // Still fullscreen: toggle the standard shortcut once to leave it.
+      spawnSync('/usr/bin/osascript', ['-e', 'tell application "System Events" to key code 3 using {control down, command down}'], { encoding: 'utf8' })
+      await sleep(2200)
+    }
+    await ensureWindowsOnCurrentSpace(run, pid)
+    return classifyWindows(run.nativeWindows(pid)).main
+  }
+  try {
+    try {
+      const js = `ObjC.import('AppKit'); const se = Application('System Events');
+const proc = se.processes.whose({unixId: ${Number(pid)}})[0]; const ws = proc.windows(); let done = 'no-candidate';
+for (let i = 0; i < ws.length; i++) { let size = null; try { size = ws[i].size(); } catch (e) {}
+  if (Array.isArray(size) && size[0] >= 400 && size[1] >= 300) { try { ws[i].attributes.byName('AXFullScreen').value = true; done = 'set-true'; } catch (e) { done = 'error: ' + String(e.message).slice(0, 100); } break; } }
+JSON.stringify({done});`
+      const axResult = JSON.parse(spawnSync('/usr/bin/osascript', ['-l', 'JavaScript', '-e', js], { encoding: 'utf8' }).stdout || '{}')
+      result.attempts.push({ method: 'AXFullScreen', result: axResult.done })
+    } catch (error) { result.attempts.push({ method: 'AXFullScreen', error: error.message }) }
+    await sleep(2500)
+    let current = classifyWindows(run.nativeWindows(pid)).main
+    const fullscreenNow = () => Boolean(current && frame && Math.abs(current.w - frame.frame[2]) <= 4 && Math.abs(current.h - frame.frame[3]) <= 4)
+    if (fullscreenNow()) {
+      const bubbleNow = classifyWindows(run.nativeWindows(pid)).bubble
+      const shot = screenshot(join(run.evidenceDir, 'bubble-above-fullscreen-main.png'))
+      result.status = bubbleNow && bubbleNow.onscreen ? 'PASS' : 'FAIL'
+      result.fullscreenWindow = current ?? null
+      result.bubble = bubbleNow ?? null
+      result.screenshot = shot
+      result.detail = `main window fullscreen (${current?.w}x${current?.h}) and bubble onscreen=${bubbleNow?.onscreen}; layer=${bubbleNow?.layer}`
+    } else {
+      result.detail = 'BLOCKED-ENVIRONMENT: AXFullScreen toggle did not produce an observable fullscreen window; no product PASS claimed'
+      result.before = before
+      result.attributes = readAttribute()
+    }
+  } finally {
+    result.restore = await restore()
+    result.restored = Boolean(result.restore)
+    result.restoreDetail = result.restore ? `main window restored to ${result.restore.w}x${result.restore.h}` : 'main window not observed after restore'
   }
   return result
 }
@@ -827,7 +1007,7 @@ async function attemptEdgeGeometry(run, pid, pet, target, display) {
   const overlapping = Boolean(bubbleFrame && petAfterMove
     && bubbleFrame.x < petAfterMove.x + petAfterMove.w && petAfterMove.x < bubbleFrame.x + bubbleFrame.w
     && bubbleFrame.y < petAfterMove.y + petAfterMove.h && petAfterMove.y < bubbleFrame.y + bubbleFrame.h)
-  const shot = bubbleFrame ? screenshot(join(run.evidenceDir, 'bubble-edge-geometry.png'), { windowId: bubbleFrame.windowNumber }) : { ok: false }
+  const shot = bubbleFrame ? await settledBubbleScreenshot(run, pid, join(run.evidenceDir, 'bubble-edge-geometry.png')) : { ok: false }
   result.close = close
   result.bubbleTrigger = { trigger: bubble.trigger?.trigger ?? null, attempts: bubble.triggerAttempts ?? [], error: bubble.error ?? null }
   result.bubble = bubbleFrame
@@ -993,6 +1173,7 @@ export async function acceptNativeBeta2({ app, run: runDir, manifest, allowBlock
     status: 'PASS', level: 'environment inventory',
     platform: { os: spawnSync('/usr/bin/sw_vers', ['-productVersion'], { encoding: 'utf8' }).stdout.trim(), arch: process.arch, node: process.version },
     toolchain: toolchain(), displays: displays(),
+    userFrontmostAtStart: run.userFrontmostAtStart ?? null,
     tcc: { accessibility: systemEventsWindows(process.pid).ok !== false || 'unknown', screenRecording: screenshot(join(run.evidenceDir, 'tcc-screenshot-probe.png')).ok },
     app: { path: run.appPath, appAsarSha256: appSha256 }, manifest: manifestData,
     sourceCommit, note: 'native evidence levels are recorded per check; DOM/CDP screenshots alone are never used as native visibility evidence',
@@ -1003,6 +1184,16 @@ export async function acceptNativeBeta2({ app, run: runDir, manifest, allowBlock
   } catch (error) {
     run.log(`acceptance crashed: ${error.stack || error.message}`)
     run.writeCheck('C9-crash', { status: 'FAIL', detail: String(error.stack || error.message) })
+  } finally {
+    // Never leave the packaged App running after a crashed/aborted run: a stale App
+    // would keep 127.0.0.1:59100 (or its descriptor port) busy for the next attempt.
+    try {
+      const leftover = processTreeFor(run.userData)
+      if (leftover.length) {
+        const cleanup = await run.stop({ label: 'cleanup-after-acceptance-run' })
+        run.log(`cleanup-after-acceptance-run: leftover=${leftover.length} exited=${cleanup.exited} forced=${cleanup.forced}`)
+      }
+    } catch (cleanupError) { run.log(`cleanup-after-acceptance-run failed: ${cleanupError.message}`) }
   }
   const finishedAt = nowIso()
   const values = Object.values(run.checks)
@@ -1014,6 +1205,7 @@ export async function acceptNativeBeta2({ app, run: runDir, manifest, allowBlock
     kind: 'beta2-native-acceptance',
     app: run.appPath, appAsarSha256: appSha256,
     sourceCommit, manifest: manifestData,
+    userFrontmostAtStart: run.userFrontmostAtStart ?? null,
     startedAt: run.startedAt, finishedAt,
     firstAttemptSuccess: firstAttemptSuccess(run),
     attempts: run.attempts,

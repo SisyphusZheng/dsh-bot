@@ -35,6 +35,74 @@ if /usr/sbin/lsof -nP -iTCP:59100 -sTCP:LISTEN >/dev/null 2>&1; then
   exit 2
 fi
 
+# --- stale packaged-App cleanup (Lead-required precondition) -----------------
+# Only processes whose executable is under THIS repo's .mvv-build/acceptance-*/app
+# are touched; user/dev dsh-bot instances are never matched.
+stale_report="$OUT/stale-app-cleanup.txt"
+python3 - "$ROOT" "$stale_report" <<'PY_STALE'
+import os, signal, subprocess, sys, time
+root, report = sys.argv[1], sys.argv[2]
+marker = os.path.join(root, '.mvv-build', 'acceptance-')
+def scan():
+    out = subprocess.run(['ps', '-axo', 'pid=,command='], capture_output=True, text=True).stdout
+    hits = []
+    for line in out.splitlines():
+        line = line.strip()
+        if not line or 'dsh-bot.app/Contents/MacOS/dsh-bot' not in line or marker not in line:
+            continue
+        if '/.mvv-build/acceptance-' not in line:
+            continue
+        try: pid = int(line.split(None, 1)[0])
+        except ValueError: continue
+        # Only the packaged app binary path, never our shell/grep lines.
+        command = line.split(None, 1)[1]
+        if not any(command.startswith(p) or (' ' + p) in command for p in [marker]) and marker not in command:
+            continue
+        hits.append((pid, command[:300]))
+    return hits
+before = scan()
+killed, survivors = [], []
+for pid, _ in before:
+    try:
+        os.kill(pid, signal.SIGTERM); killed.append(pid)
+    except ProcessLookupError:
+        pass
+    except PermissionError:
+        survivors.append(pid)
+deadline = time.time() + 20
+while time.time() < deadline:
+    if not scan(): break
+    time.sleep(0.5)
+left = scan()
+for pid, _ in left:
+    try: os.kill(pid, signal.SIGKILL); survivors.append(pid)
+    except ProcessLookupError: pass
+    except PermissionError: pass
+time.sleep(1)
+remaining = scan()
+lines = [
+    f'utc={time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}',
+    f'stale_before={len(before)}',
+    f'pids_termed={killed}',
+    f'force_killed={survivors}',
+    f'remaining_after={len(remaining)}',
+    f'listeners_59100={subprocess.run(["/usr/sbin/lsof","-nP","-iTCP:59100","-sTCP:LISTEN"],capture_output=True,text=True).stdout.strip() or "none"}',
+]
+open(report, 'w').write('\n'.join(lines) + '\n')
+print('\n'.join(lines))
+sys.exit(0 if not remaining else 4)
+PY_STALE
+STALE_RC=$?
+if [[ $STALE_RC -ne 0 ]]; then
+  echo "BLOCKED-ENVIRONMENT: could not clear stale .mvv-build acceptance App instances (see $stale_report)"
+  exit 2
+fi
+if /usr/sbin/lsof -nP -iTCP:59100 -sTCP:LISTEN >/dev/null 2>&1; then
+  echo 'BLOCKED-ENVIRONMENT: 127.0.0.1:59100 is listening after stale-App cleanup; refusing to run'
+  exit 2
+fi
+# -----------------------------------------------------------------------------
+
 python3 - "$DMG" "$MANIFEST" "$OUT" <<'PY'
 import hashlib, json, sys
 from pathlib import Path
@@ -145,5 +213,31 @@ console.log(JSON.stringify({ overall: overall, base: summary.base.status, native
 process.exit(overall === 'FAIL' ? 1 : 0)
 JS
 COMBINED_RC=$?
+# Post-run: never leave this run's packaged App alive for the next attempt.
+python3 - "$ROOT" "$OUT/post-run-app-cleanup.txt" <<'PY_POST'
+import os, signal, subprocess, sys, time
+root, report = sys.argv[1], sys.argv[2]
+marker = os.path.join(root, '.mvv-build')
+def scan():
+    out = subprocess.run(['ps', '-axo', 'pid=,command='], capture_output=True, text=True).stdout
+    hits = []
+    for line in out.splitlines():
+        if 'dsh-bot.app/Contents/MacOS/dsh-bot' not in line or '/.mvv-build/acceptance-' not in line:
+            continue
+        try: hits.append((int(line.strip().split(None, 1)[0]), line.strip()[:300]))
+        except ValueError: pass
+    return hits
+before = scan()
+for pid, _ in before:
+    try: os.kill(pid, signal.SIGTERM)
+    except (ProcessLookupError, PermissionError): pass
+deadline = time.time() + 15
+while time.time() < deadline and scan(): time.sleep(0.4)
+left = scan()
+for pid, _ in left:
+    try: os.kill(pid, signal.SIGKILL)
+    except (ProcessLookupError, PermissionError): pass
+open(report, 'w').write(f'stale_before={len(before)}\nremaining_after={len(scan())}\n')
+PY_POST
 echo "DONE accept-beta2-macos overall_exit=$COMBINED_RC out=$OUT $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 exit "$COMBINED_RC"
