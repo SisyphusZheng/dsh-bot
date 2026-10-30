@@ -35,7 +35,15 @@ export function createInteractionMirror({
 }) {
   const pending = new Map()
   const forwarded = new WeakSet()
+  /** Observers the product InteractionRegistry subscribes to (see kernel spec §3.4). */
+  const requestListeners = new Set()
+  const settleListeners = new Set()
   let disposed = false
+  function notify(listeners, payload) {
+    for (const listener of [...listeners]) {
+      try { listener(payload) } catch { /* an observer must never break the mirror */ }
+    }
+  }
   const view = request => ({
     id: request.id, kind: request.kind, sessionId: request.sessionId,
     ...(request.kind === 'question' ? { questions: request.source.questions, callId: request.source.wait?.callId }
@@ -44,19 +52,42 @@ export function createInteractionMirror({
   return {
     isForwarded: request => forwarded.has(request),
     snapshot: () => [...pending.values()].map(view),
+    /** Observe every new official request this mirror starts presenting. */
+    subscribeRequests(listener) {
+      if (typeof listener !== 'function') return () => {}
+      requestListeners.add(listener)
+      return () => requestListeners.delete(listener)
+    },
+    /** Observe every settlement of an official request (answer, timeout, cancel, official close). */
+    subscribeSettled(listener) {
+      if (typeof listener !== 'function') return () => {}
+      settleListeners.add(listener)
+      return () => settleListeners.delete(listener)
+    },
+    /**
+     * Withdraw one presented request because its product lifetime ended (expiry).
+     * The official answerer then fails closed through its own lifetime; this never
+     * fabricates an official decision.
+     */
+    expire(id) {
+      const item = pending.get(id)
+      if (!item) return false
+      item.finish(null, 'expired')
+      return true
+    },
     cancel(sessionId) {
-      for (const item of [...pending.values()]) if (!sessionId || item.sessionId === sessionId) item.finish(null)
+      for (const item of [...pending.values()]) if (!sessionId || item.sessionId === sessionId) item.finish(null, 'cancelled')
     },
     dispose() {
       disposed = true
-      for (const item of [...pending.values()]) item.finish(null)
+      for (const item of [...pending.values()]) item.finish(null, 'cancelled')
     },
     answer(id, sessionId, value) {
       const item = pending.get(id)
       if (!item || item.sessionId !== sessionId) return false
       const answer = item.kind === 'question' ? validateAnswer(item.source.questions, value) : value
       if (item.kind === 'approval' && !['allowed-once', 'rejected'].includes(answer)) throw invalid('Invalid approval decision')
-      item.finish(answer)
+      item.finish(answer, 'local')
       return true
     },
     async ask(kind, source) {
@@ -67,10 +98,18 @@ export function createInteractionMirror({
       const id = randomUUID(), controller = new AbortController()
       let resolve, reject, timer, noAnswererTimer
       const result = new Promise((yes, no) => { resolve = yes; reject = no })
-      const abort = () => item.finish(null)
+      const abort = () => item.finish(null, 'aborted')
       const item = {
         id, kind, source, sessionId: String(source.agent.session.id),
-        finish(answer) {
+        /**
+         * Settle once. `reason` records who ended the official lifetime:
+         * 'local' (pet/voice/HTTP decision), 'official' (another official answerer
+         * decided), 'aborted' (asking turn cancelled), 'timeout', 'expired',
+         * 'cancelled', 'official-closed' (the official timed wait closed), or
+         * 'no-answerer'. Observers use it to distinguish a real official result
+         * from a fail-closed product timeout.
+         */
+        finish(answer, reason = 'local') {
           if (!pending.delete(id)) return
           clearTimeout(timer)
           clearTimeout(noAnswererTimer)
@@ -79,6 +118,11 @@ export function createInteractionMirror({
           emit(kind === 'approval' ? 'approval.decided' : 'question.decided', {
             sessionId: item.sessionId, data: { id, outcome: answer === null ? 'cancelled' : kind === 'approval' ? answer : 'answered' },
           })
+          notify(settleListeners, {
+            kind, id, sessionId: item.sessionId, reason, source, view: view(item),
+            outcome: answer === null ? null : kind === 'approval' ? answer : 'answered',
+            answer,
+          })
           if (answer !== null) resolve(answer)
           else if (kind === 'approval') resolve('cancelled')
           else reject(Object.assign(new Error('Question cancelled'), { code: 'ASK_ABORTED' }))
@@ -86,29 +130,30 @@ export function createInteractionMirror({
       }
       pending.set(id, item)
       source.signal?.addEventListener('abort', abort, { once: true })
-      if (kind === 'approval') timer = setTimeout(abort, approvalTimeoutMs)
+      if (kind === 'approval') timer = setTimeout(() => item.finish(null, 'timeout'), approvalTimeoutMs)
       const copy = { ...source, signal: controller.signal }
       forwarded.add(copy)
       emit(kind === 'approval' ? 'approval.request' : 'question.request', { sessionId: item.sessionId, data: view(item) })
+      notify(requestListeners, { kind, id, sessionId: item.sessionId, source, view: view(item) })
       // A timed question must be held through the official service while the pet presents it.
       const claim = kind === 'question' && source.wait?.timed
         ? userQuestions()?.attachWait(source.agent, source.wait.callId, controller.signal) : null
       if (claim) void (async () => {
         try { for await (const frame of claim) { if (!frame) break } }
-        finally { if (pending.has(id)) item.finish(null) }
-      })().catch(() => item.finish(null))
+        finally { if (pending.has(id)) item.finish(null, 'official-closed') }
+      })().catch(() => item.finish(null, 'official-closed'))
       void Promise.resolve().then(() => forward(kind === 'approval' ? 'approval/request' : 'user-questions/request', copy)).then(answer => {
         if (!pending.has(id)) return
         if (kind === 'approval') {
-          if (['allowed-once', 'rejected', 'cancelled'].includes(answer)) item.finish(answer === 'cancelled' ? null : answer)
-        } else item.finish(validateAnswer(source.questions, answer))
+          if (['allowed-once', 'rejected', 'cancelled'].includes(answer)) item.finish(answer === 'cancelled' ? null : answer, 'official')
+        } else item.finish(validateAnswer(source.questions, answer), 'official')
       }).catch(() => {
         // The official waterfall reports "No DSH answerer". If the pet UI is also not
         // connected, fail closed after a short grace instead of holding the Agent for
         // the full approval timeout. A late pet connection inside the grace still wins.
         if (hasLocalUi()) return
         noAnswererTimer = setTimeout(() => {
-          if (!hasLocalUi() && pending.has(id)) item.finish(null)
+          if (!hasLocalUi() && pending.has(id)) item.finish(null, 'no-answerer')
         }, Math.max(0, Number(noAnswererGraceMs) || 0))
       })
       return result

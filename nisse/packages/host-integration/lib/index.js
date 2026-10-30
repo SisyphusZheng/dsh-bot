@@ -4,6 +4,14 @@ import { createServer } from 'node:http'
 import { createInteractionMirror, validateAnswer } from './interactions.mjs'
 import { createTaskRecovery } from './task-recovery.mjs'
 import { createApprovalPolicies } from './approval-policies.mjs'
+import { createSnapshotStore } from './snapshot.mjs'
+import { createStateStore, createReceiptStore } from './persistence.mjs'
+import { createConversationService } from './conversation-service.mjs'
+import { createInteractionRegistry } from './interaction-registry.mjs'
+import {
+  PROTOCOL_VERSION, ContractError, canonicalJson, digest, newId, nowIso,
+  validateCommand, receipt, stableOptionId,
+} from './contracts.mjs'
 import { randomUUID } from 'node:crypto'
 import { basename, dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -280,6 +288,21 @@ export function apply(ctx, config = {}) {
   mkdirSync(bridgeDir, { recursive: true, mode:0o700 })
   mkdirSync(canonicalWorkspaceDir(), { recursive: true })
 
+  const log = (...args) => {
+    try { console.log('[nisse-host-integration]', ...args) } catch { /* ignore */ }
+  }
+
+  // ---- beta2 kernel: one product business state, idempotent receipts, versioned snapshot/event stream ----
+  const hostEpoch = randomUUID()
+  const stream = createSnapshotStore({
+    hostEpoch,
+    retention: Number(process.env.DSH_BOT_EVENT_RETENTION || 0) || 5000,
+  })
+  const stateStore = createStateStore({ file: join(bridgeDir, 'beta2-state.json') })
+  const receiptStore = createReceiptStore({ file: join(bridgeDir, 'beta2-receipts.json'), maxEntries: 128 })
+  let registry = null
+  let conversation = null
+
   const events = []
   const seenDurable = new Set()
   let ioSeq = 0
@@ -322,6 +345,90 @@ export function apply(ctx, config = {}) {
     userQuestions: () => ctx.get?.('userQuestions'),
     // The pet bridge is the product UI; SSE subscribers are its connected pages.
     hasLocalUi: () => sseSubscribers.size > 0,
+  })
+
+  // ---- beta2 kernel services: registry on top of the official mirror, ConversationService
+  // as the single product business owner. Legacy endpoints below forward into these, never
+  // into a second implementation.
+  const desktopLiveness = { online: false, lastSeenAt: 0 }
+  function touchDesktopConnection() {
+    desktopLiveness.lastSeenAt = Date.now()
+    if (desktopLiveness.online) return
+    desktopLiveness.online = true
+    kernelEmit('connection.changed', { source: 'host', data: { desktop: { connected: true } } })
+  }
+  function kernelEmit(type, fields = {}) {
+    return stream.record(type, {
+      source: fields.source || 'host',
+      sessionId: fields.sessionId ?? (sessionId || null),
+      turn: fields.turn ?? null,
+      causedByCommandId: fields.causedByCommandId ?? null,
+      data: fields.data || {},
+    })
+  }
+  try {
+    registry = createInteractionRegistry({
+      mirror: interactions,
+      receipts: receiptStore,
+      emit: kernelEmit,
+      hostEpoch,
+      now: () => Date.now(),
+      getSessionId: () => sessionId || null,
+      // The registry's built-in official delivery path uses mirror.answer(mirrorId, sessionId, value)
+      // so the official waterfall still owns the lifetime; no custom answerer is needed here.
+      // Continued questions are an official DSH lifecycle owned by userQuestions; they are
+      // projected into the Host snapshot and answered through the official service below.
+      continuedQuestions: () => continuedQuestions(),
+    })
+  } catch (error) { log('interaction registry unavailable: ' + messageOf(error)) }
+
+  const conversationRuntime = {
+    productVersion: () => String(process.env.NISSE_PRODUCT_VERSION || '0.0.1-beta2'),
+    runtimeVersion: () => String(process.env.NISSE_RUNTIME_VERSION || '0.2.1-rc.3'),
+    sessionId: () => sessionId || null,
+    agentReady: () => Boolean(agent) && agentTask === null,
+    workspace: () => canonicalWorkspaceDir(),
+    conversationIndex: () => conversationIndex,
+    ensureAgent: () => ensureAgent(),
+    submitTurn: (text, options = {}) => submitTurn(text, {
+      clientTurnId: options.clientTurnId || '',
+      source: ['voice', 'queue', 'desktop', 'recovery'].includes(options.source) ? options.source : 'desktop',
+    }),
+    cancelTurn: async ({ source = 'task-stop', target = null } = {}) => {
+      // Capture-time target binding: a delayed confirmation must never cancel a successor turn.
+      if (target?.sessionId && target.sessionId !== sessionId) throw Object.assign(new Error('stale session target'), { status: 409 })
+      if (target?.turn !== undefined && target?.turn !== null && target.turn !== currentTurn) throw Object.assign(new Error('stale turn target'), { status: 409 })
+      const normalized = /^[a-z0-9-]{1,40}$/.test(String(source)) ? String(source) : 'task-stop'
+      return cancelTurn(normalized)
+    },
+    emitCommand: (type, payload = {}) => {
+      const commandId = randomUUID()
+      stream.record('command', { source: 'host', data: { commandId, type: String(type), payload } })
+      return commandId
+    },
+    continuedQuestions: () => continuedQuestions(),
+    answerContinuedQuestion: ({ callId, questions, answer }) => {
+      const userQuestions = ctx.get?.('userQuestions')
+      if (!userQuestions || typeof userQuestions.answer !== 'function') {
+        throw Object.assign(new Error('Official continued question service unavailable'), { status: 503 })
+      }
+      return userQuestions.answer(agent, callId, validateAnswer(questions, answer))
+    },
+  }
+  conversation = createConversationService({
+    hostEpoch,
+    events: stream,
+    store: stateStore,
+    registry,
+    runtime: conversationRuntime,
+    config: {
+      queueLimit: Number(process.env.DSH_PENDING_INPUT_LIMIT || 0) || 5,
+      queueTtlMs: (Number(process.env.DSH_PENDING_INPUT_TTL || 0) || 60) * 1000,
+      draftTtlMs: (Number(process.env.DSH_INPUT_DRAFT_TTL || 0) || 30) * 1000,
+      settleMs: Number(process.env.DSH_INPUT_SETTLE_MS || 0) || 650,
+      drainMs: Number(process.env.DSH_HOLD_DRAIN_MS || 0) || 3000,
+    },
+    log,
   })
 
   function continuedQuestions() {
@@ -392,10 +499,6 @@ export function apply(ctx, config = {}) {
 
   let approvalAnswerer = null
 
-  const log = (...args) => {
-    try { console.log('[nisse-host-integration]', ...args) } catch { /* ignore */ }
-  }
-
   function auditEvent(event, fields = {}) {
     const record = { ts: now(), event, ...fields }
     auditEvents.push(record)
@@ -464,6 +567,12 @@ export function apply(ctx, config = {}) {
     if (events.length > MAX_EVENTS) events.splice(0, events.length - MAX_EVENTS)
     broadcastBridge(record)
     for (const subscriber of voiceSubscribers) { try { subscriber(record) } catch (error) { voiceSubscribers.delete(subscriber); log(messageOf(error)) } }
+    // Official approval/question decisions converge product pending state. The local
+    // registry never invents an outcome; this only mirrors what DSH already decided.
+    if (registry && (type === 'approval.decided' || type === 'question.decided')) {
+      try { registry.observeOfficial({ type, sessionId: sid || null, data: record.data, at: record.ts }) }
+      catch (error) { log('official interaction convergence failed: ' + messageOf(error)) }
+    }
     return record
   }
 
@@ -549,6 +658,13 @@ export function apply(ctx, config = {}) {
         turnAssistantText = ''
         turnCount = Math.max(turnCount, data.turn || 0)
         push('turn.started', { ...base, data: { durableSeq: event.seq, inputSource } })
+        try {
+          conversation?.onTurnStarted({
+            sessionId: sid, turnId: base.turnId, turn: data.turn,
+            inputSource: ['voice', 'queue', 'recovery'].includes(inputSource) ? inputSource : 'desktop',
+            hostInitiated: ['voice', 'queue', 'recovery'].includes(inputSource),
+          })
+        } catch (error) { log('turn start projection failed: ' + messageOf(error)) }
         break
       case 'turn/end': {
         const reason = data.reason || {}
@@ -559,6 +675,12 @@ export function apply(ctx, config = {}) {
           ...base,
           data: { durableSeq: event.seq, terminal: String(reason.kind || 'unknown'), reason, cancellationSource },
         })
+        try {
+          conversation?.onTurnEnded({
+            sessionId: sid, turn: data.turn,
+            terminal: String(reason.kind || 'unknown'), reason,
+          })
+        } catch (error) { log('turn end projection failed: ' + messageOf(error)) }
         currentTurn = null
     inputSource = 'desktop'
     cancellationSource = null
@@ -572,9 +694,11 @@ export function apply(ctx, config = {}) {
         break
       case 'tool/call':
         push('tool.call', { ...base, data: { durableSeq: event.seq, ...summarizeToolData(data) } })
+        try { kernelEmit('turn.tool', { source: 'dsh', sessionId: sid, turn: turn ?? null, data: { phase: 'call', durableSeq: event.seq, ...summarizeToolData(data) } }) } catch (error) { log('tool event projection failed: ' + messageOf(error)) }
         break
       case 'tool/result':
         push('tool.result', { ...base, data: { durableSeq: event.seq, ...summarizeToolData(data) } })
+        try { kernelEmit('turn.tool', { source: 'dsh', sessionId: sid, turn: turn ?? null, data: { phase: 'result', durableSeq: event.seq, ...summarizeToolData(data) } }) } catch (error) { log('tool event projection failed: ' + messageOf(error)) }
         break
       case 'user/message':
         push('user.message', { ...base, data: { durableSeq: event.seq, text: contentText(data.content) } })
@@ -623,6 +747,7 @@ export function apply(ctx, config = {}) {
         }
         if (frame.type === 'end') {
           push('assistant.stream.ended', { sessionId: sid, turn, data: { outcome: frame.outcome?.kind || 'unknown' } })
+          try { conversation?.onAssistantEnded({ sessionId: sid, turn, outcome: frame.outcome?.kind || 'unknown' }) } catch (error) { log('assistant end projection failed: ' + messageOf(error)) }
           return
         }
         if (frame.type !== 'chunk') return
@@ -634,6 +759,9 @@ export function apply(ctx, config = {}) {
             turn,
             data: { text: chunk.text, index: frame.index, attemptId: frame.attemptId },
           })
+          if (matchesSession(sid) && typeof chunk.text === 'string' && chunk.text) {
+            try { conversation?.onAssistantDelta({ sessionId: sid, turn, text: chunk.text }) } catch (error) { log('assistant delta projection failed: ' + messageOf(error)) }
+          }
         } else if (chunk.type === 'tool-call-delta') {
           push('tool.delta', { sessionId: sid, turn, data: { name: chunk.name || '', callId: chunk.id || null } })
         } else if (chunk.type === 'usage') {
@@ -658,6 +786,7 @@ export function apply(ctx, config = {}) {
         const sid = payload?.agent?.session?.id
         if (!matchesSession(sid)) return
         push('agent.status', { sessionId: sid, data: { status: payload.status } })
+        try { conversation?.onAgentStatus(String(payload.status || '')) } catch (error) { log('agent status projection failed: ' + messageOf(error)) }
         if (payload.status === 'idle') backfill()
       } catch (error) {
         log('agent/status handler failed: ' + messageOf(error))
@@ -1087,6 +1216,9 @@ export function apply(ctx, config = {}) {
       contractVersion: CONTRACT_VERSION,
       pluginVersion: VERSION,
       version: VERSION,
+      protocolVersion: PROTOCOL_VERSION,
+      hostEpoch,
+      snapshotSeq: stream.seq(),
       pid: hostPid,
       startedAt,
       services: {
@@ -1095,6 +1227,10 @@ export function apply(ctx, config = {}) {
         approval: Boolean(ctx.get?.('approval')),
         tools: Boolean(ctx.get?.('tools')),
         memory: Boolean(memoryUrl),
+        conversation: Boolean(conversation),
+        interactions: Boolean(registry),
+        eventStream: true,
+        receipts: receiptStore.size(),
       },
       // /health is unauthenticated loopback: never disclose home/profile/cwd paths.
       agent: {
@@ -1129,22 +1265,108 @@ export function apply(ctx, config = {}) {
 
   installWriteApprovalPolicy()
 
+  // beta2 kernel startup: record the epoch, restore bounded product state (never auto-execute),
+  // and start the settle-drain tick used by Host-owned utterance assembly.
+  try {
+    stream.record('host.epoch', { source: 'host', data: { productVersion: '0.0.1-beta2', runtimeVersion: '0.2.1-rc.3', pid: hostPid } })
+    conversation.start()
+  } catch (error) { log('conversation service start failed: ' + messageOf(error)) }
+
   const server = createServer(async (req, res) => {
     try {
       const url = new URL(req.url || '/', 'http://127.0.0.1')
       if (url.pathname === '/health' && req.method === 'GET') return json(res, 200, health())
       const auth = String(req.headers.authorization || '')
       const queryToken = String(url.searchParams.get('token') || '')
-      const sseRequest = url.pathname === '/events'
-        && (url.searchParams.has('sessionId') || String(req.headers.accept || '').includes('text/event-stream'))
+      const sseRequest = (url.pathname === '/events' || url.pathname === '/v2/stream')
+        && (url.searchParams.has('sessionId') || String(req.headers.accept || '').includes('text/event-stream') || url.pathname === '/v2/stream')
       const authorized = auth === `Bearer ${token}` || (sseRequest && queryToken === token)
       if (!authorized) return json(res, 401, { error: 'unauthorized' })
+
+      // ---- beta2 v1 product protocol: one snapshot/event stream, one command/receipt path ----
+      if (url.pathname === '/v2/snapshot' && req.method === 'GET') {
+        touchDesktopConnection()
+        return json(res, 200, stream.snapshot(() => conversation.snapshotSections()))
+      }
+      if (url.pathname === '/v2/events' && req.method === 'GET') {
+        touchDesktopConnection()
+        const after = Number(url.searchParams.get('after') || 0)
+        const result = stream.eventsAfter(after, { limit: Math.min(Number(url.searchParams.get('limit') || 500), 2000) })
+        if (result.resyncRequired) return json(res, 409, { error: 'resync-required', snapshotSeq: stream.seq(), minRetainedSeq: result.minRetainedSeq })
+        return json(res, 200, result)
+      }
+      if (url.pathname === '/v2/stream' && req.method === 'GET') {
+        touchDesktopConnection()
+        const after = Number(url.searchParams.get('after') || 0)
+        const probe = stream.eventsAfter(after, { limit: 0 })
+        if (probe.resyncRequired) return json(res, 409, { error: 'resync-required', snapshotSeq: stream.seq(), minRetainedSeq: probe.minRetainedSeq })
+        res.writeHead(200, { 'content-type': 'text/event-stream; charset=utf-8', 'cache-control': 'no-cache', connection: 'keep-alive' })
+        res.write(': connected\n\n')
+        const subscription = stream.subscribe(after, (event) => {
+          try { res.write('data: ' + JSON.stringify(event) + '\n\n') } catch { /* client went away */ }
+        })
+        const heartbeat = setInterval(() => { try { res.write(': ping\n\n') } catch { /* ignore */ } }, 15000)
+        heartbeat.unref?.()
+        req.on('close', () => { clearInterval(heartbeat); subscription.unsubscribe?.() })
+        return
+      }
+      if (url.pathname === '/v2/receipt' && req.method === 'GET') {
+        const commandId = String(url.searchParams.get('commandId') || '')
+        const stored = commandId ? receiptStore.get(commandId) : null
+        if (!stored) return json(res, 404, { error: { code: 'RECEIPT_NOT_FOUND', message: 'no receipt for this commandId' } })
+        if (stored.receipt) return json(res, 200, stored.receipt)
+        return json(res, 200, receipt({ commandId, hostEpoch, status: 'unknown', error: { code: 'IN_FLIGHT_UNKNOWN', message: 'previous host process ended before a receipt was recorded' } }))
+      }
+      if (url.pathname === '/v2/command' && req.method === 'POST') {
+        const body = await readBody(req)
+        let command
+        try { command = validateCommand(body, { hostEpoch, sessionId: sessionId || null }) }
+        catch (error) { return json(res, error.status || 400, { error: { code: error.code || 'INVALID_COMMAND', message: messageOf(error) } }) }
+        if (command.sourceConnectionId === 'desktop') touchDesktopConnection()
+        const idemKey = command.commandId
+        const targetDigest = digest({ type: command.type, payload: command.payload, sessionId: command.sessionId, source: command.sourceConnectionId })
+        const stored = receiptStore.get(idemKey)
+        if (stored) {
+          if (stored.digest && stored.digest !== targetDigest) {
+            return json(res, 409, { error: { code: 'IDEMPOTENCY_CONFLICT', message: 'commandId was already used with a different payload or target' } })
+          }
+          if (stored.receipt) return json(res, 200, stored.receipt)
+          return json(res, 200, receipt({ commandId: idemKey, hostEpoch, status: 'unknown', error: { code: 'IN_FLIGHT_UNKNOWN', message: 'the previous host process ended before a receipt was recorded' } }))
+        }
+        receiptStore.put(idemKey, { digest: targetDigest, status: 'pending', target: { type: command.type, sessionId: command.sessionId }, at: nowIso() })
+        let result
+        try { result = await conversation.handleCommand(command) }
+        catch (error) {
+          result = { status: 'rejected', error: { code: error.code || 'COMMAND_FAILED', message: messageOf(error) } }
+        }
+        const value = receipt({
+          commandId: idemKey,
+          hostEpoch,
+          status: result?.status === 'accepted' || result?.status === 'pending' || result?.status === 'resolved' || result?.status === 'rejected' || result?.status === 'unknown' ? result.status : 'rejected',
+          result: result?.result || {},
+          error: result?.error || null,
+        })
+        receiptStore.put(idemKey, { digest: targetDigest, status: 'done', receipt: value, target: { type: command.type, sessionId: command.sessionId } })
+        return json(res, 200, value)
+      }
 
       // ---- dsh-nisse bridge protocol subset (for the real Qwen voice client) ----
       if (url.pathname === '/task/recovery' && req.method === 'GET') return json(res, 200, await taskRecovery.preview())
       if (url.pathname === '/task/recovery' && req.method === 'POST') return json(res, 200, {ok:true,...await taskRecovery.submit(await readBody(req))})
       if (url.pathname === '/task-state' && req.method === 'GET') {
-        return json(res, 200, { sessionId, clientTurnId: activeClientTurnId || null, turn: currentTurn, status: String(agent?.status || 'starting'), waiting: interactions.snapshot().length > 0, lastTurn })
+        const sections = conversation.snapshotSections()
+        return json(res, 200, {
+          sessionId,
+          clientTurnId: activeClientTurnId || null,
+          turn: currentTurn,
+          status: String(agent?.status || 'starting'),
+          waiting: interactions.snapshot().length > 0,
+          lastTurn,
+          execution: sections.execution,
+          queue: { revision: sections.queue.revision, pending: sections.queue.items.length },
+          protocolVersion: PROTOCOL_VERSION,
+          hostEpoch,
+        })
       }
       if (url.pathname === '/history' && req.method === 'GET') {
         const limit = Math.min(200, Math.max(1, Number(url.searchParams.get('limit') || 50)))
@@ -1278,6 +1500,7 @@ export function apply(ctx, config = {}) {
         auditEvent('policy.removed', { policyId: id, removed })
         return json(res, 200, { ok: true, removed })
       }
+      // ---- legacy adapters: same owner (registry/conversation), never a second business path ----
       if (url.pathname === '/approval' && req.method === 'POST') {
         const body = await readBody(req)
         const requested = String(body.decision || '')
@@ -1286,29 +1509,69 @@ export function apply(ctx, config = {}) {
         }
         const id = String(body.id || '')
         const pending = interactions.snapshot().find(item => item.id === id && item.kind === 'approval' && item.sessionId === String(body.sessionId || sessionId))
-        if (!pending) return json(res, 409, { error: 'approval no longer pending' })
+        if (!pending) return json(res, 409, { error: 'approval no longer pending', final: true })
         if (requested === 'always-allow') {
           if (body.confirmExact !== true || !pending.operation) return json(res, 400, { error: 'Exact operation and explicit confirmation required' })
           const rule = policies.grant(pending.operation)
           auditEvent('policy.added', { policyId: rule.id, toolName: rule.toolName })
         }
-        if (!interactions.answer(id, pending.sessionId, requested === 'reject' ? 'rejected' : 'allowed-once')) return json(res, 409, { error: 'approval no longer pending' })
+        const pendingView = registry?.snapshot?.().pending?.find(item => item.id === id && item.kind === 'approval')
+        if (!registry || !pendingView) {
+          if (!interactions.answer(id, pending.sessionId, requested === 'reject' ? 'rejected' : 'allowed-once')) return json(res, 409, { error: 'approval no longer pending', final: true })
+        } else {
+          const result = registry.resolve({
+            commandId: `legacy-approval-${id}-${requested === 'reject' ? 'reject' : 'allow'}`,
+            interactionId: id,
+            semanticRevision: pendingView.semanticRevision,
+            payload: { interactionId: id, semanticRevision: pendingView.semanticRevision, decision: requested === 'reject' ? 'rejected' : 'allowed-once' },
+            sourceConnectionId: 'desktop',
+          })
+          if (!['resolved', 'accepted'].includes(String(result?.status))) {
+            return json(res, 409, { error: result?.error?.message || 'approval no longer pending', final: true, code: result?.error?.code || null })
+          }
+        }
         if (requested !== 'reject') rememberAllowed()
         return json(res, 200, { ok: true, decision: requested })
       }
       if (url.pathname === '/interactions' && req.method === 'GET') {
+        // Legacy shape for the pre-v2 pet/worker; the v2 snapshot is authoritative.
         return json(res, 200, { pid: hostPid, sessionId, requests: [...interactions.snapshot(), ...continuedQuestions()] })
       }
       if (url.pathname === '/questions/answer' && req.method === 'POST') {
         const body = await readBody(req)
-        if (typeof body.id !== 'string' || body.sessionId !== sessionId) return json(res, 409, { error: 'question no longer pending' })
+        if (typeof body.id !== 'string' || body.sessionId !== sessionId) return json(res, 409, { error: 'question no longer pending', final: true })
         try {
           const continued = continuedQuestions().find(item => item.id === body.id)
-          const accepted = continued
-            ? ctx.get('userQuestions').answer(agent, continued.callId, validateAnswer(continued.questions, body.answer))
-            : interactions.answer(body.id, body.sessionId, body.answer)
-          if (!accepted) return json(res, 409, { error: 'question no longer pending' })
-          return json(res, 200, { ok: true })
+          if (continued) {
+            const accepted = ctx.get('userQuestions').answer(agent, continued.callId, validateAnswer(continued.questions, body.answer))
+            if (!accepted) return json(res, 409, { error: 'question no longer pending', final: true })
+            return json(res, 200, { ok: true })
+          }
+          const pendingView = registry?.snapshot?.().pending?.find(item => item.id === body.id && item.kind === 'question')
+          if (!pendingView) return json(res, 409, { error: 'question no longer pending', final: true })
+          // Legacy clients submit option labels; translate them to the stable option ids of
+          // the CURRENT semantic revision. Position is never used for identity.
+          const converted = {
+            answers: (body.answer?.answers || []).map((answer) => {
+              const question = (pendingView.questions || []).find((item) => item.id === answer.id)
+              if (!question) throw new Error('unknown question id')
+              const selected = Array.isArray(answer.selected) ? answer.selected.map((label) => {
+                const option = (question.options || []).find((item) => item.label === label)
+                if (!option) throw new Error('unknown option label')
+                return option.id
+              }) : []
+              return { id: answer.id, selected, ...(typeof answer.custom === 'string' && answer.custom.trim() ? { custom: answer.custom } : {}) }
+            }),
+          }
+          const result = registry.resolve({
+            commandId: `legacy-question-${body.id}-${randomUUID()}`,
+            interactionId: body.id,
+            semanticRevision: pendingView.semanticRevision,
+            payload: { interactionId: body.id, semanticRevision: pendingView.semanticRevision, answer: converted },
+            sourceConnectionId: 'desktop',
+          })
+          if (['resolved', 'accepted'].includes(String(result?.status))) return json(res, 200, { ok: true, ...(result?.result || {}) })
+          return json(res, 409, { error: result?.error?.message || 'question no longer pending', final: true, code: result?.error?.code || null })
         } catch (error) { return json(res, 400, { error: messageOf(error) }) }
       }
       if (url.pathname === '/cancel' && req.method === 'POST') {
@@ -1324,7 +1587,9 @@ export function apply(ctx, config = {}) {
         return json(res, 200, result)
       }
 
-      // One streaming transport over the same DSH agent, session and approvals.
+      // Legacy streaming transport: the text is already an assembled final utterance from
+      // the old worker, so it is routed by the SAME ConversationService owner. No separate
+      // business decision is made here.
       if (url.pathname === '/voice/turn' && req.method === 'POST') {
         const body = await readBody(req)
         if (!String(body.text || '').trim()) return json(res, 400, { error: 'text required' })
@@ -1355,8 +1620,22 @@ export function apply(ctx, config = {}) {
           if (owned && !res.writableEnded) auditEvent('voice.transport.detached', { sessionId, clientTurnId: requestId, turn: currentTurn })
         })
         voiceSubscribers.add(subscriber)
-        try { await submitTurn(body.text, { clientTurnId: requestId, source: 'voice' }) }
-        catch (error) { frame({ type: 'error', message: messageOf(error) }); voiceSubscribers.delete(subscriber); res.end() }
+        try {
+          const routed = await conversation.handleFinalUtterance({
+            text: String(body.text || '').trim(),
+            captureId: 'legacy-voice-' + requestId,
+            utteranceId: randomUUID(),
+            mode: 'hold',
+            clientTurnId: requestId,
+            source: 'voice',
+            connectionId: 'legacy-voice',
+          })
+          if (!admitted) {
+            for (const route of routed?.routed || []) frame({ type: 'route', path: route.path, reason: route.reason || '' })
+            frame({ type: 'finalized', reason: 'routed', ...(routed?.clarify ? { clarify: routed.clarify } : {}) })
+            voiceSubscribers.delete(subscriber); res.end()
+          }
+        } catch (error) { frame({ type: 'error', message: messageOf(error) }); voiceSubscribers.delete(subscriber); res.end() }
         return
       }
       // ---- W1 harness protocol (compatible with the same /turn) ----
@@ -1404,6 +1683,9 @@ export function apply(ctx, config = {}) {
       contractVersion: CONTRACT_VERSION,
       pluginVersion: VERSION,
       version: VERSION,
+      protocolVersion: PROTOCOL_VERSION,
+      hostEpoch,
+      snapshotSeq: stream.seq(),
       pid: hostPid,
       port: address.port,
       token,
@@ -1436,12 +1718,16 @@ export function apply(ctx, config = {}) {
 
   ctx.effect?.(() => async () => {
     taskRecovery.clear()
+    try { conversation?.dispose() } catch (error) { log('conversation dispose failed: ' + messageOf(error)) }
     interactions.dispose()
+    try { registry?.dispose() } catch (error) { log('registry dispose failed: ' + messageOf(error)) }
     await handle?.dispose?.()
     for (const subscriber of sseSubscribers) { try { subscriber.res.end() } catch {} }
     sseSubscribers.clear()
     await new Promise(resolve => { server.close(resolve); server.closeAllConnections() })
     try { unlinkSync(bridgeFile) } catch {}
+    try { stream.dispose() } catch { /* ignore */ }
+    try { stateStore.close(); receiptStore.close() } catch { /* ignore */ }
     log('fixture disposed')
   })
 }
