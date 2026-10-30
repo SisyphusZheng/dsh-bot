@@ -11,7 +11,7 @@ import re
 import time
 import uuid
 
-KINDS = ("proxy", "network", "auth", "quota", "permission", "provider", "unknown")
+KINDS = ("proxy", "network", "auth", "quota", "permission", "host", "provider", "unknown")
 
 SUMMARY = {
     "proxy": "语音连接被本机代理拦截",
@@ -19,6 +19,7 @@ SUMMARY = {
     "auth": "语音服务鉴权失败",
     "quota": "语音服务额度不足或被限流",
     "permission": "麦克风权限或音频设备不可用",
+    "host": "本地桌宠服务连接中断",
     "provider": "语音服务暂时不可用",
     "unknown": "语音服务连接失败",
 }
@@ -29,6 +30,7 @@ ACTION = {
     "auth": "请到 DSH → Bot 设置检查语音 API Key 是否有效，保存后点“重试”。",
     "quota": "请检查 DashScope 账户余额/并发额度，或稍后点“重试”。",
     "permission": "请在系统设置中允许麦克风权限，或检查音频设备后点“重试”。",
+    "host": "请确认桌宠宿主仍在运行；连接恢复后会自动重连。",
     "provider": "服务端暂时异常，请稍后点“重试”；持续失败请把诊断 ID 发给维护者。",
     "unknown": "请点“重试”；持续失败请把诊断 ID 和诊断日志发给维护者。",
 }
@@ -54,6 +56,9 @@ _PATTERNS = (
         r"429|quota|insufficient|balance|rate[ _-]?limit|too many requests|throttl", re.I)),
     ("permission", re.compile(
         r"notallowed|permission|tcc|microphone|audio[ _-]?device|device.*(?:unavailable|error)", re.I)),
+    ("host", re.compile(
+        r"host (?:request|stream|bridge|v2|state)|/v2/(?:command|snapshot|stream|events)"
+        r"|bridge descriptor|dsh-bot-v1", re.I)),
     ("provider", re.compile(
         r"\b5\d\d\b|internal server|server error|bad gateway|service unavailable|overload", re.I)),
     ("network", re.compile(

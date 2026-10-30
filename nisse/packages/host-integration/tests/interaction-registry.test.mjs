@@ -23,19 +23,28 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 const agent = () => ({ session: { id: SESSION } })
 const neverAnswerer = () => new Promise(() => {})
 
-function fixture(t, { forward, mirror: mirrorOptions = {}, registry: registryOptions = {} } = {}) {
+function fixture(t, { forward, feedOfficialEvents = false, mirror: mirrorOptions = {}, registry: registryOptions = {} } = {}) {
   const events = []
+  let registry = null
+  const sink = (type, fields) => {
+    events.push({ type, fields })
+    // Mirrors the production index.js wiring: every mirror settle event is also
+    // pushed into the legacy event sink, which feeds registry.observeOfficial.
+    if (feedOfficialEvents && registry && (type === 'approval.decided' || type === 'question.decided')) {
+      try { registry.observeOfficial({ type, sessionId: fields?.sessionId, data: fields?.data }) } catch { /* ignore */ }
+    }
+  }
   const mirror = createInteractionMirror({
     forward: forward || (async () => neverAnswerer()),
-    emit: (type, fields) => events.push({ type, fields }),
+    emit: sink,
     hasLocalUi: () => true,
     ...mirrorOptions,
   })
-  const registry = createInteractionRegistry({
+  registry = createInteractionRegistry({
     mirror,
     hostEpoch: HOST_EPOCH,
     getSessionId: () => SESSION,
-    emit: (type, fields) => events.push({ type, fields }),
+    emit: sink,
     ...registryOptions,
   })
   t.after(() => {
@@ -135,9 +144,11 @@ test('approval/decided from the official lifetime converges the unambiguous pend
   const pending = askApproval(f.mirror)
   await tick()
   const interactionId = f.firstId()
+  // Durable official events carry a durableSeq; the registry only uses the
+  // unambiguous single-pending fallback for genuinely observed official results.
   assert.equal(f.registry.observeOfficial({
     type: 'approval/decided',
-    data: { outcome: 'rejected', sessionId: SESSION },
+    data: { outcome: 'rejected', sessionId: SESSION, durableSeq: 11 },
   }), true)
   assert.equal(await pending, 'cancelled')
   const snapshot = f.registry.snapshot()
@@ -212,6 +223,96 @@ test('a second decision while the official call is in flight is not applied and 
   assert.equal(loserReplay.result.outcome, 'allowed-once')
   assert.equal(loserReplay.result.alreadyResolved, true)
   assert.equal(officialCalls, 1)
+})
+
+test('a registry created after the mirror already presents a request adopts it and settles on the decision', async (t) => {
+  let decideOfficial
+  const events = []
+  const mirror = createInteractionMirror({
+    forward: () => new Promise((resolve) => { decideOfficial = resolve }),
+    emit: () => {},
+    hasLocalUi: () => true,
+  })
+  t.after(() => { try { mirror.dispose() } catch { /* ignore */ } })
+  const pending = askApproval(mirror)
+  await tick()
+  // Integration order: the mirror request exists before the registry is built.
+  const registry = createInteractionRegistry({
+    mirror,
+    hostEpoch: HOST_EPOCH,
+    getSessionId: () => SESSION,
+    emit: (type, fields) => events.push({ type, fields }),
+  })
+  t.after(() => registry.dispose())
+  const pendingInteractions = registry.snapshot().pending
+  assert.equal(pendingInteractions.length, 1)
+  const interactionId = pendingInteractions[0].id
+  assert.equal(interactionId, mirror.snapshot()[0].id)
+  decideOfficial('rejected')
+  assert.equal(await pending, 'rejected')
+  await tick()
+  assert.equal(registry.snapshot().pending.length, 0)
+  assert.equal(registry.snapshot().recentlyResolved[0].id, interactionId)
+  assert.equal(registry.snapshot().recentlyResolved[0].outcome, 'rejected')
+  assert.equal(registry.stats().officialCalls, 0)
+})
+
+test('production wiring: a voice decision is recorded as a local decision, never double-counted', async (t) => {
+  const f = fixture(t, { feedOfficialEvents: true })
+  const pending = askApproval(f.mirror)
+  await tick()
+  const interactionId = f.firstId()
+  const result = f.registry.resolve({ commandId: 'wired-1', interactionId, semanticRevision: 1, payload: { decision: 'allowed-once' } })
+  assert.equal(result.status, 'resolved')
+  assert.equal(await pending, 'allowed-once')
+  await tick()
+  const snapshot = f.registry.snapshot()
+  assert.equal(snapshot.pending.length, 0)
+  assert.equal(snapshot.recentlyResolved[0].outcome, 'allowed-once')
+  assert.equal(snapshot.recentlyResolved[0].source, 'local')
+  assert.equal(f.registry.stats().officialCalls, 1)
+})
+
+test('production wiring: the mirror settle echo is not mistaken for an out-of-band official result', async (t) => {
+  const f = fixture(t, { feedOfficialEvents: true })
+  askApproval(f.mirror)
+  await tick()
+  const interactionId = f.firstId()
+  const mirrorId = f.mirror.snapshot()[0].id
+  assert.equal(f.registry.observeOfficial({ type: 'approval.decided', data: { id: mirrorId, outcome: 'rejected' } }), false)
+  assert.equal(f.registry.snapshot().pending.length, 1)
+  assert.equal(f.registry.stats().officialCalls, 0)
+})
+
+test('production wiring: the official lifetime timeout converges as expired, not as a fabricated cancellation', async (t) => {
+  const f = fixture(t, { feedOfficialEvents: true, mirror: { approvalTimeoutMs: 20 } })
+  const pending = askApproval(f.mirror)
+  await tick()
+  f.firstId()
+  assert.equal(await pending, 'cancelled')
+  await tick()
+  const snapshot = f.registry.snapshot()
+  assert.equal(snapshot.pending.length, 0)
+  assert.equal(snapshot.recentlyResolved[0].outcome, 'expired')
+  assert.equal(f.registry.stats().officialCalls, 0)
+})
+
+test('production wiring: a durable official decision (with durableSeq) converges the unambiguous pending approval', async (t) => {
+  const f = fixture(t, { feedOfficialEvents: true })
+  const pending = askApproval(f.mirror)
+  await tick()
+  f.firstId()
+  assert.equal(f.registry.observeOfficial({
+    type: 'approval.decided',
+    data: { id: 'official-durable-7', outcome: 'rejected', durableSeq: 7 },
+  }), true)
+  await pending.catch(() => {})
+  const snapshot = f.registry.snapshot()
+  assert.equal(snapshot.pending.length, 0)
+  assert.equal(snapshot.recentlyResolved[0].outcome, 'rejected')
+  assert.equal(snapshot.recentlyResolved[0].source, 'official')
+  assert.equal(f.registry.stats().officialCalls, 0)
+  assert.equal(f.mirror.snapshot().length, 0, 'the withdrawn product request is pulled from the pet surface')
 })
 
 // ---------------------------------------------------------------------------

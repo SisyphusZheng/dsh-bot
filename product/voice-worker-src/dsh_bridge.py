@@ -1,27 +1,25 @@
-"""DSHBridgeProcessor: Pipecat frame processor that talks to the real DSH Agent.
+"""Voice media bridge: reports capture/ASR facts to the Host v2 protocol and
+executes only media commands.
 
-Bridge: the `whalegirl-g2-bridge` host plugin inside DSH web exposes a loopback
-NDJSON stream per turn:
-  admitted -> prompt-accepted -> assistant-start -> text* -> assistant-end -> turn-end
+Authority boundary (plan v2.1 §8.1, kernel §2.3/§2.4/§3.7):
+- The Host ConversationService owns utterance assembly, business routing, input
+  admission, the ordinary queue, confirmation drafts and interaction answers.
+- This processor owns the media boundary only: ASR partial/final facts and
+  capture release/discard facts go out as ``voice.facts``; transport changes go
+  out as ``voice.session``; the Host command stream (``/v2/stream``) is executed
+  with playback/capture identity and acknowledged via ``presentation.ack``.
+- VAD/barge-in/duck effects, echo isolation, capture admission, playback
+  execution, late-audio isolation and error classification stay here.
 
-Key semantics implemented here:
-- one voice utterance = one DSH turn (mapped to sessionId + requestId + DSH turn)
-- streaming assistant text deltas are forwarded as Pipecat TextFrames, so TTS
-  aggregates sentences (no per-token TTS request)
-- barge-in (VAD user started while the bot is speaking) stops playback only;
-  the DSH turn keeps running and its remaining text is dropped (late output isolation)
-- explicit cancel phrases call the bridge /cancel endpoint (real DSH cancel, with
-  keepInbox=true); playback stop and task cancel are separate paths
-- explicit approval answers target the same pending DSH request; ambiguous
-  or stale answers grant nothing and DSH retains execution authority
-- new utterances that arrive while a DSH turn is active are queued locally until
-  the current turn finishes (or is cancelled), preserving DSH's turn authority
+No approval/question/queue/task HTTP endpoint is called from this module, and
+no control phrase is classified here: a spoken control is just another ASR fact
+for the Host to route. Media safety may still drop an echoed/noisy transcript or
+discard a cancelled capture locally.
 """
 
 from __future__ import annotations
 
 import asyncio
-import json
 import os
 import re
 import time
@@ -29,323 +27,632 @@ import uuid
 from collections import deque
 from difflib import SequenceMatcher
 
-import aiohttp
-from wake_phrase import WakePhrase
-from voice_commands import control_kind, control_text, normalize
-from input_admission import InputAdmission
-from voice_errors import build_payload, redact
-from speech_intake import SpeechAssembly, PendingInputs, needs_confirmation
 from loguru import logger
 
+from host_client_v2 import (
+    HostClientV2,
+    HostError,
+    HostRejected,
+    HostResyncRequired,
+    HostProtocolError,
+    HostUnavailable,
+    now_iso,
+)
+from voice_errors import redact, report as report_voice_error
 
 from pipecat.frames.frames import (
-    ErrorFrame,
-    Frame,
     InterimTranscriptionFrame,
     LLMFullResponseEndFrame,
     LLMFullResponseStartFrame,
     OutputTransportMessageUrgentFrame,
     TextFrame,
     TranscriptionFrame,
-    TTSSpeakFrame,
     VADUserStartedSpeakingFrame,
     VADUserStoppedSpeakingFrame,
 )
 from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
+
+
+DEFAULT_DESCRIPTOR = "/tmp/whalegirl-g2/home/whalegirl-g2/descriptor.json"
+COMMAND_TYPES = ("playback.stop", "speech.append", "speech.end", "capture.command", "notice.show")
+ACK_STATES = ("applied", "rejected", "unknown")
+
+
+def normalize(text: str) -> str:
+    """Normalization used only for echo detection; never for control routing."""
+    return re.sub(r"[^0-9a-z\u4e00-\u9fff]", "", str(text or "").lower())
+
 
 def probe_log(message):
     if os.environ.get("DSH_VOICE_DEBUG_PROBES") == "1":
         logger.info(message)
 
 
-DEFAULT_DESCRIPTOR = "/tmp/whalegirl-g2/home/whalegirl-g2/descriptor.json"
-def _is_cancel(text: str) -> bool:
-    return control_kind(text) == 'task-stop'
+class VoiceMediaBridge(FrameProcessor):
+    """One WebRTC media session's voice boundary; business authority is Host."""
 
+    # Echo decisions combine a playback time window with a long contiguous match;
+    # a bare length threshold is not an acoustic oracle. Short valid replies such
+    # as 你好 / 我在 / 想聊什么 / 是 / 否 must always be admissible.
+    ECHO_MIN_CHARS = 6
 
-def _is_interrupt_command(text: str) -> bool:
-    return control_kind(text) in ('playback-stop', 'task-stop', 'approval-allow', 'approval-reject')
-
-
-class DSHBridgeProcessor(FrameProcessor):
-    def __init__(self, descriptor_path: str = "", capture=None):
-        super().__init__(name="DSHBridgeProcessor")
-        self._wake_phrase = WakePhrase(os.environ.get("DSH_WAKE_PHRASE", ""))
-        self._descriptor_path = descriptor_path or os.environ.get("DSH_BRIDGE_DESCRIPTOR", DEFAULT_DESCRIPTOR)
-        self._session: aiohttp.ClientSession | None = None
-        self._current: dict | None = None
-        self._pending = PendingInputs(limit=int(os.environ.get('DSH_PENDING_INPUT_LIMIT','5')), ttl=float(os.environ.get('DSH_PENDING_INPUT_TTL','60')))
-        self._speech = SpeechAssembly(settle=float(os.environ.get('DSH_INPUT_SETTLE_MS','650'))/1000)
-        self._speech_timer = None
-        self._intake_tasks = set()
-        self._queue_session_id = None
-        self._pumping_queue = False
-        self._utterance_targets = {}
-        self._consumed_controls = {}
-        self._input_admission = InputAdmission()
+    def __init__(self, descriptor_path: str = "", capture=None, host=None):
+        super().__init__(name="VoiceMediaBridge")
+        self._descriptor_path = descriptor_path or os.environ.get(
+            "DSH_BRIDGE_DESCRIPTOR", DEFAULT_DESCRIPTOR)
         self._capture = capture
-        self._stop_confirmation = None
-        self._playback_style = 'full'
-        self._question_view = None
-        self._announced_interactions = {}
-        self._spoken_prompts = deque(maxlen=4)
-        self._greeting = ""
-        self._greeting_until = 0.0
-        self._turn_seq = 0
-        self._last_session_id: str | None = None
-        self._quarantined = False
-        self._quarantine_reason: str | None = None
-        self._uncertain_request = None
+        self._host: HostClientV2 | None = host
+        self._connection_id = (getattr(host, "connection_id", "") if host is not None else "") \
+            or ("worker-" + uuid.uuid4().hex)
+        self._host_epoch: str | None = getattr(host, "host_epoch", None) if host is not None else None
+        self._session_id: str | None = getattr(host, "session_id", None) if host is not None else None
+        self._last_seq = 0
+        self._host_task: asyncio.Task | None = None
+        self._started = False
         self._closing = False
-        self._last_request_text: str | None = None
+        self._host_error_reported_at = 0.0
+        self._transport_state = "disconnected"
+        # Capture media state (identity + admission); business capture state is Host's.
+        self._capture_id = ""
+        self._capture_mode = "always"
+        self._capture_state = "off"
+        # ASR fact identity: provider item + recognition revision (never faked confidence).
+        self._item_revisions: dict[tuple[str, str], int] = {}
+        self._item_last_partial: dict[tuple[str, str], str] = {}
+        # Playback execution identity and late-audio isolation.
+        self._playback: dict | None = None
+        self._finished_playbacks: deque = deque(maxlen=256)
+        self._applied_commands: dict[str, str] = {}
+        self._command_order: deque = deque(maxlen=512)
+        # Media-level barge-in/duck state (echo rejection is acoustic, not routing).
         self._barge_candidate: dict | None = None
-        self._last_barge_context: dict | None = None
-        self._barge_confirmed_keys: set[str] = set()
         self._barge_timeout_task: asyncio.Task | None = None
+        self._barge_confirmed_keys: set[str] = set()
+        self._last_barge_context: dict | None = None
         self._duck_state: dict[str, dict] = {}
+        self._echo_transcript_dropped = 0
         self.metrics: dict = {
-            "turns_started": 0,
-            "turns_completed": 0,
-            "cancel_requests": 0,
-            "cancel_confirmed": 0,
-            "cancel_unconfirmed": 0,
-            "text_deltas": 0,
-            "chars_streamed": 0,
-            "barge_ins": 0,
+            "facts_sent": 0,
+            "facts_failed": 0,
+            "facts_rejected": 0,
+            "facts_without_capture": 0,
+            "partial_facts": 0,
+            "final_facts": 0,
+            "duplicate_partials": 0,
+            "capture_facts": 0,
+            "playbacks_started": 0,
+            "playbacks_ended": 0,
+            "playbacks_stopped": 0,
+            "stale_playback_stops": 0,
+            "speech_appends": 0,
+            "late_speech_dropped": 0,
+            "duplicate_speech_dropped": 0,
+            "commands_applied": 0,
+            "commands_rejected": 0,
+            "commands_unknown": 0,
+            "command_duplicates": 0,
+            "ack_failures": 0,
+            "duplicate_events": 0,
+            "host_errors": 0,
+            "session_facts_sent": 0,
+            "session_unreported": 0,
+            "transport_connected": 0,
+            "transport_disconnected": 0,
             "barge_candidates": 0,
             "barge_rejected_echo": 0,
             "barge_confirmed": 0,
+            "barge_ins": 0,
             "barge_duplicates_ignored": 0,
             "barge_pending_short": 0,
             "barge_rejected_short": 0,
-            "echo_transcript_dropped": 0,
-            "barge_command_confirmed": 0,
-            "barge_noncommand_pending": 0,
             "duck_applied": 0,
             "duck_skipped_limit": 0,
-            "late_text_dropped": 0,
-            "approval_events": 0,
-            "finalized_reasons": [],
-            "dsh_first_text_samples": [],
-            "dsh_turn_samples": [],
-            "dsh_turn_epoch_samples": [],
-            "quarantine_blocks": 0,
-            "execution_unknown": 0,
-            "tool_events": 0,
+            "echo_transcript_dropped": 0,
             "errors": 0,
-            "recent_turns": [],
         }
 
-    def set_greeting(self, text):
-        self._greeting = text
-        self._greeting_until = time.monotonic() + max(8.0, len(text) / 3.0 + 3.0)
-        self._last_barge_context = {"turn_key": "welcome", "reply_text": text, "audible": True, "ended_mono": time.monotonic()}
+    # ---- lifecycle -----------------------------------------------------
+    def start(self) -> None:
+        """Start the Host v2 link (idempotent; call from the running loop)."""
+        if self._started or self._closing:
+            return
+        self._started = True
+        if self._host is None:
+            self._host = HostClientV2(self._descriptor_path, connection_id=self._connection_id)
+        self._host_task = asyncio.create_task(self._run_host_link(), name="voice-host-link")
 
-    # Echo decisions combine a playback time window with a *long contiguous match*;
-    # a bare length threshold is not an acoustic oracle. Short valid replies such as
-    # 你好 / 我在 / 想聊什么 / 是 / 否 must always be admissible.
-    ECHO_MIN_CHARS = 6
+    @property
+    def closing(self) -> bool:
+        return self._closing
 
+    async def cleanup(self) -> None:
+        self._closing = True
+        self._cancel_barge_timeout()
+        task = self._host_task
+        self._host_task = None
+        if task is not None:
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+        if self._host is not None:
+            # Media disconnect must never cancel DSH work: only the transport fact is
+            # reported, bounded so a dead Host cannot block worker shutdown.
+            try:
+                await asyncio.wait_for(self._report_session("disconnected"), timeout=1.5)
+            except Exception:
+                pass
+            try:
+                await self._host.close()
+            except Exception:
+                pass
+        await super().cleanup()
+
+    # ---- Host link -----------------------------------------------------
+    async def _run_host_link(self) -> None:
+        backoff = 0.5
+        while not self._closing:
+            try:
+                await self._handshake_and_stream()
+                raise HostUnavailable("host event stream closed", kind="network")
+            except asyncio.CancelledError:
+                raise
+            except HostResyncRequired as exc:
+                logger.info(f"[host-v2] resync required: {exc.reason or exc}")
+                await asyncio.sleep(0.15)
+                backoff = 0.5
+            except HostError as exc:
+                self.metrics["host_errors"] += 1
+                self._report_host_error(exc)
+                await asyncio.sleep(backoff)
+                backoff = min(backoff * 2, 5.0)
+            except Exception as exc:  # never let the link task die silently
+                self.metrics["host_errors"] += 1
+                self.metrics["errors"] += 1
+                self._report_host_error(exc)
+                await asyncio.sleep(backoff)
+                backoff = min(backoff * 2, 5.0)
+
+    async def _handshake_and_stream(self) -> None:
+        snapshot = await self._host.handshake()
+        self._host_epoch = self._host.host_epoch
+        self._session_id = self._host.session_id
+        self._last_seq = self._host.snapshot_seq
+        logger.info(
+            f"[host-v2] connected epoch={self._host_epoch} snapshotSeq={self._last_seq} "
+            f"session={self._session_id} connection={self._connection_id}"
+        )
+        if self._transport_state == "connected":
+            await self._report_session("connected")
+        async for event in self._host.events(self._last_seq):
+            if self._closing:
+                return
+            await self._handle_host_event(event)
+
+    def _report_host_error(self, exc: BaseException) -> None:
+        """Throttle classified Host failures; never fake a successful link."""
+        now = time.monotonic()
+        if now - self._host_error_reported_at < 10.0:
+            return
+        self._host_error_reported_at = now
+        logger.warning(f"[host-v2] link failure kind={getattr(exc, 'kind', 'unknown')} "
+                       f"type={type(exc).__name__}: {redact(str(exc), 300)}")
+        try:
+            asyncio.get_running_loop().create_task(report_voice_error(exc, "host"))
+        except RuntimeError:
+            pass
+
+    async def _handle_host_event(self, event: dict) -> None:
+        if event.get("protocolVersion") is not None and event.get("protocolVersion") != "dsh-bot-v1":
+            raise HostProtocolError("host event protocolVersion mismatch")
+        epoch = event.get("hostEpoch")
+        if self._host_epoch is not None and epoch != self._host_epoch:
+            raise HostResyncRequired("host epoch changed", reason="host-epoch-changed")
+        seq = event.get("seq")
+        if isinstance(seq, bool) or not isinstance(seq, int) or seq <= 0:
+            raise HostProtocolError("host event seq is invalid")
+        if seq <= self._last_seq:
+            self.metrics["duplicate_events"] += 1
+            return
+        if seq != self._last_seq + 1:
+            raise HostResyncRequired("host event stream gap", reason="gap")
+        self._last_seq = seq
+        session_id = event.get("sessionId")
+        if isinstance(session_id, str) and session_id:
+            self._session_id = session_id
+        event_type = event.get("type")
+        if event_type == "command":
+            data = event.get("data")
+            if isinstance(data, dict):
+                await self._execute_command(data)
+            else:
+                self.metrics["errors"] += 1
+                logger.warning("[host-v2] command event without data object")
+        elif event_type in ("playback.changed", "capture.changed"):
+            # Media projection only; Host remains the business owner.
+            probe_log(f"[host-v2] event {event_type} seq={seq}")
+        elif event_type in ("interaction.requested", "interaction.resolved", "notice.added"):
+            # Host sends notice.show / speech.append commands when text must be
+            # spoken or shown; the worker never decides those business triggers.
+            probe_log(f"[host-v2] event {event_type} seq={seq}")
+
+    # ---- Host -> worker media commands ---------------------------------
+    async def _execute_command(self, data: dict) -> None:
+        command_id = data.get("commandId")
+        command_type = data.get("type")
+        payload = data.get("payload")
+        if not isinstance(command_id, str) or not command_id or len(command_id) > 200:
+            self.metrics["errors"] += 1
+            logger.warning("[host-v2] command without valid commandId ignored")
+            return
+        if not isinstance(payload, dict):
+            await self._ack(command_id, "rejected", "invalid-payload")
+            return
+        prior = self._applied_commands.get(command_id)
+        if prior is not None:
+            self.metrics["command_duplicates"] += 1
+            await self._ack(command_id, prior)
+            return
+        handler = self._COMMAND_HANDLERS.get(command_type)
+        state, detail, extra = "unknown", None, None
+        try:
+            if handler is None:
+                state, detail = "rejected", "unsupported-command-type"
+            else:
+                outcome = await handler(self, payload)
+                if isinstance(outcome, tuple) and len(outcome) == 3:
+                    state, detail, extra = outcome
+                elif isinstance(outcome, tuple) and len(outcome) == 2:
+                    state, detail = outcome
+                else:
+                    state = outcome
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            self.metrics["command_errors"] = self.metrics.get("command_errors", 0) + 1
+            self.metrics["errors"] += 1
+            logger.warning(f"[host-v2] command {redact(str(command_type), 40)} failed: "
+                           f"{type(exc).__name__}: {redact(str(exc), 200)}")
+            state, detail = "unknown", type(exc).__name__
+        if state not in ACK_STATES:
+            state = "unknown"
+        if state == "applied":
+            self.metrics["commands_applied"] += 1
+        elif state == "rejected":
+            self.metrics["commands_rejected"] += 1
+        else:
+            self.metrics["commands_unknown"] += 1
+        self._remember_command(command_id, state)
+        await self._ack(command_id, state, detail, extra)
+
+    _COMMAND_HANDLERS: dict = {}  # populated after the class body (methods below)
+
+    def _remember_command(self, command_id: str, state: str) -> None:
+        if command_id not in self._applied_commands:
+            self._command_order.append(command_id)
+        self._applied_commands[command_id] = state
+        while len(self._applied_commands) > 512 and self._command_order:
+            stale = self._command_order.popleft()
+            if stale in self._applied_commands:
+                self._applied_commands.pop(stale, None)
+
+    async def _ack(self, command_id: str, state: str, detail: str | None = None,
+                   extra: dict | None = None) -> None:
+        payload = {"commandId": command_id, "state": state}
+        if detail:
+            payload["detail"] = str(detail)[:200]
+        if isinstance(extra, dict):
+            for key in ("playbackId", "noticeId", "captureId"):
+                value = extra.get(key)
+                if isinstance(value, str) and value:
+                    payload[key] = value[:300]
+        if self._host is None or self._host_epoch is None:
+            self.metrics["session_unreported"] += 1
+            return
+        cmd_id = str(uuid.uuid4())
+        try:
+            await self._host.send_command(
+                "presentation.ack", payload, command_id=cmd_id, session_id=self._session_id)
+        except asyncio.CancelledError:
+            raise
+        except HostError as exc:
+            self.metrics["ack_failures"] += 1
+            logger.warning(f"[host-v2] ack failed for {redact(command_id, 60)}: {type(exc).__name__}")
+        except Exception:
+            self.metrics["ack_failures"] += 1
+
+    # playback.stop {playbackId?, reason}
+    async def _cmd_playback_stop(self, payload: dict) -> tuple[str, str | None]:
+        playback_id = payload.get("playbackId")
+        reason = str(payload.get("reason") or "stop")[:80]
+        current = self._playback
+        if playback_id not in (None, ""):
+            if not isinstance(playback_id, str) or len(playback_id) > 300:
+                return "rejected", "invalid-playback-id"
+            if current is None or current.get("playback_id") != playback_id:
+                # A late stop for an older playback must never mute the new one.
+                self.metrics["stale_playback_stops"] += 1
+                return "applied", "stale-playback-ignored", {"playbackId": playback_id}
+        elif current is None:
+            return "applied", "no-active-playback", None
+        assert current is not None
+        self._cancel_barge_timeout()
+        self._barge_candidate = None
+        await self._close_playback(current, interrupt=True)
+        self._remember_playback(current)
+        self._playback = None
+        self._finished_playbacks.append(current["playback_id"])
+        self.metrics["playbacks_stopped"] += 1
+        await self._send_rtvi({
+            "type": "stop-playback",
+            "playbackId": current["playback_id"],
+            "reason": reason,
+        })
+        return "applied", None, {"playbackId": current["playback_id"]}
+
+    # speech.append {turnId, text, seq}
+    async def _cmd_speech_append(self, payload: dict) -> tuple[str, str | None]:
+        turn_id = payload.get("turnId")
+        text = payload.get("text")
+        seq = payload.get("seq")
+        if not isinstance(turn_id, str) or not turn_id or len(turn_id) > 300:
+            return "rejected", "missing-turn-id"
+        if not isinstance(text, str) or not text.strip() or len(text) > 20000:
+            return "rejected", "invalid-text"
+        if isinstance(seq, bool) or not isinstance(seq, int) or seq < 1:
+            return "rejected", "invalid-seq"
+        if turn_id in self._finished_playbacks:
+            # Late TTS for a stopped/ended playback must not reopen old audio.
+            self.metrics["late_speech_dropped"] += 1
+            return "applied", "stale-playback-dropped", {"playbackId": turn_id}
+        current = self._playback
+        if current is None or current.get("playback_id") != turn_id:
+            if current is not None:
+                await self._close_playback(current, interrupt=True)
+                self._remember_playback(current)
+                self._finished_playbacks.append(current["playback_id"])
+            current = {
+                "playback_id": turn_id,
+                "turn_id": turn_id,
+                "last_seq": 0,
+                "open": False,
+                "stopped": False,
+                "reply_text": "",
+                "text_events": [],
+                "started_mono": time.monotonic(),
+            }
+            self._playback = current
+            self.metrics["playbacks_started"] += 1
+            await self._send_rtvi({"type": "playback-identity",
+                                   "playbackId": turn_id, "turnId": turn_id})
+        if seq <= current.get("last_seq", 0):
+            self.metrics["duplicate_speech_dropped"] += 1
+            return "applied", "stale-seq-dropped", {"playbackId": turn_id}
+        current["last_seq"] = seq
+        events = current.setdefault("text_events", [])
+        events.append({"text": text, "at_mono": time.monotonic()})
+        current["text_events"] = events[-80:]
+        current["reply_text"] = (current.get("reply_text", "") + text)[-4000:]
+        if not current.get("open"):
+            current["open"] = True
+            await self.push_frame(LLMFullResponseStartFrame())
+        self.metrics["speech_appends"] += 1
+        await self.push_frame(TextFrame(text=text))
+        return "applied", None, {"playbackId": turn_id}
+
+    # speech.end {turnId, reason}
+    async def _cmd_speech_end(self, payload: dict) -> tuple[str, str | None]:
+        turn_id = payload.get("turnId")
+        if not isinstance(turn_id, str) or not turn_id:
+            return "rejected", "missing-turn-id"
+        current = self._playback
+        if current is None or current.get("playback_id") != turn_id:
+            return "rejected", "unknown-playback"
+        await self._close_playback(current)
+        self._remember_playback(current)
+        self._playback = None
+        self._finished_playbacks.append(turn_id)
+        self.metrics["playbacks_ended"] += 1
+        return "applied", None, {"playbackId": turn_id}
+
+    # capture.command {action, captureId, mode?}
+    async def _cmd_capture_command(self, payload: dict) -> tuple[str, str | None]:
+        action = payload.get("action")
+        capture_id = payload.get("captureId")
+        mode = payload.get("mode")
+        if action not in ("start", "finish", "discard"):
+            return "rejected", "invalid-capture-action"
+        if not isinstance(capture_id, str) or not capture_id or len(capture_id) > 100:
+            return "rejected", "invalid-capture-id"
+        if self._capture is None:
+            return "rejected", "capture-policy-unavailable"
+        mode_arg = mode if mode in ("hold", "toggle", "always") \
+            else self._capture.modes.get(capture_id, "always")
+        if not self._capture.control(action, capture_id, mode_arg):
+            return "rejected", "capture-admission-rejected"
+        if action == "start":
+            self._capture_id = capture_id
+            self._capture_mode = mode_arg
+            self._capture_state = "listening"
+            await self._send_rtvi({"type": "capture-ack", "action": action, "captureId": capture_id})
+        else:
+            self._capture_state = "off" if action == "discard" else "closing"
+            self._drop_stale_barge_for_capture(capture_id)
+            await self._send_rtvi({"type": "capture-ack", "action": action, "captureId": capture_id})
+        return "applied", None, {"captureId": capture_id}
+
+    # notice.show {noticeId, text, kind}
+    async def _cmd_notice_show(self, payload: dict) -> tuple[str, str | None]:
+        notice_id = payload.get("noticeId")
+        text = payload.get("text")
+        kind = str(payload.get("kind") or "status")[:40]
+        if not isinstance(text, str) or not text.strip() or len(text) > 4000:
+            return "rejected", "invalid-notice-text"
+        if notice_id is not None and (not isinstance(notice_id, str) or len(notice_id) > 200):
+            return "rejected", "invalid-notice-id"
+        await self._send_rtvi({"type": "notice", "noticeId": notice_id, "text": text, "kind": kind})
+        return "applied", None, {"noticeId": notice_id if isinstance(notice_id, str) else None}
+
+    # ---- outbound facts ------------------------------------------------
+    async def _report_facts(self, items: list[dict], capture_id: str, mode: str,
+                            state: str, release: dict | None = None) -> dict | None:
+        if self._host is None or self._host_epoch is None:
+            self.metrics["facts_failed"] += 1
+            return None
+        payload = {
+            "connectionId": self._connection_id,
+            "capture": {"captureId": capture_id, "mode": mode, "state": state},
+            "items": items,
+        }
+        if release is not None:
+            payload["release"] = release
+        try:
+            receipt = await self._host.send_command(
+                "voice.facts", payload, session_id=self._session_id)
+        except asyncio.CancelledError:
+            raise
+        except HostRejected as exc:
+            self.metrics["facts_rejected"] += 1
+            logger.warning(f"[host-v2] facts rejected: {exc.code or exc}")
+            return None
+        except HostError as exc:
+            self.metrics["facts_failed"] += 1
+            self._report_host_error(exc)
+            return None
+        except Exception as exc:
+            self.metrics["facts_failed"] += 1
+            self.metrics["errors"] += 1
+            logger.warning(f"[host-v2] facts failed: {type(exc).__name__}")
+            return None
+        self.metrics["facts_sent"] += 1
+        # Low-latency media actions may ride the receipt commands[]; execute and
+        # ack them exactly like stream commands (commandId dedupe is shared).
+        result = receipt.get("result")
+        commands = result.get("commands") if isinstance(result, dict) else None
+        if isinstance(commands, list):
+            for command in commands:
+                # The Host receipt may carry reference hints ({commandId,type}) while
+                # the canonical command event (with payload) arrives on /v2/stream.
+                # Execute only complete entries so the SSE event still executes.
+                if not isinstance(command, dict):
+                    continue
+                if not isinstance(command.get("payload"), dict) or not command.get("commandId"):
+                    self.metrics["receipt_hints_skipped"] = \
+                        self.metrics.get("receipt_hints_skipped", 0) + 1
+                    continue
+                await self._execute_command(command)
+        return receipt
+
+    async def _report_session(self, transport: str) -> dict | None:
+        if self._host is None or self._host_epoch is None:
+            self.metrics["session_unreported"] += 1
+            return None
+        payload = {
+            "connectionId": self._connection_id,
+            "transport": transport,
+            "mediaState": self._media_state(),
+        }
+        try:
+            receipt = await self._host.send_command(
+                "voice.session", payload, session_id=self._session_id)
+        except asyncio.CancelledError:
+            raise
+        except HostError as exc:
+            self.metrics["session_unreported"] += 1
+            self._report_host_error(exc)
+            return None
+        except Exception:
+            self.metrics["session_unreported"] += 1
+            return None
+        self.metrics["session_facts_sent"] += 1
+        return receipt
+
+    def _media_state(self) -> dict:
+        playback = self._playback or {}
+        return {
+            "connectionId": self._connection_id,
+            "capture": {
+                "enabled": bool(self._capture.enabled) if self._capture is not None else False,
+                "captureId": self._capture_id or None,
+                "mode": self._capture_mode,
+                "state": self._capture_state,
+            },
+            "playback": {
+                "state": "speaking" if playback.get("open") else "idle",
+                "playbackId": playback.get("playback_id"),
+            },
+            "transport": self._transport_state,
+        }
+
+    async def report_transport(self, state: str) -> None:
+        if state not in ("connected", "disconnected"):
+            return
+        self._transport_state = state
+        self.metrics["transport_" + state] += 1
+        await self._report_session(state)
+
+    # ---- capture facts (user gesture / provider events) ----------------
+    async def capture_changed(self, action: str, capture_id: str, mode: str | None = None) -> None:
+        if action not in ("start", "finish", "discard"):
+            return
+        if mode in ("hold", "toggle", "always"):
+            self._capture_mode = mode
+        elif self._capture is not None:
+            self._capture_mode = self._capture.modes.get(capture_id, self._capture_mode)
+        self._capture_id = capture_id
+        if action == "start":
+            self._capture_state = "listening"
+            self.metrics["capture_facts"] += 1
+            await self._report_facts([], capture_id, self._capture_mode, "listening")
+            return
+        self._capture_state = "off" if action == "discard" else "closing"
+        self.metrics["capture_facts"] += 1
+        await self._report_facts(
+            [], capture_id, self._capture_mode, self._capture_state,
+            release={"captureId": capture_id,
+                     "reason": "discard" if action == "discard" else "release"},
+        )
+        if action == "finish":
+            self._capture_state = "off"
+
+    # ---- frame handling ------------------------------------------------
     @classmethod
-    def _echo_like(cls, heard, window):
+    def _echo_like(cls, heard: str, window: str) -> bool:
         """True only for a long contiguous (or near-identical) echo of the window."""
         if not heard or not window or len(heard) < cls.ECHO_MIN_CHARS:
             return False
         required = max(cls.ECHO_MIN_CHARS, int(len(window) * 0.5))
         if heard in window:
             return len(heard) >= required
-        return len(heard) >= required and SequenceMatcher(None, heard[-40:], window[-120:]).ratio() >= 0.8
+        return len(heard) >= required and SequenceMatcher(
+            None, heard[-40:], window[-120:]).ratio() >= 0.8
 
     def _input_noise(self, text):
-        heard = re.sub(r"[^0-9A-Za-z\u4e00-\u9fff]", "", text or "").lower()
+        heard = normalize(text)
         if not heard or re.fullmatch(r"[嗯啊哦呃额唔]+", heard):
             return True
-        if any(time.monotonic() < until and self._echo_like(heard, normalize(prompt)) for prompt, until in self._spoken_prompts):
-            return True
-        greeting = re.sub(r"[^0-9A-Za-z\u4e00-\u9fff]", "", self._greeting).lower()
-        if time.monotonic() < self._greeting_until and self._echo_like(heard, greeting):
-            return True
-        ctx = self._current or self._last_barge_context or {}
-        recent = "".join(e.get("text", "") for e in ctx.get("text_events", []) if time.monotonic() - e.get("at_mono", 0) <= 6.0)
-        # The completed reply is relevant only during its bounded playback tail.
+        ctx = self._playback or self._last_barge_context or {}
+        recent = "".join(
+            event.get("text", "") for event in ctx.get("text_events", [])
+            if time.monotonic() - event.get("at_mono", 0) <= 6.0)
         if ctx is self._last_barge_context and time.monotonic() - ctx.get("ended_mono", 0) > 30:
             return False
-        spoken = re.sub(r"[^0-9A-Za-z\u4e00-\u9fff]", "", recent or ctx.get("reply_text", "")).lower()
+        spoken = recent or ctx.get("reply_text", "")
         return self._echo_like(heard, spoken)
 
-    # ---- lifecycle -----------------------------------------------------
-    async def cleanup(self):
-        self._closing = True
-        if self._speech_timer: self._speech_timer.cancel()
-        for owned in list(self._intake_tasks): owned.cancel()
-        if self._intake_tasks: await asyncio.gather(*self._intake_tasks, return_exceptions=True)
-        timer = self._barge_timeout_task
-        self._cancel_barge_timeout()
-        if timer is not None:
-            await asyncio.gather(timer, return_exceptions=True)
-        current = self._current
-        if current and current.get('task'):
-            await self._cancel_task_quietly(current['task'])
-        await self._close_session()
-        await super().cleanup()
-
-    async def _close_session(self):
-        if self._session is not None and not self._session.closed:
-            await self._session.close()
-        self._session = None
-
-    def _load_descriptor(self) -> dict:
-        with open(self._descriptor_path, "r", encoding="utf-8") as fh:
-            return json.load(fh)
-
-    async def _cancel_task_quietly(self, task):
-        try:
-            await self.cancel_task(task)
-        except Exception:
-            pass
-
-    def _get_session(self) -> aiohttp.ClientSession:
-        if self._session is None or self._session.closed:
-            self._session = aiohttp.ClientSession()
-        return self._session
-
-    def _cancel_barge_timeout(self):
-        task = self._barge_timeout_task
-        self._barge_timeout_task = None
-        if task is not None and not task.done():
-            task.cancel()
-
-    async def _barge_timeout(self, cand: dict, timeout_s: float = 3.0):
-        try:
-            await asyncio.sleep(timeout_s)
-            if self._barge_candidate is not cand:
-                return
-            if cand.get("confirmed"):
-                return
-            self.metrics["barge_rejected_short"] += 1
-            self._barge_candidate = None
-            await self._restore_duck(cand)
-            logger.info(f"[dsh] barge-in candidate timeout -> restored volume id={cand.get('candidate_id')}")
-        except asyncio.CancelledError:
-            return
-
-    async def _send_rtvi(self, payload: dict):
-        await self.push_frame(OutputTransportMessageUrgentFrame(message={
-            "id": f"{payload.get('type','msg')}-{round(time.time()*1000)}",
-            "label": "rtvi-ai",
-            "type": "server-message",
-            "data": payload,
-        }))
-
-    async def _restore_duck(self, cand: dict | None):
-        if not cand:
-            return
-        turn_key = str(cand.get("turn_key"))
-        st = self._duck_state.setdefault(turn_key, {"used": 0, "cooldown_until": 0.0})
-        st["cooldown_until"] = time.monotonic() + 2.0
-        await self._send_rtvi({
-            "type": "restore-playback",
-            "candidateId": cand.get("candidate_id"),
-            "requestId": cand.get("request_id"),
-            "turnKey": cand.get("turn_key"),
-            "epochMs": round(time.time() * 1000),
-        })
-
-    # ---- frame handling -------------------------------------------------
-    async def process_frame(self, frame: Frame, direction: FrameDirection):
+    async def process_frame(self, frame, direction: FrameDirection):
         if self._closing:
             return
         await super().process_frame(frame, direction)
 
         if isinstance(frame, VADUserStartedSpeakingFrame):
-            if self._capture is not None and self._capture.modes.get(self._capture.current, 'always') == 'always':
-                # Passive VAD is neither speaker identity nor intent. Exact final
-                # controls remain available; background speech cannot stop TTS.
+            if self._capture is not None and \
+                    self._capture.modes.get(self._capture.current, "always") == "always":
+                # Passive VAD is neither speaker identity nor intent; the Host
+                # routes facts, and background speech cannot start business work.
                 return
-            cur = self._current
-            probe_log(
-                f"[g3-probe] vad_started_bridge turn={cur.get('turn_key') if cur else None} "
-                f"request={cur.get('request_id') if cur else None} dsh_turn={cur.get('dsh_turn') if cur else None} "
-                f"audible={cur.get('audible') if cur else None} text_started={cur.get('text_started') if cur else None} "
-                f"epoch_ms={round(time.time()*1000)} mono={time.monotonic():.3f}"
-            )
-            if os.environ.get('DSH_TEST_DISABLE_BARGE_IN') == '1':
+            if os.environ.get("DSH_TEST_DISABLE_BARGE_IN") == "1":
                 self._barge_candidate = None
                 return
-            dup_key = cur.get("turn_key") if cur is not None else (self._last_barge_context or {}).get("turn_key")
-            if dup_key and dup_key in self._barge_confirmed_keys:
-                self.metrics["barge_duplicates_ignored"] += 1
-                self._barge_candidate = None
-                logger.info(f"[dsh] duplicate barge-in candidate ignored turn={dup_key} (turn already confirmed)")
-                return
-            ctx = None
-            if cur is not None and cur.get("audible") and cur.get("text_started"):
-                ctx = {**cur, "context_source": "active"}
-            elif self._last_barge_context is not None and time.monotonic() - self._last_barge_context["ended_mono"] < 30.0 and self._last_barge_context.get("audible"):
-                ctx = {**self._last_barge_context, "context_source": "playback-tail"}
-            if ctx is not None and ctx.get("turn_key") in self._barge_confirmed_keys:
-                self._barge_candidate = None
-                self.metrics["barge_duplicates_ignored"] += 1
-                logger.info(f"[dsh] duplicate barge-in candidate ignored turn={ctx.get('turn_key')}")
-            elif ctx is not None and self._barge_candidate is not None and self._barge_candidate.get("turn_key") == ctx.get("turn_key"):
-                logger.info(f"[dsh] duplicate VAD merged into active candidate turn={ctx.get('turn_key')} (no re-duck/no timer reset)")
-                return
-            elif ctx is not None:
-                now_mono = time.monotonic()
-                events = ctx.get("text_events") or []
-                recent = "".join(e.get("text", "") for e in events if now_mono - e.get("at_mono", 0) <= 6.0)
-                if not recent:
-                    recent = ctx.get("reply_text", "")[-120:]
-                candidate_id = f"{ctx.get('turn_key')}-{round(time.time()*1000)}"
-                self._barge_candidate = {
-                    "candidate_id": candidate_id,
-                    "started_mono": now_mono,
-                    "started_epoch_ms": round(time.time() * 1000),
-                    "turn_key": ctx.get("turn_key"),
-                    "request_id": ctx.get("request_id"),
-                    "dsh_turn": ctx.get("dsh_turn"),
-                    "reply_text": ctx.get("reply_text", ""),
-                    "recent_window": recent,
-                    "context_source": ctx.get("context_source"),
-                    "text": "",
-                    "asr_updates": [],
-                    "vad_stopped_mono": None,
-                }
-                self.metrics["barge_candidates"] += 1
-                self._cancel_barge_timeout()
-                self._barge_timeout_task = asyncio.create_task(self._barge_timeout(self._barge_candidate))
-                turn_key = str(ctx.get("turn_key"))
-                st = self._duck_state.setdefault(turn_key, {"used": 0, "cooldown_until": 0.0})
-                if len(self._duck_state) > 200:
-                    self._duck_state = dict(list(self._duck_state.items())[-100:])
-                now_mono2 = time.monotonic()
-                ducked = False
-                if now_mono2 >= st["cooldown_until"]:
-                    st["used"] += 1
-                    ducked = True
-                    self.metrics["duck_applied"] += 1
-                    await self._send_rtvi({
-                        "type": "duck-playback",
-                        "candidateId": candidate_id,
-                        "requestId": ctx.get("request_id"),
-                        "turnKey": ctx.get("turn_key"),
-                        "factor": 0.3,
-                        "epochMs": round(time.time() * 1000),
-                    })
-                else:
-                    self.metrics["duck_skipped_limit"] += 1
-                    logger.info(
-                        f"[dsh] ducking skipped turn={turn_key} used={st['used']} "
-                        f"cooldown={max(0.0, st['cooldown_until']-now_mono2):.2f}s"
-                    )
-                logger.info(
-                    f"[dsh] barge-in candidate turn={ctx.get('turn_key')} source={ctx.get('context_source')} "
-                    f"id={candidate_id} duck={ducked} used={st['used']} (awaiting ASR confirmation)"
-                )
-            else:
-                self._barge_candidate = None
-            # Do not forward raw VAD downstream: the client must only react to a
-            # confirmed barge-in, not to every VAD trigger.
+            await self._start_barge_candidate()
             return
 
         if isinstance(frame, VADUserStoppedSpeakingFrame):
@@ -354,876 +661,344 @@ class DSHBridgeProcessor(FrameProcessor):
             return
 
         if isinstance(frame, (InterimTranscriptionFrame, TranscriptionFrame)):
-            if self._input_noise(frame.text):
-                cand = self._barge_candidate
-                if cand and self._echo_like(normalize(frame.text), normalize(cand.get('recent_window') or cand.get('reply_text', ''))):
-                    self.metrics['barge_rejected_echo'] += 1
-                    self._barge_candidate = None
-                    self._cancel_barge_timeout()
-                    await self._restore_duck(cand)
-                if isinstance(frame, TranscriptionFrame) and frame.metadata.get("capture_id"):
-                    await self._send_rtvi({"type":"capture-rejected", "captureId":frame.metadata["capture_id"], "utteranceId":frame.metadata.get("utterance_id")})
-                return
-            key = self._utterance_key(frame.metadata)
-            if key and key not in self._utterance_targets:
-                self._utterance_targets[key] = {'current': self._current, 'requests': None, 'task': None}
-                if len(self._utterance_targets) > 128:
-                    self._utterance_targets.pop(next(iter(self._utterance_targets)))
-            if 'question_view' not in frame.metadata and not frame.metadata.get('assembled'):
-                frame.metadata['question_view']=self._question_view
-            kind = control_kind(frame.text)
-            if key and kind in ('approval-allow', 'approval-reject', 'approval-ambiguous'):
-                target = self._utterance_targets[key]
-                if target['requests'] is None:
-                    try:
-                        target['requests'] = (await self._bridge_request('GET', '/interactions')).get('requests', [])
-                    except Exception:
-                        target['requests'] = []
-            if key and kind == 'task-stop' and self._utterance_targets[key]['current'] is None:
-                target = self._utterance_targets[key]
-                if target['task'] is None:
-                    try:
-                        target['task'] = await self._bridge_request('GET', '/task-state')
-                    except Exception:
-                        target['task'] = {}
-            capture_id = frame.metadata.get("capture_id")
-            if capture_id:
-                waiting = not frame.metadata.get('input_confirmed') and (frame.metadata.get('input_mode') == 'always' or not frame.metadata.get('assembled') or needs_confirmation(frame.text))
-                await self._send_rtvi({"type": "capture-transcript", "text": frame.text, "final": isinstance(frame, TranscriptionFrame), "requiresConfirmation": waiting, "captureId": capture_id, "utteranceId": frame.metadata.get("utterance_id", capture_id)})
-
-        if isinstance(frame, InterimTranscriptionFrame):
-            cand = self._barge_candidate
-            if cand is not None:
-                text = (frame.text or "").strip()
-                if text:
-                    cand["text"] = text
-                age = time.monotonic() - cand["started_mono"]
-                if age > 3.0:
-                    self.metrics["barge_rejected_short"] += 1
-                    cand_exp = self._barge_candidate
-                    self._barge_candidate = None
-                    self._cancel_barge_timeout()
-                    await self._restore_duck(cand_exp)
-                    logger.info("[dsh] barge-in candidate expired without confirmation")
-                    await self.push_frame(frame, direction); return
-                if age >= 0.15 and text:
-                    norm = lambda s: re.sub(r"[^0-9A-Za-z\u4e00-\u9fff]", "", s or "").lower()
-                    heard = norm(text)
-                    cand["asr_updates"].append(heard)
-                    cand["asr_updates"] = cand["asr_updates"][-10:]
-                    spoken = norm(cand.get("recent_window") or cand.get("reply_text", ""))
-                    echo = False
-                    if len(heard) >= 2 and spoken:
-                        if heard in spoken:
-                            echo = True
-                        else:
-                            ratio = SequenceMatcher(None, heard[-40:], spoken[-80:]).ratio()
-                            echo = ratio >= 0.7
-                    if echo:
-                        self.metrics["barge_rejected_echo"] += 1
-                        cand_echo = self._barge_candidate
-                        self._barge_candidate = None
-                        self._cancel_barge_timeout()
-                        await self._restore_duck(cand_echo)
-                        logger.info(f"[dsh] barge-in candidate rejected as echo: asr={text!r} window_tail={spoken[-60:]!r}")
-                        return
-                    # Confirm explicit commands or a distinct utterance after echo and stabilization filters.
-                    if not _is_interrupt_command(heard):
-                        self.metrics["barge_noncommand_pending"] += 1
-                        logger.info(f"[dsh] barge-in non-command ASR pending: asr={text!r} age={age:.2f} window_tail={spoken[-50:]!r}")
-                        if age > 3.0:
-                            self.metrics["barge_rejected_short"] += 1
-                            cand_exp2 = self._barge_candidate
-                            self._barge_candidate = None
-                            self._cancel_barge_timeout()
-                            await self._restore_duck(cand_exp2)
-                            logger.info("[dsh] barge-in candidate expired (non-command)")
-                        await self.push_frame(frame, direction); return
-                    if age < 0.4:
-                        self.metrics["barge_pending_short"] += 1
-                        logger.info(f"[dsh] barge-in command pending stabilization: asr={text!r} age={age:.2f}")
-                        await self.push_frame(frame, direction); return
-                    self.metrics["barge_command_confirmed"] += 1
-                    logger.info(f"[dsh] barge-in COMMAND accepted: asr={text!r} age={age:.2f} window_tail={spoken[-50:]!r}")
-                    key = str(cand.get("turn_key"))
-                    if key in self._barge_confirmed_keys:
-                        self.metrics["barge_duplicates_ignored"] += 1
-                        logger.info(f"[dsh] duplicate confirmation ignored turn={key}")
-                        self._barge_candidate = None
-                        return
-                    self._cancel_barge_timeout()
-                    self._barge_confirmed_keys.add(key)
-                    if len(self._barge_confirmed_keys) > 200:
-                        self._barge_confirmed_keys = set(list(self._barge_confirmed_keys)[-100:])
-                    if self._current is not None and self._current.get("turn_key") == cand.get("turn_key"):
-                        self._current["audible"] = False
-                    self.metrics["barge_ins"] += 1
-                    self.metrics["barge_confirmed"] += 1
-                    logger.info(
-                        f"[dsh] barge-in CONFIRMED turn={cand.get('turn_key')} source={cand.get('context_source')} asr={text!r} "
-                        f"epoch_ms={round(time.time()*1000)} mono={time.monotonic():.3f}"
-                    )
-                    await self.broadcast_interruption()
-                    payload = {
-                        "type": "barge-in-confirmed",
-                        "requestId": cand.get("request_id"),
-                        "turnId": cand.get("dsh_turn"),
-                        "turnKey": cand.get("turn_key"),
-                        "contextSource": cand.get("context_source"),
-                        "audioGeneration": None,
-                        "epochMs": round(time.time() * 1000),
-                    }
-                    await self.push_frame(OutputTransportMessageUrgentFrame(message={
-                        "id": f"barge-{key}-{round(time.time()*1000)}",
-                        "label": "rtvi-ai",
-                        "type": "server-message",
-                        "data": payload,
-                    }))
-                    self._barge_candidate = None
-                    return
-            await self.push_frame(frame, direction)
-            return
-
-        if isinstance(frame, TranscriptionFrame):
+            final = isinstance(frame, TranscriptionFrame)
             text = (frame.text or "").strip()
             if not text:
-                await self.push_frame(frame, direction)
                 return
-            passive = frame.metadata.get('input_mode') == 'always'
-            if passive and self._capture is not None and (not self._capture.enabled or frame.metadata.get('capture_id') != self._capture.current):
+            if self._input_noise(text):
+                await self._media_reject_transcript(frame, final)
                 return
-            if control_text(text) in ('确认发送', '发送这句'):
-                draft = self._input_admission.draft
-                if draft:
-                    await self.confirm_input(draft['id'])
-                else:
-                    await self._control_notice('没有等待发送的语音输入。')
-                return
-            if control_text(text) in ('取消输入', '丢弃输入'):
-                draft = self._input_admission.draft
-                if draft:
-                    await self.discard_input(draft['id'])
-                return
-            if control_kind(text) not in ('playback-stop','task-stop','task-status','playback-brief','playback-full') and await self._answer_question(text,frame.metadata):
-                return
-            if await self._handle_control(text, frame.metadata):
-                return
-            if frame.metadata.get('input_mode') and frame.metadata.get('capture_id') and not frame.metadata.get('assembled'):
-                try:
-                    self._speech.add(text, frame.metadata)
-                    self._schedule_speech()
-                except ValueError as exc: await self._control_notice(str(exc))
-                return
-            if await self._answer_question(text,frame.metadata):
-                return
-            if not frame.metadata.get('input_confirmed') and (passive or frame.metadata.get('assembled') and needs_confirmation(text)):
-                if self._wake_phrase.admit(text, active=self._current is not None, commit=False) is None:
-                    return
-                draft = self._input_admission.offer(text, frame.metadata)
-                if draft:
-                    await self._send_rtvi({'type': 'input-confirmation', 'id': draft['id'], 'text': text, 'captureId': frame.metadata.get('capture_id'), 'ttlMs': 30000})
-                else:
-                    await self.enqueue_input(text, frame.metadata, confirm=True)
-                return
-            # P1: drop final transcripts that closely match the recent spoken window.
-            # Short legitimate replies (你好/我在/想聊什么/是/否) must survive; only a
-            # long contiguous echo of the bounded playback window is dropped.
-            norm = lambda s: re.sub(r"[^0-9A-Za-z\u4e00-\u9fff]", "", s or "").lower()
-            heard = norm(text)
-            ctx = self._last_barge_context or ({**self._current} if self._current else {})
-            events = ctx.get("text_events") or []
-            recent = "".join(e.get("text", "") for e in events if time.monotonic() - e.get("at_mono", 0) <= 6.0)
-            window = norm(recent or ctx.get("reply_text", ""))
-            if self._echo_like(heard, window):
-                self.metrics["echo_transcript_dropped"] += 1
-                logger.info(f"[dsh] echoed transcript dropped: {text!r}")
-                return
-            if self._quarantined and text not in ("重试", "retry") and self._quarantine_reason == "cancel-unconfirmed":
-                # Only a cancel-unconfirmed quarantine may be released by the bridge's
-                # matching late turn-end. Unknown-execution state stays locked.
-                await self._sync_quarantine()
-            if self._quarantined and text not in ("重试", "retry"):
-                self.metrics.delete("quarantine_blocks") if False else None
-                self.metrics.setdefault("blocked_while_quarantined", 0)
-                self.metrics["blocked_while_quarantined"] += 1
-                self._last_request_text = text
-                await self.push_frame(TTSSpeakFrame(text="上一个任务的状态尚未确认，暂时不能开始新回合。请说重试，或等我在 DSH 中确认后再试。"))
-                return
-            if text in ("重试", "retry") and self._quarantined:
-                await self._try_recover()
-                if self._quarantined:
-                    await self.push_frame(TTSSpeakFrame(text="状态仍未确认，恢复失败。你可以在 DSH 里检查该会话，或新建会话。"))
-                    return
-                # Recovery is NOT automatic re-execution: after recovering, require
-                # an explicit new request (side effects may already have happened).
-                await self.push_frame(TTSSpeakFrame(text="会话已恢复。请重新说一次你的请求。"))
-                return
-            admitted = self._wake_phrase.admit(text, active=self._current is not None)
-            if admitted is None:
-                return
-            if not admitted:
-                await self.push_frame(TTSSpeakFrame(text="在呢，你说。"))
-                return
-            text = admitted
-            await self.enqueue_input(text, frame.metadata)
+            await self._report_transcript_fact(frame, final)
+            if not final:
+                await self._handle_barge_interim(frame)
             return
 
         await self.push_frame(frame, direction)
 
-    @staticmethod
-    def _utterance_key(metadata):
-        return f"{metadata.get('capture_id')}:{metadata.get('utterance_id')}" if metadata.get('utterance_id') else None
-
-    async def confirm_input(self, draft_id, text=None):
-        draft = self._input_admission.take(draft_id, text)
-        if draft and self._capture is not None and (draft['metadata'].get('capture_id') in self._capture.revoked or draft['metadata'].get('input_mode') == 'always' and (not self._capture.enabled or draft['metadata'].get('capture_id') != self._capture.current)):
-            draft = None
-        if draft is None:
-            await self._control_notice('这条语音输入已过期或已处理，请重新说。')
-            await self._send_rtvi({'type': 'input-confirmation-ended', 'id': draft_id})
-            return False
-        await self._send_rtvi({'type': 'input-confirmation-ended', 'id': draft_id})
-        frame = TranscriptionFrame(draft['text'], 'confirmed-user', '')
-        frame.metadata.update(draft['metadata'], input_mode='hold', assembled=True, input_confirmed=True)
-        await self.process_frame(frame, FrameDirection.DOWNSTREAM)
-        return True
-
-    async def discard_input(self, draft_id):
-        removed = self._input_admission.discard(draft_id)
-        if removed:
-            await self._send_rtvi({'type': 'input-confirmation-ended', 'id': draft_id})
-        return removed
-
-    def capture_changed(self, action, capture_id):
-        if action in ('finish','discard'):
-            self._speech.release(capture_id, discard=action=='discard')
-            self._schedule_speech()
-
-    def _schedule_speech(self):
-        if self._speech_timer: self._speech_timer.cancel()
-        deadline = self._speech.deadline()
-        if deadline is None or self._closing: return
-        def fire():
-            self._speech_timer = None
-            owned = asyncio.create_task(self.flush_speech())
-            self._intake_tasks.add(owned)
-            def settled(task):
-                self._intake_tasks.discard(task)
-                if not task.cancelled() and task.exception() is not None:
-                    logger.error('[speech-intake] '+redact(repr(task.exception())))
-            owned.add_done_callback(settled)
-        self._speech_timer = asyncio.get_running_loop().call_later(max(0,deadline-self._speech.now()),fire)
-
-    async def flush_speech(self):
-        for text,metadata in self._speech.ready():
-            if self._closing: return
-            frame=TranscriptionFrame(text,'assembled-user','')
-            frame.metadata.update(metadata)
-            await self.process_frame(frame,FrameDirection.DOWNSTREAM)
-        self._schedule_speech()
-
-    async def publish_queue(self, error=''):
-        snapshot=self._pending.snapshot()
-        signature=json.dumps({'revision':snapshot['revision'],'needs':[x['needsConfirmation'] for x in snapshot['entries']],'error':error})
-        if signature == getattr(self,'_queue_signature',None): return
-        self._queue_signature=signature
-        await self._send_rtvi({'type':'queue-state',**snapshot,'error':error})
-
-    async def enqueue_input(self, text, metadata, confirm=False):
-        if not confirm and self._current and self._current.get('audible'):
-            self._current['audible']=False
-            await self.broadcast_interruption()
-            await self._send_rtvi({'type':'stop-playback','reason':'complete-user-input','turnKey':self._current.get('turn_key')})
-        try:
-            item=self._pending.append(text,metadata,confirm)
-        except ValueError as exc:
-            await self.publish_queue(str(exc));await self._control_notice(str(exc));return
-        logger.info('[input-admission] ' + json.dumps({'inputId':item['id'],'mode':metadata.get('input_mode','legacy'),'captureId':metadata.get('capture_id'),'utteranceId':metadata.get('utterance_id'),'speechId':metadata.get('speech_id'),'segments':metadata.get('segments',1),'confirmed':metadata.get('input_confirmed',False),'needsConfirmation':confirm},ensure_ascii=False))
-        await self.publish_queue()
-        if self._current is None and not confirm: await self._start_next_turn()
-        if self._pending: await self._control_notice('已保留在等待队列，可查看、修改或删除。',kind='task-queued',count=len(self._pending))
-
-    async def queue_control(self, data):
-        if data.get('action') == 'snapshot':
-            self._queue_signature=None;await self.publish_queue();return True
-        try:
-            self._pending.edit(data.get('id'),data.get('revision'),data.get('action'),data.get('text'))
-        except ValueError as exc:
-            await self.publish_queue(str(exc));return False
-        await self.publish_queue();await self._start_next_turn();return True
-
-    def set_question_view(self, view):
-        if view is None: self._question_view=None;return
-        if not isinstance(view,dict) or not all(isinstance(view.get(k),str) and 0<len(view[k])<=200 for k in ('requestId','sessionId','questionId')) or not isinstance(view.get('revision'),int): return
-        self._question_view={**view}
-
-    async def _answer_question(self,text,metadata):
-        # Keep partial provider finals in the shared utterance assembler.
-        if metadata.get('input_mode') and metadata.get('capture_id') and not metadata.get('assembled'): return False
-        view=metadata.get('question_view',self._question_view)
-        if not view:
-            if self._question_view:
-                await self._control_notice('问题刚有变化，请重新回答；这句话没有另建任务。');return True
-            if re.fullmatch(r'(?:嗯[，,]?就)?(?:选|选择)?(?:第[一二三四五六七八九十0-9]+个?|最后一个)(?:选项)?[吧。！! ]*',text.strip()):
-                await self._control_notice('没有可确认的当前选项，这句话没有作为新任务发送。请查看气泡。');return True
-            try:
-                waiting=(await self._bridge_request('GET','/interactions')).get('requests',[])
-                if waiting and waiting[0].get('kind')=='question':
-                    await self._control_notice('问题界面尚未同步，请在气泡出现后重新回答；没有另建任务。');return True
-            except Exception:
-                await self._control_notice('无法确认是否在等待回答，尚未发送这句话，请检查任务状态。');return True
-            return False
-        try:
-            requests=(await self._bridge_request('GET','/interactions')).get('requests',[])
-            current=requests[0] if requests else {}
-            matching=(self._question_view and all(view.get(k)==self._question_view.get(k) for k in ('requestId','sessionId','questionId','index','revision')) and current.get('kind')=='question' and current.get('id')==view['requestId'] and current.get('sessionId')==view['sessionId'] and any(q.get('id')==view['questionId'] for q in current.get('questions',[])))
-            if not matching:
-                await self._control_notice('问题已变化，这条回答没有提交，也不会另建任务。');return True
-            await self._send_rtvi({'type':'question-answer','answerId':str(uuid.uuid4()),'view':view,'text':text})
-        except Exception:
-            await self._control_notice('暂时不能确认当前问题，尚未提交回答，请查看气泡。')
-        return True
-
-    async def announce_pending(self):
-        """Read authoritative pending requests; announce each first request once.
-
-        No tool parameters or private paths are spoken. This also observes work
-        started in the Desktop, outside this connection's voice-turn stream.
-        """
-        snapshot = await self._bridge_request('GET', '/interactions')
-        requests = snapshot.get('requests', [])
-        if not requests:
-            return
-        request = requests[0]
-        view=self._question_view
-        if request.get('kind')=='question' and view and view.get('requestId')==request.get('id') and view.get('sessionId')==request.get('sessionId'):
-            request={**request,'questions':[q for q in request.get('questions',[]) if q.get('id')==view.get('questionId')]}
-        key = (request.get('sessionId'), request.get('id'), request.get('questions',[{}])[0].get('id') if request.get('questions') else None)
-        if not all(key[:2]) or key in self._announced_interactions:
-            return
-        if request.get('kind') == 'approval':
-            passive = self._capture is not None and self._capture.modes.get(self._capture.current, 'always') == 'always'
-            prompt = '有一个操作需要你批准，请查看气泡中的详情。说“确认允许一次”或“拒绝”，也可以点击按钮。' if passive else '有一个操作需要你批准，请查看气泡中的详情。说“允许一次”或“拒绝”，也可以点击按钮。'
-        elif request.get('kind') == 'question' and request.get('questions'):
-            question = request['questions'][0]
-            prompt = '需要你回答：' + str(question.get('question') or '')[:160]
-            labels = [str(option.get('label') or '')[:35] for option in question.get('options', [])[:6]]
-            if labels:
-                prompt += '。可选：' + '；'.join(f'第{i+1}项，{label}' for i,label in enumerate(labels))
-            prompt += '。可以说第几个或最后一个选项；多选可逐项选择，最后说提交选择。其他答案请说其他回答，再说内容。也可点击气泡。'
-        else:
-            return
-        if self._closing:
-            return
-        self._announced_interactions[key] = None
-        if len(self._announced_interactions) > 128:
-            self._announced_interactions.pop(next(iter(self._announced_interactions)))
-        self._spoken_prompts.append((prompt, time.monotonic() + max(15, len(prompt)/3+3)))
-        await self._send_rtvi({'type': 'interaction-prompt', 'id': request['id'], 'kind': request['kind']})
-        await self.push_frame(TTSSpeakFrame(text=prompt))
-
-    async def _bridge_request(self, method, path, body=None):
-        descriptor = self._load_descriptor()
-        async with self._get_session().request(
-            method, f"http://127.0.0.1:{descriptor['port']}{path}", json=body,
-            headers={'Authorization': f"Bearer {descriptor['token']}"},
-            timeout=aiohttp.ClientTimeout(total=5),
-        ) as response:
-            if response.status != 200:
-                raise RuntimeError(f'Bridge control HTTP {response.status}')
-            return await response.json()
-
-    async def _control_notice(self, text, kind='control-result', **extra):
-        # Reopening the shared track for acknowledgements could unmute late TTS.
-        await self._send_rtvi({'type': kind, 'text': text, **extra})
-
-    async def _handle_control(self, text, metadata):
-        kind = control_kind(text)
-        if kind is None:
-            return False
-        if metadata.get('input_mode') == 'always':
-            if kind == 'task-stop' and control_text(text) != '确认停止任务':
-                target = {'current':self._current,'task':None}
-                if self._current is None:
-                    try: target['task'] = await self._bridge_request('GET','/task-state')
-                    except Exception: target['task'] = {}
-                self._stop_confirmation = target
-                self._stop_confirmation['expires'] = time.monotonic() + 30
-                await self._control_notice('尚未请求取消。请说“确认停止任务”，或使用右键菜单停止。', action='task-stop', phase='confirmation-required')
-                return True
-        key = self._utterance_key(metadata)
-        if key and key in self._consumed_controls:
-            return True
-        target = self._utterance_targets.get(key, {'current': self._current, 'requests': None, 'task': None})
-        if kind == 'task-stop' and control_text(text) == '确认停止任务' and self._stop_confirmation is not None:
-            if time.monotonic() >= self._stop_confirmation['expires']:
-                self._stop_confirmation = None
-                await self._control_notice('停止确认已过期，尚未取消任务。请重新确认目标。')
-                return True
-            target = {**self._stop_confirmation, 'requests':None}
-            self._stop_confirmation = None
-        try:
-            if kind in ('playback-brief','playback-full'):
-                self._playback_style='brief' if kind=='playback-brief' else 'full'
-                if self._current is not None:
-                    self._current['speech_limit']=self._current.get('speech_chars',0)+160 if kind=='playback-brief' else None
-                await self._control_notice('后续播报已缩短，完整结果保留在主窗口。' if kind=='playback-brief' else '后续内容将完整播报；已跳过的部分不会自动重播。',action=kind)
-            elif kind.startswith('approval-'):
-
-                requests = target['requests']
-                if requests is None:
-                    requests = (await self._bridge_request('GET', '/interactions')).get('requests', [])
-                if requests and requests[0].get('kind')=='question': return False
-                if not requests and control_text(text) in ('是', '否', '好', '可以'):
-                    return False
-                if kind == 'approval-ambiguous':
-                    await self._control_notice('请明确说“允许一次”或“拒绝”，尚未授权。')
-                elif len(requests) != 1 or requests[0].get('kind') != 'approval':
-                    await self._control_notice('没有唯一待批准操作，请在气泡里选择；尚未授权。')
-                elif metadata.get('input_mode') == 'always' and kind == 'approval-allow' and control_text(text) != '确认允许一次':
-                    await self._control_notice('尚未授权。请明确说“确认允许一次”，或点击气泡。')
-                else:
-                    request = requests[0]
-                    result = await self._bridge_request('POST', '/approval', {
-                        'id': request['id'], 'sessionId': request['sessionId'],
-                        'decision': 'allow' if kind == 'approval-allow' else 'reject',
-                    })
-                    if result.get('ok') is not True:
-                        raise RuntimeError('Approval not confirmed')
-                    await self._control_notice('已允许本次操作。' if kind == 'approval-allow' else '已拒绝本次操作。')
-            elif kind in ('playback-stop', 'task-stop'):
-                current = target['current']
-                if current is not self._current:
-                    await self._control_notice('原任务已结束，这条迟到指令不会影响新任务。')
-                elif kind == 'task-stop' and current is not None:
-                    await self._cancel_current()
-                    await self._control_notice('已请求停止任务，正在等待执行器确认。', action='task-stop', phase='requested', turnKey=current.get('turn_key'), requestId=current.get('request_id'))
-                elif kind == 'task-stop':
-                    state = target['task']
-                    if state is None:
-                        state = await self._bridge_request('GET', '/task-state')
-                    if state.get('status') == 'idle':
-                        await self._control_notice('当前没有正在执行的任务。')
-                    elif state.get('sessionId') and (state.get('turn') is not None or state.get('clientTurnId')):
-                        body = {'sessionId': state['sessionId'], 'source': 'voice-command'}
-                        if state.get('turn') is not None:
-                            body['turn'] = state['turn']
-                        if state.get('clientTurnId'):
-                            body['clientTurnId'] = state['clientTurnId']
-                        result = await self._bridge_request('POST', '/cancel', body)
-                        if result.get('ok') is not True:
-                            raise RuntimeError('Cancellation not confirmed')
-                        await self._control_notice('任务已停止。' if result.get('confirmed') else '已请求停止任务，正在等待执行器确认。', action='task-stop', phase='confirmed' if result.get('confirmed') else 'requested', sessionId=state.get('sessionId'), turn=state.get('turn'))
-                    else:
-                        await self._control_notice('暂时无法确认任务身份，请在主窗口检查；尚未取消任务。')
-                else:
-                    if current:
-                        current['audible'] = False
-                    if self._last_barge_context:
-                        self._last_barge_context['audible'] = False
-                    self._cancel_barge_timeout()
-                    self._barge_candidate = None
-                    await self.broadcast_interruption()
-                    await self._send_rtvi({'type': 'stop-playback'})
-                    await self._control_notice('已停止播报；没有请求取消任务。', action='playback-stop', phase='confirmed', turnKey=current.get('turn_key') if current else None)
-            else:
-                state = await self._bridge_request('GET', '/task-state')
-                await self._control_notice('正在等待你的批准或回答。' if state.get('waiting') else
-                    '当前没有正在执行的任务。' if state.get('status') == 'idle' else
-                    '服务正在准备，暂时无法确认任务。' if state.get('status') == 'starting' else '当前任务仍在处理。')
-        except Exception as exc:
-            logger.warning(f'[dsh] voice control failed: {type(exc).__name__}')
-            await self._control_notice('操作未确认成功，请在气泡中检查；不会另建任务。')
-        if key:
-            self._consumed_controls[key] = None
-            if len(self._consumed_controls) > 128:
-                self._consumed_controls.pop(next(iter(self._consumed_controls)))
-        return True
-
-    def _quarantine(self, current, reason):
-        self._quarantined = True
-        self._quarantine_reason = reason
-        self._uncertain_request = {'sessionId': current.get('session_id'), 'clientTurnId': current.get('request_id')}
-
-    # ---- turn driver ----------------------------------------------------
-    def queue_state(self):
-        cur = self._current
-        return {
-            'current': cur.get('turn_key') if cur else None,
-            'request_id': cur.get('request_id') if cur else None,
-            'dsh_turn': cur.get('dsh_turn') if cur else None,
-            'audible': cur.get('audible') if cur else None,
-            'text_started': cur.get('text_started') if cur else None,
-            'reply_chars': len(cur.get('reply_text', '')) if cur else 0,
-            'barge_candidate': bool(self._barge_candidate),
-            'barge_candidate_text': (self._barge_candidate or {}).get('text'),
-            'barge_metrics': {k: self.metrics.get(k) for k in ('barge_candidates','barge_rejected_echo','barge_confirmed','barge_ins','barge_duplicates_ignored','barge_command_confirmed','barge_noncommand_pending','barge_pending_short','barge_rejected_short','duck_applied','duck_skipped_limit')},
-            'pending': list(self._pending),
-            'quarantined': self._quarantined,
-            'turns_started': self.metrics.get('turns_started'),
-            'turns_completed': self.metrics.get('turns_completed'),
-            'errors': self.metrics.get('errors'),
-        }
-
-    async def _start_next_turn(self):
-        if self._closing or self._quarantined or self._current is not None or not self._pending or self._pumping_queue:
-            return
-        self._pumping_queue = True
-        try:
-            state=await self._bridge_request('GET','/task-state')
-            owner=state.get('sessionId')
-            if owner and self._queue_session_id and owner!=self._queue_session_id:
-                self._pending.quarantine();await self.publish_queue('会话已变化，等待输入需要重新确认。')
-            if owner:self._queue_session_id=owner
-            if state.get('status') != 'idle':
-                self._host_waiting=True
-                return
-            if getattr(self,'_host_waiting',False):
-                self._host_waiting=False
-                if (state.get('lastTurn') or {}).get('terminal') == 'aborted': self._pending.quarantine()
-            item=self._pending.take()
-            if item is None: await self.publish_queue();return
-        except Exception as exc:
-            logger.warning('[queue] state unavailable: '+type(exc).__name__);return
-        finally: self._pumping_queue=False
-        text=item['text']
-        self._turn_seq += 1
-        current = {
-            "turn_key": f"voice-{self._turn_seq}",
-            "request_id": None,
-            "dsh_turn": None,
-            "session_id": self._last_session_id,
-            "text": text,
-            "input": {'id':item['id'],**item['metadata']},
-            "queue_item": item,
-            "submitted_at": time.monotonic(),
-            "submitted_epoch_ms": round(time.time() * 1000),
-            "audible": True,
-            "text_started": False,
-            "cancelled": False,
-            "task": None,
-        }
-        self._current = current
-        current["task"] = self.create_task(self._run_turn(current, text), name=f"dsh-{current['turn_key']}")
-        self.metrics["turns_started"] += 1
-        await self.publish_queue()
-
-    async def _run_turn(self, current: dict, text: str):
-        turn_key = current["turn_key"]
-        started = time.monotonic()
-        try:
-            descriptor = self._load_descriptor()
-            port = descriptor["port"]
-            token = descriptor["token"]
-            url = f"http://127.0.0.1:{port}/voice/turn"
-            headers = {"Authorization": f"Bearer {token}", "content-type": "application/json"}
-            logger.info(f"[dsh] turn {turn_key} -> DSH: {redact(text)!r} input={redact(json.dumps(current.get('input', {}), ensure_ascii=False))}")
-            async with self._get_session().post(
-                url, json={"text": text}, headers=headers, timeout=aiohttp.ClientTimeout(total=180)
-            ) as response:
-                if response.status == 409 and not current.get('request_id') and current.get('queue_item'):
-                    self._pending.restore(current['queue_item'])
-                    current['deferred'] = True
-                    await self.publish_queue()
-                    return
-                if response.status == 423:
-                    body = await response.text()
-                    current["quarantined"] = True
-                    self._quarantined = True
-                    self.metrics.setdefault("quarantine_blocks", 0)
-                    self.metrics["quarantine_blocks"] += 1
-                    logger.warning(f"[dsh] turn {turn_key} blocked by session quarantine: {body[:160]}")
-                    error=RuntimeError('DSH session is quarantined: previous execution state unknown')
-                    error.http_status=423
-                    raise error
-                if response.status != 200:
-                    body = await response.text()
-                    error = RuntimeError(f"Bridge HTTP {response.status}: {redact(body, 1000)}")
-                    error.http_status = response.status
-                    raise error
-                async for raw in response.content:
-                    line = raw.decode("utf-8").strip()
-                    if not line:
-                        continue
-                    event = json.loads(line)
-                    await self._handle_bridge_event(current, event)
-            if current.get('request_id') and not current.get('cancelled') and not current.get('terminal_received'):
-                raise RuntimeError('Bridge stream ended without a terminal task event')
-            if not current.get("cancelled"):
-                if current.get("completed") and not current.get("cancelled"):
-                    self.metrics["turns_completed"] += 1
-            logger.info(
-                f"[dsh] turn {turn_key} completed session={current.get('session_id')} "
-                f"request={current.get('request_id')} dsh_turn={current.get('dsh_turn')} "
-                f"chars={len(current.get('reply_text', ''))} duration_ms={round((time.monotonic()-started)*1000)}"
-            )
-        except asyncio.CancelledError:
-            logger.info(f"[dsh] turn {turn_key} task cancelled locally")
-            raise
-        except Exception as exc:
-            self.metrics["errors"] += 1
-            diagnostic = build_payload(exc, source='bridge')
-            diagnostic.update(turnKey=turn_key, sessionId=current.get('session_id'), requestId=current.get('request_id'), turn=current.get('dsh_turn'), httpStatus=getattr(exc, 'http_status', None), exceptionType=type(exc).__name__)
-            current['diagnostic'] = diagnostic
-            logger.warning('[dsh-error] ' + json.dumps(diagnostic, ensure_ascii=False))
-            await self._send_rtvi({'type':'task-error', **{key:value for key,value in diagnostic.items() if key != 'detail'}})
-            await self.push_error_frame(ErrorFrame(error=f"任务连接异常（{diagnostic['diagId']}），执行结果需检查。"))
-            if current.get("request_id") or not getattr(exc,'http_status',None):
-                current["execution_unknown"] = True
-                self._quarantine(current, 'execution-unknown')
-                self.metrics["execution_unknown"] += 1
-                logger.warning(f"[dsh] {turn_key} execution state UNKNOWN after bridge/DSH failure; session quarantined, no retry")
-            if current.get("audible"):
-                try:
-                    await self.push_frame(TTSSpeakFrame(text="任务没有正常结束，结果需要检查。我已保留等待输入，请先查看任务状态。"))
-                except Exception:
-                    pass
-        finally:
-            if current.get("response_open") and current.get("audible"):
-                try:
-                    await self.push_frame(LLMFullResponseEndFrame())
-                except Exception:
-                    pass
-            self.metrics["finalized_reasons"].append(
-                {"turn_key": turn_key, "reason": current.get("finalized_reason"), "cancel_state": current.get("cancel_state")}
-            )
-            self.metrics["finalized_reasons"] = self.metrics["finalized_reasons"][-10:]
-            self.metrics["recent_turns"].append(
-                {
-                    "turn_key": turn_key,
-                    "cancel_state": current.get("cancel_state"),
-                    "session_id": current.get("session_id"),
-                    "request_id": current.get("request_id"),
-                    "dsh_turn": current.get("dsh_turn"),
-                    "chars": len(current.get("reply_text", "")),
-                    "first_text_ms": current.get("first_text_ms"),
-                    "turn_ms": current.get("turn_ms"),
-                    "submitted_epoch_ms": current.get("submitted_epoch_ms"),
-                    "first_text_epoch_ms": current.get("first_text_epoch_ms"),
-                    "turn_end_epoch_ms": current.get("turn_end_epoch_ms"),
-                    "completed": current.get("completed", False),
-                    "cancelled": current.get("cancelled", False),
-                    "audible": current.get("audible", True),
-                }
-            )
-            self.metrics["recent_turns"] = self.metrics["recent_turns"][-10:]
-            if current.get('text_started') and current.get('reply_text'):
-                self._last_barge_context = {
-                    'turn_key': current.get('turn_key'),
-                    'request_id': current.get('request_id'),
-                    'dsh_turn': current.get('dsh_turn'),
-                    'reply_text': current.get('reply_text'),
-                    'text_events': list(current.get('text_events', [])),
-                    'audible': current.get('audible', True),
-                    'ended_mono': time.monotonic(),
-                }
-            if current.get('cancelled') and current.get('request_id') and not current.get('terminal_received'):
-                self._quarantine(current, 'cancel-unconfirmed')
-            if self._current is current:
-                self._current = None
-                if self._pending and not self._quarantined and not self._closing and not current.get('deferred'):
-                    self.create_task(self._start_next_turn(), name="dsh-next-turn")
-            # reset connection state for the next turn
-
-    async def _handle_bridge_event(self, current: dict, event: dict):
-        kind = event.get("type")
-        session_id = event.get("sessionId") or current.get("session_id")
-        if session_id:
-            self._last_session_id = session_id
-            current["session_id"] = session_id
-        if kind == "admitted":
-            current["request_id"] = event.get("requestId")
-            if current.get('cancelled'):
-                await self._cancel_current()
-            logger.info(f"[dsh] {current['turn_key']} admitted session={session_id} request={current.get('request_id')}")
-        elif kind == "assistant-start":
-            current["dsh_turn"] = event.get("turn")
-            logger.info(
-                f"[dsh] {current['turn_key']} assistant-start session={session_id} dsh_turn={event.get('turn')} step={event.get('step')}"
-            )
-        elif kind == "text":
-            delta = event.get("text") or ""
-            if not delta:
-                return
-            current.setdefault("reply_text", "")
-            current["reply_text"] += delta
-            current.setdefault("text_events", []).append({
-                "text": delta,
-                "at_mono": time.monotonic(),
-                "at_epoch_ms": round(time.time() * 1000),
-            })
-            current["text_events"] = current["text_events"][-80:]
-            if not current.get("audible"):
-                self.metrics["late_text_dropped"] += 1
-                return
-            if 'speech_limit' not in current: current['speech_limit']=240 if self._playback_style=='brief' else None
-            limit=current['speech_limit']
-            if limit is not None:
-                remaining=max(0,limit-current.get('speech_chars',0))
-                if not remaining:
-                    if not current.get('speech_limited'):
-                        current['speech_limited']=True
-                        await self._control_notice('简短播报已结束，任务继续；完整结果在主窗口。',action='playback-budget',turnKey=current.get('turn_key'))
-                    return
-                # Prefer a sentence end near the budget, otherwise use the stated character cap.
-                if len(delta)>remaining:
-                    cut=delta[:remaining];ends=[m.end() for m in re.finditer(r'[。！？.!?\n]',cut)]
-                    delta=cut[:ends[-1]] if ends and ends[-1]>=remaining//2 else cut
-            current['speech_chars']=current.get('speech_chars',0)+len(delta)
-            if not current.get("response_open"):
-                current["text_started"] = True
-                current["response_open"] = True
-                probe_log(
-                    f"[g3-probe] playback-identity SEND request={current.get('request_id')} "
-                    f"turn={current.get('dsh_turn')} key={current.get('turn_key')} epoch_ms={round(time.time()*1000)}"
-                )
-                await self.push_frame(OutputTransportMessageUrgentFrame(message={
-                    "id": f"playback-{current.get('turn_key')}-{round(time.time()*1000)}",
-                    "label": "rtvi-ai",
-                    "type": "server-message",
-                    "data": {
-                        "type": "playback-identity",
-                        "requestId": current.get("request_id"),
-                        "turnId": current.get("dsh_turn"),
-                        "turnKey": current.get("turn_key"),
-                        "epochMs": round(time.time()*1000),
-                    },
-                }))
-                if current.get("submitted_at") and not current.get("first_text_ms"):
-                    current["first_text_ms"] = round((time.monotonic() - current["submitted_at"]) * 1000)
-                    current["first_text_epoch_ms"] = round(time.time() * 1000)
-                    self.metrics["dsh_first_text_samples"].append(current["first_text_ms"])
-                    self.metrics["dsh_first_text_samples"] = self.metrics["dsh_first_text_samples"][-200:]
-                await self.push_frame(LLMFullResponseStartFrame())
-            self.metrics["text_deltas"] += 1
-            self.metrics["chars_streamed"] += len(delta)
-            await self.push_frame(TextFrame(text=delta))
-        elif kind == "assistant-end":
-            if current.get("response_open") and current.get("audible"):
-                current["response_open"] = False
-                await self.push_frame(LLMFullResponseEndFrame())
-            logger.info(f"[dsh] {current['turn_key']} assistant-end outcome={event.get('outcome')}")
-        elif kind == "cancel-requested":
-            current["cancel_state"] = "requested"
-            logger.info(f"[dsh] {current['turn_key']} cancel requested (playback stopped; waiting for DSH confirmation)")
-        elif kind == "finalized":
-            reason = event.get("reason")
-            current["finalized_reason"] = reason
-            if reason == "cancel-unconfirmed":
-                self.metrics["cancel_unconfirmed"] += 1
-                current["cancel_state"] = "unconfirmed"
-                logger.warning(f"[dsh] {current['turn_key']} cancel UNCONFIRMED by DSH; local turn lease released, session kept")
-            elif current.get("cancelled") and event.get("turnReason", {}).get("kind") == "aborted":
-                self.metrics["cancel_confirmed"] += 1
-                current["cancel_state"] = "confirmed"
-                logger.info(f"[dsh] {current['turn_key']} cancel confirmed via finalize reason={reason}")
-            else:
-                logger.info(f"[dsh] {current['turn_key']} finalized reason={reason}")
-        elif kind == "turn-end":
-            current['terminal_received'] = True
-            current['terminal_reason'] = event.get('reason')
-            current['cancellation_source'] = event.get('cancellationSource')
-            logger.info('[task-terminal] ' + json.dumps({'turnKey':current.get('turn_key'),'sessionId':session_id,'requestId':current.get('request_id'),'turn':current.get('dsh_turn'),'reason':event.get('reason'),'source':event.get('cancellationSource')}, ensure_ascii=False))
-            if (event.get('reason') or {}).get('kind') == 'aborted':
-                self._pending.quarantine()
-                await self.publish_queue()
-                await self._control_notice('任务已停止，未执行的等待项仍保留。', action='task-stop', phase='confirmed', turnKey=current.get('turn_key'), requestId=current.get('request_id'), source=event.get('cancellationSource') or 'unattributed')
-            current["completed"] = (event.get("reason") or {}).get("kind") == "completed"
-            if current.get("submitted_at"):
-                self.metrics["dsh_turn_epoch_samples"].append({
-                    "request_id": current.get("request_id"),
-                    "turn_key": current.get("turn_key"),
-                    "submitted_epoch_ms": current.get("submitted_epoch_ms"),
-                    "first_text_epoch_ms": current.get("first_text_epoch_ms"),
-                    "turn_end_epoch_ms": current.get("turn_end_epoch_ms") or round(time.time() * 1000),
+    async def _media_reject_transcript(self, frame, final: bool) -> None:
+        """Echo/noise is a media-layer drop; it must not become a fact or task."""
+        candidate = self._barge_candidate
+        if candidate is not None and self._echo_like(
+                normalize(frame.text), normalize(candidate.get("recent_window") or candidate.get("reply_text", ""))):
+            self.metrics["barge_rejected_echo"] += 1
+            self._barge_candidate = None
+            self._cancel_barge_timeout()
+            await self._restore_duck(candidate)
+        if final:
+            self._echo_transcript_dropped += 1
+            self.metrics["echo_transcript_dropped"] += 1
+            capture_id = (frame.metadata or {}).get("capture_id")
+            if capture_id:
+                await self._send_rtvi({
+                    "type": "capture-rejected",
+                    "captureId": capture_id,
+                    "utteranceId": (frame.metadata or {}).get("utterance_id"),
                 })
-                self.metrics["dsh_turn_epoch_samples"] = self.metrics["dsh_turn_epoch_samples"][-200:]
-                current["turn_ms"] = round((time.monotonic() - current["submitted_at"]) * 1000)
-                current["turn_end_epoch_ms"] = round(time.time() * 1000)
-                self.metrics["dsh_turn_samples"].append(current["turn_ms"])
-                self.metrics["dsh_turn_samples"] = self.metrics["dsh_turn_samples"][-200:]
-            logger.info(
-                f"[dsh] {current['turn_key']} turn-end dsh_turn={event.get('turn')} reason={event.get('reason')} turn_ms={current.get('turn_ms')}"
-            )
-        elif kind == 'error':
-            raise RuntimeError('DSH: ' + (event.get('message') or event.get('code') or 'Agent reported an unspecified error'))
-        elif kind == "session-event":
-            event_type = event.get("eventType") or ""
-            if event_type.startswith("approval") or event.get("approval"):
-                self.metrics["approval_events"] += 1
-                logger.info(f"[dsh] approval event observed (DSH remains authority): {event}")
-            elif event_type in ("tool/call", "tool/result"):
-                self.metrics["tool_events"] += 1
-                logger.info(f"[dsh] tool event: {event_type} name={event.get('toolName')}")
 
-    async def _cancel_watchdog(self, current: dict, task):
+    async def _report_transcript_fact(self, frame, final: bool) -> None:
+        metadata = frame.metadata or {}
+        capture_id = metadata.get("capture_id") or (self._capture.current if self._capture is not None else "")
+        if not capture_id:
+            # Fail closed: no identity -> no fact. Never invent a capture identity.
+            self.metrics["facts_without_capture"] += 1
+            return
+        passage_id = metadata.get("provider_item_id") or metadata.get("item_id")
+        utterance_id = metadata.get("utterance_id") or passage_id
+        item_id = passage_id or utterance_id
+        if not item_id:
+            item_id = f"{capture_id}:{self.metrics['partial_facts'] + self.metrics['final_facts'] + 1}"
+        if not utterance_id:
+            utterance_id = item_id
+        mode = metadata.get("input_mode")
+        if mode not in ("hold", "toggle", "always"):
+            mode = (self._capture.modes.get(capture_id) if self._capture is not None else None) or "always"
+        key = (capture_id, item_id)
+        if not final:
+            if self._item_last_partial.get(key) == (frame.text or "").strip():
+                self.metrics["duplicate_partials"] += 1
+                return
+            self._item_last_partial[key] = (frame.text or "").strip()
+        revision = self._item_revisions.get(key, 0) + 1
+        self._item_revisions[key] = revision
+        if len(self._item_revisions) > 512:
+            self._item_revisions.pop(next(iter(self._item_revisions)))
+            self._item_last_partial.pop(next(iter(self._item_last_partial), None), None)
+        item = {
+            "kind": "asr.final" if final else "asr.partial",
+            "itemId": item_id,
+            "utteranceId": utterance_id,
+            "revision": revision,
+            "text": (frame.text or "").strip(),
+            "at": now_iso(),
+        }
+        confidence = metadata.get("confidence")
+        # Confidence is a nullable provider field: pass it through only when the
+        # provider actually supplied a number; never fabricate one.
+        if isinstance(confidence, (int, float)) and not isinstance(confidence, bool):
+            item["confidence"] = float(confidence)
+        self._capture_id = capture_id
+        self._capture_mode = mode
+        self._capture_state = "transcribing"
+        if final:
+            self.metrics["final_facts"] += 1
+        else:
+            self.metrics["partial_facts"] += 1
+        await self._report_facts([item], capture_id, mode, "transcribing")
+        # Thin transport echo for the WebRTC preview; no business fields
+        # (requiresConfirmation / queue decisions are Host-owned now).
+        await self._send_rtvi({
+            "type": "capture-transcript",
+            "text": item["text"],
+            "final": final,
+            "captureId": capture_id,
+            "utteranceId": utterance_id,
+        })
+
+    # ---- media barge-in / duck -----------------------------------------
+    async def _start_barge_candidate(self) -> None:
+        current = self._playback
+        probe_log(
+            f"[g3-probe] vad_started_bridge playback={current.get('playback_id') if current else None} "
+            f"epoch_ms={round(time.time() * 1000)} mono={time.monotonic():.3f}"
+        )
+        confirmed_key = str(current.get("playback_id")) if current else None
+        if confirmed_key and confirmed_key in self._barge_confirmed_keys:
+            self.metrics["barge_duplicates_ignored"] += 1
+            self._barge_candidate = None
+            return
+        ctx = None
+        if current is not None and current.get("open") and current.get("text_events"):
+            ctx = {**current, "context_source": "active"}
+        elif self._last_barge_context is not None and \
+                time.monotonic() - self._last_barge_context.get("ended_mono", 0) < 30.0:
+            ctx = {**self._last_barge_context, "context_source": "playback-tail"}
+        if ctx is None:
+            self._barge_candidate = None
+            return
+        if self._barge_candidate is not None and \
+                self._barge_candidate.get("playback_id") == ctx.get("playback_id"):
+            logger.info(f"[barge] duplicate VAD merged into active candidate playback={ctx.get('playback_id')}")
+            return
+        now_mono = time.monotonic()
+        events = ctx.get("text_events") or []
+        recent = "".join(e.get("text", "") for e in events if now_mono - e.get("at_mono", 0) <= 6.0)
+        if not recent:
+            recent = ctx.get("reply_text", "")[-120:]
+        candidate = {
+            "candidate_id": f"{ctx.get('playback_id')}-{round(time.time() * 1000)}",
+            "started_mono": now_mono,
+            "playback_id": ctx.get("playback_id"),
+            "turn_id": ctx.get("turn_id"),
+            "reply_text": ctx.get("reply_text", ""),
+            "recent_window": recent,
+            "context_source": ctx.get("context_source"),
+            "text": "",
+            "asr_updates": [],
+            "vad_stopped_mono": None,
+            "confirmed": False,
+            "capture_id": self._capture_id,
+        }
+        self._barge_candidate = candidate
+        self.metrics["barge_candidates"] += 1
+        self._cancel_barge_timeout()
+        self._barge_timeout_task = asyncio.create_task(self._barge_timeout(candidate))
+        duck_key = str(ctx.get("playback_id"))
+        state = self._duck_state.setdefault(duck_key, {"used": 0, "cooldown_until": 0.0})
+        if len(self._duck_state) > 200:
+            self._duck_state = dict(list(self._duck_state.items())[-100:])
+        if time.monotonic() >= state["cooldown_until"]:
+            state["used"] += 1
+            self.metrics["duck_applied"] += 1
+            await self._send_rtvi({
+                "type": "duck-playback",
+                "candidateId": candidate["candidate_id"],
+                "playbackId": candidate.get("playback_id"),
+                "turnId": candidate.get("turn_id"),
+                "factor": 0.3,
+                "epochMs": round(time.time() * 1000),
+            })
+        else:
+            self.metrics["duck_skipped_limit"] += 1
+        logger.info(
+            f"[barge] candidate playback={ctx.get('playback_id')} source={ctx.get('context_source')} "
+            f"id={candidate['candidate_id']} (awaiting ASR confirmation)"
+        )
+
+    async def _barge_timeout(self, cand: dict, timeout_s: float = 3.0):
         try:
-            await asyncio.sleep(8)
-            if self._current is current and not current.get("finalized_reason"):
-                self.metrics["cancel_unconfirmed"] += 1
-                current["cancel_state"] = "unconfirmed"
-                self._quarantine(current, 'cancel-unconfirmed')
-                logger.warning(f"[dsh] {current.get('turn_key')} cancel watch timed out; marking unconfirmed")
-                await self.cancel_task(task)
+            await asyncio.sleep(timeout_s)
+            if self._barge_candidate is not cand:
+                return
+            if cand.get("confirmed"):
+                self._barge_candidate = None
+                await self._restore_duck(cand)
+                return
+            self.metrics["barge_rejected_short"] += 1
+            self._barge_candidate = None
+            await self._restore_duck(cand)
+            logger.info(f"[barge] candidate timeout -> restored volume id={cand.get('candidate_id')}")
         except asyncio.CancelledError:
-            raise
+            return
+
+    async def _handle_barge_interim(self, frame) -> None:
+        candidate = self._barge_candidate
+        if candidate is None:
+            return
+        text = (frame.text or "").strip()
+        if text:
+            candidate["text"] = text
+        age = time.monotonic() - candidate["started_mono"]
+        if age > 3.0:
+            self.metrics["barge_rejected_short"] += 1
+            self._barge_candidate = None
+            self._cancel_barge_timeout()
+            await self._restore_duck(candidate)
+            return
+        if age >= 0.15 and text:
+            heard = normalize(text)
+            candidate["asr_updates"].append(heard)
+            candidate["asr_updates"] = candidate["asr_updates"][-10:]
+            spoken = normalize(candidate.get("recent_window") or candidate.get("reply_text", ""))
+            if len(heard) >= 2 and spoken:
+                echo = heard in spoken or SequenceMatcher(
+                    None, heard[-40:], spoken[-80:]).ratio() >= 0.7
+                if echo:
+                    self.metrics["barge_rejected_echo"] += 1
+                    self._barge_candidate = None
+                    self._cancel_barge_timeout()
+                    await self._restore_duck(candidate)
+                    logger.info("[barge] candidate rejected as echo")
+                    return
+            if age < 0.4:
+                self.metrics["barge_pending_short"] += 1
+                return
+            key = str(candidate.get("playback_id"))
+            if key in self._barge_confirmed_keys:
+                self.metrics["barge_duplicates_ignored"] += 1
+                self._barge_candidate = None
+                return
+            self._barge_confirmed_keys.add(key)
+            if len(self._barge_confirmed_keys) > 200:
+                self._barge_confirmed_keys = set(list(self._barge_confirmed_keys)[-100:])
+            candidate["confirmed"] = True
+            self.metrics["barge_command_confirmed"] = self.metrics.get("barge_command_confirmed", 0) + 1
+            self.metrics["barge_confirmed"] += 1
+            self.metrics["barge_ins"] += 1
+            logger.info(
+                f"[barge] CONFIRMED playback={candidate.get('playback_id')} "
+                f"source={candidate.get('context_source')} (media effect only; Host owns stop)"
+            )
+            await self._send_rtvi({
+                "type": "barge-in-confirmed",
+                "playbackId": candidate.get("playback_id"),
+                "turnId": candidate.get("turn_id"),
+                "contextSource": candidate.get("context_source"),
+                "epochMs": round(time.time() * 1000),
+            })
+
+    async def _restore_duck(self, cand: dict | None):
+        if not cand:
+            return
+        duck_key = str(cand.get("playback_id"))
+        state = self._duck_state.setdefault(duck_key, {"used": 0, "cooldown_until": 0.0})
+        state["cooldown_until"] = time.monotonic() + 2.0
+        await self._send_rtvi({
+            "type": "restore-playback",
+            "candidateId": cand.get("candidate_id"),
+            "playbackId": cand.get("playback_id"),
+            "turnId": cand.get("turn_id"),
+            "epochMs": round(time.time() * 1000),
+        })
+
+    def _drop_stale_barge_for_capture(self, capture_id: str) -> None:
+        """A cancelled capture only clears media effects it owns; never DSH work."""
+        candidate = self._barge_candidate
+        if candidate is not None and candidate.get("capture_id") == capture_id:
+            self._barge_candidate = None
+            self._cancel_barge_timeout()
+
+    def _cancel_barge_timeout(self) -> None:
+        task = self._barge_timeout_task
+        self._barge_timeout_task = None
+        if task is not None and not task.done():
+            task.cancel()
+
+    # ---- playback helpers ----------------------------------------------
+    async def _close_playback(self, current: dict, *, interrupt: bool = False) -> None:
+        """Close one playback's TTS response; only a stop may cut queued audio."""
+        if not current.get("open"):
+            return
+        current["open"] = False
+        try:
+            await self.push_frame(LLMFullResponseEndFrame())
         except Exception:
             pass
+        if interrupt:
+            try:
+                await self.broadcast_interruption()
+            except Exception:
+                pass
 
-    async def _sync_quarantine(self):
-        if self._quarantine_reason == 'cancel-unconfirmed':
-            await self._try_recover()
+    def _remember_playback(self, current: dict) -> None:
+        self._last_barge_context = {
+            "playback_id": current.get("playback_id"),
+            "turn_id": current.get("turn_id"),
+            "reply_text": current.get("reply_text", ""),
+            "text_events": list(current.get("text_events", [])),
+            "audible": True,
+            "ended_mono": time.monotonic(),
+        }
 
-    async def _try_recover(self):
-        expected = self._uncertain_request
-        if not expected or not expected.get('sessionId') or not expected.get('clientTurnId'):
-            return
-        try:
-            state = await self._bridge_request('GET', '/task-state')
-            terminal = (state.get('lastTurn') or {}).get('terminal')
-            if (state.get('sessionId') == expected['sessionId'] and
-                    state.get('clientTurnId') == expected['clientTurnId'] and
-                    state.get('status') == 'idle' and terminal in ('completed', 'aborted', 'failed', 'cancelled')):
-                self._quarantined = False
-                self._quarantine_reason = None
-                self._uncertain_request = None
-                count = len(self._pending)
-                self._pending.quarantine()
-                if count:
-                    await self._control_notice(f'原任务状态已确认；{count} 条尚未执行的排队要求未自动重放，请重新确认后提交。')
-        except Exception as exc:
-            logger.warning(f'[dsh] recovery state check failed: {type(exc).__name__}')
+    async def _send_rtvi(self, payload: dict) -> None:
+        await self.push_frame(OutputTransportMessageUrgentFrame(message={
+            "id": f"{payload.get('type', 'msg')}-{round(time.time() * 1000)}",
+            "label": "rtvi-ai",
+            "type": "server-message",
+            "data": payload,
+        }))
 
-    async def _cancel_current(self):
-        current = self._current
-        if current is None:
-            logger.info("[dsh] cancel requested but no active turn")
-            return
-        current["cancelled"] = True
-        current["audible"] = False
-        self.metrics["cancel_requests"] += 1
-        await self.broadcast_interruption()
-        if not current.get('request_id'):
-            return  # Admission performs scoped cancellation when its id arrives.
-        descriptor = self._load_descriptor()
-        session_id = current.get('session_id') or descriptor.get('sessionId')
-        logger.info(f"[dsh] cancelling DSH turn {current.get('turn_key')} session={session_id}")
-        try:
-            headers = {"Authorization": f"Bearer {descriptor['token']}", "content-type": "application/json"}
-            async with self._get_session().post(
-                f"http://127.0.0.1:{descriptor['port']}/cancel",
-                json={"sessionId": session_id, "clientTurnId": current.get("request_id"), "source": "voice-command"},
-                headers=headers,
-                timeout=aiohttp.ClientTimeout(total=10),
-            ) as response:
-                body = await response.text()
-                logger.info(f"[dsh] cancel response status={response.status} body={body[:200]}")
-        except Exception as exc:
-            self.metrics["errors"] += 1
-            logger.warning(f"[dsh] cancel request failed: {exc}")
-        # Do not cancel the local task here: wait for the bridge turn-end / finalized
-        # frame so cancel can be confirmed. A watchdog prevents a stuck lease.
-        task = current.get("task")
-        if task:
-            self.create_task(self._cancel_watchdog(current, task), name="dsh-cancel-watchdog")
-        # _run_turn's finally starts the next pending turn after the stream closes.
+    # ---- worker health projection (media only, never business state) ---
+    def health_state(self) -> dict:
+        return {
+            "connectionId": self._connection_id,
+            "transport": self._transport_state,
+            "host": {
+                "connected": self._host_epoch is not None and not self._closing,
+                "hostEpoch": self._host_epoch,
+                "sessionId": self._session_id,
+                "lastEventSeq": self._last_seq,
+                "streaming": bool(self._host_task is not None and not self._host_task.done()),
+            },
+            "capture": {
+                "captureId": self._capture_id,
+                "mode": self._capture_mode,
+                "state": self._capture_state,
+                "enabled": bool(self._capture.enabled) if self._capture is not None else False,
+                "revokedCount": len(self._capture.revoked) if self._capture is not None else 0,
+            },
+            "playback": {
+                "playbackId": (self._playback or {}).get("playback_id"),
+                "open": bool((self._playback or {}).get("open")),
+                "finishedCount": len(self._finished_playbacks),
+            },
+            "metrics": dict(self.metrics),
+        }
+
+
+# Media commands the Host may publish on /v2/stream (kernel §2.4). Anything
+# else is acknowledged as rejected instead of being guessed.
+VoiceMediaBridge._COMMAND_HANDLERS = {
+    "playback.stop": VoiceMediaBridge._cmd_playback_stop,
+    "speech.append": VoiceMediaBridge._cmd_speech_append,
+    "speech.end": VoiceMediaBridge._cmd_speech_end,
+    "capture.command": VoiceMediaBridge._cmd_capture_command,
+    "notice.show": VoiceMediaBridge._cmd_notice_show,
+}
+
+
+__all__ = [
+    "VoiceMediaBridge",
+    "COMMAND_TYPES",
+    "DEFAULT_DESCRIPTOR",
+    "normalize",
+]

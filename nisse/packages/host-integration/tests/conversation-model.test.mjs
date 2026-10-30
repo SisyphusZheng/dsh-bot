@@ -216,7 +216,7 @@ test('queue validates tunables and inputs explicitly', () => {
   const queue = createQueueModel({ now: () => 0 })
   assert.throws(() => queue.add({ text: '   ' }), /有效内容/)
   assert.throws(() => queue.add({ text: 'x'.repeat(20001) }), /20000/)
-  assert.throws(() => queue.add({ text: 'ok', source: 'telepathy' }), /voice or desktop/)
+  assert.throws(() => queue.add({ text: 'ok', source: 'telepathy' }), /voice, desktop/)
 })
 
 test('randomized queue sequences never lose admitted text, never double-take', () => {
@@ -394,6 +394,14 @@ test('a second offer cannot silently replace a fresh pending draft', () => {
   })
   assert.equal(draft.snapshot().id, offered.id)
   assert.equal(draft.snapshot().text, '第一条')
+})
+
+test('draft accepts the internal queue origin used by admission rollback', () => {
+  const draft = createDraftModel({ now: () => 0 })
+  const offered = draft.offer({ text: '准入失败后保留的输入', source: 'queue', metadata: { reason: 'admission-failed' } })
+  assert.equal(offered.source, 'queue')
+  assert.deepEqual(offered.metadata, { reason: 'admission-failed' })
+  assert.throws(() => draft.offer({ text: 'bad', source: 'telepathy' }), /voice, desktop, queue/)
 })
 
 test('draft deterministic sequence keeps one active draft and single resolution', () => {
@@ -606,6 +614,16 @@ test('B2-G08: unknown turn state is inspectable and recovers only from official 
   assert.equal(settled.lastTurn.turn, 1)
 })
 
+test('B2-G08: markUnknown is allowed from a fresh idle model after host restart', () => {
+  const turn = createTurnModel({ now: () => 0 })
+  assert.equal(turn.snapshot().state, 'idle')
+  const unknown = turn.markUnknown('host-restart')
+  assert.equal(unknown.state, 'unknown')
+  assert.equal(turn.isBusy(), true, 'queue draining stays paused until official evidence')
+  assert.equal(unknown.lastError.code, 'UNKNOWN')
+  assert.equal(turn.reset().state, 'idle')
+})
+
 test('turn restart sync never assumes idle before official status', () => {
   const turn = createTurnModel({ now: () => 0 })
   turn.adoptOfficialSnapshot({ status: 'working', session: 's', currentTurn: 6 })
@@ -723,4 +741,86 @@ test('randomized turn sequences keep cancel/target/successor invariants', () => 
       assert.notEqual(snapshot.lastTurn.turn, snapshot.turn, 'a working successor turn is not the cancelled turn')
     }
   }
+})
+
+/* ------------------------------------------------------------------------- */
+/* Integration-edge regressions                                              */
+/* ------------------------------------------------------------------------- */
+
+test('take() returns full metadata while snapshot keeps the protocol projection', () => {
+  const clock = fakeClock()
+  const queue = createQueueModel({ now: clock.now })
+  queue.add({ id: 'q1', text: '保留身份', metadata: { captureId: 'c1', utteranceId: 'u1', mode: 'hold' } })
+  const snapshotItem = queue.snapshot().items[0]
+  assert.equal(Object.hasOwn(snapshotItem, 'metadata'), false, 'snapshot keeps the protocol shape')
+  const taken = queue.take()
+  assert.deepEqual(taken.metadata, { captureId: 'c1', utteranceId: 'u1', mode: 'hold' })
+  assert.equal(taken.id, 'q1')
+})
+
+test('an expired queue item can still be inspected, edited, confirmed or deleted', () => {
+  const clock = fakeClock()
+  const queue = createQueueModel({ now: clock.now, ttlMs: 1000 })
+  const first = queue.add({ id: 'a', text: '旧指令' })
+  queue.add({ id: 'b', text: '第二条' })
+  clock.set(2000)
+  assert.equal(queue.take(), null)
+  // Deleting an expired record (user dismissed it) still works with the CAS revision.
+  const deleted = queue.edit('a', queue.revision(), 'delete')
+  assert.equal(deleted.deletedId, 'a')
+  assert.deepEqual(queue.snapshot().items.map((item) => item.id), ['b'])
+  // Editing an expired record renews it and clears the confirmation flag.
+  const edited = queue.edit('b', queue.revision(), 'edit', '更新后的指令')
+  assert.equal(edited.item.needsConfirmation, false)
+  assert.equal(queue.take().id, 'b')
+  assert.equal(first.id, 'a')
+})
+
+test('an expired record still occupies capacity: overflow stays explicit (no silent eviction)', () => {
+  const clock = fakeClock()
+  const queue = createQueueModel({ now: clock.now, limit: 1, ttlMs: 1000 })
+  queue.add({ id: 'expired', text: '过期但未处理' })
+  clock.set(5000)
+  assert.throws(() => queue.add({ text: '新输入' }), (error) => {
+    assert.equal(error.code, 'QUEUE_FULL')
+    return true
+  })
+  assert.deepEqual(queue.snapshot().items.map((item) => item.id), ['expired'])
+  queue.edit('expired', queue.revision(), 'delete')
+  assert.equal(queue.add({ text: '新输入' }).id.length > 0, true)
+})
+
+test('a queue-sourced admission is not mistaken for a main-window turn', () => {
+  const turn = createTurnModel({ now: () => 0 })
+  turn.beginAdmission({ sessionId: 's', clientTurnId: 'c', inputSource: 'queue', text: '排队的工作' })
+  // conversation-service maps host-originated starts to inputSource 'voice'.
+  const observed = turn.observeTurnStart({ turnId: 's:1', turn: 1, inputSource: 'voice' })
+  assert.equal(observed.state, 'working')
+  assert.equal(observed.mainWindow, false)
+  assert.equal(observed.conflict, null)
+  assert.equal(turn.isMainWindowTurn(), false)
+  assert.equal(turn.observeTurnEnd({ turnId: 's:1', turn: 1, terminal: 'completed' }).state, 'idle')
+})
+
+test('repeated cancel requests keep the first captured target and timestamp', () => {
+  const clock = fakeClock()
+  const turn = createTurnModel({ now: clock.now })
+  turn.beginAdmission({ clientTurnId: 'c', inputSource: 'voice' })
+  turn.admitted({ turn: 8 })
+  turn.requestCancel({ target: { turn: 8, requestId: 'first' } })
+  clock.set(100)
+  const second = turn.requestCancel({ target: { turn: 8, requestId: 'second' } })
+  assert.equal(second.cancelTarget.requestId, 'first')
+  assert.equal(second.cancelRequestedAt, 0)
+})
+
+test('a late official end for an already settled turn is a no-op, never a rollback', () => {
+  const turn = createTurnModel({ now: () => 0 })
+  turn.beginAdmission({ clientTurnId: 'c', inputSource: 'voice' })
+  turn.admitted({ turn: 2 })
+  const ended = turn.observeTurnEnd({ turn: 2, terminal: 'completed' })
+  assert.equal(ended.state, 'idle')
+  const again = turn.observeTurnEnd({ turn: 2, terminal: 'cancelled' })
+  assert.equal(again.state, 'idle')
+  assert.equal(again.lastTurn.terminal, 'completed', 'official first result wins; late event does not rewrite it')
 })

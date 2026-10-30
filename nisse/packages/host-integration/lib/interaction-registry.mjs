@@ -452,11 +452,6 @@ export function createInteractionRegistry({
     }
   }
 
-  /** The exact result document both the first draft response and its replay return. */
-  function draftResultWithTime(record) {
-    return { ...draftResult(record), at: isoNow() }
-  }
-
   // ------------------------------------------------------- record lifecycle
 
   function nextOpenId() {
@@ -633,6 +628,17 @@ export function createInteractionRegistry({
     if (officialOutcome) record.officialOutcome = officialOutcome
     if (answerBatch) record.answerBatch = answerBatch
     clearExpiry(record)
+    // If the official result arrived out of band (durable event / projection)
+    // the mirror may still be presenting the request: withdraw the product
+    // surface without fabricating a second decision.
+    if (record.mirrorId && source === 'official' && typeof mirror?.expire === 'function') {
+      try {
+        const stillPresented = typeof mirror.snapshot === 'function'
+          ? mirror.snapshot().some((view) => view.id === record.mirrorId)
+          : false
+        if (stillPresented) mirror.expire(record.mirrorId)
+      } catch { /* best effort */ }
+    }
     upgradeReceipts(record, { state, outcome, error })
     pushResolved(record, outcome, source)
     if (state === 'expired') emitEvent('interaction.expired', record, { reason: error?.code || 'expired' })
@@ -892,6 +898,7 @@ export function createInteractionRegistry({
     }
     for (const [id, info] of recoveredByInteraction) {
       if (info.status !== 'unknown') continue
+      if (unknownInteractions.some((item) => item.id === id)) continue
       unknownInteractions.push({ id, kind: null, sessionId: null, reason: info.error?.code || 'INTERACTION_UNKNOWN', at: info.at || isoNow() })
     }
   }
@@ -1143,7 +1150,7 @@ export function createInteractionRegistry({
     return false
   }
 
-  function findOfficialTarget(kind, data) {
+  function findOfficialTarget(kind, data, { allowSinglePending = false } = {}) {
     const explicit = stringOrEmpty(data.interactionId)
     if (explicit && interactions.has(explicit)) return interactions.get(explicit)
     const officialId = stringOrEmpty(data.id) || stringOrEmpty(data.officialId) || stringOrEmpty(data.requestId)
@@ -1158,11 +1165,19 @@ export function createInteractionRegistry({
       const mapped = byOfficialCallId.get(callId)
       if (mapped && interactions.has(mapped)) return interactions.get(mapped)
     }
-    // Last resort: an unambiguous single official request of this kind in the
-    // session. Never "the first request" when more than one is pending.
+    if (!allowSinglePending) return null
+    // Last resort for observed *official* (durable) events: an unambiguous
+    // single official request of this kind. Never "the first request" when more
+    // than one is pending, and never used for the mirror's own settle echo (its
+    // events carry no durable seq / official marker), which would otherwise
+    // mask local decisions and timeouts as official results.
     const candidates = [...interactions.values()].filter((candidate) => isOpen(candidate) && candidate.kind === kind)
     if (candidates.length === 1) return candidates[0]
     return null
+  }
+
+  function isObservableOfficialEvent(data) {
+    return Boolean(data) && (data.durableSeq !== undefined || data.official === true || data.direct === true)
   }
 
   function officialOutcomeFor(kind, data) {
@@ -1180,7 +1195,7 @@ export function createInteractionRegistry({
   }
 
   function applyOfficialDecision(kind, data) {
-    const record = findOfficialTarget(kind, data)
+    const record = findOfficialTarget(kind, data, { allowSinglePending: isObservableOfficialEvent(data) })
     if (!record) return false
     const mapped = officialOutcomeFor(kind, data)
     if (mapped.state === 'resolved' && kind === 'question') {
@@ -1251,12 +1266,12 @@ export function createInteractionRegistry({
     }
     if (typeLower === 'interaction/resolved' || typeLower === 'interaction.resolved') {
       if (data.source && data.source !== 'official' && data.direct !== true) return false
-      const record = findOfficialTarget(data.kind === 'approval' ? 'approval' : 'question', data)
+      const record = findOfficialTarget(data.kind === 'approval' ? 'approval' : 'question', data, { allowSinglePending: data.direct === true })
       if (!record) return false
-      return applyOfficialDecision(record.kind, data)
+      return applyOfficialDecision(record.kind, { ...data, direct: true })
     }
     if (typeLower === 'interaction/expired' || typeLower === 'interaction.expired') {
-      const record = findOfficialTarget(data.kind === 'question' ? 'question' : 'approval', data)
+      const record = findOfficialTarget(data.kind === 'question' ? 'question' : 'approval', data, { allowSinglePending: data.direct === true })
       if (!record) return false
       return expireInteraction(record)
     }
@@ -1592,7 +1607,7 @@ export function createInteractionRegistry({
       record.deciding = null
       persistState()
       const info = errorInfo(error)
-      if (['BAD_ANSWER', 'INVALID_ANSWER', 'INVALID_DECISION', 'INVALID_PAYLOAD'].includes(info.code)) {
+      if (['BAD_ANSWER', 'INVALID_ANSWER', 'INVALID_DECISION', 'INVALID_PAYLOAD', 'OFFICIAL_UNAVAILABLE', 'OFFICIAL_REJECTED'].includes(info.code)) {
         held.status = 'rejected'
         held.error = info
         persistReceipt(held)
@@ -2069,8 +2084,15 @@ export function createInteractionRegistry({
   }
   // A registry can be created after the mirror already presents something
   // (integration order, or tests): adopt those requests without answering them.
+  // Mirror views are keyed by the mirror's own request id, so adoption must keep
+  // that id as both product id and mirror id for later settlement.
   if (mirror && typeof mirror.snapshot === 'function') {
-    try { syncOfficialRequests(mirror.snapshot()) } catch { /* never fail construction on reconciliation */ }
+    try {
+      for (const view of mirror.snapshot()) {
+        if (!view || typeof view.id !== 'string') continue
+        adoptMirrorView({ kind: view.kind, id: view.id, sessionId: view.sessionId, view })
+      }
+    } catch { /* never fail construction on reconciliation */ }
   }
 
   return {

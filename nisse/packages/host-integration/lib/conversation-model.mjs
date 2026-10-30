@@ -70,10 +70,13 @@ function parseTimestamp(value, fallback) {
   throw modelError('INVALID_RECORD', 'timestamp is invalid')
 }
 
-function normalizeSource(value, fallback = 'voice') {
+const PROTOCOL_SOURCES = ['voice', 'desktop']
+const DRAFT_SOURCES = ['voice', 'desktop', 'queue']
+
+function normalizeSource(value, fallback = 'voice', allowed = PROTOCOL_SOURCES) {
   if (value === undefined || value === null || value === '') return fallback
-  if (value !== 'voice' && value !== 'desktop') {
-    throw modelError('INVALID_SOURCE', 'input source must be voice or desktop')
+  if (!allowed.includes(value)) {
+    throw modelError('INVALID_SOURCE', `input source must be one of ${allowed.join(', ')}`)
   }
   return value
 }
@@ -458,7 +461,7 @@ export function createDraftModel({
    */
   function offer({ text, source = 'voice', captureId = null, metadata = {} } = {}) {
     const value = normalizeText(text, maxChars)
-    const normalizedSource = normalizeSource(source)
+    const normalizedSource = normalizeSource(source, 'voice', DRAFT_SOURCES)
     if (captureId !== null && captureId !== undefined && typeof captureId !== 'string') {
       throw modelError('INVALID_DRAFT', 'draft captureId must be a string or null')
     }
@@ -757,7 +760,8 @@ export function createTurnModel({
       startedAt = startedAt ?? t
       turn = adopted.turn
       turnId = adopted.turnId
-      if (observedSource !== null && observedSource !== inputSource) {
+      const mainWindowRace = observedSource === 'desktop' && inputSource !== 'desktop'
+      if (mainWindowRace) {
         mainWindow = true
         conflict = 'main-window-race'
       } else {
@@ -797,6 +801,11 @@ export function createTurnModel({
       return snapshot()
     }
     // unknown | error: an official start is authoritative evidence of new activity.
+    if (cancelTarget) {
+      lastCancel = { target: copy(cancelTarget), stale: true, supersededAt: t }
+      cancelRequestedAt = null
+      cancelTarget = null
+    }
     state = 'working'
     mainWindow = observedSource !== null && observedSource !== inputSource
     inputSource = observedSource || 'desktop'
@@ -961,7 +970,8 @@ export function createTurnModel({
 
   function markUnknown(reason = {}) {
     const t = clock()
-    if (state === 'idle') return snapshot()
+    // Explicit unknown is allowed from idle too: on Host restart the official state
+    // is not yet known, and "idle" must never be assumed before DSH evidence.
     state = 'unknown'
     lastError = {
       code: plainObject(reason) && typeof reason.code === 'string' ? reason.code : 'UNKNOWN',

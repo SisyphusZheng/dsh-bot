@@ -235,6 +235,12 @@ class DashScopeASRService(WebsocketSTTService):
                     frame.metadata["capture_id"] = capture_id
                     frame.metadata["input_mode"] = self.capture.modes.get(capture_id, 'always') if self.capture.required else 'hold'
                     frame.metadata["utterance_id"] = msg.get("item_id") or f"{capture_id}:{self._utterance_seq}"
+                    frame.metadata["provider_item_id"] = msg.get("item_id")
+                    # Confidence is a nullable provider field: pass through only
+                    # when the provider actually supplied a number.
+                    confidence = msg.get("confidence")
+                    if isinstance(confidence, (int, float)) and not isinstance(confidence, bool):
+                        frame.metadata["confidence"] = float(confidence)
                     await self.push_frame(frame)
             elif event == "conversation.item.input_audio_transcription.completed":
                 self.confirm_finalize()
@@ -259,6 +265,10 @@ class DashScopeASRService(WebsocketSTTService):
                     frame.metadata["capture_id"] = capture_id
                     frame.metadata["input_mode"] = self.capture.modes.get(capture_id, 'always') if self.capture.required else 'hold'
                     frame.metadata["utterance_id"] = utterance_id
+                    frame.metadata["provider_item_id"] = msg.get("item_id")
+                    confidence = msg.get("confidence")
+                    if isinstance(confidence, (int, float)) and not isinstance(confidence, bool):
+                        frame.metadata["confidence"] = float(confidence)
                     await self.push_frame(frame)
             elif event == "error":
                 self.metrics["errors"] += 1

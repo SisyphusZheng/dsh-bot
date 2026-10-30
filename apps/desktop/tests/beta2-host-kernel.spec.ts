@@ -209,3 +209,81 @@ it('reaches the v2 handshake, idempotent receipts, one official decision and mai
     rmSync(home, { recursive: true, force: true })
   }
 }, 60000)
+
+it('routes mixed control + work through the Host without dropping the remaining task', async () => {
+  const home = mkdtempSync(join(tmpdir(), 'beta2-control-'))
+  const workspaceDir = join(home, 'workspace')
+  const memory = createServer((req, res) => {
+    res.setHeader('content-type', 'application/json')
+    res.end(JSON.stringify({ ok: true }))
+  })
+  await new Promise<void>((done) => memory.listen(0, '127.0.0.1', done))
+  const address = memory.address()
+  if (!address || typeof address === 'string') throw new Error('No memory fixture address')
+  vi.stubEnv('DSH_BOT_RUNTIME_ROOT', resolve('apps/cli'))
+  vi.stubEnv('DSH_HOME', home)
+  vi.stubEnv('NISSE_DSH_LLM_ENTRY', resolve('packages/llm/llm/lib/index.js'))
+  let host: Host | null = null
+  try {
+    host = await startHost({ workspaceDir, memoryUrl: `http://127.0.0.1:${address.port}`, responses: [textResponse('done'), textResponse('done again')] })
+    const bridgeFile = join(home, 'bot/bridge.json')
+    await wait(() => existsSync(bridgeFile))
+    const bridge = JSON.parse(readFileSync(bridgeFile, 'utf8')) as Bridge
+    const base = `http://127.0.0.1:${bridge.port}`
+    const headers = { authorization: `Bearer ${bridge.token}`, 'content-type': 'application/json' }
+    const post = (path: string, body: object) => fetch(base + path, { method: 'POST', headers, body: JSON.stringify(body) })
+    const command = (extra: Record<string, unknown>) => ({
+      protocolVersion: PROTOCOL, commandId: randomUUID(), hostEpoch: bridge.hostEpoch,
+      sourceConnectionId: 'worker', sessionId: null, type: 'voice.facts', payload: {}, ...extra,
+    })
+    expect((await post('/sessions/create', {})).status).toBe(200)
+    const facts = (text: string, utteranceId: string) => {
+      const captureId = 'cap-' + utteranceId
+      return post('/v2/command', command({
+        payload: {
+          connectionId: 'worker-control', capture: { captureId, mode: 'hold', state: 'closing' },
+          items: [{ kind: 'asr.final', itemId: 'item-' + utteranceId, utteranceId, revision: 0, text, confidence: null }],
+          release: { captureId, reason: 'release' },
+        },
+      }))
+    }
+    const snapshotSeq = async (): Promise<number> => (await (await fetch(base + '/v2/snapshot', { headers })).json() as Snapshot).snapshotSeq as number
+    const eventsSince = async (after: number): Promise<any[]> => {
+      const response = await fetch(base + `/v2/events?after=${after}&limit=2000`, { headers })
+      const body = (await response.json()) as { events: any[]; resyncRequired: boolean }
+      return body.resyncRequired ? [] : body.events
+    }
+    const playbackStopsSince = async (after: number): Promise<any[]> => (await eventsSince(after))
+      .filter((event) => event.type === 'command' && event.data?.type === 'playback.stop')
+    // 1) A stop control and the remaining work are each consumed exactly once.
+    const base1 = await snapshotSeq()
+    const mixed = await facts('停一下。然后写一篇八百字的小作文', 'mix-1')
+    expect(mixed.status).toBe(200)
+    expect(((await mixed.json()) as any).status).toBe('accepted')
+    await wait(() => host!.adapter.requests.length === 1)
+    expect(JSON.stringify(host!.adapter.requests[0])).toContain('八百字')
+    await wait(async () => (await playbackStopsSince(base1)).length === 1)
+    expect((await playbackStopsSince(base1)).length).toBe(1)
+    await wait(async () => ((await (await fetch(base + '/v2/snapshot', { headers })).json()) as Snapshot).execution.state === 'idle')
+    // 2) Negated stop phrases stay ordinary input and never emit a playback stop.
+    const base2 = await snapshotSeq()
+    const negated = await facts('不要停，继续讲', 'neg-1')
+    expect(negated.status).toBe(200)
+    await wait(() => host!.adapter.requests.length === 2)
+    await new Promise((done) => setTimeout(done, 300))
+    expect((await playbackStopsSince(base2)).length).toBe(0)
+    await wait(async () => ((await (await fetch(base + '/v2/snapshot', { headers })).json()) as Snapshot).execution.state === 'idle')
+    // 3) A pure stop never creates a turn.
+    const base3 = await snapshotSeq()
+    const stopOnly = await facts('停一下', 'stop-1')
+    expect(stopOnly.status).toBe(200)
+    await wait(async () => (await playbackStopsSince(base3)).length === 1)
+    await new Promise((done) => setTimeout(done, 300))
+    expect(host!.adapter.requests.length).toBe(2)
+  } finally {
+    if (host) await host.ctx.fiber.dispose()
+    await new Promise<void>((done, reject) => { memory.close((error: Error | undefined) => error ? reject(error) : done()); memory.closeAllConnections() })
+    vi.unstubAllEnvs()
+    rmSync(home, { recursive: true, force: true })
+  }
+}, 60000)

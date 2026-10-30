@@ -326,3 +326,82 @@ test('snapshot + events handshake: snapshot is a consistent cut and late subscri
   assert.equal(canonicalJson({ ok: true }), '{"ok":true}')
   service.dispose()
 })
+
+test('queue capacity, revision-bound edit/delete, TTL expiry and media disconnect preserve text without replay', async () => {
+  const { runtime, state } = fakeRuntime()
+  const { service } = makeService({ runtime, registry: fakeRegistry(), config: { queueLimit: 2, queueTtlMs: 60, draftTtlMs: 1000 } })
+  service.onTurnStarted({ sessionId: 'session-1', turn: 1, inputSource: 'desktop', hostInitiated: false })
+  const command = (type, payload, id) => service.handleCommand({
+    protocolVersion: PROTOCOL_VERSION, commandId: id || randomUUIDForTest(), hostEpoch: HOST_EPOCH,
+    sourceConnectionId: 'worker', sessionId: null, type, payload,
+  })
+  const first = await service.handleFinalUtterance(utterance('第一条等待任务', { utteranceId: 'u1' }))
+  assert.equal(first.routed.filter((route) => route.path === 'input').length, 1)
+  await service.handleFinalUtterance(utterance('第二条等待任务', { utteranceId: 'u2' }))
+  const third = await service.handleFinalUtterance(utterance('第三条等待任务', { utteranceId: 'u3' }))
+  assert.ok(third.routed.some((route) => route.path === 'input'))
+  assert.equal(state.submitted.length, 0, 'nothing submitted while the main-window turn runs')
+  let snapshot = service.snapshotSections()
+  assert.equal(snapshot.queue.items.length, 2, 'capacity is enforced without evicting existing items')
+  assert.ok(service.inspect().draft, 'overflow text is kept for confirmation, not dropped')
+  // revision-bound edit and delete
+  const item = snapshot.queue.items[0]
+  const edited = await command('queue.edit', { id: item.id, revision: snapshot.queue.revision, text: '改写后的等待任务' })
+  assert.equal(edited.status, 'accepted')
+  snapshot = service.snapshotSections()
+  assert.match(snapshot.queue.items[0].text, /改写后/)
+  const stale = await command('queue.confirm', { id: snapshot.queue.items[0].id, revision: snapshot.queue.revision + 99 })
+  assert.equal(stale.status, 'rejected')
+  const deleted = await command('queue.delete', { id: snapshot.queue.items[1].id, revision: snapshot.queue.revision })
+  assert.equal(deleted.status, 'accepted')
+  assert.equal(service.snapshotSections().queue.items.length, 1)
+  // media disconnect must not clear the Host queue nor cancel the turn
+  await command('voice.session', { connectionId: 'w1', transport: 'disconnected', mediaState: {} })
+  assert.equal(service.snapshotSections().queue.items.length, 1)
+  assert.equal(service.snapshotSections().execution.state, 'working')
+  // TTL expiry keeps an inspectable record that cannot be auto-admitted
+  await new Promise((resolve) => setTimeout(resolve, 120))
+  const expired = await command('queue.confirm', { id: service.snapshotSections().queue.items[0].id, revision: service.snapshotSections().queue.revision })
+  assert.equal(expired.status, 'accepted', 'confirm renews an expired item instead of executing it blindly')
+  assert.equal(state.submitted.length, 0, 'expiry + confirm does not bypass the official turn state')
+  service.dispose()
+})
+
+test('interrupted turn quarantines the queue instead of auto-executing it', async () => {
+  const { runtime, state } = fakeRuntime()
+  const { service } = makeService({ runtime, registry: fakeRegistry() })
+  service.onTurnStarted({ sessionId: 'session-1', turn: 1, inputSource: 'desktop', hostInitiated: false })
+  await service.handleFinalUtterance(utterance('不要自动执行我', { utteranceId: 'utt-i' }))
+  assert.equal(state.submitted.length, 0)
+  service.onTurnEnded({ sessionId: 'session-1', turn: 1, terminal: 'interrupted', reason: { kind: 'interrupted' } })
+  await new Promise((resolve) => setTimeout(resolve, 80))
+  assert.equal(state.submitted.length, 0, 'interrupted turn does not replay queued input')
+  const snapshot = service.snapshotSections()
+  assert.equal(snapshot.queue.items.length, 1)
+  assert.equal(snapshot.queue.items[0].needsConfirmation, true)
+  assert.ok(snapshot.notices.some((notice) => /未正常结束/.test(notice.text)))
+  service.dispose()
+})
+
+test('host restart never auto-executes a persisted queue item (confirm required first)', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'beta2-service-restart-'))
+  const file = join(dir, 'state.json')
+  const first = fakeRuntime()
+  const one = makeService({ runtime: first.runtime, registry: fakeRegistry(), store: createStateStore({ file }) })
+  one.service.onTurnStarted({ sessionId: 'session-1', turn: 1, inputSource: 'desktop', hostInitiated: false })
+  await one.service.handleFinalUtterance(utterance('重启后等待我确认', { utteranceId: 'utt-rs' }))
+  assert.equal(one.service.snapshotSections().queue.items.length, 1)
+  one.service.dispose()
+  const second = fakeRuntime()
+  const two = makeService({ runtime: second.runtime, registry: fakeRegistry(), store: createStateStore({ file }) })
+  assert.equal(second.state.submitted.length, 0, 'restore must not execute anything')
+  const snapshot = two.service.snapshotSections()
+  assert.equal(snapshot.queue.items.length, 1)
+  assert.equal(snapshot.queue.items[0].needsConfirmation, true)
+  assert.match(snapshot.queue.items[0].text, /重启后等待我确认/)
+  two.service.dispose()
+})
+
+function randomUUIDForTest() {
+  return 'cmd-' + Math.random().toString(36).slice(2) + Date.now().toString(36)
+}

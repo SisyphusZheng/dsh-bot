@@ -49,6 +49,15 @@ class ClassifyTests(unittest.TestCase):
     def test_provider_5xx(self):
         self.assertEqual(classify(RuntimeError("503 Service Unavailable")), "provider")
 
+    def test_host_link_failure_is_classified_as_host_not_provider(self):
+        from host_client_v2 import HostUnavailable
+        self.assertEqual(classify(HostUnavailable("host request failed")), "host")
+        self.assertEqual(classify(RuntimeError("host stream unavailable (HTTP 503)")), "host")
+        self.assertEqual(classify(RuntimeError("bridge descriptor not found")), "host")
+        payload = build_payload(HostUnavailable("host request failed"), "host")
+        self.assertEqual(payload["kind"], "host")
+        self.assertIn("宿主", payload["action"])
+
     def test_unknown(self):
         self.assertEqual(classify(RuntimeError("boom")), "unknown")
 

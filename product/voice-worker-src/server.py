@@ -54,7 +54,7 @@ from pipecat.transports.smallwebrtc.request_handler import (
 from pipecat.transports.smallwebrtc.transport import SmallWebRTCTransport
 
 from dashscope_services import DashScopeASRService, DashScopeTTSService
-from dsh_bridge import DSHBridgeProcessor
+from dsh_bridge import VoiceMediaBridge
 import voice_errors
 
 TOKEN = os.environ.get("SPIKE_TOKEN", "dev-token")
@@ -305,7 +305,7 @@ async def run_dsh_pipeline(connection, session_id: str, session_state: dict) -> 
     asr = DashScopeASRService(api_key=API_KEY, model=ASR_MODEL)
     tts = DashScopeTTSService(api_key=API_KEY, model=TTS_MODEL, voice=TTS_VOICE)
     global DSH_PROCESSOR
-    bridge = DSHBridgeProcessor(DSH_BRIDGE_DESCRIPTOR, capture=asr.capture)
+    bridge = VoiceMediaBridge(DSH_BRIDGE_DESCRIPTOR, capture=asr.capture)
     DSH_PROCESSOR = bridge
     session_state["asr"] = asr
     session_state["tts"] = tts
@@ -327,89 +327,37 @@ async def run_dsh_pipeline(connection, session_id: str, session_state: dict) -> 
         transport.output(),
     ])
     task = PipelineTask(pipeline, params=PipelineParams(enable_metrics=True, allow_interruptions=True))
+    # Host v2 media link: facts out, media commands in. It never falls back to
+    # legacy business endpoints; startup failures are classified and retried.
+    bridge.start()
     await _run_task(transport, task, session_id, session_state)
 
 
 async def _run_task(transport, task, session_id: str, session_state: dict) -> None:
-    interaction_task = None
-    async def interaction_prompts():
-        failed = False
-        while not session_state['dsh']._closing:
-            try:
-                await session_state['dsh'].announce_pending()
-                await session_state['dsh']._start_next_turn()
-                failed = False
-            except asyncio.CancelledError:
-                raise
-            except FileNotFoundError:
-                # The host removes its bridge descriptor before the worker
-                # finishes shutting down. That is a normal shutdown race, not a
-                # user-facing announcement failure.
-                if session_state['dsh']._closing or not os.path.exists(session_state['dsh']._descriptor_path):
-                    break
-                if not failed:
-                    print('[voice] interaction announcement unavailable: FileNotFoundError', flush=True)
-                failed = True
-            except Exception as exc:
-                if not failed:
-                    print(f'[voice] interaction announcement unavailable: {type(exc).__name__}', flush=True)
-                    await session_state['dsh']._control_notice('审批语音提醒暂不可用，请查看桌宠气泡。')
-                failed = True
-            await asyncio.sleep(0.75)
-
     if task.rtvi is not None and MODE == "dsh":
         @task.rtvi.event_handler("on_client_message")
         async def capture_control(rtvi, message):
-            if message.type == 'playback-style':
-                if isinstance(message.data,dict) and message.data.get('style') in ('brief','full'): session_state['dsh']._playback_style=message.data['style']
-                return
-            if message.type == 'question-view':
-                if isinstance(message.data,dict): session_state['dsh'].set_question_view(message.data.get('view'))
-                return
-            if message.type == 'queue-control':
-                if isinstance(message.data,dict): await session_state['dsh'].queue_control(message.data)
-                return
-            if message.type == 'input-confirmation':
-                data = message.data if isinstance(message.data, dict) else {}
-                if not isinstance(data.get('id'), str) or len(data['id']) > 100:
-                    return
-                bridge = session_state['dsh']
-                if data.get('action') == 'confirm':
-                    await bridge.confirm_input(data['id'], data.get('text'))
-                elif data.get('action') == 'discard':
-                    await bridge.discard_input(data['id'])
-                return
+            # Media controls only. Business commands (playback style, queue,
+            # interaction answers, input confirmation) belong to Host v2 and are
+            # no longer handled here.
             if message.type != "capture-state":
                 return
             data = message.data if isinstance(message.data, dict) else {}
             capture = session_state["asr"].capture
             action, capture_id = data.get("action"), data.get("captureId")
-            if not capture.control(action, capture_id, data.get('mode', 'always')):
+            mode = data.get('mode', 'always')
+            if not capture.control(action, capture_id, mode):
                 return
-            session_state['dsh'].capture_changed(action,capture_id)
-            if action in ('finish', 'discard'):
-                bridge = session_state['dsh']
-                draft = bridge._input_admission.draft
-                if draft and draft['metadata'].get('capture_id') == capture_id:
-                    await bridge.discard_input(draft['id'])
+            await session_state['dsh'].capture_changed(action, capture_id, mode)
             if action in ("finish", "discard"):
                 await task.queue_frames([VADUserStoppedSpeakingFrame()])
             await rtvi.send_server_message({"type": "capture-ack", "action": action, "captureId": capture_id})
 
         @task.rtvi.event_handler("on_client_ready")
-        async def greet_once(rtvi):
-            nonlocal interaction_task
-            if session_state.get("welcomed"):
-                return
-            session_state["welcomed"] = True
-            interaction_task = asyncio.create_task(interaction_prompts())
-            greeting = os.environ.get("DSH_VOICE_GREETING", "你好，我在呢。想聊什么，或者有什么需要我帮忙的？")
-            if greeting:
-                session_state["dsh"].set_greeting(greeting)
-                await task.queue_frames([
-                    OutputTransportMessageUrgentFrame(message={"id": "welcome-" + session_id, "label": "rtvi-ai", "type": "server-message", "data": {"type": "greeting", "text": greeting}}),
-                    TTSSpeakFrame(text=greeting),
-                ])
+        async def voice_ready(rtvi):
+            # Report the media transport only once the WebRTC/RTVI client can
+            # receive audio, so the Host-triggered welcome is not lost.
+            await session_state['dsh'].report_transport('connected')
 
     @transport.event_handler("on_client_connected")
     async def on_client_connected(transport, client):
@@ -420,6 +368,9 @@ async def _run_task(transport, task, session_id: str, session_state: dict) -> No
     async def on_client_disconnected(transport, client):
         session_state["disconnected_at"] = time.time()
         print(f"[g1] client disconnected session={session_id} mode={MODE}", flush=True)
+        # Media disconnect only tears down this media pipeline. DSH work and the
+        # Host queue are untouched: no task-cancel HTTP call is made here.
+        await session_state['dsh'].report_transport('disconnected')
         try:
             await task.cancel()
         except Exception as exc:
@@ -458,14 +409,10 @@ async def _run_task(transport, task, session_id: str, session_state: dict) -> No
             await voice_errors.report(exc, source="session")
         print(f"[g1] session error session={session_id}: {exc!r}", flush=True)
     finally:
-        if interaction_task is not None:
-            interaction_task.cancel()
-            await asyncio.gather(interaction_task, return_exceptions=True)
         voice_errors.set_reporter(None)
         if CURRENT_TASK is task:
             CURRENT_TASK = None
         print(f"[g1] session finished session={session_id} mode={MODE}", flush=True)
-
 
 CURRENT_TASK = None
 DSH_PROCESSOR = None
@@ -506,6 +453,7 @@ def _session_stats(session_state: dict) -> dict:
 
 @app.get("/health")
 async def health():
+    host = DSH_PROCESSOR.health_state()["host"] if DSH_PROCESSOR is not None else None
     return {
         "ok": True,
         "service": "dsh-bot-voice",
@@ -515,7 +463,12 @@ async def health():
         "asr_model": ASR_MODEL if MODE in ("asr", "loop", "dsh") else None,
         "tts_model": TTS_MODEL if MODE in ("tts", "loop", "dsh") else None,
         "tts_voice": TTS_VOICE if MODE in ("tts", "loop", "dsh") else None,
-        "dsh_bridge_descriptor": DSH_BRIDGE_DESCRIPTOR if MODE == "dsh" else None,
+        # Unauthenticated projection is path-free: no descriptor paths or secrets.
+        "host": None if host is None else {
+            "connected": bool(host.get("connected")),
+            "streaming": bool(host.get("streaming")),
+            "lastEventSeq": int(host.get("lastEventSeq") or 0),
+        },
         "uptime_seconds": round(time.time() - STARTED_AT, 1),
         "active_sessions": len(active_sessions),
         # Minimal unauthenticated projection: no redacted stack/detail on /health.
@@ -527,7 +480,7 @@ async def health():
 async def debug_dsh_state(http_request: Request):
     if not authorized(http_request):
         return JSONResponse(status_code=401, content={"error": "unauthorized"})
-    return {"ok": True, "state": DSH_PROCESSOR.queue_state() if DSH_PROCESSOR else None}
+    return {"ok": True, "state": DSH_PROCESSOR.health_state() if DSH_PROCESSOR else None}
 
 
 @app.post("/debug/barge-candidate")
@@ -573,7 +526,17 @@ async def debug_transcript(http_request: Request):
         return JSONResponse(status_code=400, content={"error": "text required"})
     if DSH_TEST_PREFIX and not text.startswith(DSH_TEST_PREFIX):
         text = DSH_TEST_PREFIX + text
-    await CURRENT_TASK.queue_frames([TranscriptionFrame(text, "test-user", "")])
+    frame = TranscriptionFrame(text, "test-user", "")
+    # Debug transcripts must carry capture identity: without it the media bridge
+    # fails closed and reports no fact (it never invents a capture id).
+    capture = getattr(DSH_PROCESSOR, "_capture", None) if DSH_PROCESSOR is not None else None
+    if capture is not None and capture.current:
+        frame.metadata.update(
+            capture_id=capture.current,
+            utterance_id=f"debug-{uuid.uuid4().hex[:8]}",
+            input_mode=capture.modes.get(capture.current, "always"),
+        )
+    await CURRENT_TASK.queue_frames([frame])
     return {"ok": True, "queued": text}
 
 

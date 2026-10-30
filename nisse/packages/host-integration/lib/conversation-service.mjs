@@ -953,6 +953,7 @@ export function createConversationService({
         const snapshot = queue.snapshot()
         emit('queue.changed', { data: snapshot })
         persistState('queue-changed')
+        if (action === 'confirm') drainQueue()
         return { status: 'accepted', result: { revision: snapshot.revision, items: snapshot.items.map((item) => normalizeQueueItem(item, snapshot.revision)) } }
       }
       case 'input.confirm': {

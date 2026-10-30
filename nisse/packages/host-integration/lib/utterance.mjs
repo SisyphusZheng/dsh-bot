@@ -197,6 +197,8 @@ export function createUtteranceAssembler({
   let finishedCaptures = new Map()
   let emitted = []
   let lateRecords = []
+  let pendingLate = []
+  let anonymousItems = 0
   let droppedRecords = []
   let counters = { facts: 0, acceptedFinals: 0, duplicates: 0, late: 0, emitted: 0, discarded: 0, rejected: 0 }
 
@@ -288,6 +290,12 @@ export function createUtteranceAssembler({
       boundaryUtteranceId: capture?.lastUtteranceId || null,
     }
     pushBounded(lateRecords, record, lateRetention)
+    // Deliver each late final once so the ConversationService can surface it as a
+    // pending-inspection item (draft/notice); it must never be queued as a task.
+    const key = `${record.captureId}\u0000${record.itemId}\u0000${record.revision}\u0000${record.text}`
+    if (!pendingLate.some((entry) => entry.key === key)) {
+      pushBounded(pendingLate, { key, record: { ...record, mode: capture?.mode || 'hold' } }, 32)
+    }
     return { accepted: false, duplicate: false, late: true, utteranceId: record.utteranceId, reason }
   }
 
@@ -328,7 +336,10 @@ export function createUtteranceAssembler({
       kind,
       captureId: item.captureId.trim(),
       utteranceId,
-      itemId: itemId || 'anon:' + String(revision),
+      // The v1 protocol requires a provider itemId. If a legacy caller omits it,
+      // invent a per-fact anonymous identity instead of a revision-derived one so
+      // distinct finals are never mistaken for conflicting revisions of one item.
+      itemId: itemId || 'anon:' + String((anonymousItems += 1)),
       text: item.text,
       revision,
       confidence: confidenceOf(item.confidence),
@@ -687,7 +698,6 @@ export function createUtteranceAssembler({
       const finished = finishedCaptures.get(captureId)
       if (finished) return { utterances: [], drained: true, duplicate: true }
       capture = makeCapture(captureId, null, t)
-      capture.mode = 'hold'
       captures.set(captureId, capture)
     }
     if (capture.state === 'finished') return { utterances: [], drained: true, duplicate: true }
@@ -700,6 +710,9 @@ export function createUtteranceAssembler({
       capture.discardedAt = t
       for (const group of dropped) pushBounded(capture.finishedUtteranceIds, group.utteranceId, 8)
       captures.delete(captureId)
+      // A discarded capture also suppresses already-buffered late inspection content:
+      // "canceled capture cannot flush" applies to every delayed fragment.
+      pendingLate = pendingLate.filter((entry) => entry.record.captureId !== captureId)
       discardedCaptures.set(captureId, { discardedAt: t, mode: capture.mode })
       if (discardedCaptures.size > discardedRetention) discardedCaptures.delete(discardedCaptures.keys().next().value)
       counters.discarded += 1
@@ -710,9 +723,11 @@ export function createUtteranceAssembler({
       capture.drainDeadline = t + drainMs
     }
     capture.state = 'closing'
-    const utterances = []
-    collectReady(capture, t, utterances)
-    return { utterances, drained: capture.state === 'finished' }
+    // Emission is deferred to tick() so a caller that does `release(); tick()` (the
+    // ConversationService voice.facts path) never loses a ready utterance; callers
+    // must not route `release().utterances` and tick() both. This also keeps every
+    // submission behind one single producer.
+    return { utterances: [], drained: capture.state === 'finished', pending: capture.groups.size }
   }
 
   /** Emit every utterance whose settle/drain deadline has passed. */
@@ -726,6 +741,37 @@ export function createUtteranceAssembler({
       }
       if (capture.state === 'finished') continue // retained by finishedCaptures for late attribution
       collectReady(capture, t, utterances)
+    }
+    // Late-after-boundary finals become inspectable utterances for the service's
+    // draft/notice path; they are never submitted as work (late:true).
+    if (pendingLate.length > 0) {
+      const lateBatch = pendingLate.splice(0, pendingLate.length)
+      for (const entry of lateBatch) {
+        const record = entry.record
+        utterances.push({
+          utteranceId: record.utteranceId || 'late-' + newId(),
+          captureId: record.captureId,
+          mode: record.mode,
+          text: record.text,
+          segments: [{
+            segmentId: `${record.captureId}:${record.itemId}:late`,
+            text: record.text,
+            itemIds: [record.itemId],
+            itemId: record.itemId,
+            revision: record.revision,
+            span: [0, record.text.length],
+          }],
+          createdAt: record.at,
+          readyAt: t,
+          late: true,
+          reason: record.reason,
+          segmentCount: 1,
+          needsConfirmation: true,
+          conflicts: [],
+          releasedAt: null,
+          discarded: false,
+        })
+      }
     }
     // Bounded active-capture retention: only finished/discarded records may leave.
     if (captures.size > captureRetention) {
@@ -800,6 +846,8 @@ export function createUtteranceAssembler({
     finishedCaptures = new Map()
     emitted = []
     lateRecords = []
+    pendingLate = []
+    anonymousItems = 0
     droppedRecords = []
     counters = { facts: 0, acceptedFinals: 0, duplicates: 0, late: 0, emitted: 0, discarded: 0, rejected: 0 }
   }
@@ -1502,6 +1550,10 @@ export function createSegmenter() {
         selectionIntent: target.intent,
         setSelected: target.intent !== 'deselect',
         ordinal: target.ordinal,
+        // Registry-facing batch shape (conversation-service forwards payload.answers);
+        // only a plain select is a complete single-answer batch. A multi-select
+        // deselect is a set-selected command, not an answer batch.
+        ...(target.intent === 'select' ? { answers: [{ id: question.id, selected: [option.optionId] }] } : {}),
       }
       if (question.multiSelect !== true && target.intent === 'deselect') {
         return {
@@ -1550,6 +1602,7 @@ export function createSegmenter() {
         custom: text.trim(),
         selectionIntent: 'custom',
         setSelected: false,
+        answers: [{ id: question.id, selected: [], custom: text.trim() }],
       }
       return {
         segment: makeSegment(context, 0, 'interaction-answer', text, 'question-custom-answer', {

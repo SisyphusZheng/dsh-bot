@@ -300,6 +300,7 @@ export function apply(ctx, config = {}) {
   })
   const stateStore = createStateStore({ file: join(bridgeDir, 'beta2-state.json') })
   const receiptStore = createReceiptStore({ file: join(bridgeDir, 'beta2-receipts.json'), maxEntries: 128 })
+  const registryStore = createStateStore({ file: join(bridgeDir, 'beta2-registry.json') })
   let registry = null
   let conversation = null
 
@@ -370,6 +371,7 @@ export function apply(ctx, config = {}) {
     registry = createInteractionRegistry({
       mirror: interactions,
       receipts: receiptStore,
+      store: registryStore,
       emit: kernelEmit,
       hostEpoch,
       now: () => Date.now(),
@@ -710,7 +712,14 @@ export function apply(ctx, config = {}) {
         // The approval/request handler pushes a richer approval.request event
         // (id/reason/callId). Do not also emit an id-less durable event: the voice
         // bridge would treat both as separate approval requests and the first one
-        // (without an id) cannot be answered.
+        // (without an id) cannot be answered. The durable event only binds the
+        // official approval identity for the product registry (no decision made).
+        try {
+          registry?.observeOfficial({
+            type: 'approval/asked', sessionId: sid, durableSeq: event.seq,
+            data: { ...(data && typeof data === 'object' ? data : {}), durableSeq: event.seq },
+          })
+        } catch (error) { log('approval binding failed: ' + messageOf(error)) }
         break
       case 'approval/decided':
         push('approval.decided', { ...base, data: { durableSeq: event.seq, id: data.id, outcome: data.outcome || null } })
@@ -1727,7 +1736,7 @@ export function apply(ctx, config = {}) {
     await new Promise(resolve => { server.close(resolve); server.closeAllConnections() })
     try { unlinkSync(bridgeFile) } catch {}
     try { stream.dispose() } catch { /* ignore */ }
-    try { stateStore.close(); receiptStore.close() } catch { /* ignore */ }
+    try { stateStore.close(); receiptStore.close(); registryStore.close() } catch { /* ignore */ }
     log('fixture disposed')
   })
 }

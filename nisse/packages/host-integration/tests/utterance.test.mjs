@@ -84,8 +84,15 @@ test('duplicate provider items are deduped and late duplicates stay into inspect
   const late = a.fact(final('c1', 'u1', 'i1', '请整理报告'), { mode: 'toggle' })
   assert.equal(late.accepted, false)
   clock.set(200)
-  assert.deepEqual(a.tick(), []) // never a second task
+  // Late-after-boundary content is delivered once as an inspectable late record,
+  // never as a second submittable utterance.
+  const lateBatch = a.tick()
+  assert.equal(lateBatch.length, 1)
+  assert.equal(lateBatch[0].late, true)
+  assert.equal(lateBatch[0].reason, 'after-boundary')
+  assert.deepEqual(a.tick(), [], 'a late record is delivered exactly once')
   assert.ok(a.lateRecords().some((record) => record.reason === 'after-boundary'))
+  assert.equal(a.emittedUtterances().length, 1)
 })
 
 test('cumulative revisions merge without repeating words (same item and new items)', () => {
@@ -142,18 +149,24 @@ test('hold stays closed until release, then waits the bounded drain', () => {
   clock.set(150)
   assert.equal(a.fact(final('c1', 'u1', 'i2', '再补一句'), { mode: 'hold' }).accepted, false)
   clock.set(200)
-  assert.deepEqual(a.tick(), [])
+  const lateBatch = a.tick()
+  assert.equal(lateBatch.filter((item) => item.late === false).length, 0)
+  assert.deepEqual(lateBatch.map((item) => item.late), [true])
+  assert.equal(a.emittedUtterances().length, 1)
 })
 
-test('release return value reports drained=true once settle already elapsed', () => {
+test('release defers emission to tick so one producer emits every utterance', () => {
   const clock = fakeClock()
   const a = assembler(clock)
   a.fact(final('c1', 'u1', 'i1', '已经说完'), { mode: 'hold' })
-  clock.set(150) // settle elapsed
+  clock.set(150) // settle elapsed before release
   const released = a.release({ captureId: 'c1' })
-  assert.equal(released.drained, true)
-  assert.equal(released.utterances.length, 1)
-  assert.equal(released.utterances[0].text, '已经说完')
+  assert.deepEqual(released.utterances, [], 'release never competes with tick for emission')
+  assert.equal(released.drained, false)
+  const emitted = a.tick()
+  assert.equal(emitted.length, 1)
+  assert.equal(emitted[0].text, '已经说完')
+  assert.equal(emitted[0].late, false)
 })
 
 test('the release drain deadline caps convergence even with continuing finals', () => {
@@ -358,7 +371,14 @@ test('randomized assembler sequences keep the submission-boundary invariants', (
     clock.advance(1 + Math.floor(random() * 30))
     const utterances = a.tick()
     for (const utterance of utterances) {
-      assert.equal(utterance.late, false)
+      if (utterance.late) {
+        // Late-after-boundary content is inspection-only: never a submittable task.
+        assert.equal(utterance.reason, 'after-boundary')
+        assert.ok(utterance.text.trim().length > 0)
+        assert.equal(utterance.segments.length, 1)
+        assert.ok(!discarded.has(utterance.captureId))
+        continue
+      }
       assert.ok(!discarded.has(utterance.captureId), 'discarded capture must never flush')
       assert.ok(utterance.text.trim().length > 0)
       assert.ok(utterance.segments.length > 0)
@@ -623,6 +643,10 @@ test('B2-G05: multi-select uses set-selected, never an idempotent toggle', () =>
   assert.equal(deselect.setSelected, false)
   assert.equal(deselect.optionLabel, '梨')
   assert.deepEqual(deselect.selected, [])
+  // Integration contract: plain selects expose a registry answer batch; a
+  // set-selected deselect is a draft command, never an answer batch.
+  assert.deepEqual(select.answers, [{ id: 'pick', selected: [select.optionId] }])
+  assert.equal(deselect.answers, undefined)
   // Replaying the same route is the same set-selected command, not a flip.
   const replay = segmenter.route('取消第三个', { interaction, utteranceId: 'u1' }).segments[0].answer
   assert.deepEqual(replay, deselect)
@@ -767,4 +791,75 @@ test('assembler -> segmenter integration: a mixed final routes once per segment'
   assert.ok(CONTROL_VALUES.includes(routed.segments[0].control))
   assert.equal(SETTLE_MS_DEFAULT, 650)
   assert.equal(DRAIN_MS_DEFAULT, 3000)
+})
+
+/* ------------------------------------------------------------------------- */
+/* Integration-edge regressions (ConversationService voice.facts pattern)    */
+/* ------------------------------------------------------------------------- */
+
+test('release-then-tick (service pattern) loses no utterance; release output is empty by contract', () => {
+  const clock = fakeClock()
+  const a = assembler(clock)
+  a.fact(final('c1', 'u1', 'i1', '松键后的一句话'), { mode: 'hold' })
+  clock.set(20)
+  const released = a.release({ captureId: 'c1' })
+  assert.deepEqual(released.utterances, [])
+  assert.equal(released.pending, 1)
+  // The service calls tick() immediately after release (quiet window not elapsed yet)
+  // and its 100 ms tick timer emits once the hold settle deadline passes.
+  assert.deepEqual(a.tick(), [])
+  clock.set(100)
+  const ready = a.tick()
+  assert.equal(ready.length, 1)
+  assert.equal(ready[0].late, false)
+  assert.equal(ready[0].text, '松键后的一句话')
+})
+
+test('a discarded capture also suppresses buffered late inspection records', () => {
+  const clock = fakeClock()
+  const a = assembler(clock)
+  a.fact(final('c1', 'u1', 'i1', '第一段'), { mode: 'toggle' })
+  clock.set(101)
+  assert.equal(a.tick().length, 1)
+  clock.set(120)
+  // Late final is buffered but not yet delivered.
+  assert.equal(a.fact(final('c1', 'u1', 'i2', '迟到的内容'), { mode: 'toggle' }).late, true)
+  // The capture is discarded before the next tick drains the late record.
+  a.release({ captureId: 'c1', discard: true })
+  clock.set(200)
+  assert.deepEqual(a.tick(), [], 'discarded capture cannot flush buffered late content')
+  assert.equal(a.emittedUtterances().length, 1)
+})
+
+test('legacy finals without provider itemId do not collide as conflicting revisions', () => {
+  const clock = fakeClock()
+  const a = assembler(clock)
+  assert.equal(a.fact({ kind: 'asr.final', captureId: 'c1', utteranceId: 'u1', revision: 0, text: '第一句' }, { mode: 'hold' }).accepted, true)
+  assert.equal(a.fact({ kind: 'asr.final', captureId: 'c1', utteranceId: 'u1', revision: 0, text: '第二句' }, { mode: 'hold' }).accepted, true)
+  clock.set(10)
+  a.release({ captureId: 'c1' })
+  clock.set(200)
+  const [utterance] = a.tick()
+  assert.equal(utterance.text, '第一句第二句')
+  assert.equal(utterance.conflicts.length, 0)
+})
+
+test('a mode change inside one capture is rejected explicitly', () => {
+  const clock = fakeClock()
+  const a = assembler(clock)
+  assert.equal(a.fact(final('c1', 'u1', 'i1', '一'), { mode: 'hold' }).accepted, true)
+  const conflict = a.fact(final('c1', 'u1', 'i2', '二'), { mode: 'toggle' })
+  assert.equal(conflict.accepted, false)
+  assert.equal(conflict.reason, 'mode-conflict')
+})
+
+test('an empty final never emits a submittable utterance and is recorded', () => {
+  const clock = fakeClock()
+  const a = assembler(clock)
+  assert.equal(a.fact(final('c1', 'u1', 'i1', ''), { mode: 'hold' }).accepted, true)
+  clock.set(10)
+  a.release({ captureId: 'c1' })
+  clock.set(200)
+  assert.deepEqual(a.tick(), [])
+  assert.ok(a.droppedRecords().some((record) => record.reason === 'empty-text'))
 })
