@@ -3,7 +3,8 @@ import { spawn, type ChildProcess } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { randomUUID } from 'node:crypto'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 export type MemoryRuntimePhase = 'disabled' | 'starting' | 'ready' | 'failed'
 export interface MemoryRuntimeStatus {
@@ -14,6 +15,12 @@ export interface MemoryRuntimeStatus {
   bank: string | null
   dataRoot: string
   error: string
+  /** Resolved Memory payload directory (dev contract or packaged resources). */
+  payload: string | null
+  /** Where the payload came from: explicit dev workspace / diagnostic env override / packaged. */
+  payloadSource: 'workspace' | 'env-override' | 'packaged' | 'missing' | 'unresolved'
+  /** Human-readable payload resolution result (preflight message on failure). */
+  payloadMessage: string
 }
 export interface MemorySidecarResult { ok?: boolean; error?: { code?: string; message?: string } | string; [key: string]: unknown }
 export interface MemoryRuntimeResponse { status: number; json: MemorySidecarResult | null }
@@ -52,6 +59,9 @@ export class MemoryRuntime {
   private serverUrl: string | null = null
   private phase: MemoryRuntimePhase = 'disabled'
   private enabled = false
+  private payloadPath: string | null = null
+  private payloadSource: MemoryRuntimeStatus['payloadSource'] = 'unresolved'
+  private payloadMessage = ''
   private boot: Promise<MemoryRuntimeStatus> | null = null
   private stopping: Promise<MemoryRuntimeStatus> | null = null
   private abort = new AbortController()
@@ -65,13 +75,53 @@ export class MemoryRuntime {
   ) {}
   get dataRoot(): string { return join(this.dshHome, 'memory') }
   private get payload(): string {
-    return this.development ? process.env.NISSE_MEMORY_DIR || join(this.appPath, '..', '..', 'product', 'memory') : join(this.resourcesPath, 'memory')
+    if (this.payloadPath === null) throw new Error(this.payloadMessage || 'memory payload is not resolved')
+    return this.payloadPath
+  }
+  /**
+   * Resolve the dev Memory payload through the explicit workspace contract
+   * (product/pet/src/dev-memory-resolver.mjs): prefer the current workspace
+   * `.mvv-build/memory`; NISSE_MEMORY_DIR remains a validated diagnostic
+   * compatibility override; a missing payload throws the preflight message
+   * naming `bash product/tools/build-memory.sh` instead of faking readiness.
+   * The packaged app keeps its immutable `<resources>/memory` contract.
+   */
+  private async resolvePayload(): Promise<void> {
+    if (!this.development) {
+      this.payloadPath = join(this.resourcesPath, 'memory')
+      this.payloadSource = 'packaged'
+      this.payloadMessage = ''
+      return
+    }
+    const repositoryRoot = resolve(this.appPath, '..', '..')
+    try {
+      const resolver = await import(pathToFileURL(join(repositoryRoot, 'product', 'pet', 'src', 'dev-memory-resolver.mjs')).href) as {
+        resolveDevMemoryPayload(options: { repositoryRoot: string; env?: NodeJS.ProcessEnv }): {
+          source: 'workspace' | 'env-override' | 'missing'
+          path: string | null
+          valid: boolean
+          message: string
+        }
+      }
+      const resolved = resolver.resolveDevMemoryPayload({ repositoryRoot, env: process.env })
+      this.payloadSource = resolved.source
+      this.payloadMessage = resolved.message
+      // An explicit diagnostic override is honored with its validation shown in
+      // status/payloadMessage; only a genuinely missing payload fails startup.
+      this.payloadPath = resolved.source === 'missing' ? null : resolved.path
+    } catch (error) {
+      this.payloadPath = null
+      this.payloadSource = 'unresolved'
+      this.payloadMessage = `dev Memory resolver unavailable: ${String(error)}`
+    }
+    if (this.payloadPath === null) throw new Error(this.payloadMessage || 'memory payload missing; run: bash product/tools/build-memory.sh')
   }
   get url(): string | null { return this.descriptor === null ? null : `http://127.0.0.1:${this.descriptor.port}` }
   get token(): string | null { return this.descriptor?.token ?? null }
   status(): MemoryRuntimeStatus {
     return { enabled: this.enabled, phase: this.phase, server: this.serverUrl, sidecar: this.url,
-      bank: this.descriptor?.bank ?? null, dataRoot: this.dataRoot, error: this.lastError }
+      bank: this.descriptor?.bank ?? null, dataRoot: this.dataRoot, error: this.lastError,
+      payload: this.payloadPath, payloadSource: this.payloadSource, payloadMessage: this.payloadMessage }
   }
   private assertStarting(): void {
     this.abort.signal.throwIfAborted()
@@ -165,7 +215,7 @@ export class MemoryRuntime {
     mkdirSync(this.dataRoot, { recursive: true, mode: 0o700 })
     this.boot = (async () => {
       try {
-        await this.cleanup(); this.assertStarting(); await this.ensureServer(); await this.ensureSidecar(); this.assertStarting()
+        await this.resolvePayload(); await this.cleanup(); this.assertStarting(); await this.ensureServer(); await this.ensureSidecar(); this.assertStarting()
         this.phase = 'ready'; this.publishDescriptor()
         this.monitor = setInterval(() => { void this.healthySidecar().then((healthy) => {
           if (!healthy && this.phase === 'ready') { this.lastError = 'memory adapter health lost'; this.phase = 'failed'; this.descriptor = null; rmSync(join(this.dataRoot, 'runtime.json'), { force: true }) }

@@ -3,13 +3,17 @@
 // 都只改内容与显隐，orb 窗口位置与尺寸保持不变，因此不会出现
 // 「窗口 resize 与渲染层 offset 跨进程不同步」造成的帧抽动。
 //
+// 本文件是 `window-layer-policy.mjs` 的薄执行器：层级/Spaces/焦点/点击穿透、
+// 相对桌宠的几何位置、24 logical px 锚定预算与有界 fallback、进程类型决定的
+// skipTransformProcessType、以及有界窗口诊断全部由 policy 决定；这里只负责
+// 创建 BrowserWindow、加载页面、维护 ready/visible/inputMode 与内容高度适配。
+// 纯函数（orbBubbleWindowBounds/desktopTaskStackHeight/orbBubbleHeadroom）仍然
+// 导出并由既有测试/主进程使用。
+//
 // 气泡必须可交互（是/否审批按钮）：窗口默认 setIgnoreMouseEvents(true,
 // { forward: true })，透明区域点击落到下面的窗口；渲染层检测到指针进入
 // 气泡卡片时通过 IPC 请求 setInteractive(true)，卡片区域才接收点击。
 // forward 让穿透状态下仍能收到 mousemove，指针移出卡片后立即恢复穿透。
-//
-// 几何：窗口底部在 orb 顶边下方 44px 处（尾巴尖落在鲸鱼娘头发上），
-// 气泡内容在窗口内底部对齐；窗口向上/向左留出透明空间。
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -18,6 +22,13 @@ import {
   DESKTOP_TASK_STACK_LIFT,
   DESKTOP_TASK_STACK_PADDING,
 } from './desktop-surface-layout.mjs'
+import {
+  ANCHOR_GAP_PX,
+  createWindowLayerController,
+  fitBubbleWindowBounds,
+  normalizeProcessType,
+  selectBubblePlacement,
+} from './window-layer-policy.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 
@@ -52,85 +63,63 @@ export function orbBubbleHeadroom({ orbBounds, taskCount = 0, taskPlacement = 'b
   return Math.max(0, Math.round(orbBounds.y - workArea.y - cards))
 }
 
-/** 气泡窗口在屏幕上的位置（固定尺寸，底部对齐到 orb 顶边下 44px）。 */
-function preferredBubbleWindowBounds({
-  orbBounds,
-  taskCount = 0,
-  taskPlacement = 'below',
-  workArea,
-}) {
-  const cards = taskPlacement === 'above' ? desktopTaskStackHeight(taskCount) : 0
-  const centerX = orbBounds.x + Math.round(orbBounds.width / 2)
-  const x = clamp(
-    centerX - Math.round(ORB_BUBBLE_WINDOW_WIDTH / 2),
-    workArea.x,
-    workArea.x + workArea.width - ORB_BUBBLE_WINDOW_WIDTH,
-  )
-  // 让尾巴尖落在角色头顶（角色头顶相对 orb 窗口顶部的 offset，由皮肤/渲染层决定）。
-  // 参考图效果：气泡本体在头顶上方，尾巴向下指向角色。
-  // 窗口底边 = orb 顶边 + overlap（尾巴尖落在头发上）。
-  const aboveY = orbBounds.y + ORB_BUBBLE_TAIL_OVERLAP - ORB_BUBBLE_WINDOW_HEIGHT - cards
-  // 头顶没有足够空间时（例如 orb 贴近屏幕顶部），把气泡放到角色旁边的空白处，
-  // 而不是把气泡窗口钳制在屏幕顶端、导致气泡压住角色头部。
-  if (aboveY < workArea.y) {
-    const gap = 12
-    const leftX = orbBounds.x - ORB_BUBBLE_WINDOW_WIDTH - gap
-    const rightX = orbBounds.x + orbBounds.width + gap
-    let besideX
-    if (leftX >= workArea.x) besideX = leftX
-    else if (rightX + ORB_BUBBLE_WINDOW_WIDTH <= workArea.x + workArea.width) besideX = rightX
-    else besideX = clamp(leftX, workArea.x, workArea.x + workArea.width - ORB_BUBBLE_WINDOW_WIDTH)
-    const besideY = clamp(
-      orbBounds.y - Math.round(ORB_BUBBLE_WINDOW_HEIGHT / 3),
-      workArea.y,
-      workArea.y + workArea.height - ORB_BUBBLE_WINDOW_HEIGHT,
-    )
-    return {
-      x: Math.round(besideX),
-      y: Math.round(besideY),
-      width: ORB_BUBBLE_WINDOW_WIDTH,
-      height: ORB_BUBBLE_WINDOW_HEIGHT,
-      placement: 'beside',
-    }
-  }
-  const y = clamp(
-    aboveY,
-    workArea.y,
-    workArea.y + workArea.height - ORB_BUBBLE_WINDOW_HEIGHT,
-  )
-  return {
-    x: Math.round(x),
-    y: Math.round(y),
+/**
+ * 气泡窗口在屏幕上的位置。
+ *
+ * 几何优先级（window-layer-policy §selectBubblePlacement，固定顺序）：
+ * 屏内可见且关键控件可操作 → 贴近桌宠（24 logical px 预算）→ 减少重叠 →
+ * 美观。头顶放不下时先缩内容区（渲染层滚动），再退到侧边；空间极端不足时
+ * 允许有界重叠，但不把气泡送到远端、不裁掉审批按钮。多屏/负坐标/缩放/
+ * Dock 边距由 policy 处理。
+ */
+export function orbBubbleWindowBounds(options) {
+  const cards = options.taskPlacement === 'above' ? desktopTaskStackHeight(options.taskCount) : 0
+  const requestedGap = Number(options.anchorGapPx)
+  const gap = Number.isFinite(requestedGap) && requestedGap > 0 ? requestedGap : ANCHOR_GAP_PX
+  // `placement` is the presentation intent from snapshot.presentation.bubblePolicy;
+  // it is echoed for diagnostics but never overrides the safety priority in the
+  // policy (onscreen/controls > anchor > overlap > aesthetics).
+  const requestedPlacement = typeof options.placement === 'string' ? options.placement : null
+  const placement = selectBubblePlacement({
+    orbBounds: options.orbBounds,
+    workArea: options.workArea,
+    displays: options.displays ?? null,
+    avoidBounds: options.avoidBounds ?? [],
     width: ORB_BUBBLE_WINDOW_WIDTH,
     height: ORB_BUBBLE_WINDOW_HEIGHT,
-    placement: 'above',
+    minHeight: ORB_BUBBLE_WINDOW_MIN_HEIGHT,
+    gap,
+    tailOverlapPx: ORB_BUBBLE_TAIL_OVERLAP,
+    blockedAbovePx: cards,
+    scaleFactor: options.scaleFactor ?? null,
+  })
+  return {
+    ...placement.bounds,
+    placement: placement.placement,
+    requestedPlacement,
+    slot: placement.slot,
+    display: placement.display,
+    anchorGapPx: placement.anchorGapPx,
+    gapBudgetPx: placement.gapBudgetPx,
+    deviceGapBudgetPx: placement.deviceGapBudgetPx,
+    withinAnchorBudget: placement.withinAnchorBudget,
+    fullyOnscreen: placement.fullyOnscreen,
+    controlsOperable: placement.controlsOperable,
+    scrollFallback: placement.scrollFallback,
+    contentHeightLimitPx: placement.contentHeightLimitPx,
+    boundedOverlap: placement.boundedOverlap,
+    actionsClipped: placement.actionsClipped,
+    diagnostics: placement.diagnostics,
   }
-}
-
-/** Prefer the head anchor; choose the least overlapping nearby position when the
- * main window is visible. Full-screen coverage may leave no collision-free slot. */
-export function orbBubbleWindowBounds(options) {
-  const preferred=preferredBubbleWindowBounds(options), avoided=options.avoidBounds||[]
-  if(!avoided.length)return preferred
-  const area=options.workArea,orb=options.orbBounds,w=preferred.width,h=preferred.height
-  const fit=(x,y)=>({x:Math.round(clamp(x,area.x,area.x+area.width-w)),y:Math.round(clamp(y,area.y,area.y+area.height-h)),width:w,height:h,placement:'beside'})
-  // Stay anchored to the orb: moving the bubble to the far edge of the main window
-  // makes it look detached from the pet. These are the only nearby slots.
-  const candidates=[preferred,fit(orb.x-w-12,preferred.y),fit(orb.x+orb.width+12,preferred.y),fit(orb.x,orb.y-h-12),fit(orb.x,orb.y+orb.height+12)]
-  const overlap=(a,b)=>Math.max(0,Math.min(a.x+a.width,b.x+b.width)-Math.max(a.x,b.x))*Math.max(0,Math.min(a.y+a.height,b.y+b.height)-Math.max(a.y,b.y))
-  const centerX=orb.x+orb.width/2,centerY=orb.y+orb.height/2
-  // Overlap cost dominates, but a large distance from the orb is also a failure:
-  // the least-overlapping far-left slot previously led the bubble away from the pet.
-  const score=r=>{
-    const distance=Math.hypot((r.x+r.width/2)-centerX,(r.y+r.height/2)-centerY)
-    return avoided.reduce((sum,b)=>sum+overlap(r,b),0)*4+overlap(r,orb)*8+distance
-  }
-  return candidates.reduce((best,r)=>score(r)<score(best)?r:best,preferred)
 }
 
 /**
  * 气泡窗口管理器。主进程只通过 ensure/show/hide/reposition/destroy 操作它；
  * 不传 electron 依赖进来时，测试可以只测纯函数。
+ *
+ * `processType` 是实际激活策略（'foreground'/'uielement'/'prohibited'/
+ * 'unknown'，或返回它的函数），用于决定 setVisibleOnAllWorkspaces 的
+ * skipTransformProcessType；不提供时按前台应用处理（安全默认，不无条件 true）。
  */
 export function createBubbleWindowController({
   BrowserWindow,
@@ -138,7 +127,10 @@ export function createBubbleWindowController({
   preloadPath = join(here, 'bubble-preload.cjs'),
   pagePath = join(here, 'bubble.html'),
   pageUrl = '',
+  processType = 'foreground',
+  platform = process.platform,
 } = {}) {
+  const layer = createWindowLayerController({ logger, platform, processType })
   let window = null
   let ready = false
   let visible = false
@@ -149,33 +141,33 @@ export function createBubbleWindowController({
   let baseBounds = null
   let contentHeight = null
 
+  const currentProcessType = () => (
+    typeof processType === 'function' ? normalizeProcessType(processType()) : normalizeProcessType(processType)
+  )
+
   function fittedBounds() {
     if (!baseBounds) return null
-    const height = clamp(Math.round(contentHeight ?? baseBounds.height), ORB_BUBBLE_WINDOW_MIN_HEIGHT, baseBounds.height)
-    return {
-      x: baseBounds.x,
-      y: baseBounds.y + baseBounds.height - height,
-      width: baseBounds.width,
-      height,
-    }
+    return fitBubbleWindowBounds({
+      baseBounds,
+      contentHeight,
+      minHeight: ORB_BUBBLE_WINDOW_MIN_HEIGHT,
+    })
   }
 
   function applyFittedBounds() {
     const next = fittedBounds()
     if (!next) return
     bounds = next
-    if (window && !window.isDestroyed()) {
-      try { window.setBounds(next, false) } catch {}
-    }
+    layer.applyBounds(window, next, { role: 'bubble' })
   }
 
   function applyMouseMode() {
     if (!window || window.isDestroyed()) return
-    try {
-      window.setIgnoreMouseEvents(!interactive, { forward: true })
-    } catch (error) {
-      logger?.warn?.('desktop.bubble_mouse_mode_failed', { error: String(error?.message || error) })
-    }
+    layer.applyInteraction(window, { role: 'bubble', interactive, inputMode })
+  }
+
+  function record(kind, detail) {
+    layer.diagnostics.record(kind, detail)
   }
 
   function ensure() {
@@ -206,37 +198,64 @@ export function createBubbleWindowController({
         preload: preloadPath,
       },
     })
-    try {
-      // `floating` is above normal windows but is ordered *behind* an active
-      // full-screen DSH window on macOS. The pet must remain visible over its
-      // own full-screen workspace, so use the screen-saver level and keep the
-      // process type stable with skipTransformProcessType.
-      window.setAlwaysOnTop(true, 'screen-saver')
-      window.setVisibleOnAllWorkspaces?.(true, { visibleOnFullScreen: true, skipTransformProcessType: true })
-    } catch (error) {
-      logger?.warn?.('desktop.bubble_window_flags_failed', { error: String(error?.message || error) })
-    }
+    // 层级/Spaces/进程类型策略统一由 window-layer-policy 决定；这里不再
+    // 手写 screen-saver/skipTransformProcessType 组合。
+    layer.applyLayer(window, { role: 'bubble' })
+    layer.diagnostics.record('desktop.bubble_process_type', { processType: currentProcessType() })
     applyMouseMode()
     ready = false
-    window.webContents.once('did-finish-load', () => {
+    const webContents = window.webContents
+    webContents.once('did-finish-load', () => {
       ready = true
       try { window.setFocusable(inputMode) } catch {}
       applyMouseMode()
-      if (bounds) window.setBounds(bounds, false)
+      if (bounds) layer.applyBounds(window, bounds, { role: 'bubble' })
       if (lastPayload) send(lastPayload)
       if (visible) {
-        if (inputMode) focusWindow()
-        else { try { window.showInactive() } catch { window.show() } }
+        layer.show(window, {
+          role: 'bubble',
+          interactive,
+          inputMode,
+          focus: focusWindow,
+        })
       }
     })
+    // 有界诊断：load/preload/renderer 错误不能只进入空 logger 后被静默吞掉。
+    webContents.on?.('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+      record('desktop.bubble_load_failed', {
+        errorCode: Number(errorCode),
+        errorDescription: String(errorDescription || ''),
+        url: String(validatedURL || '').slice(0, 300),
+      })
+      logger?.warn?.('desktop.bubble_window_load_failed', { errorCode, errorDescription })
+    })
+    webContents.on?.('preload-error', (_event, preloadPathValue, error) => {
+      record('desktop.bubble_preload_error', {
+        preload: String(preloadPathValue || '').slice(0, 300),
+        error: String(error?.message || error || ''),
+      })
+      logger?.warn?.('desktop.bubble_preload_failed', { error: String(error?.message || error) })
+    })
+    webContents.on?.('render-process-gone', (_event, details) => {
+      record('desktop.bubble_render_process_gone', {
+        reason: String(details?.reason || ''),
+        exitCode: Number(details?.exitCode ?? 0),
+      })
+      logger?.warn?.('desktop.bubble_render_process_gone', { reason: details?.reason })
+      ready = false
+      visible = false
+    })
+    window.on('unresponsive', () => record('desktop.bubble_unresponsive'))
     window.on('closed', () => {
+      record('desktop.bubble_closed')
       window = null
       ready = false
       interactive = false
     })
-    window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
-    window.webContents.on('will-navigate', event => event.preventDefault())
+    webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+    webContents.on('will-navigate', event => event.preventDefault())
     void (pageUrl ? window.loadURL(pageUrl) : window.loadFile(pagePath)).catch(error => {
+      record('desktop.bubble_load_failed', { error: String(error?.message || error) })
       logger?.warn?.('desktop.bubble_window_load_failed', { error: String(error?.message || error) })
     })
     return window
@@ -244,7 +263,9 @@ export function createBubbleWindowController({
 
   function send(payload) {
     if (!window || window.isDestroyed() || !ready) return
-    try { window.webContents.send('nisse-bubble:update', payload) } catch {}
+    try { window.webContents.send('nisse-bubble:update', payload) } catch (error) {
+      record('desktop.bubble_send_failed', { error: String(error?.message || error) })
+    }
   }
 
   /**
@@ -259,21 +280,21 @@ export function createBubbleWindowController({
     }
     inputMode = next
     if (!window || window.isDestroyed()) return
-    try { window.setFocusable(next) } catch (error) {
-      logger?.warn?.('desktop.bubble_focusable_failed', { error: String(error?.message || error) })
-    }
+    layer.applyInteraction(window, { role: 'bubble', interactive, inputMode })
     if (next) focusWindow()
   }
 
   function focusWindow() {
     if (!window || window.isDestroyed() || !visible) return
     try { window.show() } catch {}
-    try { window.focus() } catch (error) {
+    try {
+      window.focus()
+    } catch (error) {
+      record('desktop.bubble_focus_failed', { error: String(error?.message || error) })
       logger?.warn?.('desktop.bubble_focus_failed', { error: String(error?.message || error) })
     }
     try { window.webContents.focus() } catch {}
   }
-
 
   function show(payload) {
     lastPayload = payload
@@ -283,8 +304,8 @@ export function createBubbleWindowController({
     applyFittedBounds()
     send(payload)
     if (ready) {
-      if (inputMode) focusWindow()
-      else { try { window.showInactive() } catch { window.show() } }
+      // 非文本交互只做非激活显示；只有 inputMode 才显式取焦点.
+      layer.show(window, { role: 'bubble', interactive, inputMode, focus: focusWindow })
     }
   }
 
@@ -294,7 +315,7 @@ export function createBubbleWindowController({
     interactive = false
     setInputMode(false)
     applyMouseMode()
-    if (window && !window.isDestroyed()) window.hide()
+    if (window && !window.isDestroyed()) layer.hide(window, { role: 'bubble' })
   }
 
   function setInteractive(value) {
@@ -322,7 +343,8 @@ export function createBubbleWindowController({
   function resize(height) {
     const value = Number(height)
     if (!Number.isFinite(value) || value <= 0) return
-    const clamped = clamp(Math.round(value), ORB_BUBBLE_WINDOW_MIN_HEIGHT, ORB_BUBBLE_WINDOW_HEIGHT)
+    const maximum = baseBounds?.height ?? ORB_BUBBLE_WINDOW_HEIGHT
+    const clamped = clamp(Math.round(value), ORB_BUBBLE_WINDOW_MIN_HEIGHT, maximum)
     if (contentHeight !== null && Math.abs(clamped - contentHeight) < 2) return
     contentHeight = clamped
     applyFittedBounds()
@@ -338,6 +360,7 @@ export function createBubbleWindowController({
     if (window && !window.isDestroyed()) window.destroy()
     window = null
     ready = false
+    record('desktop.bubble_destroyed')
   }
 
   return {
@@ -354,8 +377,21 @@ export function createBubbleWindowController({
     isInteractive: () => interactive,
     isInputMode: () => inputMode,
     lastPayload: () => lastPayload,
+    /** Bounded window diagnostics for the actual native window (no silent errors). */
+    diagnostics: () => layer.diagnostics.snapshot(),
     // 测试/诊断用
-    _state: () => ({ visible, ready, interactive, inputMode, bounds, baseBounds, contentHeight, hasWindow: Boolean(window) }),
+    _state: () => ({
+      visible,
+      ready,
+      interactive,
+      inputMode,
+      bounds,
+      baseBounds,
+      contentHeight,
+      hasWindow: Boolean(window),
+      diagnostics: layer.diagnostics.state(),
+    }),
+    _layer: () => layer,
     _webContents: () => (
       window && !window.isDestroyed() ? window.webContents : null
     ),
