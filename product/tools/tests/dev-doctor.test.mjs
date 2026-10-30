@@ -348,7 +348,12 @@ test('the CLI emits parseable read-only JSON, exits 1 on FAIL, spawns nothing de
   try {
     const tree = directory => readdirSync(directory, { recursive: true }).sort().map(path => `${relative(directory, path)}:${statSync(join(directory, path)).size}`)
     const before = tree(fixture.root)
-    const result = spawnSync(process.execPath, [DOCTOR_PATH, '--json', '--repo', fixture.root, '--user-data', fixture.userData], { encoding: 'utf8', timeout: 120_000 })
+    // The build wrapper exports NISSE_MEMORY_DIR for its own dev run; the doctor CLI
+    // test must not inherit it or the missing-payload fixture becomes a WARN override.
+    const isolatedEnv = { ...process.env }
+    delete isolatedEnv.NISSE_MEMORY_DIR
+    delete isolatedEnv.DSH_HOME
+    const result = spawnSync(process.execPath, [DOCTOR_PATH, '--json', '--repo', fixture.root, '--user-data', fixture.userData], { encoding: 'utf8', timeout: 120_000, env: isolatedEnv })
     assert.equal(result.status, 1, result.stderr)
     const report = JSON.parse(result.stdout)
     assert.equal(report.schema, DOCTOR_SCHEMA)
