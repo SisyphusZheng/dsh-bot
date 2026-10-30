@@ -351,13 +351,6 @@ export function apply(ctx, config = {}) {
   // ---- beta2 kernel services: registry on top of the official mirror, ConversationService
   // as the single product business owner. Legacy endpoints below forward into these, never
   // into a second implementation.
-  const desktopLiveness = { online: false, lastSeenAt: 0 }
-  function touchDesktopConnection() {
-    desktopLiveness.lastSeenAt = Date.now()
-    if (desktopLiveness.online) return
-    desktopLiveness.online = true
-    kernelEmit('connection.changed', { source: 'host', data: { desktop: { connected: true } } })
-  }
   function kernelEmit(type, fields = {}) {
     return stream.record(type, {
       source: fields.source || 'host',
@@ -1268,7 +1261,8 @@ export function apply(ctx, config = {}) {
       },
       messageConstructor: {
         name: 'createUserMessage',
-        source: officialConstructorSource,
+        // Unauthenticated loopback endpoint: never disclose absolute install paths.
+        source: 'bundled',
       },
     }
   }
@@ -1295,18 +1289,18 @@ export function apply(ctx, config = {}) {
 
       // ---- beta2 v1 product protocol: one snapshot/event stream, one command/receipt path ----
       if (url.pathname === '/v2/snapshot' && req.method === 'GET') {
-        touchDesktopConnection()
+        try { conversation.noteDesktopSeen() } catch { /* presence is diagnostic */ }
         return json(res, 200, stream.snapshot(() => conversation.snapshotSections()))
       }
       if (url.pathname === '/v2/events' && req.method === 'GET') {
-        touchDesktopConnection()
+        try { conversation.noteDesktopSeen() } catch { /* presence is diagnostic */ }
         const after = Number(url.searchParams.get('after') || 0)
         const result = stream.eventsAfter(after, { limit: Math.min(Number(url.searchParams.get('limit') || 500), 2000) })
         if (result.resyncRequired) return json(res, 409, { error: 'resync-required', snapshotSeq: stream.seq(), minRetainedSeq: result.minRetainedSeq })
         return json(res, 200, result)
       }
       if (url.pathname === '/v2/stream' && req.method === 'GET') {
-        touchDesktopConnection()
+        try { conversation.noteDesktopSeen() } catch { /* presence is diagnostic */ }
         const after = Number(url.searchParams.get('after') || 0)
         const probe = stream.eventsAfter(after, { limit: 0 })
         if (probe.resyncRequired) return json(res, 409, { error: 'resync-required', snapshotSeq: stream.seq(), minRetainedSeq: probe.minRetainedSeq })
@@ -1332,7 +1326,7 @@ export function apply(ctx, config = {}) {
         let command
         try { command = validateCommand(body, { hostEpoch, sessionId: sessionId || null }) }
         catch (error) { return json(res, error.status || 400, { error: { code: error.code || 'INVALID_COMMAND', message: messageOf(error) } }) }
-        if (command.sourceConnectionId === 'desktop') touchDesktopConnection()
+        if (command.sourceConnectionId === 'desktop') { try { conversation.noteDesktopSeen() } catch { /* presence is diagnostic */ } }
         const idemKey = command.commandId
         const targetDigest = digest({ type: command.type, payload: command.payload, sessionId: command.sessionId, source: command.sourceConnectionId })
         const stored = receiptStore.get(idemKey)

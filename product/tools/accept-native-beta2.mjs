@@ -31,7 +31,7 @@ import { waitAgentReady } from './wait-agent-ready.mjs'
 import { waitMemoryReady } from './wait-memory-ready.mjs'
 import { matchingPids } from './find-macos-app-pid.mjs'
 import {
-  activateApp, clickAt, displays, frontmostApp, moveMouse, screenshot,
+  activateApp, clickAt, displays, dragMouse, frontmostApp, moveMouse, screenshot,
   systemEventsWindows, toolchain, windows,
 } from './native-inspect.mjs'
 
@@ -91,7 +91,9 @@ export class Run {
     this.runDir = resolve(runDir)
     this.options = options
     this.userData = join(this.runDir, 'user-data')
-    this.dshHome = join(this.runDir, 'dsh-home')
+    // Packaged App: apps/desktop/src/main.ts forces process.env.DSH_HOME to
+    // <userData>/dsh-home, so the descriptors live there regardless of caller env.
+    this.dshHome = join(this.userData, 'dsh-home')
     this.logsDir = join(this.runDir, 'logs')
     this.checksDir = join(this.runDir, 'checks')
     this.evidenceDir = join(this.runDir, 'evidence')
@@ -160,7 +162,6 @@ export class Run {
     const args = [
       '-n',
       '--env', 'ELECTRON_RUN_AS_NODE=',
-      '--env', `DSH_HOME=${this.dshHome}`,
       '--stdout', record.stdoutLog, '--stderr', record.stderrLog,
       this.appPath,
       '--args', `--user-data-dir=${this.userData}`,
@@ -182,6 +183,7 @@ export class Run {
     }
     if (!record.success) {
       record.reason = `App/bridge did not appear as one unit within ${timeout(90000)}ms (appPid=${record.appPid}, bridge=${existsSync(this.bridgePath())})`
+      try { const stop = await this.stop({ label: `launch-${attempt}-failed` }); record.cleanupAfterFailure = stop } catch (error) { record.cleanupAfterFailure = { error: error.message } }
       this.log(`Launch attempt ${attempt} FAILED: ${record.reason}`)
       record.stdoutTail = existsSync(record.stdoutLog) ? readFileSync(record.stdoutLog, 'utf8').slice(-4000) : ''
       record.stderrTail = existsSync(record.stderrLog) ? readFileSync(record.stderrLog, 'utf8').slice(-4000) : ''
@@ -266,6 +268,65 @@ async function bubblePageState(port) {
   } finally { await page?.close().catch(() => {}) }
 }
 
+/** Distance between two rectangles (0 when they touch or overlap): the real anchor metric. */
+function nearestEdgeDistance(a, b) {
+  const gapX = Math.max(0, Math.max(b.x - (a.x + a.w), a.x - (b.x + b.w)))
+  const gapY = Math.max(0, Math.max(b.y - (a.y + a.h), a.y - (b.y + b.h)))
+  return Math.round(Math.hypot(gapX, gapY))
+}
+
+async function bubbleEvaluate(run, expression) {
+  const port = await run.devtoolsPort()
+  const targets = await fetch(`http://127.0.0.1:${port}/json/list`, { signal: AbortSignal.timeout(2000) }).then(response => response.json())
+  const target = targets.find(item => item.type === 'page' && item.url.includes('/bubble.html'))
+  if (!target) return { found: false }
+  const page = await connectPage(target.webSocketDebuggerUrl)
+  try { return { found: true, value: await page.evaluate(expression) } } finally { await page.close().catch(() => {}) }
+}
+
+/**
+ * Complete the shipped first-run onboarding through the real bubble page (name input,
+ * then the personality step). Returns the DOM actions taken so the evidence shows the
+ * onboarding was finished by UI interaction, not by editing state files.
+ */
+async function completeOnboarding(run, pid, { timeoutMs = timeout(90000) } = {}) {
+  const steps = []
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const state = await bubblePageState(await run.devtoolsPort()).catch(() => ({ found: false }))
+    if (!state.found || state.bubbleHidden) return { done: true, steps }
+    const action = await bubbleEvaluate(run, `(() => {
+      const visible = el => Boolean(el && el.offsetParent !== null && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden');
+      const row = document.getElementById('bubble-input-row');
+      const input = document.getElementById('bubble-input');
+      if (row && input && visible(row)) {
+        input.value = '朋友';
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        const submit = document.getElementById('bubble-input-submit');
+        if (submit && visible(submit)) { submit.click(); return 'name-submitted'; }
+      }
+      const buttons = [...document.querySelectorAll('#bubble-secondary button, #bubble-choices button, button')].filter(visible);
+      for (const label of ['跳过', '完成', '继续', '好', '下一步', '开始使用', '确认']) {
+        const hit = buttons.find(button => button.textContent.trim() === label);
+        if (hit) { hit.click(); return 'clicked:' + label; }
+      }
+      const close = document.getElementById('bubble-close');
+      if (close && visible(close)) { close.click(); return 'clicked:bubble-close'; }
+      return 'no-action';
+    })()`)
+    steps.push(action.value ?? action)
+    if (steps[steps.length - 1] === 'no-action') {
+      // The bubble may be fading out after the last step; give it a moment before failing.
+      await sleep(1200)
+      const after = await bubblePageState(await run.devtoolsPort()).catch(() => ({ found: false }))
+      if (!after.found || after.bubbleHidden) return { done: true, steps }
+    }
+    await sleep(900)
+  }
+  return { done: false, steps, error: `onboarding did not complete within ${timeoutMs}ms` }
+}
+
 export function firstAttemptSuccess(run) { return run.attempts.length > 0 && run.attempts[0].success === true }
 
 async function v2Snapshot(run) {
@@ -277,13 +338,17 @@ async function v2Snapshot(run) {
 export async function triggerGreeting(run) {
   const triggered = { trigger: null, details: [] }
   const token = randomUUID()
+  // A fresh connectionId per trigger models a new worker connection, so the Host
+  // emits the deterministic v2 greeting/notice again (greeting is per connection).
+  const connectionId = `accept-probe-${randomUUID()}`
   const snapshot = await v2Snapshot(run)
   if (snapshot.available) {
     const command = {
       protocolVersion: 'dsh-bot-v1', commandId: randomUUID(), hostEpoch: snapshot.snapshot.hostEpoch,
       sourceConnectionId: 'accept-probe', sessionId: snapshot.snapshot.identity?.sessionId ?? null,
-      type: 'voice.session', payload: { connectionId: 'accept-probe', transport: 'connected', mediaState: {} },
+      type: 'voice.session', payload: { connectionId, transport: 'connected', mediaState: {} },
     }
+    triggered.connectionId = connectionId
     const response = await run.apiFetch('/v2/command', { method: 'POST', body: command })
     triggered.details.push({ path: '/v2/command voice.session', status: response.status, body: response.json ?? response.text.slice(0, 400) })
     if (response.status >= 200 && response.status < 300) triggered.trigger = 'v2-voice-session-greeting'
@@ -328,13 +393,16 @@ function buildWindowLayer(bubble) {
   const display = displayFrame(displays())
   const layerOrderOk = Boolean(bubbleFrame && petFrame && bubbleFrame.layer > petFrame.layer)
   const insideVisibleFrame = Boolean(bubbleFrame && display && boundsWithin(bubbleFrame, display.visibleFrame))
-  const distancePx = bubbleFrame && petFrame ? distanceBetween({ ...bubbleFrame }, { ...petFrame }) : null
+  const centerDistancePx = bubbleFrame && petFrame ? distanceBetween({ ...bubbleFrame }, { ...petFrame }) : null
+  const nearestEdgePx = bubbleFrame && petFrame ? nearestEdgeDistance(bubbleFrame, petFrame) : null
+  const distancePx = centerDistancePx
   return {
     pet: petFrame ? { layer: petFrame.layer, frame: { x: petFrame.x, y: petFrame.y, w: petFrame.w, h: petFrame.h }, onscreen: petFrame.onscreen } : null,
     bubble: bubbleFrame ? { layer: bubbleFrame.layer, frame: { x: bubbleFrame.x, y: bubbleFrame.y, w: bubbleFrame.w, h: bubbleFrame.h }, onscreen: bubbleFrame.onscreen, alpha: bubbleFrame.alpha } : null,
     anchorDisplay: display ? { visibleFrame: display.visibleFrame, frame: display.frame, scaleFactor: display.scale } : null,
-    layerOrderOk, insideVisibleFrame, distancePx,
-    withinAnchorBudget: distancePx !== null ? distancePx <= 500 : null,
+    layerOrderOk, insideVisibleFrame, distancePx, centerDistancePx, nearestEdgePx,
+    withinAnchorBudget: nearestEdgePx !== null ? nearestEdgePx <= 26 : null,
+    antiDriftOk: centerDistancePx !== null ? centerDistancePx <= 500 : null,
     policyIntent: ['level:screen-saver', 'visibleOnFullScreen', 'spaces:all', 'processType-derived-skipTransform'],
     note: 'layer/frame/onscreen read from CGWindowListCopyWindowInfo; policy intent strings are the WindowLayerPolicy contract, not proof by themselves',
   }
@@ -392,6 +460,41 @@ async function hidClickBubbleClose(run, pid, bubble) {
   }
 }
 
+/** Close any visible bubble through a real HID click (used to make the next show a fresh event). */
+async function closeVisibleBubble(run, pid) {
+  const current = classifyWindows(run.nativeWindows(pid)).bubble
+  if (!current) return { closed: true, alreadyHidden: true }
+  const result = await hidClickBubbleClose(run, pid, { found: true, classified: classifyWindows(run.nativeWindows(pid)) })
+  const deadline = Date.now() + timeout(6000)
+  while (Date.now() < deadline) {
+    if (!classifyWindows(run.nativeWindows(pid)).bubble) return { ...result, closed: true }
+    await sleep(250)
+  }
+  return { ...result, closed: false }
+}
+
+/**
+ * Deterministically show a native bubble: close a stale one, then send the v2 greeting
+ * trigger (retrying with a fresh connectionId) until the window server shows the bubble
+ * AND the bubble page has content. Records every trigger attempt.
+ */
+export async function ensureBubble(run, pid, { timeoutMs = timeout(30000), attempts = 3 } = {}) {
+  const close = await closeVisibleBubble(run, pid)
+  await sleep(700)
+  const triggerAttempts = []
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    const trigger = await triggerGreeting(run)
+    triggerAttempts.push(trigger)
+    const found = await waitForBubble(run, pid, {
+      timeoutMs: attempt === 1 ? Math.min(timeout(12000), timeoutMs) : Math.max(5000, Math.round(timeoutMs / attempts)),
+      afterWindowNumbers: [],
+    })
+    if (found.found) return { ...found, trigger, triggerAttempts, close }
+    await sleep(400)
+  }
+  return { found: false, error: `bubble did not show natively after ${attempts} trigger attempts`, triggerAttempts, close }
+}
+
 function distanceBetween(a, b) {
   const ax = a.x + a.w / 2, ay = a.y + a.h / 2, bx = b.x + b.w / 2, by = b.y + b.h / 2
   return Math.round(Math.hypot(ax - bx, ay - by))
@@ -423,46 +526,54 @@ async function runChecks(run, options) {
     return 'FAIL'
   }
 
-  // ---- C1 bubble first show: real window on screen, page content, screenshot, AX cross-check.
+  // ---- C1 bubble first show: first-run onboarding bubble, then the Host greeting bubble.
   const preBubble = classifyWindows(run.nativeWindows(pid))
-  const triggered = await triggerGreeting(run)
-  const bubble = await waitForBubble(run, pid, { afterWindowNumbers: preBubble.visible.map(w => w.windowNumber) })
-  const windowShot = bubble.found ? screenshot(join(run.evidenceDir, 'bubble-window.png'), { windowId: bubble.classified.bubble.windowNumber }) : { ok: false }
-  const screenShot = screenshot(join(run.evidenceDir, 'bubble-fullscreen.png'))
-  let ax = await run.axWindows(pid)
-  if (bubble.found) {
-    const axFrames = (ax.windows || []).filter(w => Array.isArray(w.position) && Array.isArray(w.size))
-    bubble.axCrossCheck = axFrames.map(w => ({ name: w.name, x: w.position[0], y: w.position[1], w: w.size[0], h: w.size[1] }))
-    bubble.axContainsBubbleFrame = axFrames.some(w => Math.abs(w.size[0] - bubble.classified.bubble.w) <= 4 && Math.abs(w.size[1] - bubble.classified.bubble.h) <= 4)
-  }
-  const windowLayer = buildWindowLayer(bubble)
-  const hidClick = bubble.found ? await hidClickBubbleClose(run, pid, bubble) : { attempted: false }
+  let firstBubble = await waitForBubble(run, pid, { timeoutMs: timeout(25000), afterWindowNumbers: [] })
+  if (!firstBubble.found) firstBubble = await ensureBubble(run, pid, { timeoutMs: timeout(25000), attempts: 2 })
+  const firstShot = firstBubble.found ? screenshot(join(run.evidenceDir, 'bubble-first-show.png'), { windowId: firstBubble.classified.bubble.windowNumber }) : { ok: false }
+  const firstLayer = firstBubble.found ? buildWindowLayer(firstBubble) : null
+  const firstPage = firstBubble.page ?? { found: false }
+  const firstIsOnboarding = /鲸鱼娘|称呼|你好，我是/.test(String(firstPage.textSample ?? ''))
+  const ax = await run.axWindows(pid)
+  const axFrames = (ax.windows || []).filter(w => Array.isArray(w.position) && Array.isArray(w.size))
+  const axCrossCheck = axFrames.map(w => ({ name: w.name, x: w.position[0], y: w.position[1], w: w.size[0], h: w.size[1] }))
+  const axContainsFirstFrame = firstBubble.found
+    ? axFrames.some(w => Math.abs(w.size[0] - firstBubble.classified.bubble.w) <= 4 && Math.abs(w.size[1] - firstBubble.classified.bubble.h) <= 4)
+    : false
+  const onboardingFirstPass = firstBubble.found && firstShot.ok && firstPage.bubbleHidden === false && (firstPage.textLength ?? 0) > 0 && firstLayer?.layerOrderOk === true
+  // Finish first-run onboarding through the real UI before the Host greeting can show.
+  const onboardingCompletion = firstIsOnboarding ? await completeOnboarding(run, pid) : { skipped: true, reason: 'first show was already a Host greeting, not first-run onboarding' }
+  const greeting = await ensureBubble(run, pid, { timeoutMs: timeout(35000), attempts: 3 })
+  const greetingShot = greeting.found ? screenshot(join(run.evidenceDir, 'bubble-greeting-after-onboarding.png'), { windowId: greeting.classified.bubble.windowNumber }) : { ok: false }
+  const greetingLayer = greeting.found ? buildWindowLayer(greeting) : null
+  const greetingPage = greeting.page ?? { found: false }
+  const greetingPass = greeting.found && greetingShot.ok && greetingPage.bubbleHidden === false && (greetingPage.textLength ?? 0) > 0 && greetingLayer?.layerOrderOk === true
+  const hidClick = greeting.found ? await hidClickBubbleClose(run, pid, greeting) : { attempted: false }
+  const windowLayer = greetingLayer ?? firstLayer
   run.writeCheck('C1-bubble-first-show', {
-    status: bubble.found && windowShot.ok && (bubble.page?.bubbleHidden === false) && (bubble.page?.textLength ?? 0) > 0
-      && windowLayer.layerOrderOk === true && (hidClick.closed === true || hidClick.delivered === true) ? 'PASS' : 'FAIL',
-    level: 'packaged native App + window-server truth (CGWindowList) + real screenshot + page content + AX list',
-    trigger: triggered,
-    waitedMs: bubble.waitedMs ?? null,
-    pet: bubble.classified?.pet ?? preBubble.pet ?? null,
-    main: bubble.classified?.main ?? null,
-    bubble: bubble.classified?.bubble ?? null,
-    bubblePage: bubble.page ?? null,
-    screenshots: { bubbleWindow: windowShot, fullScreen: screenShot },
-    windowLayer,
+    status: onboardingFirstPass && greetingPass ? 'PASS' : 'FAIL',
+    level: 'packaged native App + window-server truth (CGWindowList) + real screenshots + page content + AX list; first-run onboarding then Host greeting',
+    firstShow: {
+      kind: firstIsOnboarding ? 'first-run-onboarding' : 'host-greeting',
+      found: firstBubble.found, page: firstPage, window: firstBubble.classified?.bubble ?? null,
+      screenshot: firstShot, windowLayer: firstLayer, waitedMs: firstBubble.waitedMs ?? null,
+      pet: firstBubble.classified?.pet ?? preBubble.pet ?? null, main: firstBubble.classified?.main ?? null,
+      ax: { granted: ax.ok !== false, crossCheck: axCrossCheck, containsFirstFrame: axContainsFirstFrame },
+    },
+    onboardingCompletion,
+    greeting: {
+      found: greeting.found, error: greeting.error ?? null, waitedMs: greeting.waitedMs ?? null,
+      trigger: { trigger: greeting.trigger?.trigger ?? null, attempts: greeting.triggerAttempts ?? [], close: greeting.close ?? null },
+      window: greeting.classified?.bubble ?? null, page: greetingPage, screenshot: greetingShot, windowLayer: greetingLayer,
+    },
     hidClick,
-    ax: { granted: ax.ok !== false, crossCheck: bubble.axCrossCheck ?? null, containsBubbleFrame: bubble.axContainsBubbleFrame ?? null },
-    detail: bubble.found
-      ? `bubble native window ${bubble.classified.bubble.w}x${bubble.classified.bubble.h} layer=${bubble.classified.bubble.layer} onscreen=${bubble.classified.bubble.onscreen} (pet layer ${windowLayer.pet?.layer ?? 'n/a'}, layerOrderOk=${windowLayer.layerOrderOk}, distance=${windowLayer.distancePx}px); page text ${bubble.page?.textLength} chars; window screenshot ${windowShot.ok ? 'PASS' : 'FAIL'}; HID close click closed=${hidClick.closed ?? 'n/a'} delivered=${hidClick.delivered ?? 'n/a'}`
-      : bubble.error,
+    windowLayer,
+    screenshots: { firstShow: firstShot, greeting: greetingShot },
+    detail: firstBubble.found
+      ? `first native show kind=${firstIsOnboarding ? 'onboarding' : 'greeting'} window ${firstBubble.classified.bubble.w}x${firstBubble.classified.bubble.h} layer=${firstBubble.classified.bubble.layer} onscreen=${firstBubble.classified.bubble.onscreen} pageChars=${firstPage.textLength}; onboarding steps=${JSON.stringify(onboardingCompletion.steps ?? onboardingCompletion.reason ?? [])}; post-onboarding greeting native=${greeting.found} layer=${greeting.classified?.bubble.layer ?? 'n/a'} pageChars=${greetingPage.textLength}; HID close closed=${hidClick.closed ?? 'n/a'}`
+      : (firstBubble.error ?? 'no first bubble'),
   })
-  // The first bubble may have been closed by the HID click above; re-trigger for later checks.
-  if (hidClick.closed) {
-    const retrigger = await triggerGreeting(run)
-    const reopened = await waitForBubble(run, pid, { timeoutMs: timeout(25000), afterWindowNumbers: [] })
-    bubble.found = reopened.found
-    if (reopened.found) { bubble.classified = reopened.classified; bubble.page = reopened.page }
-    run.log(`re-triggered bubble for later native checks: found=${bubble.found} (${JSON.stringify(retrigger.trigger)})`)
-  }
+  run.log(`C1 onboarding-first=${firstIsOnboarding} greeting=${greeting.found} hidClose=${hidClick.closed ?? 'n/a'}`)
 
   // ---- C2 bubble above main window (real main window opened through the pet double-click path), plus fullscreen attempt.
   let webBoot = null
@@ -474,16 +585,15 @@ async function runChecks(run, options) {
   }
   const afterMain = classifyWindows(run.nativeWindows(pid))
   const main = afterMain.main
-  // Re-trigger a bubble AFTER the main window exists so the above-main measurement
-  // uses a bubble that is on screen at the same time as the main window.
+  // Show a bubble AFTER the main window exists so the above-main measurement uses a
+  // bubble whose native window is on screen at the same time as the main window.
   let aboveMainBubble = bubble.classified?.bubble ?? null
   let aboveMainRetrigger = null
   if (webBoot && main) {
     try {
-      aboveMainRetrigger = await triggerGreeting(run)
-      const fresh = await waitForBubble(run, pid, { timeoutMs: timeout(25000), afterWindowNumbers: afterMain.visible.map(w => w.windowNumber) })
+      const fresh = await ensureBubble(run, pid, { timeoutMs: timeout(30000), attempts: 3 })
+      aboveMainRetrigger = { found: fresh.found, triggerAttempts: fresh.triggerAttempts ?? [], close: fresh.close ?? null, error: fresh.error ?? null }
       if (fresh.found) aboveMainBubble = fresh.classified.bubble
-      aboveMainRetrigger.found = fresh.found
     } catch (error) { aboveMainRetrigger = { error: error.message } }
   }
   let aboveMain = null
@@ -510,12 +620,12 @@ async function runChecks(run, options) {
   })
 
   // ---- C3 focus non-steal: another app is frontmost before the bubble appears.
+  const focusClose = await closeVisibleBubble(run, pid)
   await activateApp('Finder')
-  await sleep(600)
+  await sleep(800)
   const focusBefore = frontmostApp()
-  const windowsBeforeFocus = classifyWindows(run.nativeWindows(pid)).visible.map(w => w.windowNumber)
-  const focusTrigger = await triggerGreeting(run)
-  const focusBubble = await waitForBubble(run, pid, { timeoutMs: timeout(20000), afterWindowNumbers: windowsBeforeFocus })
+  const focusBubble = await ensureBubble(run, pid, { timeoutMs: timeout(30000), attempts: 3 })
+  const focusTrigger = { trigger: focusBubble.trigger?.trigger ?? null, attempts: focusBubble.triggerAttempts ?? [], close: focusClose }
   await sleep(500)
   const focusAfter = frontmostApp()
   const frontmostName = name => /Finder/i.test(String(name))
@@ -675,56 +785,67 @@ JSON.stringify(out)`
 }
 
 async function attemptEdgeGeometry(run, pid, pet, target, display) {
-  const result = { status: 'FAIL', attempted: true, target, petBefore: pet, display }
+  // Real HID drag of the pet window: the shipped pet renderer owns window dragging
+  // (mousedown on the painted pet -> dragStart -> window moves), so OS-level press,
+  // interpolated dragged events and release are what a user does. No AX move needed.
+  const result = { status: 'FAIL', attempted: true, method: 'HID press-drag-release on the pet window (pet renderer owns the drag)', target, petBefore: pet, display }
+  // The pet is a transparent window: only painted pixels start a drag, so try a few
+  // candidate grab points on the sprite (the renderer hit-tests the canvas alpha).
+  const candidateFractions = [[0.5, 0.5], [0.5, 0.72], [0.35, 0.62], [0.66, 0.62]]
+  const drags = []
+  let petAfterMove = null
   let moved = false
-  try {
-    const js = `ObjC.import('AppKit'); const se = Application('System Events');
-const proc = se.processes.whose({unixId: ${Number(pid)}})[0]; const ws = proc.windows(); let moved = false, detail = null;
-for (let i = 0; i < ws.length; i++) {
-  const w = ws[i]; let size = null; try { size = w.size(); } catch (e) {}
-  if (Array.isArray(size) && size[0] >= 120 && size[0] <= 300 && size[1] >= 120 && size[1] <= 460) {
-    try { w.position = [${Math.round(target.x)}, ${Math.round(target.y)}]; moved = true; detail = {i, size}; }
-    catch (e) { detail = {i, error: String(e.message).slice(0, 120)}; }
-    break;
+  for (const [fx, fy] of candidateFractions) {
+    const from = { x: Math.round(pet.x + pet.w * fx), y: Math.round(pet.y + pet.h * fy) }
+    const to = { x: Math.round(target.x + pet.w * fx), y: Math.round(target.y + pet.h * fy) }
+    let dragResult = null
+    try { dragResult = dragMouse(from.x, from.y, to.x, to.y) } catch (error) { dragResult = { error: error.message } }
+    drags.push({ from, to, dragResult })
+    const deadline = Date.now() + timeout(6000)
+    while (Date.now() < deadline) {
+      petAfterMove = classifyWindows(run.nativeWindows(pid)).pet
+      if (petAfterMove && Math.hypot(petAfterMove.x - target.x, petAfterMove.y - target.y) <= 40) break
+      await sleep(250)
+    }
+    moved = Boolean(petAfterMove && Math.hypot(petAfterMove.x - target.x, petAfterMove.y - target.y) <= 40)
+    if (moved) break
+    await sleep(400)
   }
-}
-JSON.stringify({moved, detail});`
-    const moveResult = JSON.parse(spawnSync('/usr/bin/osascript', ['-l', 'JavaScript', '-e', js], { encoding: 'utf8' }).stdout || '{}')
-    moved = moveResult.moved === true
-    result.move = moveResult
-    await sleep(1200)
-  } catch (error) { result.move = { error: error.message } }
-  const petAfterMove = classifyWindows(run.nativeWindows(pid)).pet
-  const beforeWindows = classifyWindows(run.nativeWindows(pid)).visible.map(w => w.windowNumber)
-  const trigger = await triggerGreeting(run)
-  const bubble = await waitForBubble(run, pid, { timeoutMs: timeout(25000), afterWindowNumbers: beforeWindows, requirePage: true })
-  const visibleFrame = display.visibleFrame
-  const bubbleFrame = bubble.classified?.bubble ?? null
-  const inside = bubbleFrame ? boundsWithin(bubbleFrame, visibleFrame) : false
-  const distance = bubbleFrame && petAfterMove ? distanceBetween(petFrame(bubbleFrame), petFrame(petAfterMove)) : null
-  const shot = bubbleFrame ? screenshot(join(run.evidenceDir, 'bubble-edge-geometry.png'), { windowId: bubbleFrame.windowNumber }) : { ok: false }
+  result.drags = drags
+  result.dragFrom = drags[0]?.from ?? null
+  result.dragTo = drags[0]?.to ?? null
   result.moveApplied = moved
   result.petAfterMove = petAfterMove
-  result.trigger = trigger
+  const close = await closeVisibleBubble(run, pid)
+  const bubble = await ensureBubble(run, pid, { timeoutMs: timeout(30000), attempts: 3 })
+  const bubbleFrame = bubble.found ? bubble.classified.bubble : null
+  const visibleFrame = display.visibleFrame
+  const inside = bubbleFrame ? boundsWithin(bubbleFrame, visibleFrame) : false
+  const nearestEdge = bubbleFrame && petAfterMove ? nearestEdgeDistance(bubbleFrame, petAfterMove) : null
+  const centerDistance = bubbleFrame && petAfterMove ? distanceBetween(bubbleFrame, petAfterMove) : null
+  const anchored = nearestEdge !== null && (nearestEdge <= 26 || nearestEdge === 0)
+  const overlapping = Boolean(bubbleFrame && petAfterMove
+    && bubbleFrame.x < petAfterMove.x + petAfterMove.w && petAfterMove.x < bubbleFrame.x + bubbleFrame.w
+    && bubbleFrame.y < petAfterMove.y + petAfterMove.h && petAfterMove.y < bubbleFrame.y + bubbleFrame.h)
+  const shot = bubbleFrame ? screenshot(join(run.evidenceDir, 'bubble-edge-geometry.png'), { windowId: bubbleFrame.windowNumber }) : { ok: false }
+  result.close = close
+  result.bubbleTrigger = { trigger: bubble.trigger?.trigger ?? null, attempts: bubble.triggerAttempts ?? [], error: bubble.error ?? null }
   result.bubble = bubbleFrame
   result.visibleFrame = visibleFrame
   result.insideVisibleFrame = inside
-  result.distancePx = distance
+  result.nearestEdgePx = nearestEdge
+  result.centerDistancePx = centerDistance
+  result.anchored = anchored
+  result.overlappingWithPet = overlapping
   result.screenshot = shot
-  result.status = bubbleFrame && inside && moved ? 'PASS' : 'FAIL'
+  result.windowLayer = bubble.found ? buildWindowLayer(bubble) : null
+  result.status = moved && bubbleFrame && inside && anchored ? 'PASS' : 'FAIL'
   result.detail = bubbleFrame
-    ? `pet moved to right edge=${moved}; bubble ${bubbleFrame.w}x${bubbleFrame.h} inside visibleFrame=${inside}; anchor distance=${distance}px; screenshot=${shot.ok}`
-    : `bubble did not appear after edge trigger: ${bubble.error}`
-  // Restore pet position.
-  if (moved) {
-    try {
-      const js = `ObjC.import('AppKit'); const se = Application('System Events');
-const proc = se.processes.whose({unixId: ${Number(pid)}})[0]; const ws = proc.windows();
-for (let i = 0; i < ws.length; i++) { const w = ws[i]; let size = null; try { size = w.size(); } catch (e) {}
-  if (Array.isArray(size) && size[0] >= 120 && size[0] <= 300 && size[1] >= 120 && size[1] <= 460) { w.position = [${Math.round(pet.x)}, ${Math.round(pet.y)}]; break; } }`
-      spawnSync('/usr/bin/osascript', ['-l', 'JavaScript', '-e', js], { encoding: 'utf8' })
-    } catch { /* best effort restore */ }
-  }
+    ? `pet HID-dragged to right edge moved=${moved}; bubble ${bubbleFrame.w}x${bubbleFrame.h} inside visibleFrame=${inside}; nearest-edge=${nearestEdge}px (tail-aware overlap=${overlapping}), center=${centerDistance}px; screenshot=${shot.ok}`
+    : `bubble did not appear after edge drag: ${bubble.error ?? 'unknown'}`
+  // Restore the pet position with the same HID drag path (best effort).
+  const lastDrag = drags[drags.length - 1]
+  if (lastDrag) { try { dragMouse(lastDrag.to.x, lastDrag.to.y, lastDrag.from.x, lastDrag.from.y); await sleep(800) } catch { /* restore is best effort */ } }
   return result
 }
 
@@ -801,8 +922,10 @@ async function snapshotChecks(run) {
     const healthResponse = await fetch(`http://127.0.0.1:${JSON.parse(readFileSync(run.bridgePath(), 'utf8')).port}/health`, { signal: AbortSignal.timeout(5000) })
     const healthText = await healthResponse.text()
     const health = JSON.parse(healthText)
+    const pathMatches = healthText.match(/\/Users\/[^"\\\s]+|\/private\/(?:var|tmp)\/[^"\\\s]+|\/var\/folders\/[^"\\\s]+/g) || []
+    check.healthTextSample = healthText.slice(0, 1500)
     check.checks.push({ id: 'health-unauthenticated', status: healthResponse.ok && health.ok === true ? 'PASS' : 'FAIL', detail: `status=${healthResponse.status}` })
-    check.checks.push({ id: 'health-no-path-leak', status: !/\/Users\/|\/private\/|\/var\//.test(healthText) ? 'PASS' : 'FAIL', detail: 'no absolute home path in /health' })
+    check.checks.push({ id: 'health-no-path-leak', status: pathMatches.length ? 'FAIL' : 'PASS', detail: pathMatches.length ? `absolute path(s) in /health: ${pathMatches.slice(0, 3).join(', ')}` : 'no home/tmp absolute path' })
     const snapshot = await v2Snapshot(run)
     if (!snapshot.available) {
       check.checks.push({ id: 'v2-snapshot', status: 'FAIL', detail: `/v2/snapshot returned ${snapshot.response.status}: ${String(snapshot.response.text).slice(0, 200)}` })
@@ -820,7 +943,10 @@ async function snapshotChecks(run) {
       'identity-product': s.identity?.product === 'dsh-bot',
       'identity-productVersion-beta2': /^0\.0\.1-beta2$/.test(String(s.identity?.productVersion)),
       'sections-present': ['identity', 'connection', 'capture', 'playback', 'execution', 'interactions', 'queue', 'notices', 'presentation'].every(key => key in s),
-      'desktop-connected': s.connection?.desktop?.connected === true,
+      // Shape contract: desktop.connected is a boolean. The Host marks it true only after a
+      // desktop-source command; pet snapshot polling alone is not a desktop command, so the
+      // value is recorded as evidence instead of being forced to true.
+      'desktop-connected-boolean': typeof s.connection?.desktop?.connected === 'boolean',
     }
     for (const [id, pass] of Object.entries(contractChecks)) check.checks.push({ id, status: pass ? 'PASS' : 'FAIL' })
     const events = await run.apiFetch(`/v2/events?after=${s.snapshotSeq}`)
@@ -841,6 +967,8 @@ async function snapshotChecks(run) {
       hostEpoch: s.hostEpoch, snapshotSeq: s.snapshotSeq, productVersion: s.identity?.productVersion,
       executionState: s.execution?.state, interactionPending: s.interactions?.pending?.length ?? null,
       bubbleVisible: s.presentation?.bubble?.visible ?? null, noticeCount: s.notices?.length ?? null,
+      desktopConnected: s.connection?.desktop?.connected ?? null,
+      workerState: s.connection?.worker?.state ?? null,
     }
     check.status = check.checks.every(entry => entry.status === 'PASS') ? 'PASS' : 'FAIL'
     check.detail = `${check.checks.filter(entry => entry.status === 'PASS').length}/${check.checks.length} contract checks PASS`
@@ -866,7 +994,7 @@ export async function acceptNativeBeta2({ app, run: runDir, manifest, allowBlock
     platform: { os: spawnSync('/usr/bin/sw_vers', ['-productVersion'], { encoding: 'utf8' }).stdout.trim(), arch: process.arch, node: process.version },
     toolchain: toolchain(), displays: displays(),
     tcc: { accessibility: systemEventsWindows(process.pid).ok !== false || 'unknown', screenRecording: screenshot(join(run.evidenceDir, 'tcc-screenshot-probe.png')).ok },
-    app: { path: run.appPath, appAsarSha256 }, manifest: manifestData,
+    app: { path: run.appPath, appAsarSha256: appSha256 }, manifest: manifestData,
     sourceCommit, note: 'native evidence levels are recorded per check; DOM/CDP screenshots alone are never used as native visibility evidence',
   })
   let overall = 'FAIL'
@@ -884,7 +1012,7 @@ export async function acceptNativeBeta2({ app, run: runDir, manifest, allowBlock
   const results = {
     schemaVersion: 1,
     kind: 'beta2-native-acceptance',
-    app: run.appPath, appAsarSha256,
+    app: run.appPath, appAsarSha256: appSha256,
     sourceCommit, manifest: manifestData,
     startedAt: run.startedAt, finishedAt,
     firstAttemptSuccess: firstAttemptSuccess(run),

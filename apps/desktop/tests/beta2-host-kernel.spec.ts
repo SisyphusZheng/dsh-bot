@@ -115,6 +115,12 @@ it('reaches the v2 handshake, idempotent receipts, one official decision and mai
     for (const section of ['identity', 'connection', 'capture', 'playback', 'execution', 'interactions', 'queue', 'notices', 'presentation']) {
       expect(snapshot[section], section).toBeTruthy()
     }
+    // A desktop that only polls the snapshot is still a connected product UI.
+    expect(snapshot.connection.desktop.connected).toBe(true)
+    const healthResponse = await fetch(base + '/health')
+    const healthText = await healthResponse.text()
+    expect(healthText).not.toMatch(/\/Users\/|\/private\/|\/var\//)
+    expect(JSON.parse(healthText).messageConstructor.source).toBe('bundled')
     const eventsResponse = await fetch(base + `/v2/events?after=${snapshot.snapshotSeq}`, { headers })
     expect(eventsResponse.status).toBe(200)
     const events = await eventsResponse.json() as { events: unknown[]; resyncRequired: boolean }

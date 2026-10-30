@@ -180,6 +180,29 @@ static int cmdMouse(int argc, char **argv) {
       (fabs(after.x - target.x) < 2 && fabs(after.y - target.y) < 2) ? "true" : "false");
     return 0;
   }
+  if (argc >= 5 && !strcmp(argv[0], "drag")) {
+    CGPoint from = CGPointMake(atof(argv[1]), atof(argv[2]));
+    CGPoint to = CGPointMake(atof(argv[3]), atof(argv[4]));
+    postMove(from); usleep(150000);
+    CGEventRef down = CGEventCreateMouseEvent(NULL, kCGEventLeftMouseDown, from, kCGMouseButtonLeft);
+    CGEventPost(kCGHIDEventTap, down); CFRelease(down);
+    usleep(120000);
+    for (int step = 1; step <= 14; step++) {
+      double t = (double)step / 14.0;
+      CGPoint point = CGPointMake(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t);
+      CGEventRef dragged = CGEventCreateMouseEvent(NULL, kCGEventLeftMouseDragged, point, kCGMouseButtonLeft);
+      CGEventPost(kCGHIDEventTap, dragged); CFRelease(dragged);
+      usleep(45000);
+    }
+    usleep(120000);
+    CGEventRef up = CGEventCreateMouseEvent(NULL, kCGEventLeftMouseUp, to, kCGMouseButtonLeft);
+    CGEventPost(kCGHIDEventTap, up); CFRelease(up);
+    usleep(150000);
+    CGPoint after = mouseLocation();
+    printf("{\"command\":\"drag\",\"from\":[%g,%g],\"to\":[%g,%g],\"after\":[%g,%g]}\n",
+      from.x, from.y, to.x, to.y, after.x, after.y);
+    return 0;
+  }
   if (argc >= 3 && !strcmp(argv[0], "click")) {
     CGPoint target = CGPointMake(atof(argv[1]), atof(argv[2]));
     int moveFirst = 1;
@@ -300,6 +323,11 @@ export function moveMouse(x, y) {
   return JSON.parse(run(ensureProbe(), ['mouse', 'move', String(Math.round(x)), String(Math.round(y))]))
 }
 
+/** Real HID-level press-drag-release; used to move the pet window through its own drag handling. */
+export function dragMouse(x1, y1, x2, y2) {
+  return JSON.parse(run(ensureProbe(), ['mouse', 'drag', String(Math.round(x1)), String(Math.round(y1)), String(Math.round(x2)), String(Math.round(y2))]))
+}
+
 /** Real HID-level click at global screen coordinates (topmost window at that point receives it). */
 export function clickAt(x, y, { moveFirst = true } = {}) {
   const args = ['mouse', 'click', String(Math.round(x)), String(Math.round(y))]
@@ -383,7 +411,11 @@ if (cli) {
       case 'windows': return windows({ pid: option('--pid') ? Number(option('--pid')) : undefined, onscreenOnly: !rest.includes('--all'), force: rest.includes('--rebuild') })
       case 'displays': return displays()
       case 'toolchain': return toolchain()
-      case 'mouse': return rest.length === 0 ? mouseLocation() : rest[0] === 'move' ? moveMouse(Number(rest[1]), Number(rest[2])) : rest[0] === 'click' ? clickAt(Number(rest[1]), Number(rest[2])) : { error: 'usage: mouse [location|move x y|click x y]' }
+      case 'mouse': return rest.length === 0 ? mouseLocation()
+        : rest[0] === 'move' ? moveMouse(Number(rest[1]), Number(rest[2]))
+        : rest[0] === 'click' ? clickAt(Number(rest[1]), Number(rest[2]))
+        : rest[0] === 'drag' ? dragMouse(Number(rest[1]), Number(rest[2]), Number(rest[3]), Number(rest[4]))
+        : { error: 'usage: mouse [location|move x y|click x y|drag x1 y1 x2 y2]' }
       case 'shot': return screenshot(rest[0], { windowId: option('--window') ? Number(option('--window')) : undefined })
       case 'ax-windows': return systemEventsWindows(Number(rest[0]))
       case 'frontmost': return frontmostApp()

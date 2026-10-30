@@ -116,6 +116,12 @@ export function createConversationService({
     try { return String(runtime.sessionId?.() || '') || null } catch { return null }
   }
 
+  function desktopConnectedNow() {
+    if (!desktopConnection.connected) return false
+    const last = desktopConnection.lastSeenAt ? Date.parse(desktopConnection.lastSeenAt) : 0
+    return Number.isFinite(last) && now() - last < WORKER_STALE_MS
+  }
+
   function workerStateNow() {
     if (workerConnection.state !== 'connected') return workerConnection.state
     const last = workerConnection.lastSeenAt ? Date.parse(workerConnection.lastSeenAt) : 0
@@ -889,6 +895,14 @@ export function createConversationService({
   // ---------------- commands ----------------
 
   function touchDesktop(sourceConnectionId, sessionId) {
+    noteDesktopSeen()
+  }
+
+  /**
+   * Any authenticated desktop poll/receipt proves the product UI is connected. Without
+   * this, a UI that only reads snapshots/events would never appear in connection state.
+   */
+  function noteDesktopSeen() {
     const was = desktopConnection.connected
     desktopConnection.connected = true
     desktopConnection.lastSeenAt = nowIso()
@@ -1107,7 +1121,11 @@ export function createConversationService({
       identity,
       connection: {
         worker: { state: workerStateNow(), connectionId: workerConnection.connectionId, lastSeenAt: workerConnection.lastSeenAt },
-        desktop: { ...desktopConnection, lastEventSeq: events.seq() },
+        desktop: {
+          connected: desktopConnectedNow(),
+          lastSeenAt: desktopConnection.lastSeenAt,
+          lastEventSeq: events.seq(),
+        },
       },
       capture: { ...capture, updatedAt: capture.updatedAt || null },
       playback: { ...playback, updatedAt: playback.updatedAt || null },
@@ -1192,7 +1210,7 @@ export function createConversationService({
     handleCommand, handleFinalUtterance,
     snapshotSections,
     onTurnStarted, onTurnEnded, onAssistantDelta, onAssistantEnded, onAgentStatus,
-    onConversationRotated,
+    onConversationRotated, noteDesktopSeen,
     addNotice, listInteractions,
     // test/inspection helpers (not used as authority by clients)
     inspect: () => ({ queue: queue.snapshot(), draft: draft.snapshot(), turn: turn.snapshot(), capture: { ...capture }, playback: { ...playback }, pendingCancel }),
