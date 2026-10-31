@@ -67,10 +67,37 @@ type KernelSnapshot = {
   hostEpoch?: string
   snapshotSeq?: number
   identity?: { sessionId?: string | null; hostPid?: number }
+  execution?: { state?: string; sessionId?: string | null; turn?: number | null; turnId?: string | null; clientTurnId?: string | null }
   interactions?: { pending?: PendingInteraction[] }
   presentation?: { bubblePolicy?: { placement?: string; anchorGapPx?: number } }
 }
 type KernelReceipt = { status?: string; result?: Record<string, unknown>; error?: { code?: string; message?: string } | null }
+
+/**
+ * User-facing text for one Host cancel receipt.
+ *
+ * A confirmed stop needs no extra line because the Host already announced it. A
+ * pending or rejected stop must not read like a success: the desktop's own message
+ * is then the only thing the user may see before the Host's confirmation arrives.
+ * @param receipt - receipt returned by `POST /v2/command` for `control.cancel-task`.
+ * @returns the notice to show, or null when the Host already reported a confirmed stop.
+ */
+export function cancelReceiptNotice(receipt: KernelReceipt): { kind: string; text: string } | null {
+  if (receipt.status === 'resolved' && receipt.result?.['confirmed'] === true) return null
+  if (receipt.status === 'pending') return { kind: 'status', text: '已请求停止任务，正在等待 DSH 确认；确认到达前不会显示为已停止。' }
+  return { kind: 'error', text: '停止请求未被接受，任务仍在执行或结果未知；请打开主窗口检查。' }
+}
+
+/**
+ * User-facing text for a refused or unknown cancel.
+ * @param code - product error code (`STALE_TURN`, `CONFIRMATION_REQUIRED`, ...).
+ * @returns the notice to show.
+ */
+export function cancelFailureNotice(code: string): { kind: string; text: string } {
+  if (code === 'CONFIRMATION_REQUIRED') return { kind: 'status', text: '停止任务需要确认：请在桌宠气泡里确认「确认停止任务」。' }
+  if (/STALE|CANCEL_TARGET|NO_ACTIVE_TURN/.test(code)) return { kind: 'status', text: '要停止的任务已经结束或不是当前任务；没有执行停止。' }
+  return { kind: 'error', text: '停止请求未被确认，任务结果未知；请打开主窗口检查，不会自动重试。' }
+}
 type ProcessType = 'foreground' | 'uielement'
 type WindowPolicyModule = {
   windowLayerPlan?(options: { role: string; platform: string; processType: string }): {
@@ -509,7 +536,7 @@ export class ProductPet {
       shouldPause: () => pauseModule.canPauseDesktopTurn({
         behavior: this.config.behavior, turn: this.presentation?.state(), inputActive: this.experience?.inputActive(),
       }),
-      onPause: () => { void this.request('/cancel', { source: 'idle-pause' }).then(response => this.presentation?.notice(response.ok ? '已停止当前任务，等你。' : '暂停失败，请打开 DSH 查看。'), () => this.presentation?.notice('暂停失败，请打开 DSH 查看。', 'error')) },
+      onPause: () => { void this.stopTask('idle-pause').catch(() => this.presentation?.notice('暂停失败，请打开 DSH 查看。', 'error')) },
     })
     this.pause.start()
     this.window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
@@ -902,7 +929,7 @@ export class ProductPet {
       this.window?.webContents.send('pet:voice-command', { action: 'discard', captureId: value.captureId })
       return { status: 'accepted', result: {} }
     }
-    if (type === 'control.cancel-task') { return this.legacyCancelTask() }
+    if (type === 'control.cancel-task') { await this.legacyCancelTask(); return { status: 'accepted', result: {} } }
     if (type === 'control.stop-playback') {
       this.window?.webContents.send('pet:voice-command', { action: 'stop-playback' })
       return { status: 'accepted', result: {} }
@@ -914,17 +941,101 @@ export class ProductPet {
     if (type === 'session.open-main') { this.options.toggleMain(true); return { status: 'accepted', result: {} } }
     throw Object.assign(new Error(`unsupported legacy command: ${type}`), { code: 'UNKNOWN_COMMAND' })
   }
-  private async legacyCancelTask(): Promise<{ ok?: boolean }> {
-    const response = await this.request('/cancel', { source: 'task-stop' })
-    if (!response.ok) throw new Error('Cancellation failed')
-    return { ok: true }
+  /**
+   * Capture the turn identity this client last observed.
+   *
+   * A stop must name the turn the user actually saw. Reading the Host again at
+   * request time would describe whatever started since then, which is how a late
+   * pause or a retried click stops a task the user never asked about.
+   * @returns the target to send, or null when nothing is running.
+   */
+  private captureCancelTarget(): { hostEpoch: string; sessionId: string; turn?: number; turnId?: string; clientTurnId?: string } | null {
+    const execution = this.kernelSnapshot?.execution
+    const hostEpoch = this.kernel.hostEpoch || String(this.kernelSnapshot?.hostEpoch || '')
+    const sessionId = String(execution?.sessionId || this.kernelSnapshot?.identity?.sessionId || '')
+    if (!execution || hostEpoch === '' || sessionId === '') return null
+    if (!['submitting', 'working', 'cancel-requested'].includes(String(execution.state || ''))) return null
+    const target: { hostEpoch: string; sessionId: string; turn?: number; turnId?: string; clientTurnId?: string } = { hostEpoch, sessionId }
+    if (execution.turn !== null && execution.turn !== undefined) target.turn = Number(execution.turn)
+    if (typeof execution.turnId === 'string' && execution.turnId !== '') target.turnId = execution.turnId
+    if (typeof execution.clientTurnId === 'string' && execution.clientTurnId !== '') target.clientTurnId = execution.clientTurnId
+    if (target.turn === undefined && target.turnId === undefined && target.clientTurnId === undefined) return null
+    return target
   }
-  private async stopTask(): Promise<void> {
+  /** Report a Host cancel receipt without ever turning an unconfirmed stop into a success. */
+  private reportCancelReceipt(receipt: KernelReceipt): void {
+    const notice = cancelReceiptNotice(receipt)
+    if (notice !== null) this.presentation?.notice(notice.text, notice.kind, 9000)
+  }
+  /** Report a refused or unknown cancel without falling back to an unscoped stop. */
+  private reportCancelFailure(error: unknown): void {
+    const code = String((error as { code?: string } | null)?.code || '')
+    this.log('kernel.cancel_task_failed', code || (error instanceof Error ? error.message : String(error)))
+    if (/STALE|CANCEL_TARGET|NO_ACTIVE_TURN/.test(code)) this.kernel.needsSnapshot = true
+    const notice = cancelFailureNotice(code)
+    if (notice !== null) this.presentation?.notice(notice.text, notice.kind, 12000)
+  }
+  /**
+   * Stop the task as it was observed, never "whatever the Host currently runs".
+   *
+   * In v2 the request carries the captured target and stays in the v2 path even
+   * when it fails: falling back to the legacy endpoint would drop the target and
+   * cancel the successor turn instead. The legacy endpoint gets the same identity
+   * read back from `/task-state` in the same request.
+   * @param source - legacy cancellation source (`task-stop` or `idle-pause`).
+   */
+  private async stopTask(source = 'task-stop'): Promise<void> {
     if (this.mode === 'v2') {
-      try { await this.sendKernelCommand('control.cancel-task', {}); return }
-      catch (error) { this.log('kernel.cancel_task_failed', error instanceof Error ? error.message : String(error)) }
+      const target = this.captureCancelTarget()
+      if (target === null) {
+        this.presentation?.notice('当前没有正在执行的任务，未发生停止。', 'status', 8000)
+        return
+      }
+      try {
+        this.reportCancelReceipt(await this.sendKernelCommand('control.cancel-task', { target }))
+      } catch (error) {
+        this.reportCancelFailure(error)
+      }
+      return
     }
-    await this.legacyCancelTask()
+    await this.legacyCancelTask(source)
+  }
+  /**
+   * Legacy cancellation for a Host without the v2 command channel.
+   *
+   * The identity is read from `/task-state` immediately before the request so the
+   * stop names one turn; the reply's `confirmed` flag decides what the user is
+   * told, because an HTTP 200 only means the request was accepted.
+   * @param source - cancellation source recorded by the Host (`task-stop`, `idle-pause`).
+   */
+  private async legacyCancelTask(source = 'task-stop'): Promise<void> {
+    const stateResponse = await this.request('/task-state')
+    if (!stateResponse.ok) throw new Error('Task state unavailable')
+    const state = await stateResponse.json() as {
+      sessionId?: string
+      clientTurnId?: string | null
+      turn?: number | null
+      hostEpoch?: string
+    }
+    const hostEpoch = String(state.hostEpoch || '')
+    const sessionId = String(state.sessionId || '')
+    const target: { hostEpoch: string; sessionId: string; turn?: number; clientTurnId?: string } = { hostEpoch, sessionId }
+    if (state.turn !== null && state.turn !== undefined) target.turn = Number(state.turn)
+    if (typeof state.clientTurnId === 'string' && state.clientTurnId !== '') target.clientTurnId = state.clientTurnId
+    if (hostEpoch === '' || sessionId === '' || (target.turn === undefined && target.clientTurnId === undefined)) {
+      this.presentation?.notice('当前没有正在执行的任务，未发生停止。', 'status', 8000)
+      return
+    }
+    const response = await this.request('/cancel', { source, ...target })
+    let body: { cancelled?: boolean; confirmed?: boolean } = {}
+    try { body = await response.json() as typeof body } catch { body = {} }
+    if (!response.ok) {
+      this.presentation?.notice('停止请求被拒绝；当前任务未确认停止，请打开主窗口检查。', 'error', 12000)
+      return
+    }
+    if (body.confirmed === true && body.cancelled !== false) { this.presentation?.notice('DSH 已确认任务停止。', 'status', 6000); return }
+    if (body.cancelled === true) { this.presentation?.notice('已请求停止任务，正在等待 DSH 确认；确认到达前不会显示为已停止。', 'status', 9000); return }
+    this.presentation?.notice('没有正在执行的任务，未发生停止。', 'status', 8000)
   }
   private positionBubble(): void {
     if (!this.window || !this.bubbleModule) return

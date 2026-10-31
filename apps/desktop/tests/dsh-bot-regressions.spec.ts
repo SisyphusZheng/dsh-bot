@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { request } from 'node:http'
@@ -81,20 +81,23 @@ describe('dsh-bot security and config regressions', () => {
     expect(after?.llm.model).toBe('regression-model')
   })
 
-  it('preserves malformed DSH credential files instead of replacing them', () => {
+  // Mutations are asynchronous: they take the cross-process writer lock the
+  // running DSH runtime also uses, so a refusal surfaces as a rejected promise.
+  it('preserves malformed DSH credential files instead of replacing them', async () => {
     const dir = folder()
     const file = join(dir, '.credentials.yaml')
     const malformed = 'version: 1\nrefs: [not closed\n'
     writeFileSync(file, malformed, { mode: 0o600 })
     const store = new DshCredentialStore(dir)
-    expect(() => store.set('new', 'secret')).toThrow()
+    await expect(store.set('new', 'secret')).rejects.toThrow(/not valid YAML/)
     expect(readFileSync(file, 'utf8')).toBe(malformed)
   })
 
-  it('creates a fresh credential document with restrictive permissions', () => {
+  it('creates a fresh credential document with restrictive permissions', async () => {
     const dir = folder()
     const store = new DshCredentialStore(dir)
-    store.set('probe', 'ok')
+    await store.set('probe', 'ok')
     expect(store.get('probe')).toBe('ok')
+    expect(statSync(join(dir, '.credentials.yaml')).mode & 0o077).toBe(0)
   })
 })

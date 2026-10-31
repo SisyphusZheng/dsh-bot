@@ -86,5 +86,6 @@
       "joiner-epoch-13-avg-2-chunk-8-left-64.int8.onnx": "190d4067b4cc20b72a42a1916e69d92052000fb7051a427ebb1bc72a69207dc1",
       "tokens.txt": "2d3f32311f9b692b964da3c90e830258d3e78e013cb0c992dbfb15cd5a1a71b0"
     }
-  }
+  },
+  "statusIndex": "product/CURRENT-STATUS.md"
 }

@@ -4,16 +4,20 @@ import { createServer } from 'node:http'
 import { createInteractionMirror, validateAnswer } from './interactions.mjs'
 import { createTaskRecovery } from './task-recovery.mjs'
 import { createApprovalPolicies } from './approval-policies.mjs'
+import { createSandboxGuard } from './sandbox-guard.mjs'
+import { decideProductApproval } from './approval-decision.mjs'
 import { createSnapshotStore } from './snapshot.mjs'
 import { createStateStore, createReceiptStore } from './persistence.mjs'
 import { createConversationService } from './conversation-service.mjs'
 import { createInteractionRegistry } from './interaction-registry.mjs'
+import { createCancelRouter, currentCancelScope, legacyCancelRequest } from './cancel-routing.mjs'
+import { createCredentialWriteChannel } from './credentials-guard.mjs'
 import {
   PROTOCOL_VERSION, ContractError, canonicalJson, digest, newId, nowIso,
   validateCommand, receipt, stableOptionId,
 } from './contracts.mjs'
 import { randomUUID } from 'node:crypto'
-import { basename, dirname, join, relative, resolve } from 'node:path'
+import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 export const name = 'nisse-host-integration'
@@ -294,6 +298,9 @@ export function apply(ctx, config = {}) {
 
   // ---- beta2 kernel: one product business state, idempotent receipts, versioned snapshot/event stream ----
   const hostEpoch = randomUUID()
+  // One decision point for every stop entry: a request reaches `cancelTurn()` only
+  // when its target proves it is the turn this Host currently owns.
+  const cancelRouter = createCancelRouter({ hostEpoch, log })
   const stream = createSnapshotStore({
     hostEpoch,
     retention: Number(process.env.DSH_BOT_EVENT_RETENTION || 0) || 5000,
@@ -311,6 +318,8 @@ export function apply(ctx, config = {}) {
   let handle = null
   let agent = null
   let sessionId = ''
+  /** Permission bundle verified for the live Bot session, or null before one. */
+  let permissionState = null
   let conversationIndex = 1
   /** In-flight agent creation. Startup and HTTP callers must share it, not race on one session id. */
   let agentTask = null
@@ -435,61 +444,85 @@ export function apply(ctx, config = {}) {
       .map(item => ({ id: `continued:${item.callId}`, kind: 'question', sessionId, callId: item.callId, questions: item.questions }))
   }
 
-  function installWriteApprovalPolicy() {
+  /**
+   * Product pre-execute guard for the Bot session. It is NOT a security
+   * boundary for file effects: the managed profile runs the session in DSH's
+   * `workspace-write` sandbox, the bash executor confines the whole command
+   * process family with the kernel sandbox, the filesystem provider fences
+   * tool-seam mutations, and an out-of-workspace retry is mediated by the
+   * upstream one-shot escalation (`sandbox_permissions` + `justification`)
+   * followed by a formal approval request. A heuristic miss here cannot grant
+   * a file effect and a heuristic hit cannot widen one.
+   *
+   * What this hook still owns:
+   *  - the product screen-view switch (best effort over tool name/description;
+   *    see `sandbox-guard.mjs` for why it is not a capability boundary);
+   *  - the per-call operation record that exact-grant matching consumes;
+   *  - audit hints for calls that look like an out-of-workspace write.
+   *
+   * Fail-closed: an exception while classifying denies THIS call with a
+   * recoverable diagnostic and an audit event; later unrelated calls are
+   * evaluated independently, so a single faulty call cannot brick the Bot.
+   */
+  function installWriteGuard() {
     if (typeof ctx.on !== 'function') return
-    const home = process.env.HOME || ''
-    const mutating = /(?:^|[;&|]\s*)(?:touch|mkdir|rm|rmdir|cp|mv|tee|dd|truncate|ln|chmod|chown|printf|echo|cat\s*>|sed\s+-i|perl\s+-pi|python3?\s+-c)/i
-    const writeTools = new Set(['write', 'edit', 'apply_patch', 'multi_edit', 'write_file'])
-    ctx.on('tools/pre-execute', async (exec, next) => {
-      try {
-        const name = String(exec?.name || '')
-        if (exec.agent !== agent || !matchesSession(exec.agent?.session?.id)) return next()
+    const toolsService = () => ctx.get?.('tools')
+    ctx.on('tools/pre-execute', createSandboxGuard({
+      isOurs: exec => exec.agent === agent && matchesSession(exec.agent?.session?.id),
+      workspace: () => canonicalWorkspaceDir(),
+      cwdOf: exec => String(exec.agent?.session?.header?.cwd || canonicalWorkspaceDir()),
+      screenViewAllowed: () => behaviorSettings().allowScreenView,
+      toolDescription: name => {
+        const tools = toolsService()
+        const definition = tools && typeof tools.get === 'function' ? tools.get(name) : undefined
+        return definition && typeof definition.description === 'string' ? definition.description : ''
+      },
+      recordOperation: (exec, operation) => {
         const callId = String(exec.callId || '')
-        if (callId) {
-          const operation = { toolName: name, arguments: exec.arguments, cwd: String(exec.agent?.session?.header?.cwd || canonicalWorkspaceDir()) }
-          operationCalls.set(callId, operation)
-          if (operationCalls.size > 128) operationCalls.delete(operationCalls.keys().next().value)
-          exec.signal?.addEventListener('abort', () => operationCalls.delete(callId), { once: true })
+        if (!callId) return
+        operationCalls.set(callId, operation)
+        if (operationCalls.size > 128) operationCalls.delete(operationCalls.keys().next().value)
+        exec.signal?.addEventListener('abort', () => operationCalls.delete(callId), { once: true })
+      },
+      // A recognized mutating tool on a composition WITHOUT a confining provider
+      // has no DSH sandbox behind it, so the product asks (or rejects under
+      // never-ask) before it runs. This is a per-family permission decision, not
+      // a sandbox claim: on the shipped profile both the filesystem and shell
+      // providers confine, this branch never runs, and out-of-workspace writes
+      // are mediated by the upstream one-shot escalation + formal approval.
+      confirmUnenforcedWrite: facts => {
+        const fileSystemMode = ctx.get?.('fs')?.sandboxMode
+        const shellMode = ctx.get?.('shell')?.sandboxMode
+        const bounded = facts.family === 'file-write'
+          ? fileSystemMode !== undefined && fileSystemMode !== 'danger-full-access'
+          : shellMode !== undefined && shellMode !== 'danger-full-access'
+        if (bounded) return null
+        const { mode } = approvalSettings()
+        const target = facts.targets[0] || ''
+        if (mode === 'never-ask') {
+          auditEvent('approval.denied_never_ask', { tool: facts.toolName, reason: 'unenforced-mutating-tool-outside-workspace' })
+          return {
+            kind: 'deny',
+            reason: '产品审批模式为“从不询问”，且该工具的文件副作用不受已挂载的 DSH 沙箱约束，因此已拒绝本次调用（fail-closed，未执行任何操作）。可在 DSH 设置 → Bot → 权限中改为询问后重试。',
+          }
         }
-        const args = exec?.arguments && typeof exec.arguments === 'object' ? exec.arguments : {}
-        const behavior = behaviorSettings()
-        if (!behavior.allowScreenView && /screen|screenshot|computer|cua|visual/i.test(name)) {
-          auditEvent('tool.denied_screen_view', { tool: name })
-          return { kind: 'deny', reason: '屏幕查看已在 Bot 设置中关闭（DSH 设置 → Bot → 权限）' }
+        if (mode === 'ask-once' && approvalAutoAllows() === 'ask-once') {
+          auditEvent('approval.auto_allowed_mode', { tool: facts.toolName, mode, reason: 'unenforced-write-window' })
+          return null
         }
-        const isWrite = writeTools.has(name)
-        const isShell = /terminal|bash|shell|exec/i.test(name)
-        if (!isWrite && !isShell) return next()
-        let target = ''
-        if (isWrite) target = String(args.path || args.file_path || args.filePath || args.target || '')
-        else {
-          const command = String(args.command || args.cmd || args.input || args.text || '')
-          const match = command.match(/~\/[^\s'"`;|&]+|\/Users\/[^\s'"`;|&]+|\/var\/[^\s'"`;|&]+|\/etc\/[^\s'"`;|&]+/g) || []
-          if (!mutating.test(command) || match.length === 0) return next()
-          target = match.find((candidate) => {
-            const absolute = candidate.startsWith('~/') && home ? join(home, candidate.slice(2)) : resolve(candidate)
-            const relCandidate = relative(canonicalWorkspaceDir(), absolute)
-            return relCandidate.startsWith('..') || relCandidate.startsWith('/') || relCandidate.includes(':')
-          }) || ''
+        auditEvent('approval.product_confirmation', { tool: facts.toolName, target })
+        return {
+          kind: 'ask',
+          reason: `${facts.toolName} outside workspace: ${target}`,
+          displayReason: {
+            en: `${facts.toolName} would write outside the workspace (this tool's file effects are not bounded by the DSH sandbox): ${target}`,
+            zh: `${facts.toolName} 将写入工作区外的文件（该工具的文件副作用不受 DSH 沙箱约束）：${target}`,
+          },
         }
-        if (!target) return next()
-        const absolute = target.startsWith('~/') && home ? join(home, target.slice(2)) : resolve(target)
-        const rel = relative(canonicalWorkspaceDir(), absolute)
-        if (!rel.startsWith('..') && !rel.startsWith('/') && !rel.includes(':')) return next()
-        const autoAllow = approvalAutoAllows()
-        if (autoAllow !== '') {
-          auditEvent('policy.auto_allow_mode', { tool: name, target: absolute, mode: autoAllow })
-          log('approval auto-allowed by mode', { tool: name, mode: autoAllow })
-          return next()
-        }
-        log('approval preflight ask', { tool: name, target: absolute })
-        return { kind: 'ask', reason: `${name} outside workspace: ${absolute}`, displayReason: { en: `${name} outside workspace: ${absolute}`, zh: `${name} 写入工作区外文件：${absolute}` } }
-      } catch (error) {
-        log('write approval policy failed: ' + messageOf(error))
-        return next()
-      }
-    })
-    log('write approval policy installed')
+      },
+      audit: (event, fields) => auditEvent(event, fields),
+    }))
+    log('write guard installed (audit + screen switch; file effects bounded by the DSH sandbox)')
   }
 
   let approvalAnswerer = null
@@ -803,32 +836,61 @@ export function apply(ctx, config = {}) {
       } catch { /* ignore */ }
     })
 
-    // W1 optional tool probe: answer approvals for THIS isolated session only,
-    // and only for the read-only model-facing `read` tool. Everything else is
-    // delegated (fail-closed as in production). The durable approval/asked and
-    // approval/decided events are recorded through the session/event observer.
+    // Approval answerer for the Bot session. DSH's one-shot escalation
+    // (`sandbox_permissions` + `justification`) reaches here only AFTER the
+    // tool proved the target mode is strictly wider than the session mode; the
+    // product's job is to choose HOW the human is asked:
+    //  - `read` probes are auto-allowed (the tool cannot mutate);
+    //  - an exact grant the user already confirmed for the SAME tool, cwd and
+    //    complete arguments is honoured;
+    //  - product mode "从不询问" rejects without prompting (fail-closed);
+    //  - product mode "一次授权 N 分钟" auto-allows only sandbox escalations
+    //    inside the window (the class the old preflight granted);
+    //  - everything else is asked in the pet bubble.
+    // Fail-closed: any exception returns 'unavailable' (the tool layer turns it
+    // into a denial). Delegating a failed product answerer to `next()` would let
+    // a later auto-approving answerer decide a question this product could not
+    // evaluate — the old `catch → next()` was exactly that fail-open.
     approvalAnswerer = (req, next) => {
+      let sid
       try {
-        const sid = req?.agent?.session?.id
-        log('approval request seen', { sid, ourSession: sessionId })
+        sid = req?.agent?.session?.id
         if (interactions.isForwarded(req) || !matchesSession(sid)) return next()
+      } catch (error) {
+        auditEvent('approval.answerer_fault', { toolName: String(req?.toolName || ''), error: messageOf(error) })
+        log('approval handler failed closed before session check: ' + messageOf(error))
+        return 'unavailable'
+      }
+      try {
         const toolName = String(req?.toolName || '')
         log('approval/request', { sessionId: sid, toolName })
-        // Read probes are auto-allowed. All other tools are surfaced to the
-        // voice bridge so a real approval round-trip can be tested (T7).
-        if (toolName === 'read') return 'allowed-once'
         const reason = String(req?.reason || '')
         const operation = operationCalls.get(String(req.callId || ''))
         const policy = policies.match(operation)
-        if (policy) {
-          auditEvent('policy.auto_allow', { policyId: policy.id, toolName, reason: preview(reason) })
-          log('approval auto-allowed by policy', { policyId: policy.id, toolName })
+        const { mode } = approvalSettings()
+        const decision = decideProductApproval({
+          toolName,
+          operation,
+          mode,
+          grantMatched: Boolean(policy),
+          askOnceWindowOpen: mode === 'ask-once' && approvalAutoAllows() === 'ask-once',
+        })
+        if (decision.outcome === 'allowed-once') {
+          if (policy) auditEvent('policy.auto_allow', { policyId: policy.id, toolName, reason: preview(reason) })
+          else if (decision.reason !== 'read-probe') auditEvent('approval.auto_allowed_mode', { toolName, mode, reason: decision.reason })
+          log('approval auto-allowed by product policy', { toolName, why: decision.reason })
           return 'allowed-once'
+        }
+        if (decision.outcome === 'rejected') {
+          auditEvent('approval.denied_never_ask', { toolName, reason: preview(reason) })
+          log('approval denied by never-ask mode', { toolName })
+          return 'rejected'
         }
         return interactions.ask('approval', { ...req, ...(operation ? { operation } : {}) })
       } catch (error) {
-        log('approval handler failed: ' + messageOf(error))
-        return next()
+        auditEvent('approval.answerer_fault', { toolName: String(req?.toolName || ''), error: messageOf(error) })
+        log('approval handler failed closed: ' + messageOf(error))
+        return 'unavailable'
       }
     }
     // The desktop UI's own answerer (api-remotes -> ui-approval) is registered by an
@@ -954,6 +1016,7 @@ export function apply(ctx, config = {}) {
     agent = null
     handle = null
     sessionId = ''
+    permissionState = null
     seenDurable.clear()
     durableSeq = 0
     currentTurn = null
@@ -989,6 +1052,109 @@ export function apply(ctx, config = {}) {
       }
     }
     return ensureAgent()
+  }
+
+  /**
+   * Read the sandbox mode and approval policy DSH will actually enforce for one
+   * session, through the same facts the enforcing consumers read. The sandbox
+   * resolver (`ctx.sandboxPolicy`) is authoritative when composed; otherwise the
+   * session projection's last `sandbox/mode` override, then the mounted shell
+   * executor's capability fact, are the only sources. `null` means neither the
+   * sandbox nor the shell fact is available, so nothing can be verified.
+   * @param session - the session to inspect.
+   * @returns the effective permission facts, or null when unverifiable.
+   */
+  function effectivePermissionOf(session) {
+    const sandboxPolicy = ctx.get?.('sandboxPolicy')
+    const approval = ctx.get?.('approval')
+    const projection = ctx.get?.('sessionProjections')
+    let sandbox
+    if (sandboxPolicy && typeof sandboxPolicy.resolve === 'function') {
+      sandbox = sandboxPolicy.resolve({ session }).mode
+    } else if (projection && typeof projection.stateOf === 'function') {
+      sandbox = projection.stateOf(session, 'sandboxMode') ?? ctx.get?.('shell')?.sandboxMode
+    } else {
+      sandbox = ctx.get?.('shell')?.sandboxMode
+    }
+    if (sandbox === undefined) return null
+    const approvalPolicy = approval && typeof approval.overrideOf === 'function'
+      ? approval.overrideOf(session) ?? approval.config?.policy ?? 'ask'
+      : undefined
+    return { sandbox, approval: approvalPolicy ?? null }
+  }
+
+  /**
+   * Apply the configured permission preset to the Bot session and refuse only
+   * the concrete unsafe outcome: a session WIDER than the configured bundle.
+   *
+   * Applying alone is not proof. A missing/throwing preset service, an unknown
+   * preset name, or a composition default from `DSH_PERMISSION_MODE` can leave
+   * the session at whatever the deployment default is — possibly
+   * `danger-full-access` — so the effective sandbox is read back from the same
+   * services the enforcing consumers use. Missing verification services are
+   * recorded and downgraded, not turned into a new startup failure; only
+   * "session is wider than its declared bundle" refuses the Bot session.
+   * A narrowing change (e.g. a resumed session whose last durable mode was the
+   * pre-0.0.1 full access) is recorded and surfaced as a recoverable product
+   * event; widening never happens implicitly.
+   * @param session - the Bot session created or resumed for this launch.
+   * @returns the effective permission facts, or null when unverifiable.
+   */
+  function applyPermissionPreset(session) {
+    const width = { 'read-only': 0, 'workspace-write': 1, 'danger-full-access': 2 }
+    const fallbackBundle = { sandbox: 'workspace-write', approval: 'ask' }
+    const presets = ctx.permissionPresets || ctx.get?.('permissionPresets')
+    let bundle = fallbackBundle
+    if (presets && typeof presets.resolve === 'function') {
+      try { bundle = presets.resolve(permissionPreset) }
+      catch (error) {
+        auditEvent('permission.preset_unknown', { preset: permissionPreset, error: messageOf(error) })
+        log('permission preset unknown; falling back to the conservative bundle: ' + messageOf(error))
+      }
+    } else {
+      auditEvent('permission.preset_unavailable', { preset: permissionPreset })
+      log('permissionPresets service unavailable; verifying the composed permission only')
+    }
+    const before = effectivePermissionOf(session)
+    if (presets && typeof presets.set === 'function') {
+      try { presets.set(session, permissionPreset) }
+      catch (error) {
+        auditEvent('permission.preset_apply_failed', { preset: permissionPreset, error: messageOf(error) })
+        log('permission preset apply failed: ' + messageOf(error))
+      }
+    }
+    const after = effectivePermissionOf(session)
+    const declaredWidth = width[bundle.sandbox] ?? width['workspace-write']
+    const actualWidth = after === null ? declaredWidth : (width[after.sandbox] ?? declaredWidth)
+    if (after !== null && actualWidth > declaredWidth) {
+      throw new Error(`SESSION_PERMISSION_UNVERIFIED: session sandbox "${after.sandbox}" is wider than preset "${permissionPreset}" (${bundle.sandbox}); refusing to run the Bot wider than the configured bundle`)
+    }
+    if (after === null) {
+      auditEvent('permission.unverified', { preset: permissionPreset })
+      log('bot session permission unverified: no sandbox/shell service exposed the effective mode')
+    } else if (after.approval === 'never' && bundle.approval === 'ask') {
+      auditEvent('permission.approval_narrowed', { preset: permissionPreset, approval: after.approval })
+    }
+    permissionState = after === null
+      ? { preset: permissionPreset, sandbox: 'unverified', approval: null, verified: false }
+      : { preset: permissionPreset, sandbox: after.sandbox, approval: after.approval ?? bundle.approval, verified: true }
+    if (before !== null && after !== null && before.sandbox !== after.sandbox) {
+      auditEvent('permission.mode_changed', { preset: permissionPreset, from: before.sandbox, to: after.sandbox })
+      log('bot session permission changed', { preset: permissionPreset, from: before.sandbox, to: after.sandbox })
+      if (before.sandbox === 'danger-full-access') {
+        push('permission.downgraded', {
+          sessionId: String(session.id),
+          data: {
+            from: before.sandbox,
+            to: after.sandbox,
+            preset: permissionPreset,
+            recover: '0.0.1 起默认权限已收紧为工作区写入 + 越界逐次审批。如确需全文访问，请在 DSH 会话中显式执行 /permission danger-full-access（最高风险，仅在你完全信任 Bot 时使用）。',
+          },
+        })
+      }
+    }
+    log('permission preset applied', { preset: permissionPreset, sandbox: permissionState.sandbox, approval: permissionState.approval, verified: permissionState.verified })
+    return after
   }
 
   /**
@@ -1085,6 +1251,15 @@ export function apply(ctx, config = {}) {
         throw error
       }
     }
+    // Permission before ownership: a session whose enforced sandbox/approval
+    // bundle cannot be proven must not become the live Bot agent (S1 §5.4).
+    try {
+      applyPermissionPreset(created.agent.session)
+    } catch (error) {
+      log('bot session permission rejected: ' + messageOf(error))
+      try { await created.dispose?.() } catch (disposeError) { log('rejected agent dispose failed: ' + messageOf(disposeError)) }
+      throw error
+    }
     handle = created
     agent = created.agent
     sessionId = String(agent.session.id)
@@ -1104,11 +1279,6 @@ export function apply(ctx, config = {}) {
       log('bot session workspace attach failed: ' + messageOf(error))
     }
 
-    try {
-      const presets = ctx.permissionPresets || ctx.get?.('permissionPresets')
-      if (presets && typeof presets.set === 'function') { presets.set(agent.session, permissionPreset); log('permission preset applied', { preset: permissionPreset }) }
-      else log('permissionPresets service unavailable')
-    } catch (error) { log('permission preset apply failed: ' + messageOf(error)) }
     push('agent.created', {
       sessionId,
       data: {
@@ -1117,6 +1287,7 @@ export function apply(ctx, config = {}) {
         cwd: String(agent.session?.header?.cwd || canonicalWorkspaceDir()),
         agentOptions: agentOptions || null,
         defaultSelection,
+        permission: permissionState,
       },
     })
     log('agent created', { sessionId, agentOptions: agentOptions || null, workspace: canonicalWorkspaceDir() })
@@ -1248,6 +1419,9 @@ export function apply(ctx, config = {}) {
         lastTurn,
         conversationIndex,
         contextTokens: lastContextTokens,
+        // The verified bundle the session actually enforces (never a promise):
+        // null before agent creation or when creation was refused.
+        permission: permissionState,
         approval: approvalSettings(),
         behavior: behaviorSettings(),
         rotateTokenLimit: rotationTokenLimit(),
@@ -1267,7 +1441,7 @@ export function apply(ctx, config = {}) {
     }
   }
 
-  installWriteApprovalPolicy()
+  installWriteGuard()
 
   // beta2 kernel startup: record the epoch, restore bounded product state (never auto-execute),
   // and start the settle-drain tick used by Host-owned utterance assembly.
@@ -1409,6 +1583,7 @@ export function apply(ctx, config = {}) {
           agent = null
           handle = null
           sessionId = oldSession
+          permissionState = null
           try { conversation?.onConversationRotated('persona-refresh') } catch (error) { log('conversation reset projection failed: ' + messageOf(error)) }
           log('persona updated; agent disposed for refresh', { sessionId: oldSession })
         } catch (error) { log('persona agent dispose failed: ' + messageOf(error)) }
@@ -1487,8 +1662,17 @@ export function apply(ctx, config = {}) {
           currentDigest = await memoryDigest()
         }
         if (body.llm) {
-          const llm = body.llm, credentials = ctx.get?.('credentials'), settings = ctx.get?.('settings')
-          if (llm.apiKey && credentials?.set) await credentials.set('WHALEGIRL_LLM_API_KEY', String(llm.apiKey))
+          const llm = body.llm, settings = ctx.get?.('settings')
+          // A provider key goes through the managed credentials service or not at all:
+          // the previous revision skipped the write when the service was absent and
+          // still answered `applied`, which discarded the user's key silently.
+          if (String(llm.apiKey || '') !== '') {
+            try {
+              await createCredentialWriteChannel({ credentials: ctx.get?.('credentials'), log }).store({ ref: 'WHALEGIRL_LLM_API_KEY', value: String(llm.apiKey) })
+            } catch (error) {
+              return json(res, error.status || 503, { ok: false, error: { code: error.code || 'CREDENTIAL_WRITE_FAILED', message: messageOf(error) } })
+            }
+          }
           if (!settings?.update) return json(res, 503, {error:'DSH settings service unavailable'})
           const profile = {apiKeyEnv:'WHALEGIRL_LLM_API_KEY', ...(llm.baseUrl ? {baseURL:String(llm.baseUrl)} : {})}
           if (['custom','dashscope'].includes(llm.provider)) Object.assign(profile, {api:'openai-completions',models:[{id:String(llm.model),contextWindow:32768,maxTokens:4096}]})
@@ -1581,15 +1765,52 @@ export function apply(ctx, config = {}) {
       }
       if (url.pathname === '/cancel' && req.method === 'POST') {
         const body = await readBody(req)
-        if (body.sessionId !== undefined && body.sessionId !== sessionId) return json(res, 409, { error: 'stale session' })
-        if (body.clientTurnId !== undefined && (!body.clientTurnId || body.clientTurnId !== activeClientTurnId)) return json(res, 409, { error: 'stale turn' })
-        if (body.turn !== undefined && body.turn !== currentTurn) return json(res, 409, { error: 'stale DSH turn' })
-        const allowed = ['idle-pause', 'task-stop', 'voice-command', 'voice-disconnect']
-        const source = body.source === undefined ? 'task-stop' : body.source
-        if (!allowed.includes(source)) return json(res, 400, { error: 'invalid cancellation source' })
-        const result = await cancelTurn(source)
-        auditEvent('session.cancelled', { sessionId: sessionId || null, cancelled: Boolean(result?.cancelled), source, turn: currentTurn, clientTurnId: activeClientTurnId || null })
-        return json(res, 200, result)
+        // Legacy cancellation, routed through the same decision point as every other
+        // stop: the request must name the turn it stops (epoch + session + turn /
+        // clientTurnId), captured when the user asked. A request that names nothing is
+        // refused with an upgrade hint instead of cancelling whatever happens to run.
+        const sections = conversation?.snapshotSections?.() ?? null
+        const current = currentCancelScope({
+          execution: sections?.execution ?? null,
+          sessionId: sessionId || '',
+          hostEpoch,
+          playbackId: sections?.playback?.playbackId || '',
+          captureId: sections?.capture?.captureId || '',
+        })
+        let forwarded
+        try {
+          forwarded = cancelRouter.plan(legacyCancelRequest(body, { current, hostEpoch }))
+        } catch (error) {
+          auditEvent('session.cancel.rejected', { sessionId: sessionId || null, code: error?.code || null, turn: currentTurn })
+          return json(res, error.status || 400, {
+            ok: false,
+            error: {
+              code: error.code || 'CANCEL_REJECTED',
+              message: messageOf(error),
+              ...(Array.isArray(error.missing) ? { missing: error.missing } : {}),
+              ...(error.upgrade ? { upgrade: error.upgrade } : {}),
+            },
+          })
+        }
+        if (forwarded.action === 'duplicate') {
+          // A retry of a stop that already settled replays its outcome; running the
+          // owner twice would settle interactions of a successor turn.
+          const replay = forwarded.outcome
+          return json(res, 200, {
+            ok: replay.success,
+            kind: replay.kind,
+            state: replay.state,
+            confirmed: replay.confirmed,
+            cancelled: replay.confirmed,
+            code: replay.code,
+            target: forwarded.target,
+            duplicate: true,
+          })
+        }
+        const result = await cancelTurn(forwarded.source)
+        const value = cancelRouter.settle(forwarded, result)
+        auditEvent('session.cancelled', { sessionId: sessionId || null, cancelled: Boolean(value.cancelled), state: value.state, source: forwarded.source, turn: currentTurn, clientTurnId: activeClientTurnId || null, target: forwarded.target })
+        return json(res, 200, { ...result, ...value })
       }
 
       // Legacy streaming transport: the text is already an assembled final utterance from

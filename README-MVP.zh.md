@@ -1,5 +1,7 @@
 # dsh-bot 0.0.1-beta — 版本计划与本地验收
 
+> **历史文档（beta1 时代，2026-10-27 冻结）。** 本文记录当时的版本计划与本地验收口径，保持原样不改写；当前版本为 `0.0.1-beta2`，提交、产物 SHA、E/U/R 状态与门禁缺口只维护在 [product/CURRENT-STATUS.md](product/CURRENT-STATUS.md)。
+
 当前仍为 beta。已批准的 0.0.1—0.0.4 范围见 [版本任务书](docs/roadmap/README.zh.md)，本地修复与发布步骤见 [0.0.1 执行计划](docs/roadmap/LOCAL-0.0.1.zh.md)。本次整合保留当前修复分支的完整代码与历史，新增任务书并关闭真实 API E2E 的自动触发；没有在云端重新构建或验收 Mac 安装包，也没有宣布稳定版。此前用户报告的本机结果与仓库历史证据分别记录在 [基线](docs/roadmap/baseline.json)。
 
 目标：Apple Silicon、macOS 14+。DSH 是唯一 Agent Runtime，固定为官方 0.2.1-rc.3；产品版本独立为 0.0.1-beta。组件来源和 SHA-256 见 `product/versions.json`。

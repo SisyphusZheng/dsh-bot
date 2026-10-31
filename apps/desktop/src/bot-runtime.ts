@@ -14,6 +14,11 @@ export interface BotRuntimeStatus {
   /** Directory holding the bundled voice worker (diagnostics only). */
   workerDir: string
   error: string
+  /**
+   * Recoverable one-time notice when a pre-0.0.1 full-access Bot profile was
+   * narrowed to the workspace-write bundle; empty when no migration happened.
+   */
+  permissionNotice: string
 }
 
 /** The subset of the Bot settings document the shell runtime owns. All fields are optional in storage. */
@@ -52,13 +57,22 @@ const MANAGED_END = '# <<< whalegirl-bot: managed profile layer <<<'
 
 const DEFAULT_LLM = { provider: 'opencode-go', model: 'deepseek-v4.1-flash' }
 
+/** One-time user-facing notice when a pre-0.0.1 full-access Bot profile is narrowed. */
+export const PERMISSION_DOWNGRADE_NOTICE = 'Bot 默认权限已从“全文访问”收紧为“工作区写入 + 越界逐次审批”：'
+  + 'Bot 现在只能在 Bot 工作区内自由读写，工作区外的写操作会被 DSH 沙箱拒绝，'
+  + '需要由 Bot 发起单次提权并在桌宠气泡里逐次批准。'
+  + '如确需恢复全文访问，请在 DSH 会话中显式执行 /permission danger-full-access（最高风险，仅在你完全信任 Bot 时使用）。'
+
 /**
  * The managed profile patch block: the Bot session's permission boundary, LLM
  * default model, and the first-party Host Integration entry. Everything the
  * user configures elsewhere in the DSH profile is preserved because only this
  * marked block is regenerated.
+ *
+ * Exported for the permission tests: the preset table is the product's
+ * permission promise, so the tests assert the generated block directly.
  */
-function managedPatch(
+export function managedProfilePatch(
   config: BotRuntimeConfig,
   dshHome: string,
   hasUserLlmConfig: boolean,
@@ -70,6 +84,10 @@ function managedPatch(
   const lines = [
     MANAGED_BEGIN,
     '# Regenerated on cold start; live settings use the authenticated bridge. Do not edit by hand.',
+    '# Permission model: the Bot default is workspace-write + per-action approval. Out-of-workspace',
+    '# writes are denied by the DSH sandbox; the model may retry one exact call with',
+    '# sandbox_permissions + justification, which raises a formal approval prompt and applies only',
+    '# to that call. danger-full-access is a deliberate, explicitly selected option, never a default.',
     '- id: agent-default-model',
     '  name: "@deepseek-ai/dsh-agent-default-model"',
     '  config:',
@@ -88,11 +106,13 @@ function managedPatch(
     '      danger-full-access:',
     '        sandbox: danger-full-access',
     '        approval: never',
+    `        name: ${JSON.stringify('高风险：完全访问（不推荐）')}`,
+    `        description: ${JSON.stringify('最高风险：所有写入不再受 DSH 沙箱限制，也不弹出审批。仅在你完全信任 Bot 且明确需要时选择。')}`,
     '      bot-outside-write:',
-    '        sandbox: danger-full-access',
+    '        sandbox: workspace-write',
     '        approval: ask',
-    '        name: Bot（审批制）',
-    '        description: Bot 可操作整个电脑；工作区外写操作在桌宠气泡里逐次审批。',
+    `        name: ${JSON.stringify('Bot（工作区写入 + 越界审批）')}`,
+    `        description: ${JSON.stringify('Bot 默认只在 Bot 工作区内读写；工作区外的写操作会被 DSH 沙箱拒绝，Bot 需要单次提权，并在桌宠气泡里逐次审批。')}`,
     '- id: nisse-host-integration',
     '  name: "nisse-host-integration"',
     '  config:',
@@ -148,10 +168,40 @@ function applyLlmEnvironment(config: BotRuntimeConfig): string | null {
   return envName
 }
 
+/**
+ * Whether the managed block currently installed in a profile still declares the
+ * pre-0.0.1 `bot-outside-write` bundle (`sandbox: danger-full-access`). The
+ * caller uses this to record a one-time narrowing notice before regenerating
+ * the block; a user-authored copy outside the managed block is not scanned here.
+ * @param existingPatch - the profile's current `cordis.patch.yml` text.
+ * @returns true when the managed `bot-outside-write` bundle grants full access.
+ */
+export function legacyFullAccessManagedBlock(existingPatch: string): boolean {
+  const begin = existingPatch.indexOf(MANAGED_BEGIN)
+  const end = existingPatch.indexOf(MANAGED_END)
+  if (begin < 0 || end <= begin) return false
+  const lines = existingPatch.slice(begin, end).split('\n')
+  const index = lines.findIndex(line => line.trim() === 'bot-outside-write:')
+  const presetLine = lines[index]
+  if (index < 0 || presetLine === undefined) return false
+  const indent = presetLine.length - presetLine.trimStart().length
+  for (let at = index + 1; at < lines.length; at += 1) {
+    const line = lines[at]
+    if (line === undefined) break
+    const trimmed = line.trim()
+    if (trimmed === '') continue
+    const lineIndent = line.length - line.trimStart().length
+    if (lineIndent <= indent) break
+    if (/^sandbox:\s*danger-full-access\s*$/.test(trimmed)) return true
+  }
+  return false
+}
+
 export class BotRuntime {
   private memory: BotMemoryInfo | null = null
   private lastError = ''
   private managedKey: string | null = null
+  private permissionNotice = ''
   private readonly inheritedKeys = { ...process.env }
 
   constructor(
@@ -194,6 +244,7 @@ export class BotRuntime {
    */
   prepare(config: BotRuntimeConfig = this.readConfig()): void {
     this.lastError = ''
+    this.permissionNotice = ''
     let llm: string
     try {
       llm = createRequire(join(this.runtimeRoot, 'package.json')).resolve('@deepseek-ai/dsh-llm')
@@ -228,10 +279,32 @@ export class BotRuntime {
     const patchFile = join(profile, 'cordis.patch.yml')
     let existingPatch = ''
     try { existingPatch = readFileSync(patchFile, 'utf8') } catch {}
+    // Record a one-time narrowing notice BEFORE the managed block is replaced:
+    // the previous block is the only place the old full-access bundle can still
+    // be proven. The notice file is the durable, user-readable migration record;
+    // status() carries it to /bot/status.
+    if (legacyFullAccessManagedBlock(existingPatch)) {
+      this.permissionNotice = PERMISSION_DOWNGRADE_NOTICE
+      try {
+        const migrationFile = join(this.dshHome, 'bot', 'permission-migration.json')
+        mkdirSync(join(this.dshHome, 'bot'), { recursive: true, mode: 0o700 })
+        writeFileSync(migrationFile, JSON.stringify({
+          version: 1,
+          at: new Date().toISOString(),
+          from: { preset: 'bot-outside-write', sandbox: 'danger-full-access' },
+          to: { preset: 'bot-outside-write', sandbox: 'workspace-write', approval: 'ask' },
+          notice: PERMISSION_DOWNGRADE_NOTICE,
+        }, null, 2) + '\n', { mode: 0o600 })
+        chmodSync(migrationFile, 0o600)
+      } catch (error) {
+        // The in-memory notice still reaches /bot/status; the durable copy is best effort.
+        this.lastError = `permission migration notice: ${String((error as Error)?.message || error)}`
+      }
+    }
     const userPart = existingPatch
       .replace(new RegExp(`${MANAGED_BEGIN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\\s\\S]*?${MANAGED_END.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'g'), '')
     const hasUserLlmConfig = /(^|\n)\s*-?\s*id:\s*llm-pi-ai\b/.test(userPart)
-    const block = managedPatch(config, this.dshHome, hasUserLlmConfig, this.memory)
+    const block = managedProfilePatch(config, this.dshHome, hasUserLlmConfig, this.memory)
     writeFileSync(patchFile, rewriteManagedBlock(existingPatch, block), { mode: 0o600 })
     chmodSync(patchFile, 0o600)
   }
@@ -239,6 +312,6 @@ export class BotRuntime {
   status(): BotRuntimeStatus {
     const workerDir = join(this.resourcesPath, 'voice-worker')
     const voiceAvailable = existsSync(join(workerDir, 'VoiceWorker'))
-    return { voiceAvailable, workerDir, error: this.lastError }
+    return { voiceAvailable, workerDir, error: this.lastError, permissionNotice: this.permissionNotice }
   }
 }

@@ -14,6 +14,9 @@ class FakeSecrets implements SecretAccess {
   readonly values = new Map<string, string>()
   availableValue = true
   breakReadBack = false
+  /** Optional hook run before the first store call, to interleave another writer. */
+  onSet: (() => void) | null = null
+  private firstSet = true
 
   available(): boolean {
     return this.availableValue
@@ -28,11 +31,12 @@ class FakeSecrets implements SecretAccess {
     return this.values.get(ref) ?? ''
   }
 
-  set(ref: string, value: string): void {
+  async set(ref: string, value: string): Promise<void> {
+    if (this.firstSet) { this.firstSet = false; this.onSet?.() }
     this.values.set(ref, value)
   }
 
-  delete(ref: string): void {
+  async delete(ref: string): Promise<void> {
     this.values.delete(ref)
   }
 }
@@ -95,6 +99,33 @@ describe('Bot provider key storage', () => {
     const onDisk = JSON.parse(readFileSync(join(dir, 'config.json'), 'utf8')) as BotConfig
     expect(onDisk.voice.apiKey).toBe('')
     expect(onDisk.llm.apiKey).toBe('')
+  })
+
+  it('keeps a key a concurrent save wrote while the migration ran', async () => {
+    const dir = makeDir()
+    const file = join(dir, 'config.json')
+    // Start from a legacy document that still holds one plaintext key.
+    writeFileSync(file, JSON.stringify({ voice: { apiKey: 'voice-secret' } }, null, 2) + '\n')
+    const secrets = new FakeSecrets()
+    // The save lands after the migration read the document and while it is
+    // storing credentials. The new key must survive: a migration may only clear
+    // the exact plaintext value it moved, never a value it has not seen.
+    let saved = false
+    secrets.onSet = () => {
+      if (saved) return
+      saved = true
+      writeFileSync(file, JSON.stringify({
+        voice: { apiKey: 'voice-secret' },
+        llm: { apiKey: 'newly-saved-key' },
+      }, null, 2) + '\n')
+    }
+    const result = await migratePlaintextSecrets(dir, secrets)
+    expect(saved).toBe(true)
+    expect(result.migrated).toEqual(['WHALEGIRL_DASHSCOPE_API_KEY'])
+    expect(result.failed).toEqual([])
+    const onDisk = JSON.parse(readFileSync(file, 'utf8')) as BotConfig
+    expect(onDisk.voice.apiKey).toBe('')
+    expect(onDisk.llm.apiKey).toBe('newly-saved-key')
   })
 
   it('leaves the legacy file untouched when read-back verification fails', async () => {

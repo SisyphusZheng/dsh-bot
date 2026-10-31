@@ -341,7 +341,7 @@ function renderPermissionsPanel(panel){
     ['ask-each', '每次操作都问', '每个工具调用前都弹出审批气泡（最谨慎，默认）。'],
     ['ask-before-acting', '操作前批一次', '执行一组操作前确认一次，组内自动继续。'],
     ['ask-once', '一次授权 N 分钟', '确认一次后在 N 分钟内不再询问。'],
-    ['never-ask', '从不询问', '不再弹出审批（危险：Bot 可以直接改动电脑）。']
+    ['never-ask', '从不询问（需要审批的操作直接拒绝）', '不弹出任何审批气泡；需要审批的工作区外写入/提权会被直接拒绝（fail-closed），Bot 只能在 Bot 工作区内操作。'],
   ];
   for (var i = 0; i < modes.length; i++){
     (function(mode, label, description){
@@ -384,7 +384,8 @@ function renderPermissionsPanel(panel){
   var behavior = config.behavior || {pauseOnInput:true, allowScreenView:false};
   panel.appendChild(buildCheckboxRow('操作键鼠时停止桌面任务', '键鼠接管会停止当前桌面任务；语音发起的任务、说话键操作和等待审批不触发自动停止。', 'pauseOnInput', behavior.pauseOnInput !== false));
   var inputNote=document.createElement('p');inputNote.textContent='右键桌宠可开启语音或停止任务。离线唤醒在本机检测；开启语音后，收音期间音频发送给语音供应商。按住说话松键即结束收音；气泡取消只取消录音，停止任务请用任务卡或菜单。';panel.appendChild(inputNote);
-  panel.appendChild(buildCheckboxRow('允许查看屏幕', '允许 Bot 截取屏幕内容（需要系统屏幕录制权限）。', 'allowScreenView', behavior.allowScreenView === true));
+  panel.appendChild(buildCheckboxRow('允许屏幕查看类工具（尽力而为，不是能力隔离）', '只是对名称/描述看起来像截图、屏幕查看、电脑操作的工具做尽力关闭；不保证拦住任意第三方工具。Bot 默认配置没有挂载任何截图/桌面控制能力，真实屏幕访问还受 macOS 屏幕录制权限约束。', 'allowScreenView', behavior.allowScreenView === true));
+  panel.appendChild(hint('默认工作区写入：Bot 只能在 Bot 工作区内自由读写；工作区外的写操作会被 DSH 沙箱拒绝，之后由 Bot 发起单次提权，并在桌宠气泡里逐次审批。'));
   panel.appendChild(hint('审批模式与行为开关保存在 Bot 配置（config.json，权限 0600）里，实际执行由 main.ts / host-integration / 桌宠接线后生效。'));
 }
 function memoryItemNode(item){

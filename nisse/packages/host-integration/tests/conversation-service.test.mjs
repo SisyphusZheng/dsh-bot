@@ -225,9 +225,21 @@ test('cancel task captures its target, requires confirmation and never fabricate
   })
   assert.equal(request.status, 'rejected')
   assert.equal(request.error.code, 'CONFIRMATION_REQUIRED')
+  // The confirmation token is the value the Host itself captured; a caller that
+  // names no target may not cancel by sending any other non-empty string. The
+  // previous revision accepted a hardcoded "api" token here, which meant a
+  // replayed command cancelled whatever happened to be running.
+  const token = service.inspect().pendingCancel?.token
+  assert.equal(typeof token, 'string')
+  const magic = await service.handleCommand({
+    protocolVersion: PROTOCOL_VERSION, commandId: 'cancel-magic', hostEpoch: HOST_EPOCH,
+    sourceConnectionId: 'worker', sessionId: null, type: 'control.cancel-task', payload: { confirmToken: 'api' },
+  })
+  assert.equal(magic.status, 'rejected')
+  assert.equal(magic.error.code, 'STALE_CANCEL_REQUEST')
   const confirmed = await service.handleCommand({
     protocolVersion: PROTOCOL_VERSION, commandId: 'cancel-2', hostEpoch: HOST_EPOCH,
-    sourceConnectionId: 'worker', sessionId: null, type: 'control.cancel-task', payload: { confirmToken: 'api' },
+    sourceConnectionId: 'worker', sessionId: null, type: 'control.cancel-task', payload: { confirmToken: token },
   })
   assert.equal(confirmed.status, 'resolved')
   assert.equal(state.cancelled.length, 1)

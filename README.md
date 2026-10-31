@@ -12,7 +12,7 @@ English | [中文](README.zh.md)
   <sub>演示视频制作中 · 分镜与旁白见 <a href="docs/demo/SCRIPT.zh.txt">docs/demo/SCRIPT.zh.txt</a></sub>
 </p>
 
-当前状态：**`0.0.1-beta`，macOS Apple Silicon 本地候选**。已通过 Mac 打包验收；真人声学、TCC、真实 Provider 长对话与个人记忆库仍属于人工验收范围。
+当前状态：**`0.0.1-beta2`，macOS Apple Silicon 本地候选**（当前开发分支 `work/0.0.1-closure-final`）。原生打包自动验收的最新结论、真人声学/TCC/真实 Provider/个人记忆库等人工边界，以及收尾新源码尚未重新打包验收这一事实，都以 [product/CURRENT-STATUS.md](product/CURRENT-STATUS.md) 为准；本 README 不复制提交号、产物 SHA 与验收计数。
 
 ---
 
@@ -103,17 +103,9 @@ flowchart LR
 
 ## 工程验证
 
-| 验证 | 结果 |
-|---|---|
-| Node / Pet / Host | 91 项通过 |
-| VoiceWorker（Python） | 82 项通过 |
-| 产品测试 | 477 项 Vitest（22 个文件） |
-| 类型检查 / 生产构建 | 5 项类型检查、9 项构建门禁 |
-| Mac 打包验收 | `accept-macos.sh` **15/15 PASS**（原生签名、LaunchServices 首启/重启、Bridge、Web、Hindsight、shutdown/cleanup） |
-| 气泡位置 | 原生窗口测量：气泡中心距桌宠 **171px**（要求 <500px） |
-| 产物 | 未签名/未公证的 `0.0.1-beta` Mac 候选；DMG 文件名带源码短 SHA |
+门禁状态、验收计数、产物 SHA 与证据路径统一见 [product/CURRENT-STATUS.md](product/CURRENT-STATUS.md)；本 README 不再复制容易过时的数字。历史候选的原始证据按目录保存在 `review/`，构建与验收脚本在 `product/tools/`。安全默认权限与越界审批（S1–S3）的结论以索引中的对应行为准，未定稿前本 README 不宣称安全门禁 PASS。
 
-证据不是“测试数字”，而是可复核的产物：
+可复核的入口：
 
 - 打包验收：[`review/0.0.1-mac-voice-approval-2026-10-29/STATUS.zh.md`](review/0.0.1-mac-voice-approval-2026-10-29/STATUS.zh.md)
 - 气泡层级修复：[`review/0.0.1-mac-bubble-level-2026-10-29/STATUS.zh.md`](review/0.0.1-mac-bubble-level-2026-10-29/STATUS.zh.md)
@@ -123,9 +115,9 @@ flowchart LR
 
 - 真人麦克风/外放回声/蓝牙耳机/十轮连续对话/抢话；
 - TCC、鼠标穿透、Spaces、多屏缩放、物理拖动；
-- 真实 Provider（ASR/TTS/LLM）完整长对话；
-- 真实个人 Hindsight 库跨重启召回；
-- Developer ID 签名与公证、体积/冷启动优化。
+- 真实 Provider（ASR/TTS/LLM）完整长对话与首次配置；
+- 真实个人 Hindsight 库的查看/纠正/删除/导出与跨重启召回；
+- Developer ID 签名与公证、更新源、体积/冷启动优化。
 
 **不把“代码写完了”说成“已经验收通过”。**
 
@@ -141,7 +133,7 @@ flowchart LR
 ```bash
 git clone https://github.com/SisyphusZheng/dsh-bot.git
 cd dsh-bot
-git switch work/0.0.1-closure
+git switch work/0.0.1-closure-final
 
 bash product/tools/build-macos.sh
 bash product/tools/verify-local.sh
@@ -166,6 +158,7 @@ product/pet/           桌宠页面、气泡、语音交互、引导、皮肤
 product/voice-worker-src/  Pipecat VoiceWorker、ASR/TTS、语音控制
 nisse/packages/host-integration/  Host/Bridge 与 DSH 集成
 product/tools/         构建、验收、安装、测量工具
+product/CURRENT-STATUS.md  当前事实入口（提交、产物 SHA、E/U/R、门禁缺口）
 review/                每个候选的验收证据（绑定源码 SHA）
 docs/                  产品、架构、路线图与演示脚本
 ```
@@ -180,7 +173,7 @@ docs/                  产品、架构、路线图与演示脚本
 - **0.0.4**：完整 App + DSH 插件/伴随程序双交付
 - **1.0**：云端持续执行、多 Bot 协作、统一记忆与双交付
 
-路线图是计划，不是已完成功能；状态以 `review/` 和任务书为准。
+路线图是计划，不是已完成功能；已批准顺序与任务书在 docs/roadmap/（中文），当前版本事实、验收结论与证据入口以 [product/CURRENT-STATUS.md](product/CURRENT-STATUS.md) 为准。
 
 ---
 

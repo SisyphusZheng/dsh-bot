@@ -11,6 +11,7 @@
  * with fakes (node:test), while index.js provides the real DSH/worker adapters.
  */
 import { ContractError, newId, nowIso, boundedString, stableOptionId } from './contracts.mjs'
+import { assertTaskCancelTarget, commandCancelTarget, currentCancelScope } from './cancel-routing.mjs'
 import { createQueueModel, createDraftModel, createTurnModel } from './conversation-model.mjs'
 import { createUtteranceAssembler, createSegmenter, SETTLE_MS_DEFAULT } from './utterance.mjs'
 
@@ -567,6 +568,7 @@ export function createConversationService({
   function cancelTarget() {
     const state = turn.snapshot()
     return {
+      hostEpoch,
       sessionId: currentSession(),
       turn: state.turn ?? null,
       clientTurnId: state.clientTurnId || null,
@@ -574,21 +576,61 @@ export function createConversationService({
     }
   }
 
+  /**
+   * Stop the task that one request names.
+   *
+   * A stop is only forwarded for a target that was captured when the user asked
+   * — either read back from the live turn model at confirmation time, or supplied
+   * by a client that saw that turn. A request that names nothing, or names a turn
+   * that already ended, is refused: answering `resolved` for whatever happens to
+   * be running is how a late confirmation cancels a successor task.
+   * @param {object} options - `source`, `explicitTarget` (client-observed), `confirmToken`.
+   * @returns {object} command receipt; `resolved` only when DSH confirmed the exact target.
+   */
   async function requestCancelTask({ source = 'control.cancel-task', explicitTarget = null, confirmToken = null } = {}) {
     const state = turn.snapshot()
     if (state.state === 'idle') return { status: 'rejected', error: { code: 'NO_ACTIVE_TURN', message: 'no active turn' }, result: {} }
-    if (!pendingCancel) {
-      if (!confirmToken) {
-        requestCancelConfirmation()
-        return { status: 'rejected', error: { code: 'CONFIRMATION_REQUIRED', message: '停止任务需要确认：请说“确认停止任务”或再次确认' }, result: {} }
-      }
-    } else {
-      const tokenOk = confirmToken === pendingCancel.token || confirmToken === 'api'
-      if (!confirmToken || !tokenOk) {
-        return { status: 'rejected', error: { code: 'STALE_CANCEL_REQUEST', message: 'cancel request expired or replaced' }, result: {} }
+    const current = currentCancelScope({ execution: state, sessionId: currentSession(), hostEpoch })
+    // A client-supplied target must prove it still names this turn before it can
+    // stand in for the confirmation token: an unnamed stop keeps the token gate.
+    let bound = null
+    if (explicitTarget !== null && explicitTarget !== undefined) {
+      try {
+        bound = assertTaskCancelTarget({ target: explicitTarget, current, hostEpoch })
+      } catch (error) {
+        return { status: 'rejected', error: { code: error.code || 'INVALID_CANCEL_TARGET', message: error.message }, result: {} }
       }
     }
-    const target = explicitTarget || pendingCancel?.target || cancelTarget()
+    if (pendingCancel) {
+      if (!confirmToken || confirmToken !== pendingCancel.token) {
+        return { status: 'rejected', error: { code: 'STALE_CANCEL_REQUEST', message: 'cancel request expired or replaced' }, result: {} }
+      }
+      if (bound !== null && pendingCancel.target !== null) {
+        for (const field of ['sessionId', 'turn', 'clientTurnId']) {
+          const wanted = pendingCancel.target[field]
+          if (wanted !== undefined && wanted !== null && bound[field] !== undefined && String(bound[field]) !== String(wanted)) {
+            return { status: 'rejected', error: { code: 'STALE_CANCEL_REQUEST', message: 'the confirmation names a different turn than the captured target' }, result: {} }
+          }
+        }
+      }
+    } else if (bound === null) {
+      // No confirmation is pending and no target was named: ask, never guess.
+      return { status: 'rejected', error: { code: 'CONFIRMATION_REQUIRED', message: '停止任务需要确认：请说“确认停止任务”或提供本次任务的 target' }, result: {}, confirmation: requestCancelConfirmation().detail }
+    }
+    // The pending confirmation is the only other legal source, and its target was
+    // captured when it was created; `cancelTarget()` is never consulted here.
+    const target = bound ?? pendingCancel?.target ?? null
+    if (target === null) return { status: 'rejected', error: { code: 'CANCEL_TARGET_REQUIRED', message: 'a task stop must name the turn it stops' }, result: {} }
+    try {
+      // The captured target must still be the live one. A confirmation that
+      // outlived its turn is refused here, before the owner is asked, so a
+      // successor turn is never even a candidate for it.
+      assertTaskCancelTarget({ target, current, hostEpoch })
+    } catch (error) {
+      pendingCancel = null
+      if (cancelTimer) { clearTimeout(cancelTimer); cancelTimer = null }
+      return { status: 'rejected', error: { code: 'STALE_CANCEL_REQUEST', message: 'the confirmed target is no longer the active turn: ' + error.message }, result: {} }
+    }
     pendingCancel = null
     if (cancelTimer) { clearTimeout(cancelTimer); cancelTimer = null }
     turn.requestCancel({ target })
@@ -1041,7 +1083,7 @@ export function createConversationService({
         return requestCancelTask({
           source: 'control.cancel-task',
           confirmToken: command.payload.confirmToken || null,
-          explicitTarget: command.payload.target || null,
+          explicitTarget: commandCancelTarget(command.payload, { hostEpoch }) ?? null,
         }).then((value) => value)
       case 'control.playback-style': {
         playback.style = command.payload.style === 'brief' ? 'brief' : 'full'

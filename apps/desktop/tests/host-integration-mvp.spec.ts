@@ -38,7 +38,23 @@ for (const decision of ['allow','reject','cancel']) it(`runs DSH Session/Tool/Ap
     expect((await post('/voice/turn',{ text:'concurrent' })).status).toBe(409)
     const approval=frames.find(x=>x.type==='approval')
     if (approval === undefined) throw new Error('approval frame missing')
-    const answer=decision==='cancel'?await post('/cancel',{}):await post('/approval',{ id:approval.id,decision })
+    let answer
+    if(decision==='cancel') {
+      // A cancel must name the turn it stops. An unscoped request is refused with a
+      // typed error and changes nothing; the scoped one below is the supported path.
+      const stateUrl=base+'/task-state'
+      const before=await(await fetch(stateUrl,{ headers })).json()
+      const unscoped=await post('/cancel',{})
+      expect(unscoped.status).toBe(400)
+      const unscopedBody=await unscoped.json() as { error?: { code?: string } }
+      expect(unscopedBody.error?.code).toBe('CANCEL_TARGET_REQUIRED')
+      const after=await(await fetch(stateUrl,{ headers })).json()
+      expect(after).toEqual(before)
+      const target={ hostEpoch:before.hostEpoch, sessionId:before.sessionId,
+        ...(before.turn===null?{ }:{ turn:before.turn }),
+        ...(before.clientTurnId?{ clientTurnId:before.clientTurnId }:{}) }
+      answer=await post('/cancel',target)
+    } else answer=await post('/approval',{ id:approval.id,decision })
     expect(answer.status).toBe(200);await reading
     expect(existsSync(target)).toBe(decision==='allow');expect(frames.some(x=>x.type==='turn-end')).toBe(true)
     if(decision==='allow') {

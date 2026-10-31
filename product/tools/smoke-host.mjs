@@ -1,16 +1,49 @@
 /** Exercise the generated desktop profile in the real, compiled DSH CLI. */
 import { createServer } from 'node:http'
-import { mkdtempSync, mkdirSync, symlinkSync, readFileSync, writeFileSync, cpSync, rmSync, existsSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { resolve, join } from 'node:path'
+import { mkdtempSync, mkdirSync, symlinkSync, readFileSync, writeFileSync, cpSync, rmSync, existsSync, realpathSync, accessSync, constants } from 'node:fs'
+import { tmpdir, homedir } from 'node:os'
+import { resolve, join, dirname, relative, isAbsolute, sep, parse } from 'node:path'
 import { spawn } from 'node:child_process'
 import assert from 'node:assert/strict'
 import { BotRuntime } from '../../apps/desktop/lib/types/bot-runtime.js'
-const root = resolve(import.meta.dirname, '../..'), home = mkdtempSync(join(tmpdir(), 'dsh-bot-host-'))
+const root = resolve(import.meta.dirname, '../..')
+// The Bot default permission model is workspace-write, which also grants /tmp and
+// the per-user temp directory wholesale. A DSH_HOME under os.tmpdir() would make
+// every "outside the workspace" fixture writable and hide the real approval path,
+// so HOME/workspace live outside those grants (same rule as
+// scripts/snapshot-workspace-parent.ts).
+const smokeParent = (() => {
+  const temporary = realpathSync.native(tmpdir()), systemTemporary = realpathSync.native('/tmp'), parent = dirname(temporary)
+  if (temporary === systemTemporary || parent === parse(parent).root) return homedir()
+  try { accessSync(parent, constants.W_OK) } catch { return homedir() }
+  return parent
+})()
+const home = mkdtempSync(join(smokeParent, 'dsh-bot-host-'))
+for (const tempRoot of [realpathSync.native(tmpdir()), realpathSync.native('/tmp')]) {
+  const rel = relative(tempRoot, realpathSync.native(home))
+  assert.ok(rel === '..' || rel.startsWith('..' + sep) || isAbsolute(rel), `smoke HOME must be outside automatic temp write grants: ${home} under ${tempRoot}`)
+}
 let child, output = '', code
 const requests=[]
 const memoryTrace=[]
+// Mock-model escalation state: a plain write is denied by the DSH sandbox, the
+// model-visible tool result carries the denial + escalation hint, and the mock
+// re-issues the EXACT call once with sandbox_permissions + justification — the
+// same retry a real model performs from that hint.
 let nextTool=null
+let pendingEscalation=null
+let escalationRetries=0
+const ESCALATION_JUSTIFICATION='smoke fixture: the user asked for this exact write outside the workspace'
+const DENIAL_MARKER='[sandbox: file access denied under '
+const ESCALATION_HINT='[sandbox: escalation available — retry this exact'
+/** Latest tool result text the model sees (chat-completions transcript). */
+const lastToolResultText=messages=>{
+  for(let index=messages.length-1;index>=0;index-=1){
+    const message=messages[index]
+    if(message&&message.role==='tool')return typeof message.content==='string'?message.content:JSON.stringify(message.content??'')
+  }
+  return ''
+}
 let releaseRecall=null
 const mock = createServer(async (req, res) => {
   let body = ''; for await (const chunk of req) body += chunk
@@ -23,10 +56,29 @@ const mock = createServer(async (req, res) => {
   if(body)requests.push({...JSON.parse(body),_authorization:req.headers.authorization})
   res.writeHead(200, {'content-type':'text/event-stream'})
   const event = (name, data) => res.write(`event: ${name}\ndata: ${JSON.stringify(data)}\n\n`)
+  const payload=body?JSON.parse(body):{}
+  const writeToolCall=(toolName,args)=>{
+    const chunk=delta=>res.write('data: '+JSON.stringify({id:'chatcmpl-tool',object:'chat.completion.chunk',created:1,model:'mvp-local',choices:[{index:0,delta,finish_reason:Object.keys(delta).length?null:'tool_calls'}]})+'\n\n')
+    chunk({role:'assistant',tool_calls:[{index:0,id:'call_write',type:'function',function:{name:toolName,arguments:JSON.stringify(args)}}]});chunk({});res.end('data: [DONE]\n\n')
+  }
+  if(pendingEscalation){
+    const denied=lastToolResultText(Array.isArray(payload.messages)?payload.messages:[])
+    if(denied.includes(DENIAL_MARKER)&&denied.includes(ESCALATION_HINT)){
+      // A real model retries exactly once from the hint; the sandbox tool raises the
+      // formal approval request on this call and only an approved call has an effect.
+      escalationRetries+=1
+      const {name,arguments:args}=pendingEscalation;pendingEscalation=null
+      writeToolCall(name,{...args,sandbox_permissions:'danger-full-access',justification:ESCALATION_JUSTIFICATION})
+      return
+    }
+    // Any other outcome (success, rejection, cancellation, unrelated error) ends the retry.
+    pendingEscalation=null
+  }
   if(nextTool){
-    const args=nextTool.arguments||nextTool;const toolName=nextTool.name||'write';nextTool=null
-    const event=delta=>res.write('data: '+JSON.stringify({id:'chatcmpl-tool',object:'chat.completion.chunk',created:1,model:'mvp-local',choices:[{index:0,delta,finish_reason:Object.keys(delta).length?null:'tool_calls'}]})+'\n\n')
-    event({role:'assistant',tool_calls:[{index:0,id:'call_write',type:'function',function:{name:toolName,arguments:JSON.stringify(args)}}]});event({});res.end('data: [DONE]\n\n');return
+    const toolName=nextTool.name||'write',args=nextTool.arguments||nextTool;nextTool=null
+    if(toolName==='write'||toolName==='edit')pendingEscalation={name:toolName,arguments:args}
+    writeToolCall(toolName,args)
+    return
   }
   if (req.url?.includes('/messages')) {
     event('message_start',{type:'message_start', message:{id:'msg_mvp',type:'message',role:'assistant',model:'deepseek-v4.1-flash',content:[],stop_reason:null,stop_sequence:null,usage:{input_tokens:1,output_tokens:0}}})
@@ -82,6 +134,12 @@ try {
   assert.ok(preview.dshPrompt.includes(responseStyle),'Persona response style snapshot differs')
   assert.match(JSON.stringify(requests[0].messages ?? requests[0].system), /任务完成或汇报时/)
   const post=(path,body)=>fetch(`http://127.0.0.1:${descriptor.port}${path}`,{method:'POST',headers,body:JSON.stringify(body),signal:AbortSignal.timeout(30000)})
+  // A cancel must name the turn it stops. Read that identity immediately before the
+  // request instead of sending an unscoped cancel that would stop whatever runs.
+  const cancelTarget=async()=>{
+    const state=await(await fetch(`http://127.0.0.1:${descriptor.port}/task-state`,{headers,signal:AbortSignal.timeout(5000)})).json()
+    return {hostEpoch:state.hostEpoch,sessionId:state.sessionId,...(state.turn===null||state.turn===undefined?{}:{turn:state.turn}),...(state.clientTurnId?{clientTurnId:state.clientTurnId}:{})}
+  }
   const session=frames.find(x=>x.type==='admitted').sessionId
   if(llm.provider==='custom'){
     for(const decision of ['allow','reject','cancel']){
@@ -89,10 +147,12 @@ try {
       const response=await post('/voice/turn',{text:`Write ${target}`});assert.equal(response.status,200)
       let approved=false,pending='',all=[]
       for await(const chunk of response.body){pending+=new TextDecoder().decode(chunk);let pos;while((pos=pending.indexOf('\n'))>=0){const frame=JSON.parse(pending.slice(0,pos));pending=pending.slice(pos+1);all.push(frame)
-        if(frame.type==='approval'&&!approved){assert.equal(existsSync(target),false);approved=true;assert.equal((await post(decision==='cancel'?'/cancel':'/approval',decision==='cancel'?{sessionId:frame.sessionId,clientTurnId:frame.requestId}:{id:frame.id,decision})).status,200)}
+        if(frame.type==='approval'&&!approved){assert.equal(existsSync(target),false);approved=true;assert.equal((await post(decision==='cancel'?'/cancel':'/approval',decision==='cancel'?{...(await cancelTarget()),source:'task-stop'}:{id:frame.id,decision})).status,200)}
       }}
       assert.ok(approved,JSON.stringify(all));assert.equal(existsSync(target),decision==='allow',JSON.stringify(all));assert.ok(all.some(x=>x.type==='turn-end'))
+      if(decision==='allow')assert.equal(readFileSync(target,'utf8'),'production-approved','an approved escalation must produce the real file side effect')
     }
+    assert.ok(escalationRetries>0,'the DSH sandbox denial + escalation hint must reach the model-visible tool result before the escalation retry')
     const recoveryGet=()=>fetch(`http://127.0.0.1:${descriptor.port}/task/recovery`,{headers,signal:AbortSignal.timeout(5000)})
     assert.equal((await fetch(`http://127.0.0.1:${descriptor.port}/task/recovery`)).status,401)
     const oldPreviewResponse=await recoveryGet();assert.equal(oldPreviewResponse.status,200,await oldPreviewResponse.clone().text());const oldPreview=await oldPreviewResponse.json();assert.match(oldPreview.originalText,/outside-cancel/)
@@ -104,7 +164,7 @@ try {
       const target=join(home,`recover-${mode}.txt`),original=`Write ${target}`
       nextTool={file_path:target,content:'recovered-once'}
       const interrupted=await post('/voice/turn',{text:original});let buffer=''
-      for await(const chunk of interrupted.body){buffer+=new TextDecoder().decode(chunk);let at;while((at=buffer.indexOf('\n'))>=0){const event=JSON.parse(buffer.slice(0,at));buffer=buffer.slice(at+1);if(event.type==='approval')assert.equal((await post('/cancel',{sessionId:event.sessionId,clientTurnId:event.requestId,source:'task-stop'})).status,200)}}
+      for await(const chunk of interrupted.body){buffer+=new TextDecoder().decode(chunk);let at;while((at=buffer.indexOf('\n'))>=0){const event=JSON.parse(buffer.slice(0,at));buffer=buffer.slice(at+1);if(event.type==='approval')assert.equal((await post('/cancel',{...(await cancelTarget()),source:'task-stop'})).status,200)}}
       const previewResponse=await recoveryGet();assert.equal(previewResponse.status,200,await previewResponse.clone().text());const preview=await previewResponse.json();assert.equal(preview.originalText,original);assert.equal(existsSync(target),false)
       if(mode==='retry')nextTool={file_path:target,content:'recovered-once'}
       const admitted=await post('/task/recovery',{token:preview.token,mode,confirmSideEffects:true});assert.equal(admitted.status,200,await admitted.clone().text())
@@ -122,15 +182,19 @@ try {
     }
     console.log('PASS persisted-task preview, confirmed retry/checked continuation, and stale/duplicate/busy/completed guards')
     const grantTarget=join(home,'exact-granted.txt'), originalArgs={file_path:grantTarget,content:'precise-grant'}
+    // The recorded approval operation is the ESCALATED retry (the call that carries
+    // sandbox_permissions + justification), so exact grants bind that complete call.
+    const escalatedArgs=args=>({...args,sandbox_permissions:'danger-full-access',justification:ESCALATION_JUSTIFICATION})
     const get=path=>fetch(`http://127.0.0.1:${descriptor.port}${path}`,{headers,signal:AbortSignal.timeout(30000)})
     for(const step of ['grant','reuse','changed','revoked']){
-      nextTool=step==='changed'?{...originalArgs,content:'changed-content'}:originalArgs
+      const expectedArgs=step==='changed'?{...originalArgs,content:'changed-content'}:originalArgs
+      nextTool=expectedArgs
       const response=await post('/voice/turn',{text:`Write exact grant fixture ${step}`});assert.equal(response.status,200)
       let buffer='',count=0,terminal=false
       for await(const chunk of response.body){buffer+=new TextDecoder().decode(chunk);let pos;while((pos=buffer.indexOf('\n'))>=0){const event=JSON.parse(buffer.slice(0,pos));buffer=buffer.slice(pos+1)
         if(event.type==='approval'){
           count++;const pending=(await(await get('/interactions')).json()).requests.find(item=>item.id===event.id)
-          assert.equal(pending.operation.toolName,'write');assert.deepEqual(pending.operation.arguments,nextTool|| (step==='changed'?{...originalArgs,content:'changed-content'}:originalArgs))
+          assert.equal(pending.operation.toolName,'write');assert.deepEqual(pending.operation.arguments,escalatedArgs(expectedArgs))
           if(step==='grant'){
             assert.equal((await post('/approval',{id:event.id,sessionId:pending.sessionId,decision:'always-allow'})).status,400)
             assert.equal((await post('/approval',{id:event.id,sessionId:pending.sessionId,decision:'always-allow',confirmExact:true})).status,200)
@@ -146,6 +210,7 @@ try {
         const removed=await fetch(`http://127.0.0.1:${descriptor.port}/policies?id=${store.rules[0].id}`,{method:'DELETE',headers});assert.equal(removed.status,200)
       }
     }
+    assert.equal(readFileSync(grantTarget,'utf8'),'precise-grant','the granted exact operation must have written the file; later changed/rejected steps must not overwrite it')
     assert.equal((await post('/policies',{toolName:'write'})).status,400)
     console.log('PASS exact approval arguments, explicit persistent grant, reuse, changed-argument reapproval, duplicate rejection and revocation through real Host')
     // Media disconnect detaches the listener; admitted Agent work keeps its own lifetime.
@@ -160,9 +225,23 @@ try {
     do{detachedState=await(await get('/task-state')).json();if(detachedState.status==='idle'&&existsSync(join(home,'detached-voice.txt')))break;await new Promise(r=>setTimeout(r,20))}while(Date.now()<completionDeadline)
     assert.equal(detachedState.status,'idle');assert.equal(readFileSync(join(home,'detached-voice.txt'),'utf8'),'detached-completed')
     console.log('PASS media disconnect preserves admitted Agent task and pending approval; tool completes independently')
-    assert.equal((await post('/cancel', {sessionId:'stale-session'})).status,409)
-    assert.equal((await post('/cancel', {clientTurnId:'stale-request'})).status,409)
-    assert.equal((await post('/cancel', {turn:-999})).status,409)
+    // S2 contract: a request that names too little is a 400 with the missing fields,
+    // a request that names a complete but absent target is a 409. Neither may cancel.
+    const incompleteSession=await post('/cancel', {sessionId:'stale-session'})
+    assert.equal(incompleteSession.status,400)
+    assert.equal((await incompleteSession.json()).error?.code,'CANCEL_TARGET_INCOMPLETE')
+    const incompleteRequest=await post('/cancel', {clientTurnId:'stale-request'})
+    assert.equal(incompleteRequest.status,400)
+    assert.equal((await incompleteRequest.json()).error?.code,'CANCEL_TARGET_INCOMPLETE')
+    const incompleteTurn=await post('/cancel', {turn:-999})
+    assert.equal(incompleteTurn.status,400)
+    assert.equal((await incompleteTurn.json()).error?.code,'CANCEL_TARGET_INCOMPLETE')
+    // A complete identity that this idle Host does not own is refused as stale, so the
+    // 409 path stays covered instead of being replaced by the 400 path.
+    const idleState=await(await fetch(`http://127.0.0.1:${descriptor.port}/task-state`,{headers})).json()
+    const staleComplete=await post('/cancel', {hostEpoch:idleState.hostEpoch,sessionId:idleState.sessionId,turn:-999})
+    assert.equal(staleComplete.status,409)
+    assert.match(String((await staleComplete.json()).error?.code),/^STALE_|^NO_ACTIVE_TURN$/)
     assert.equal((await fetch(`http://127.0.0.1:${descriptor.port}/task-state`)).status,401)
     const taskState=await(await fetch(`http://127.0.0.1:${descriptor.port}/task-state`,{headers})).json()
     assert.equal(taskState.sessionId,session);assert.equal(taskState.status,'idle')
@@ -178,7 +257,19 @@ try {
       assert.ok(request,'official ask_user_question was not mirrored')
       assert.equal(request.questions[0].id,'place')
       assert.equal((await post('/questions/answer',{id:request.id,sessionId:request.sessionId,answer:{answers:[{id:'place',selected:['unknown']}]}})).status,400)
-      if(kind==='cancel')assert.equal((await post('/cancel',{})).status,200)
+      if(kind==='cancel'){
+        const stateUrl=`http://127.0.0.1:${descriptor.port}/task-state`
+        const before=await(await fetch(stateUrl,{headers})).json()
+        // An unscoped cancel must be refused and must not move the execution snapshot:
+        // the request has to name the turn it stops, captured when the user asked.
+        const unscoped=await post('/cancel',{})
+        assert.equal(unscoped.status,400)
+        assert.equal((await unscoped.json()).error?.code,'CANCEL_TARGET_REQUIRED')
+        const after=await(await fetch(stateUrl,{headers})).json()
+        assert.deepEqual(after.execution,before.execution)
+        assert.equal(after.turn,before.turn);assert.equal(after.clientTurnId,before.clientTurnId)
+        assert.equal((await post('/cancel',{source:'voice-command',...(await cancelTarget())})).status,200)
+      }
       else {
         const selected=kind==='multi'?['杭州','苏州']:['苏州']
         const body={id:request.id,sessionId:request.sessionId,answer:{answers:[{id:'place',selected}]}}
@@ -216,9 +307,20 @@ try {
   while(!releaseRecall&&Date.now()<waitDeadline)await new Promise(r=>setTimeout(r,10))
   assert.ok(releaseRecall,'recall barrier not entered')
   assert.equal((await post('/cancel',{source:'invalid-source'})).status,400)
-  const cancelled=await post('/cancel',{source:'voice-command'});assert.equal((await cancelled.json()).cancelled,true)
+  const cancelled=await post('/cancel',{source:'voice-command',...(await cancelTarget())});const cancelledBody=await cancelled.json()
+  // The turn is still in Host admission: DSH has not taken it over, so the Host
+  // cannot prove the official turn is over. The correct conservative answer is
+  // "accepted, not confirmed" — and it must not read as a success.
+  assert.equal(cancelled.status,200)
+  assert.equal(cancelledBody.state,'unconfirmed')
+  assert.equal(cancelledBody.code,'CANCEL_UNCONFIRMED')
+  assert.equal(cancelledBody.confirmed,false)
+  assert.equal(cancelledBody.cancelled,false)
+  assert.doesNotMatch(String(cancelledBody.notice?.text||''),/已停止|已确认/)
   releaseRecall();releaseRecall=null
   const cancelledFrames=(await pendingRecall.text()).trim().split('\n').map(x=>JSON.parse(x))
+  // The unconfirmed stop still landed: once DSH took over it aborted this very turn,
+  // which is the delayed confirmation the response refused to claim early.
   assert.ok(cancelledFrames.some(x=>x.type==='turn-end'&&x.reason?.kind==='cancelled'))
   assert.equal(requests.length,beforeRecallCancel,'cancelled admission reached LLM')
   const audit=readFileSync(join(home,'bot/audit.jsonl'),'utf8').trim().split('\n').map(line=>JSON.parse(line))
@@ -237,7 +339,7 @@ try {
     const target=join(home,'recover-after-restart.txt'),original=`Write ${target}`
     nextTool={file_path:target,content:'restart-recovery'}
     const interrupted=await post('/voice/turn',{text:original});let buffer=''
-    for await(const chunk of interrupted.body){buffer+=new TextDecoder().decode(chunk);let at;while((at=buffer.indexOf('\n'))>=0){const event=JSON.parse(buffer.slice(0,at));buffer=buffer.slice(at+1);if(event.type==='approval')assert.equal((await post('/cancel',{sessionId:event.sessionId,clientTurnId:event.requestId,source:'task-stop'})).status,200)}}
+    for await(const chunk of interrupted.body){buffer+=new TextDecoder().decode(chunk);let at;while((at=buffer.indexOf('\n'))>=0){const event=JSON.parse(buffer.slice(0,at));buffer=buffer.slice(at+1);if(event.type==='approval')assert.equal((await post('/cancel',{...(await cancelTarget()),source:'task-stop'})).status,200)}}
     const getPreview=()=>fetch(`http://127.0.0.1:${descriptor.port}/task/recovery`,{headers,signal:AbortSignal.timeout(5000)})
     const before=await(await getPreview()).json();assert.equal(before.originalText,original)
     const stopped=new Promise(r=>child.once('exit',r));child.kill('SIGTERM');await Promise.race([stopped,new Promise((_,r)=>setTimeout(()=>r(new Error('Restart shutdown timeout')),10000).unref())]);assert.equal(code,0);child=null;code=undefined;output=''

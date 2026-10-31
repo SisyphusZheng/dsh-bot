@@ -13,7 +13,8 @@
  * Nothing here touches Electron or the network; every secret-bearing value is only ever
  * read from disk / written to disk and the browser view strips it.
  */
-import { appendFile, chmod, mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { appendFile, chmod, mkdir, readFile } from 'node:fs/promises'
+import { withFileLock, writeFileAtomic } from '@deepseek-ai/dsh-atomic-write'
 import { join } from 'node:path'
 import { normalizeVoiceProviderId } from './bot-providers.ts'
 
@@ -24,13 +25,16 @@ export const VOICE_KEY_REF = 'WHALEGIRL_DASHSCOPE_API_KEY'
 /**
  * Minimal secret-storage seam. The product uses the DSH credentials document with private filesystem permissions;
  * node tests may omit it and keep the legacy in-config behaviour.
+ *
+ * Mutations are asynchronous because a store that shares its document with the
+ * running DSH process has to take that document's cross-process writer lock.
  */
 export interface SecretAccess {
   available(): boolean
   has(ref: string): boolean
   get(ref: string): string
-  set(ref: string, value: string): void
-  delete(ref: string): void
+  set(ref: string, value: string): Promise<void>
+  delete(ref: string): Promise<void>
 }
 
 /** How often the Bot asks the user before acting. */
@@ -258,6 +262,15 @@ function overlaySecrets(config: BotConfig, secrets: SecretAccess | undefined): B
   }
 }
 
+/**
+ * How long one settings write waits for `config.json`'s writer lock. Only local
+ * file work runs under this lock — the credential writes of a plaintext-key
+ * migration deliberately run before it, never inside it — so a short bound is
+ * enough and a contended save fails fast instead of blocking the settings page.
+ * Expiry refuses the write; it never bypasses the lock.
+ */
+const CONFIG_LOCK_WAIT_MS = 10_000
+
 /** Read and normalize `<configDir>/config.json`; a missing/corrupt file falls back to defaults. */
 export async function readBotConfigFile(configDir: string, secrets?: SecretAccess): Promise<BotConfig> {
   try {
@@ -268,11 +281,12 @@ export async function readBotConfigFile(configDir: string, secrets?: SecretAcces
 }
 
 /**
- * Atomically enough write of the config file with owner-only permissions.
+ * Write the config file atomically, under its writer lock, with owner-only permissions.
  *
- * When a secret store is present, provider keys are encrypted into it and the
- * file written to disk never contains them. Writing a new key while the store is
- * unavailable fails loudly instead of silently persisting plaintext.
+ * When a secret store is present, provider keys go to the DSH credentials
+ * document (a 0600 private file, not encryption) and the file written to disk
+ * never contains them. Writing a new key while the store is unavailable fails
+ * loudly instead of silently persisting plaintext.
  */
 export async function writeBotConfigFile(configDir: string, value: unknown, secrets?: SecretAccess): Promise<BotConfig> {
   const config = normalizeBotConfig(value)
@@ -282,16 +296,15 @@ export async function writeBotConfigFile(configDir: string, value: unknown, secr
     for (const [ref, key] of [[VOICE_KEY_REF, config.voice.apiKey], [LLM_KEY_REF, config.llm.apiKey]] as const) {
       if (key === '') continue
       if (!secrets.available()) throw new Error('SECRET_STORE_UNAVAILABLE: cannot persist provider keys securely')
-      secrets.set(ref, key)
+      await secrets.set(ref, key)
     }
     persisted.voice.apiKey = ''
     persisted.llm.apiKey = ''
   }
   const file = join(configDir, CONFIG_FILE)
-  const temporary = `${file}.tmp`
-  await writeFile(temporary, JSON.stringify(persisted, null, 2) + '\n', { mode: 0o600 })
-  await chmod(temporary, 0o600).catch(() => undefined)
-  await rename(temporary, file)
+  await withFileLock(file, async () => {
+    await writeFileAtomic(file, JSON.stringify(persisted, null, 2) + '\n', { mode: 0o600, dirMode: 0o700 })
+  }, { waitMs: CONFIG_LOCK_WAIT_MS })
   return secrets === undefined ? config : overlaySecrets(normalizeBotConfig(persisted), secrets)
 }
 
@@ -299,6 +312,13 @@ export async function writeBotConfigFile(configDir: string, value: unknown, secr
  * Move plaintext provider keys from an existing config.json into the secret store.
  * Order: store -> read-back verify -> atomic rewrite without keys. Any failure
  * leaves the original file untouched so the user's credential is never lost.
+ *
+ * The credential writes happen *before* `config.json`'s writer lock is taken, so
+ * a slow credential document cannot hold the settings lock for its whole
+ * duration. The rewrite then re-reads the document under the lock and only
+ * clears a key whose stored plaintext is still the value that was migrated, so a
+ * save that lands in between is neither derived from nor overwritten by a
+ * half-migrated document.
  * @returns The refs migrated and the refs that could not be migrated.
  */
 export async function migratePlaintextSecrets(
@@ -308,32 +328,41 @@ export async function migratePlaintextSecrets(
   const file = join(configDir, CONFIG_FILE)
   const migrated: string[] = []
   const failed: string[] = []
-  let raw: Record<string, unknown>
-  try { raw = JSON.parse(await readFile(file, 'utf8')) as Record<string, unknown> } catch { return { migrated, failed } }
-  const storedKey = (section: 'voice' | 'llm'): string => {
+  await mkdir(configDir, { recursive: true, mode: 0o700 })
+  const storedKey = (raw: Record<string, unknown>, section: 'voice' | 'llm'): string => {
     const value = raw[section]
     return value !== null && typeof value === 'object' ? String((value as Record<string, unknown>).apiKey || '') : ''
   }
+  let initial: Record<string, unknown>
+  try { initial = JSON.parse(await readFile(file, 'utf8')) as Record<string, unknown> } catch { return { migrated, failed } }
+  const migratedValues = new Map<string, string>()
   for (const [ref, section] of [[VOICE_KEY_REF, 'voice'], [LLM_KEY_REF, 'llm']] as const) {
-    const value = storedKey(section)
+    const value = storedKey(initial, section)
     if (value === '') continue
     try {
       if (!secrets.available()) throw new Error('SECRET_STORE_UNAVAILABLE')
-      secrets.set(ref, value)
+      await secrets.set(ref, value)
       if (secrets.get(ref) !== value) throw new Error('SECRET_STORE_READBACK_MISMATCH')
-      const target = raw[section] as Record<string, unknown>
-      target.apiKey = ''
+      migratedValues.set(ref, value)
       migrated.push(ref)
     } catch {
       failed.push(ref)
     }
   }
-  if (migrated.length > 0) {
-    const temporary = `${file}.migrate.tmp`
-    await writeFile(temporary, JSON.stringify(raw, null, 2) + '\n', { mode: 0o600 })
-    await chmod(temporary, 0o600).catch(() => undefined)
-    await rename(temporary, file)
-  }
+  if (migratedValues.size === 0) return { migrated, failed }
+  await withFileLock(file, async () => {
+    let raw: Record<string, unknown>
+    try { raw = JSON.parse(await readFile(file, 'utf8')) as Record<string, unknown> } catch { return }
+    for (const [ref, section] of [[VOICE_KEY_REF, 'voice'], [LLM_KEY_REF, 'llm']] as const) {
+      const target = raw[section]
+      if (target === null || typeof target !== 'object') continue
+      // Only clear the exact plaintext this migration stored. A newer value is a
+      // save the user just made; it keeps its own key and stays on disk.
+      if (String((target as Record<string, unknown>).apiKey ?? '') !== migratedValues.get(ref)) continue
+      ;(target as Record<string, unknown>).apiKey = ''
+    }
+    await writeFileAtomic(file, JSON.stringify(raw, null, 2) + '\n', { mode: 0o600, dirMode: 0o700 })
+  }, { waitMs: CONFIG_LOCK_WAIT_MS })
   return { migrated, failed }
 }
 
