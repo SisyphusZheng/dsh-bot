@@ -25,15 +25,15 @@ it('allows the application origin and authenticates approval mutations', async (
     const page=await fetch(base+'/bot/settings?token='+server.token,{ headers });expect(page.status).toBe(200);expect(page.headers.get('content-security-policy')).toContain('dsh-app://app');expect(await page.text()).toContain(server.token)
   } finally {await server.close();rmSync(home,{ recursive:true,force:true })}
 })
-it('resolves the official compiled LLM from the runtime contract and clears managed keys', () => {
+it('resolves the official compiled LLM from the runtime contract and clears managed keys', async () => {
   const home=mkdtempSync(join(tmpdir(),'mvp-profile-'));vi.stubEnv('WHALEGIRL_HOST_INTEGRATION_DIR',resolve('nisse/packages/host-integration'))
   try {
     const runtime=new BotRuntime(home,home,undefined,resolve('apps/cli'))
-    runtime.prepare({ llm:{ provider:'custom',model:'mvp',apiKey:'test-key',baseUrl:'http://127.0.0.1:9876/v1' } })
+    await runtime.prepare({ llm:{ provider:'custom',model:'mvp',apiKey:'test-key',baseUrl:'http://127.0.0.1:9876/v1' } })
     expect(runtime.status().error).toBe('');expect(existsSync(process.env.NISSE_DSH_LLM_ENTRY!)).toBe(true)
     const patch=readFileSync(join(home,'profiles/desktop/cordis.patch.yml'),'utf8');expect(patch).toContain('openai-completions');expect(patch).toContain(join(home,'bot'));expect(patch).not.toContain('test-key');expect(patch).not.toContain('whalegirl-g2')
     expect(statSync(join(home,'profiles/desktop/cordis.patch.yml')).mode & 0o777).toBe(0o600)
-    runtime.prepare({ llm:{ provider:'custom',apiKey:'' } });expect(process.env.WHALEGIRL_LLM_API_KEY).not.toBe('test-key')
+    await runtime.prepare({ llm:{ provider:'custom',apiKey:'' } });expect(process.env.WHALEGIRL_LLM_API_KEY).not.toBe('test-key')
   } finally {vi.unstubAllEnvs();rmSync(home,{ recursive:true,force:true })}
 })
 it('runs the real authenticated adapter, waits for bank bootstrap and preserves data over restart', async () => {

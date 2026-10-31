@@ -37,9 +37,10 @@ const HINDSIGHT_URL = String(process.env.CLOSURE_M2_HINDSIGHT_URL || '').replace
 const ENABLED = HINDSIGHT_URL !== ''
 const MARK_A = 'F1M2A-' + randomBytes(5).toString('hex')
 const MARK_B = 'F1M2B-' + randomBytes(5).toString('hex')
-const PREFERENCE_A = `用户明确要求记住：我喜欢无糖拿铁，店名海风咖啡（编号 ${MARK_A}）`
-const PREFERENCE_B = `用户更正：我现在喝燕麦奶拿铁，不再喝无糖拿铁（编号 ${MARK_B}）`
-const QUESTION = '我平时喝咖啡有什么习惯？'
+const PREFERENCE_A = `${String(process.env.CLOSURE_M2_PREF_A || '用户明确要求记住：我喜欢无糖拿铁，店名海风咖啡')}（编号 ${MARK_A}）`
+const PREFERENCE_B = `${String(process.env.CLOSURE_M2_PREF_B || '用户更正：我现在喝燕麦奶拿铁，不再喝无糖拿铁')}（编号 ${MARK_B}）`
+const QUESTION = String(process.env.CLOSURE_M2_QUESTION || '我平时喝咖啡有什么习惯？')
+const PREF_A_KEYWORD = String(process.env.CLOSURE_M2_PREF_A_KEYWORD || '无糖拿铁')
 const TOKEN = randomBytes(18).toString('hex')
 
 /** HTTP JSON boundary of the product memory sidecar (field set follows the sidecar contract). */
@@ -179,7 +180,7 @@ async function startHost(memoryUrl: string): Promise<Host> {
 
 describe.skipIf(!ENABLED)('F1/M2 closed loop: memory is used by a brand-new DSH conversation (real Hindsight, mock model)', () => {
   it('remember A -> new conversation uses A -> correct to B -> delete B -> new conversation uses neither', async () => {
-    const bank = `closure:f1m2:${Date.now()}:${randomBytes(3).toString('hex')}`
+    const bank = String(process.env.CLOSURE_M2_BANK || `closure:f1m2:${Date.now()}:${randomBytes(3).toString('hex')}`)
     const sidecar = await startSidecar(bank)
     const memory = memoryApi(sidecar)
     let host: Host | null = null
@@ -202,7 +203,7 @@ describe.skipIf(!ENABLED)('F1/M2 closed loop: memory is used by a brand-new DSH 
       await host.ctx.agents.get(firstSessionId)?.whenIdle()
       const firstRequest = JSON.stringify(host.adapter.requests[0])
       expect(firstRequest).toContain(MARK_A)
-      expect(firstRequest).toContain('无糖拿铁')
+      expect(firstRequest).toContain(PREF_A_KEYWORD)
       // The recalled fact is injected as background context, not treated as a user instruction.
       expect(firstRequest).toContain('个人历史资料')
       // The product also auto-records every finished turn as a raw conversation episode

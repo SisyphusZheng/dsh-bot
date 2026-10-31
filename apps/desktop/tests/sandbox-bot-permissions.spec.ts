@@ -99,7 +99,7 @@ describe('managed profile patch', () => {
     }
   })
 
-  it('keeps the user-authored patch entries when the managed block is regenerated', () => {
+  it('keeps the user-authored patch entries when the managed block is regenerated', async () => {
     const home = tempDir('s1-bot-runtime-')
     const runtimeRoot = tempDir('s1-bot-runtime-root-')
     mkdirSync(join(runtimeRoot, 'node_modules', '@deepseek-ai', 'dsh-llm'), { recursive: true })
@@ -112,7 +112,7 @@ describe('managed profile patch', () => {
     writeFileSync(join(profile, 'cordis.patch.yml'), `${OLD_MANAGED_BLOCK}\n- id: user-entry\n  name: "@example/user-entry"\n`)
 
     const runtime = new BotRuntime(home, resources, undefined, runtimeRoot)
-    runtime.prepare({})
+    await runtime.prepare({})
     const patch = readFileSync(join(profile, 'cordis.patch.yml'), 'utf8')
     expect(patch).toContain('- id: user-entry')
     expect(patch).toContain('@example/user-entry')
@@ -133,7 +133,7 @@ describe('legacy full-access managed profile migration', () => {
     expect(legacyFullAccessManagedBlock(userAuthored)).toBe(false)
   })
 
-  it('narrows a pre-0.0.1 profile with a durable notice and a recoverable instruction', () => {
+  it('narrows a pre-0.0.1 profile with a durable notice and a recoverable instruction', async () => {
     const home = tempDir('s1-bot-migrate-')
     const runtimeRoot = tempDir('s1-bot-migrate-root-')
     mkdirSync(join(runtimeRoot, 'node_modules', '@deepseek-ai', 'dsh-llm'), { recursive: true })
@@ -146,7 +146,7 @@ describe('legacy full-access managed profile migration', () => {
     writeFileSync(join(profile, 'cordis.patch.yml'), `${OLD_MANAGED_BLOCK}\n`)
 
     const runtime = new BotRuntime(home, resources, undefined, runtimeRoot)
-    runtime.prepare({})
+    await runtime.prepare({})
     expect(runtime.status().permissionNotice).toBe(PERMISSION_DOWNGRADE_NOTICE)
     const migrationFile = join(home, 'bot', 'permission-migration.json')
     expect(existsSync(migrationFile)).toBe(true)
@@ -158,7 +158,7 @@ describe('legacy full-access managed profile migration', () => {
     expect(PERMISSION_DOWNGRADE_NOTICE).toMatch(/\/permission danger-full-access/)
 
     // The narrowing is recorded once; a relaunch of the already-migrated profile has no notice.
-    runtime.prepare({})
+    await runtime.prepare({})
     expect(runtime.status().permissionNotice).toBe('')
     expect(readFileSync(migrationFile, 'utf8')).toContain('workspace-write')
   })

@@ -9,9 +9,9 @@
  * the product:
  *   1. abrupt restart (crash, no teardown): the durable state as of the crash still has an
  *      open interaction -> the restarted Host must refuse to turn a late decision into an
- *      official one (unknown receipt, never replayed). The snapshot@1 interactions section
- *      has no `unknown` list, so this safety result is observable through the receipt, not
- *      through a recovered-unknown projection; that projection gap is documented, not hidden.
+ *      official one (unknown receipt, never replayed), and the `snapshot@1` interactions
+ *      section must project the recovered interaction as `unknown` (R2 closure) instead of
+ *      silently dropping it.
  *   2. graceful shutdown: the Host tears down the interaction mirror first, which settles the
  *      pending interaction as `cancelled` and persists that known outcome; the restarted Host
  *      must show it as a known cancelled result (not `unknown`) and still never replay it.
@@ -38,7 +38,8 @@ import { pathToFileURL } from 'node:url'
 const PROTOCOL = 'dsh-bot-v1'
 type HostPending = { id: string; kind: string; semanticRevision?: number }
 type HostResolved = { id: string; outcome?: string }
-type HostInteractions = { pending: HostPending[]; recentlyResolved?: HostResolved[] }
+type HostUnknown = { id: string; kind?: string | null; reason?: string | null }
+type HostInteractions = { pending: HostPending[]; recentlyResolved?: HostResolved[]; unknown?: HostUnknown[] }
 type HostSnapshot = { interactions: HostInteractions; execution: { state?: string } }
 type HostHealth = { ok?: boolean }
 type CommandReceipt = { status?: string; result?: { outcome?: string }; error?: { code?: string } }
@@ -194,11 +195,12 @@ it('surfaces an unresolved approval as unknown after an abrupt Host restart and 
     // projection does not fabricate a success/failure claim for it.
     expect(afterRestart.interactions.pending).toEqual([])
     expect((afterRestart.interactions.recentlyResolved ?? []).some(item => item.id === interactionId)).toBe(false)
-    // Documented projection gap (pre-existing, not introduced by the safety changes): the
-    // snapshot@1 interactions section has no `unknown` list, so a crashed approval cannot be
-    // shown to the user. The registry still recovers it as unknown, which the late-decision
-    // receipt below proves. Tracked as a non-safety observability gap in F1-MAPPING.md §5.
-    expect(Object.prototype.hasOwnProperty.call(afterRestart.interactions, 'unknown')).toBe(false)
+    // R2 closure: the recovered interaction is projected in the additive `interactions.unknown`
+    // list (never as pending, never as a fabricated resolved/cancelled result). The late-decision
+    // receipt below independently proves the registry-level safety semantics.
+    const recoveredUnknown = (afterRestart.interactions.unknown ?? []).filter(item => item.id === interactionId)
+    expect(recoveredUnknown.length).toBe(1)
+    expect(['HOST_RESTARTED', 'INTERACTION_UNKNOWN_AFTER_RESTART']).toContain(String(recoveredUnknown[0]?.reason))
     expect(['idle', 'unknown', 'starting'].includes(String(afterRestart.execution.state))).toBe(true)
     expect(afterRestart.execution.state).not.toBe('working')
 
@@ -240,7 +242,8 @@ it('a graceful Host restart persists the pending approval as known-cancelled and
     hostB = await startHost({ home: setup.home, workspaceDir: setup.workspaceDir, memoryUrl: setup.memory.url, responses: [textResponse('restarted')] })
     const afterRestart = await hostB.snapshot()
     expect(afterRestart.interactions.pending).toEqual([])
-    expect(Object.prototype.hasOwnProperty.call(afterRestart.interactions, 'unknown')).toBe(false)
+    // A gracefully settled interaction is a KNOWN outcome: it must not be projected as unknown.
+    expect(afterRestart.interactions.unknown ?? []).toEqual([])
     const known = (afterRestart.interactions.recentlyResolved ?? []).find(item => item.id === interactionId)
     if (known === undefined) throw new Error('the known cancelled interaction must stay inspectable after restart')
     expect(known.outcome).toBe('cancelled')

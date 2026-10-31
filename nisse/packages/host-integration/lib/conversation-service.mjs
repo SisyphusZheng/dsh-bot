@@ -9,8 +9,23 @@
  *
  * This module is deliberately runtime-independent so its behavior can be tested
  * with fakes (node:test), while index.js provides the real DSH/worker adapters.
+ *
+ * `snapshot@1` `interactions.unknown` (R2 user-visibility closure, 0.0.1):
+ * an optional, additive array of interactions whose official outcome could not be
+ * confirmed (the Host restarted before the official lifetime settled, or the
+ * official lifetime ended without a confirmable result). Each entry is
+ * `{ id, kind, sessionId, reason, at, action: { id: 'open-main', label } }`, is
+ * read-only and final, and must never be answered again: the only recovery is the
+ * user verifying the official state in the DSH main window. Existing fields
+ * (`focusedId`, `pending`, `drafts`, `recentlyResolved`) keep their exact shape and
+ * meaning, and the field may be absent from older Hosts; clients that ignore it
+ * keep working, which is why the schema stays `snapshot@1` (see ./snapshot.mjs).
+ *
+ * The same projection also drives one Chinese user-visible warning notice plus the
+ * safe "打开主窗口确认" action; that notice never resolves, retries or replays
+ * anything on its own.
  */
-import { ContractError, newId, nowIso, boundedString, stableOptionId } from './contracts.mjs'
+import { ContractError, newId, nowIso, boundedString, stableOptionId, isIsoDate } from './contracts.mjs'
 import { assertTaskCancelTarget, commandCancelTarget, currentCancelScope } from './cancel-routing.mjs'
 import { createQueueModel, createDraftModel, createTurnModel } from './conversation-model.mjs'
 import { createUtteranceAssembler, createSegmenter, SETTLE_MS_DEFAULT } from './utterance.mjs'
@@ -29,6 +44,14 @@ const DEFAULT_NOTICE_TTL_MS = 8_000
 const MAX_NOTICES = 8
 const MAX_CONSUMED = 512
 const WORKER_STALE_MS = 15_000
+/** Bounded projection of unconfirmed interactions, aligned with `recentlyResolved`. */
+const MAX_SNAPSHOT_UNKNOWN = 8
+/** The hint is worth keeping visible across a desktop reattach, not just one turn. */
+const DEFAULT_UNKNOWN_NOTICE_TTL_MS = 30 * 60 * 1000
+/** Poll cadence for a mid-session `unknown`; the startup path announces immediately. */
+const UNKNOWN_SYNC_MS = 1000
+const UNKNOWN_INTERACTION_NOTE = '上次审批或回答的结果尚未确认；请打开主窗口核实，不会自动重试。'
+const UNKNOWN_INTERACTION_ACTION = Object.freeze({ id: 'open-main', label: '打开主窗口确认' })
 
 const iso = (ms) => (Number.isFinite(ms) ? new Date(ms).toISOString() : null)
 const ms = (value) => (Number.isFinite(Number(value)) ? Number(value) : Date.now())
@@ -59,6 +82,37 @@ function normalizeQueueItem(item, revisionFallback = 0) {
   }
 }
 
+/**
+ * Normalize recovered-unknown registry records into the public `snapshot@1`
+ * `interactions.unknown` entries. Pure and bounded: malformed records are dropped
+ * instead of being echoed into the protocol, ids are de-duplicated, and the stable
+ * "verify in the main window" action is attached to every entry.
+ *
+ * @param {unknown} raw - `registry.snapshot().unknown` (may be absent on older registries).
+ * @returns {{id: string, kind: string|null, sessionId: string|null, reason: string, at: string|null, action: {id: string, label: string}}[]}
+ */
+function normalizeUnknownInteractions(raw) {
+  const source = Array.isArray(raw) ? raw : []
+  const seen = new Set()
+  const projection = []
+  for (const item of source) {
+    if (!item || typeof item !== 'object') continue
+    const id = boundedString(item.id, 200)
+    if (!id || seen.has(id)) continue
+    seen.add(id)
+    projection.push({
+      id,
+      kind: item.kind === 'approval' || item.kind === 'question' ? item.kind : null,
+      sessionId: boundedString(item.sessionId, 200) || null,
+      reason: boundedString(item.reason, 120) || 'INTERACTION_UNKNOWN',
+      at: isIsoDate(item.at) ? new Date(Date.parse(item.at)).toISOString() : null,
+      action: { ...UNKNOWN_INTERACTION_ACTION },
+    })
+    if (projection.length >= MAX_SNAPSHOT_UNKNOWN) break
+  }
+  return projection
+}
+
 export function createConversationService({
   hostEpoch,
   events,
@@ -79,6 +133,7 @@ export function createConversationService({
   const drainMs = Number.isFinite(config.drainMs) ? config.drainMs : 3000
   const cancelConfirmMs = Number.isFinite(config.cancelConfirmMs) ? config.cancelConfirmMs : DEFAULT_CANCEL_CONFIRM_MS
   const noticeTtlMs = Number.isFinite(config.noticeTtlMs) ? config.noticeTtlMs : DEFAULT_NOTICE_TTL_MS
+  const unknownNoticeTtlMs = Number.isFinite(config.unknownNoticeTtlMs) ? config.unknownNoticeTtlMs : DEFAULT_UNKNOWN_NOTICE_TTL_MS
   const now = typeof config.now === 'function' ? config.now : () => Date.now()
 
   const queue = createQueueModel({ limit: queueLimit, ttlMs: queueTtlMs, now })
@@ -108,6 +163,11 @@ export function createConversationService({
   let lastTurn = null
   let restoreNoticeId = null
   let persisted = null
+  /** Id of the live "result unconfirmed" hint notice, if one was announced. */
+  let unknownNoticeId = null
+  /** Unknown interaction ids already announced, so a poll does not repeat the hint. */
+  const announcedUnknownIds = new Set()
+  let lastUnknownSyncAt = 0
 
   function emit(type, { source = 'host', sessionId = null, turn: turnNumber = null, causedByCommandId = null, data = {} } = {}) {
     return events.record(type, { source, sessionId, turn: turnNumber, causedByCommandId, data })
@@ -240,6 +300,56 @@ export function createConversationService({
       }
       return { ...base, pending }
     } catch { return { focusedId: null, pending: [], drafts: {}, recentlyResolved: [] } }
+  }
+
+  /**
+   * Current unconfirmed-interaction projection (public `interactions.unknown` shape).
+   * Read-only: it only reflects what the registry recovered, never a fabricated result.
+   */
+  function unknownInteractionsView() {
+    try { return normalizeUnknownInteractions(pendingInteractions().unknown) } catch { return [] }
+  }
+
+  /**
+   * Announce (or refresh) the single user-visible "result unconfirmed" hint.
+   *
+   * Idempotent per unknown id: polling cannot duplicate the hint, a genuinely new
+   * unknown replaces it with the updated list, and a desktop that reattaches after
+   * the hint expired gets it back — a hint the user never saw is not a user-visible
+   * state. It only reads the registry projection, so it cannot resolve, retry or
+   * replay anything.
+   *
+   * @param {{announceExisting?: boolean}} [options]
+   */
+  function syncUnknownInteractions({ announceExisting = false } = {}) {
+    if (disposed) return
+    const unknown = unknownInteractionsView()
+    if (!unknown.length) {
+      if (unknownNoticeId) { expireNotice(unknownNoticeId); unknownNoticeId = null }
+      announcedUnknownIds.clear()
+      return
+    }
+    const unseen = unknown.filter((item) => !announcedUnknownIds.has(item.id))
+    const noticeLive = Boolean(unknownNoticeId && notices.has(unknownNoticeId))
+    if (!unseen.length && !(announceExisting && !noticeLive)) return
+    for (const item of unknown) announcedUnknownIds.add(item.id)
+    if (unknownNoticeId) expireNotice(unknownNoticeId)
+    unknownNoticeId = addNotice({
+      kind: 'warning',
+      severity: 'warning',
+      text: UNKNOWN_INTERACTION_NOTE,
+      ttlMs: unknownNoticeTtlMs,
+      diagnosticId: 'INTERACTION_UNKNOWN',
+      actions: [{ ...UNKNOWN_INTERACTION_ACTION }],
+    })
+  }
+
+  /** Throttled mid-session check; startup and desktop reattach announce immediately. */
+  function maybeSyncUnknownInteractions() {
+    const at = now()
+    if (at - lastUnknownSyncAt < UNKNOWN_SYNC_MS) return
+    lastUnknownSyncAt = at
+    syncUnknownInteractions()
   }
 
   function activeInteraction() {
@@ -948,7 +1058,12 @@ export function createConversationService({
     const was = desktopConnection.connected
     desktopConnection.connected = true
     desktopConnection.lastSeenAt = nowIso()
-    if (!was) emit('connection.changed', { data: { desktop: { connected: true } } })
+    if (!was) {
+      emit('connection.changed', { data: { desktop: { connected: true } } })
+      // A returning desktop is the moment the user can actually see the hint: restore
+      // an unconfirmed-interaction warning whose notice already expired. Read-only.
+      syncUnknownInteractions({ announceExisting: true })
+    }
   }
 
   function listInteractions() {
@@ -1150,14 +1265,16 @@ export function createConversationService({
       hostEpoch,
     }
     const pending = Array.isArray(interactions.pending) ? interactions.pending : []
+    const unknown = normalizeUnknownInteractions(interactions.unknown)
     const displayMode = pending.length ? 'awaiting-input'
       : draftView ? 'confirming'
         : ['working', 'submitting'].includes(execution.state) ? 'working'
-          : execution.state === 'unknown' ? 'error'
-            : ['listening', 'transcribing', 'closing'].includes(capture.state) ? 'listening'
-              : playback.state === 'speaking' ? 'speaking'
-                : playback.state === 'stopping' ? 'stopping'
-                  : 'idle'
+          : unknown.length ? 'unknown'
+            : execution.state === 'unknown' ? 'error'
+              : ['listening', 'transcribing', 'closing'].includes(capture.state) ? 'listening'
+                : playback.state === 'speaking' ? 'speaking'
+                  : playback.state === 'stopping' ? 'stopping'
+                    : 'idle'
     const focused = pending.find((item) => item.id === interactions.focusedId) || pending[0] || null
     return {
       identity,
@@ -1189,6 +1306,9 @@ export function createConversationService({
         pending,
         drafts: interactions.drafts || {},
         recentlyResolved: listInteractions().recentlyResolved,
+        // Additive `snapshot@1` field (R2): final interactions whose official outcome
+        // could not be confirmed. Empty on a clean session and on older Hosts absent.
+        unknown,
       },
       inputDraft: draftView
         ? {
@@ -1219,6 +1339,7 @@ export function createConversationService({
 
   function tick() {
     if (disposed) return
+    maybeSyncUnknownInteractions()
     let ready = []
     try { ready = assembler.tick() } catch (error) { log('utterance tick failed: ' + String(error?.message || error)); return }
     if (!ready.length) return
@@ -1235,6 +1356,8 @@ export function createConversationService({
     tickTimer = setInterval(tick, 100)
     tickTimer.unref?.()
     addNotice({ kind: 'status', severity: 'info', text: 'Host 已就绪；产品交互由 Host 统一记录。', ttlMs: 3000 })
+    // Announced last so it is the notice the pet surface shows first after a crash restart.
+    syncUnknownInteractions()
   }
 
   function dispose() {

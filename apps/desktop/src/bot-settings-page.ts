@@ -65,6 +65,10 @@ button.plain,button.test{background:transparent;color:var(--btn-plain-fg);border
 .with-button{display:flex;gap:8px}.with-button input{flex:1}.with-button button{flex:none}
 .panel-title{font-weight:600;margin:16px 0 6px}
 .divider{border-top:1px solid var(--line);margin:20px 0 8px}
+.notice{border:1px solid var(--warn);background:rgba(180,83,9,.08);border-radius:8px;padding:10px 12px;margin:4px 0 8px}
+.notice-title{font-weight:600;color:var(--warn);margin-bottom:4px}
+.notice-body{white-space:pre-wrap;line-height:1.55;font-size:12px}
+.notice-actions{margin-top:8px;display:flex;gap:8px;align-items:center}
 .preview-block{margin:8px 0 14px}
 .preview-title{font-weight:600;margin-bottom:4px}
 pre.preview{margin:0;padding:10px 12px;max-height:260px;overflow:auto;white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,Menlo,monospace;font-size:12px;line-height:1.5;background:var(--pre-bg);border:1px solid var(--pre-border);border-radius:8px}
@@ -137,6 +141,7 @@ var SCHEMA = [
 var config = null;
 var active = 'voice';
 var statusNode = null, tabsNode = null, panelsNode = null;
+var botStatus = null;
 var promptPreview = null, promptLoading = false, promptLoaded = false, promptError = '';
 var mem = {list:[], offset:0, limit:50, hasMore:false, available:null, note:'', message:'', loading:false, loaded:false, mode:'list', query:'', editingId:'', editText:'', historyId:'', history:[], historyNote:'', autoStarted:false};
 function el(tag, cls, text){ var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
@@ -163,6 +168,11 @@ function errorText(payload, fallback){
   if (payload && payload.error && typeof payload.error === 'string') return payload.error;
   return fallback || '请求失败';
 }
+function permissionNoticeText(){ return botStatus && botStatus.permissionNotice ? String(botStatus.permissionNotice) : ''; }
+function permissionNoticeAckKey(){ return 'bot.permissionNoticeAck'; }
+function permissionNoticeAcknowledged(notice){ try { return window.localStorage.getItem(permissionNoticeAckKey()) === notice; } catch (e) { return false; } }
+function acknowledgePermissionNotice(notice){ try { window.localStorage.setItem(permissionNoticeAckKey(), notice); } catch (e) { /* storage unavailable: this page view still hides it */ } render(); }
+function loadBotStatus(){ api('/bot/status').then(function(r){ if (r.json && r.json.ok === true){ botStatus = r.json.status || {}; render(); } }); }
 function render(){
   if (window.__memoryTimer){ clearInterval(window.__memoryTimer); window.__memoryTimer = null; }
   tabsNode.innerHTML = ''; panelsNode.innerHTML = '';
@@ -335,13 +345,24 @@ function buildCheckboxRow(label, description, key, checked){
 }
 function renderPermissionsPanel(panel){
   var approval = config.approval || {mode:'ask-each', onceMinutes:10};
+  var notice = permissionNoticeText();
+  if (notice !== '' && !permissionNoticeAcknowledged(notice)){
+    var noticeBox = el('div', 'notice');
+    noticeBox.appendChild(el('div', 'notice-title', '权限已收紧（一次性说明）'));
+    noticeBox.appendChild(el('div', 'notice-body', notice));
+    var noticeActions = el('div', 'notice-actions');
+    noticeActions.appendChild(button('我知道了', 'plain', function(){ acknowledgePermissionNotice(notice); }));
+    noticeBox.appendChild(noticeActions);
+    panel.appendChild(noticeBox);
+    panel.appendChild(el('div', 'divider'));
+  }
   panel.appendChild(el('div', 'panel-title', '审批粒度'));
   panel.appendChild(hint('Bot 代替你操作电脑时，什么时候需要你确认。保存后由桌宠与 DSH 按此执行。'));
   var modes = [
     ['ask-each', '每次操作都问', '每个工具调用前都弹出审批气泡（最谨慎，默认）。'],
     ['ask-before-acting', '操作前批一次', '执行一组操作前确认一次，组内自动继续。'],
     ['ask-once', '一次授权 N 分钟', '确认一次后在 N 分钟内不再询问。'],
-    ['never-ask', '从不询问（需要审批的操作直接拒绝）', '不弹出任何审批气泡；需要审批的工作区外写入/提权会被直接拒绝（fail-closed），Bot 只能在 Bot 工作区内操作。'],
+    ['never-ask', '从不询问（需要审批的操作直接拒绝）', '不弹出任何审批气泡；需要审批的工作区外写入/提权会被直接拒绝（fail-closed），Bot 只能在工作区与平台临时目录内操作。'],
   ];
   for (var i = 0; i < modes.length; i++){
     (function(mode, label, description){
@@ -385,7 +406,7 @@ function renderPermissionsPanel(panel){
   panel.appendChild(buildCheckboxRow('操作键鼠时停止桌面任务', '键鼠接管会停止当前桌面任务；语音发起的任务、说话键操作和等待审批不触发自动停止。', 'pauseOnInput', behavior.pauseOnInput !== false));
   var inputNote=document.createElement('p');inputNote.textContent='右键桌宠可开启语音或停止任务。离线唤醒在本机检测；开启语音后，收音期间音频发送给语音供应商。按住说话松键即结束收音；气泡取消只取消录音，停止任务请用任务卡或菜单。';panel.appendChild(inputNote);
   panel.appendChild(buildCheckboxRow('允许屏幕查看类工具（尽力而为，不是能力隔离）', '只是对名称/描述看起来像截图、屏幕查看、电脑操作的工具做尽力关闭；不保证拦住任意第三方工具。Bot 默认配置没有挂载任何截图/桌面控制能力，真实屏幕访问还受 macOS 屏幕录制权限约束。', 'allowScreenView', behavior.allowScreenView === true));
-  panel.appendChild(hint('默认工作区写入：Bot 只能在 Bot 工作区内自由读写；工作区外的写操作会被 DSH 沙箱拒绝，之后由 Bot 发起单次提权，并在桌宠气泡里逐次审批。'));
+  panel.appendChild(hint('默认工作区写入：Bot 默认只能在 Bot 工作区与平台临时目录（/tmp、系统用户临时目录）内写入；其他位置的写入会被 DSH 沙箱拒绝，之后由 Bot 发起单次提权，并在桌宠气泡里逐次审批。'));
   panel.appendChild(hint('审批模式与行为开关保存在 Bot 配置（config.json，权限 0600）里，实际执行由 main.ts / host-integration / 桌宠接线后生效。'));
 }
 function memoryItemNode(item){
@@ -657,5 +678,6 @@ tabsNode = document.getElementById('tabs');
 panelsNode = document.getElementById('panels');
 document.getElementById('save').onclick = saveConfig;
 loadConfig();
+loadBotStatus();
 </script></body></html>`
 }

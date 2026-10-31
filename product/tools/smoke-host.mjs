@@ -100,7 +100,7 @@ try {
   const llm = {provider:process.argv.includes('--default-provider')?'opencode-go':'custom',model:process.argv.includes('--default-provider')?'deepseek-v4.1-flash':'mvp-local',baseUrl:`http://127.0.0.1:${mock.address().port}/v1`,apiKey:'mvp-test-key'}
   const runtime = new BotRuntime(home, resources, undefined, join(root,'apps/cli'))
   runtime.setMemory({url:`http://127.0.0.1:${mock.address().port}`,token:'fixture-memory-token'})
-  runtime.prepare({llm}); assert.equal(runtime.status().error,'')
+  await runtime.prepare({llm}); assert.equal(runtime.status().error,'')
   cpSync(join(home,'profiles/desktop'),join(home,'profiles/mvp-smoke'),{recursive:true,dereference:false})
   mkdirSync(join(home,'bot'),{recursive:true}); writeFileSync(join(home,'bot/config.json'),JSON.stringify({llm:{...llm,apiKey:''}}))
   const env={...process.env,DSH_HOME:home,DSH_TELEMETRY_DISABLED:'1',NODE_USE_ENV_PROXY:'0'}

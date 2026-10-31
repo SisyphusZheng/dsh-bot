@@ -3,9 +3,10 @@
  * worker is present. The main Electron process owns the Pipecat worker and pet window;
  * no legacy gateway or nested Electron process is used.
  */
-import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, symlinkSync } from 'node:fs'
 import { join } from 'node:path'
 import { createRequire } from 'node:module'
+import { withFileLock, writeFileAtomic } from '@deepseek-ai/dsh-atomic-write'
 
 /** What the shell can truthfully report about the voice runtime. */
 export interface BotRuntimeStatus {
@@ -59,8 +60,9 @@ const DEFAULT_LLM = { provider: 'opencode-go', model: 'deepseek-v4.1-flash' }
 
 /** One-time user-facing notice when a pre-0.0.1 full-access Bot profile is narrowed. */
 export const PERMISSION_DOWNGRADE_NOTICE = 'Bot 默认权限已从“全文访问”收紧为“工作区写入 + 越界逐次审批”：'
-  + 'Bot 现在只能在 Bot 工作区内自由读写，工作区外的写操作会被 DSH 沙箱拒绝，'
+  + 'Bot 现在只能在 Bot 工作区与平台临时目录内写入，其他位置的写入会被 DSH 沙箱拒绝，'
   + '需要由 Bot 发起单次提权并在桌宠气泡里逐次批准。'
+  + '这次迁移只会收紧权限，不会放宽。'
   + '如确需恢复全文访问，请在 DSH 会话中显式执行 /permission danger-full-access（最高风险，仅在你完全信任 Bot 时使用）。'
 
 /**
@@ -112,7 +114,7 @@ export function managedProfilePatch(
     '        sandbox: workspace-write',
     '        approval: ask',
     `        name: ${JSON.stringify('Bot（工作区写入 + 越界审批）')}`,
-    `        description: ${JSON.stringify('Bot 默认只在 Bot 工作区内读写；工作区外的写操作会被 DSH 沙箱拒绝，Bot 需要单次提权，并在桌宠气泡里逐次审批。')}`,
+    `        description: ${JSON.stringify('Bot 默认只能在 Bot 工作区与平台临时目录（/tmp、系统用户临时目录）内写入；其他位置的写入会被 DSH 沙箱拒绝，Bot 需要单次提权，并在桌宠气泡里逐次审批。')}`,
     '- id: nisse-host-integration',
     '  name: "nisse-host-integration"',
     '  config:',
@@ -197,6 +199,39 @@ export function legacyFullAccessManagedBlock(existingPatch: string): boolean {
   return false
 }
 
+/**
+ * Read-modify-commit the desktop profile manifest while holding the same
+ * cross-process writer lock DSH's config editor uses, so a concurrent writer
+ * can never resurrect a stale manifest (lost update). The atomic replacement
+ * keeps readers on the old or new complete JSON, never a truncated file.
+ * @param file - the profile `package.json` to update.
+ * @param mutate - in-place manifest update applied under the lock.
+ * @returns the committed manifest.
+ */
+export async function updateProfileManifest(
+  file: string,
+  mutate: (manifest: Record<string, unknown>) => void,
+): Promise<Record<string, unknown>> {
+  return await withFileLock(file, async () => {
+    let manifest: Record<string, unknown> = { name: 'dsh-profile-desktop', private: true, dependencies: {} }
+    try { manifest = JSON.parse(readFileSync(file, 'utf8')) } catch { /* absent or unreadable: write the default manifest */ }
+    mutate(manifest)
+    await writeFileAtomic(file, JSON.stringify(manifest, null, 2) + '\n', { mode: 0o644 })
+    return manifest
+  }, { waitMs: 5_000 })
+}
+
+/**
+ * Atomically replace one owner-only Bot profile file. Crash between the temp
+ * write and the rename leaves the previous complete content in place.
+ * @param file - destination path.
+ * @param content - complete next content.
+ * @param mode - permission bits carried through the replacement.
+ */
+export async function writeBotProfileFile(file: string, content: string, mode = 0o600): Promise<void> {
+  await writeFileAtomic(file, content, { mode })
+}
+
 export class BotRuntime {
   private memory: BotMemoryInfo | null = null
   private lastError = ''
@@ -242,7 +277,7 @@ export class BotRuntime {
    * marked block and leaves user-authored patch entries untouched.
    * @param config - Bot settings to publish; omitted reads the persisted file.
    */
-  prepare(config: BotRuntimeConfig = this.readConfig()): void {
+  async prepare(config: BotRuntimeConfig = this.readConfig()): Promise<void> {
     this.lastError = ''
     this.permissionNotice = ''
     let llm: string
@@ -260,14 +295,13 @@ export class BotRuntime {
     const link = join(modules, 'nisse-host-integration')
     try { rmSync(link, { recursive: true, force: true }) } catch {}
     try { symlinkSync(bundle, link, 'dir') } catch (error) { this.lastError = String((error as Error)?.message || error) }
-    let manifest: Record<string, unknown> = { name: 'dsh-profile-desktop', private: true, dependencies: {} }
-    try { manifest = JSON.parse(readFileSync(join(profile, 'package.json'), 'utf8')) } catch {}
-    const dsh = (manifest.dsh && typeof manifest.dsh === 'object' ? manifest.dsh as Record<string, unknown> : {})
-    const profileConfig = (dsh.profile && typeof dsh.profile === 'object' ? dsh.profile as Record<string, unknown> : {})
-    const bundles = Array.isArray(profileConfig.bundles) ? profileConfig.bundles.map(String).filter(name => name !== 'whalegirl-g2-bridge') : ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app']
-    for (const name of ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', 'nisse-host-integration']) if (!bundles.includes(name)) bundles.push(name)
-    profileConfig.bundles = bundles; dsh.profile = profileConfig; manifest.dsh = dsh
-    writeFileSync(join(profile, 'package.json'), JSON.stringify(manifest, null, 2) + '\n')
+    await updateProfileManifest(join(profile, 'package.json'), (manifest) => {
+      const dsh = (manifest.dsh && typeof manifest.dsh === 'object' ? manifest.dsh as Record<string, unknown> : {})
+      const profileConfig = (dsh.profile && typeof dsh.profile === 'object' ? dsh.profile as Record<string, unknown> : {})
+      const bundles = Array.isArray(profileConfig.bundles) ? profileConfig.bundles.map(String).filter(name => name !== 'whalegirl-g2-bridge') : ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app']
+      for (const name of ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', 'nisse-host-integration']) if (!bundles.includes(name)) bundles.push(name)
+      profileConfig.bundles = bundles; dsh.profile = profileConfig; manifest.dsh = dsh
+    })
     process.env.DSH_BOT_RUNTIME_ROOT = this.runtimeRoot
     process.env.NISSE_DSH_LLM_ENTRY = llm
     if (this.managedKey !== null) {
@@ -288,14 +322,13 @@ export class BotRuntime {
       try {
         const migrationFile = join(this.dshHome, 'bot', 'permission-migration.json')
         mkdirSync(join(this.dshHome, 'bot'), { recursive: true, mode: 0o700 })
-        writeFileSync(migrationFile, JSON.stringify({
+        await writeFileAtomic(migrationFile, JSON.stringify({
           version: 1,
           at: new Date().toISOString(),
           from: { preset: 'bot-outside-write', sandbox: 'danger-full-access' },
           to: { preset: 'bot-outside-write', sandbox: 'workspace-write', approval: 'ask' },
           notice: PERMISSION_DOWNGRADE_NOTICE,
         }, null, 2) + '\n', { mode: 0o600 })
-        chmodSync(migrationFile, 0o600)
       } catch (error) {
         // The in-memory notice still reaches /bot/status; the durable copy is best effort.
         this.lastError = `permission migration notice: ${String((error as Error)?.message || error)}`
@@ -305,8 +338,7 @@ export class BotRuntime {
       .replace(new RegExp(`${MANAGED_BEGIN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\\s\\S]*?${MANAGED_END.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'g'), '')
     const hasUserLlmConfig = /(^|\n)\s*-?\s*id:\s*llm-pi-ai\b/.test(userPart)
     const block = managedProfilePatch(config, this.dshHome, hasUserLlmConfig, this.memory)
-    writeFileSync(patchFile, rewriteManagedBlock(existingPatch, block), { mode: 0o600 })
-    chmodSync(patchFile, 0o600)
+    await writeFileAtomic(patchFile, rewriteManagedBlock(existingPatch, block), { mode: 0o600 })
   }
 
   status(): BotRuntimeStatus {

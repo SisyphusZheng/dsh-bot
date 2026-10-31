@@ -10,6 +10,19 @@ xcode-select -p >/dev/null
 node -e "const [m,n]=process.versions.node.split('.').map(Number);if(!(m===22&&n>=19||m>=24))process.exit(2)"
 SOURCE_SHA=$(git rev-parse HEAD)
 [[ -z $(git status --porcelain) ]] || { echo 'Build a clean committed checkout so artifact identity is reliable'; exit 2; }
+# Peak incremental space is dominated by the Electron package tree plus the
+# memory/voice rebuilds (about 5.8 GiB on this machine). Refuse to start under a
+# threshold that would leave the volume close to full: an ENOSPC mid-build
+# produces a half-written candidate and can disturb whatever else is running on
+# the host. Override only with a measured reason.
+BUILD_MIN_FREE_GIB=${DSH_BOT_BUILD_MIN_FREE_GIB:-8}
+FREE_KIB=$(df -k "$ROOT" | awk 'NR==2{print $4}')
+if [[ -z "$FREE_KIB" || "$FREE_KIB" -lt $((BUILD_MIN_FREE_GIB * 1048576)) ]]; then
+  echo "BLOCKED-ENVIRONMENT: only $((FREE_KIB / 1048576)) GiB free; this build needs about 5.8 GiB incremental and keeps $BUILD_MIN_FREE_GIB GiB headroom."
+  echo "Free space or set DSH_BOT_BUILD_MIN_FREE_GIB to a measured lower threshold, then rerun."
+  exit 2
+fi
+echo "Preflight: $((FREE_KIB / 1048576)) GiB free, threshold $BUILD_MIN_FREE_GIB GiB."
 SHORT_SHA=${SOURCE_SHA:0:8}
 STAGE="$ROOT/.mvv-build"
 mkdir -p "$STAGE/evidence" "$STAGE/inputs"

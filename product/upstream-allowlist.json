@@ -65,7 +65,7 @@
     "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
   },
   "apps/desktop/src/main.ts": {
-    "sha": "8d50230f41f2edde2659846135ac226ab1b4d1a2",
+    "sha": "b05b1e1f929c20618873e89c4f43752a20220beb",
     "mode": "100644",
     "reason": "Product integration: macOS regular Dock entry, optional pet-only mode and menu bar access; main-window avoidance callback"
   },

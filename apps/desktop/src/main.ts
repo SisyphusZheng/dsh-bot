@@ -375,7 +375,7 @@ async function main(): Promise<void> {
   // adapter is attached through the authenticated bridge (see the background start
   // before reconcileBackend at the end of main).
   botRuntime.setMemory(null)
-  botRuntime.prepare(startupConfig)
+  await botRuntime.prepare(startupConfig)
   /** Call one Host Integration bridge endpoint (loopback, bearer token from bot/bridge.json). */
   const callBridge = async (pathName: string): Promise<Record<string, unknown> | null> => {
     try {
@@ -862,7 +862,7 @@ async function main(): Promise<void> {
     // A confirmation on a hidden window would go unseen, so it waits for the next show; the mandatory
     // flow keeps its own taskbar and Dock attention instead.
     if (!isMandatory()) await windowShown()
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- A quit can begin while the show is awaited.
+    // A quit can begin while the show is awaited, so the flag is re-read here.
     if (quitting) return state
     return updates.install(version)
   }

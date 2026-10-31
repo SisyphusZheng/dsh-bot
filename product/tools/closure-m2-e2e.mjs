@@ -36,16 +36,21 @@ mkdirSync(ROOT, { recursive: true })
 mkdirSync(EVIDENCE, { recursive: true })
 
 const RUN = new Date().toISOString().replace(/[:.]/g, '-')
-const BANK = `closure:m2:${RUN}`
+// Round-2 re-verification uses a different bank name and different synthetic wording; the
+// defaults keep the round-1 fixtures reproducible when the overrides are not set.
+const BANK = String(process.env.CLOSURE_M2_BANK || `closure:m2:${RUN}`)
+const PREFERENCE_A_BASE = String(process.env.CLOSURE_M2_PREF_A || '我喜欢无糖拿铁，常去的咖啡店叫海风咖啡')
+const PREFERENCE_B_BASE = String(process.env.CLOSURE_M2_PREF_B || '我改喝燕麦奶拿铁，不再喝无糖拿铁，咖啡店还是海风咖啡')
+const QUESTION = String(process.env.CLOSURE_M2_QUESTION || '我平时喝咖啡有什么习惯？')
 const SESSION_1 = 'm2-session-remember'
 const SESSION_2 = 'm2-session-recall'
 const SESSION_3 = 'm2-session-corrected'
 const SESSION_4 = 'm2-session-after-delete'
 const MARK_A = 'M2A-' + randomBytes(6).toString('hex')
 const MARK_B = 'M2B-' + randomBytes(6).toString('hex')
-const PREFERENCE_A = `我喜欢无糖拿铁，常去的咖啡店叫海风咖啡（记录 ${MARK_A}）`
-const PREFERENCE_B = `我改喝燕麦奶拿铁，不再喝无糖拿铁，咖啡店还是海风咖啡（记录 ${MARK_B}）`
-const QUESTION = '我平时喝咖啡有什么习惯？'
+const PREFERENCE_A = `${PREFERENCE_A_BASE}（记录 ${MARK_A}）`
+const PREFERENCE_B = `${PREFERENCE_B_BASE}（记录 ${MARK_B}）`
+
 const results = []
 const httpLog = []
 let stage = 'setup'
@@ -196,6 +201,7 @@ const summary = {
     hindsightRuntime: process.env.CLOSURE_M2_HINDSIGHT_RUNTIME || '(unset)',
     llm: 'HINDSIGHT_API_LLM_PROVIDER=mock (no cloud credential, no cost)',
     embedding: 'local ONNX Xenova/multilingual-e5-small int8',
+    syntheticPhrases: { preferenceA: PREFERENCE_A, preferenceB: PREFERENCE_B, question: QUESTION },
   },
   stages: results,
   limits: [

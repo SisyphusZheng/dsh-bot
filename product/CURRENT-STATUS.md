@@ -2,7 +2,7 @@
 
 **本文件是唯一当前事实入口；SHA/日期只在本文件维护。** 其它文档（[根 README](../README.md)、[README-MVP.zh.md](../README-MVP.zh.md)、[product/versions.json](versions.json)、[已批准版本计划](../docs/roadmap/README.zh.md)）只链接本文件，不再复制易过时的提交号、产物 SHA 与验收计数。
 
-本文件是状态索引，不是发布声明，也不替代原始证据；结论升级必须来自新的命令输出或新证据文件，不能只改本文件的文字。状态词表：`PASS` / `FAIL` / `BLOCKED-ENVIRONMENT` / `BLOCKED-EXTERNAL` / `DEFERRED`；实现进度另用 `IMPLEMENTED` / `VERIFIED`；原先的待确认占位已由 Lead 整合完成，本文件不再保留占位。历史文档、`review/` 目录与既有证据保持原样，本文件只在"历史索引"给日期、提交与位置。
+本文件是状态索引，不是发布声明，也不替代原始证据；结论升级必须来自新的命令输出或新证据文件，不能只改本文件的文字。状态词表：`PASS` / `FAIL` / `BLOCKED-ENVIRONMENT` / `BLOCKED-EXTERNAL` / `DEFERRED`；实现进度另用 `IMPLEMENTED` / `VERIFIED`；除 §7/§8 两节按 Lead 指示预留的结构外，本文件不保留其它占位。历史文档、`review/` 目录与既有证据保持原样，本文件只在"历史索引"给日期、提交与位置。
 
 ## 1. 当前开发提交与候选版本
 
@@ -12,6 +12,7 @@
 | 收尾基线（整合前） | `c772c2df6384c1eeef865a63a8afc0ee7c5b4a55`，tree `ac612185b53ed553acae9cc9727e4bf4bc798299`（`git rev-parse HEAD`，2026-10-31 09:47 +08 工作树干净） |
 | 收尾最终提交（当前源码身份） | `089d598dfda1cf59eedb7c4b89d3a2b43a985af0`，tree `080b1c753b5c421ddf5f95c2a97c46b587c23dfe`；相对基线 `c772c2df…` 为 40 files changed, 5868 insertions(+), 242 deletions(-)（`git rev-parse HEAD`、`git rev-parse HEAD^{tree}`、`git diff --shortstat c772c2df63 HEAD`）；分支 `work/0.0.1-closure-final`，**仅本地、未推送**，该提交后 `git status --porcelain` 为空（除本文件这次索引编辑） |
 | 本索引更新 | 本文件这次修改位于 `089d598d…` 之后的一个文档提交，只改本文件、不改变源码身份；"当前开发提交"始终指 `089d598d…` |
+| 本轮（第二轮）收尾提交 | **待 Lead 提供**：本轮源码身份与 tree（含 `unknown` 用户可见性修复，可能伴随构建产物变化）。未定稿前不写入；确定后替换本行并同步 §3/§4 的待更新项 |
 | 候选产品版本 | `0.0.1-beta2`（产品版本与 Runtime 版本独立） |
 | Runtime | DeepSeek Harness `0.2.1-rc.3`，tag `dsh-v0.2.1-rc.3`，commit `1f81c047fc48fa190a683e469daa699857e9afe8` |
 | 候选包 | 本仓库不存放 DMG；最近候选与证据包位于工作树外的私密证据区（见 §2），文件名 `dsh-bot-0.0.1-beta2-7d15cb18-mac-arm64-unsigned.dmg` |
@@ -48,6 +49,8 @@
 
 E PASS 不等于 U PASS，U PASS 不等于 R PASS。历史 PASS 不是当前 PASS；fixture/mock 证据不是真人或真实 Provider 证据。上表"E 层"的 PASS 是源码级门禁（含 S1–S3 与 F1），**不含打包验收**（未重做）；U/R 层结论不变。
 
+**第二轮待更新项（未定稿，等 Lead 结论）**：①E 层——`unknown` 用户可见性修复合并后，复核 E 层是否仍为源码级 PASS（含 S1–S3/F1 是否受影响）；②U 层——`unknown` 相关用户可见性证据待登记（见 §7）；③R 层不变。
+
 ## 4. 核心门禁及明确缺口
 
 门禁编号沿用收尾计划书 §6（G0–G12）与 §3–§5（S1–S3、F1）；状态只来自列出的证据。
@@ -67,11 +70,13 @@ E PASS 不等于 U PASS，U PASS 不等于 R PASS。历史 PASS 不是当前 PAS
 | G10 退出重启 | PASS | `first-shutdown`、`first-descriptor-cleanup`、`restart-shutdown`、`restart-descriptor-cleanup` | — |
 | G11 复测稳定 | PASS | 三轮回放 3/3 首次成功、同一 DMG SHA | 长期稳定不属于三轮机械冒烟 |
 | G12 日常试用 | NOT-STARTED | — | 作者连续使用 + 3–5 名技术友好用户一周（需用户招募同意） |
-| S1 默认权限与越界审批 | PASS（源码级） | 收尾 S1 修复与副作用断言测试（Lead 整合，命令见 §7） | 仅覆盖已声明支持的执行入口（fs 工具族、bash 工具）；不构成"任意恶意程序"的证明；未覆盖 MCP 工具子进程（默认未挂载）、持久终端、computer-use/CUA/browser-use（未挂载，屏幕开关仅尽力而为）、PTC `run_code`（静态确认有 policy，未跑真实用例）；迁移提示载体较窄（`permission-migration.json`、`/bot/status.permissionNotice`、audit、`/health.agent.permission`） |
+| S1 默认权限与越界审批 | PASS（源码级） | 收尾 S1 修复与副作用断言测试（Lead 整合，命令见 §9） | 仅覆盖已声明支持的执行入口（fs 工具族、bash 工具）；不构成"任意恶意程序"的证明；未覆盖 MCP 工具子进程（默认未挂载）、持久终端、computer-use/CUA/browser-use（未挂载，屏幕开关仅尽力而为）、PTC `run_code`（静态确认有 policy，未跑真实用例）；迁移提示载体较窄（`permission-migration.json`、`/bot/status.permissionNotice`、audit、`/health.agent.permission`） |
 | S2 取消入口统一 | PASS（源码级） | 收尾 S2 修复与测试（Lead 整合） | breaking change：未升级旧客户端会收到 `400 CANCEL_TARGET_REQUIRED` + `upgrade` 提示；legacy 客户端"先读 `/task-state` 再取消"之间若 turn 结束会得到 `STALE_TURN`（不取消，而非取消错的） |
 | S3 凭据并发与原子性 | PASS（源码级，未降级） | 收敛到"同一写入协议 + 同一把锁"（`withFileLock(<doc>.lock)` + `writeFileAtomic`，Desktop 等待 40s > 上游持有 30s）；负向对照：无锁写法 10 轮×8 进程丢 32/80 refs → 修复后 0 | 唯一 `DEFERRED`：Desktop 写路径不保留 `.credentials.yaml` 注释/排版（键值与顶层字段不丢）；存储是 0600 私有文件，不是 Keychain 加密 |
 | F1 正式状态与桌面投影 | PASS（协议/投影级） | 四句验收均成立：两个界面不会批准不同操作；旧选项序号不会回答新问题；重连不自动重放任务（含崩溃 `unknown` 与优雅 `cancelled` 两类 Host 级证据）；UI 不伪造完成（投影级） | 既有缺口：`snapshot@1` 的 `interactions` 不投影 `unknown`（基线即如此，非本次引入）→ `DEFERRED`；unknown 语义在 registry 层正确 |
 | B2-G01…G18（自动化） | 18/18 PASS（automated evidence level） | `gate-map.json`（sourceCommit `7d15cb18…`，artifactSha256 一致） | 绑定旧候选源码 `7d15cb18…`，不作为新源码 `089d598d…` 的证据；其中 B2-G01/G03/G07、B2-G15 的结论层级见 §4.1 |
+
+**第二轮待更新项（未定稿，等 Lead 结论）**：①F1 行——`snapshot@1` 的 `interactions` 不投影 `unknown` 的既有 `DEFERRED` 是否被本轮修复关闭；②G0 仍为 NOT-VERIFIED，直到 Stage D 重建；③B2 行——若本轮构建产物变化，旧候选绑定注记需复核；④`unknown` 修复与回滚演练的登记结构见 §7/§8。
 
 ### 4.1 S1–S3 / F1 结论明细（Lead 整合，源码级）
 
@@ -80,7 +85,7 @@ E PASS 不等于 U PASS，U PASS 不等于 R PASS。历史 PASS 不是当前 PAS
 - **S3 凭据并发与原子性：PASS（源码级，未降级）**。收敛到"同一写入协议 + 同一把锁"（`withFileLock(<doc>.lock)` + `writeFileAtomic`；Desktop 等待 40s > 上游持有 30s）。负向对照：无锁写法 10 轮 × 8 进程丢 32/80 refs → 修复后 0。唯一 `DEFERRED`：Desktop 写路径不保留 `.credentials.yaml` 注释与排版（键值与顶层字段不丢）。存储是 0600 私有文件，不是 Keychain 加密。
 - **F1 正式状态与桌面投影：PASS（协议/投影级）**。四句验收成立：两个界面不会批准不同操作；旧选项序号不会回答新问题；重连不自动重放任务（含崩溃 `unknown` 与优雅 `cancelled` 两类 Host 级证据）；UI 不伪造完成（投影级）。既有缺口（基线即如此，非本次引入）：`snapshot@1` 的 `interactions` 不投影 `unknown` → `DEFERRED`；unknown 语义在 registry 层正确。
 
-### 4.2 本轮实测（源码级；命令见 §7）
+### 4.2 本轮实测（源码级；命令见 §9）
 
 - `node --test product/pet/tests/*.test.mjs nisse/packages/host-integration/tests/*.test.mjs product/tools/tests/*.test.mjs` → **369/369 pass，exit 0**（host-integration 单包 161 → 224）。
 - `pnpm run build` → **9 gates passed / 0 failed，exit 0**。
@@ -89,7 +94,7 @@ E PASS 不等于 U PASS，U PASS 不等于 R PASS。历史 PASS 不是当前 PAS
 - `node product/tools/dev-doctor.mjs --json` → **exit 1 = BLOCKED-ENVIRONMENT**：3 项 FAIL 全部是隔离工作树缺 dev 构建输入（Electron 可执行文件、`.mvv-build/memory`、`.mvv-build/voice-venv`），不是代码回归；补齐命令：`bash product/tools/build-memory.sh` 与 `uv` 语音环境准备。
 - 语音 Python 单测 → **BLOCKED-ENVIRONMENT**（无 voice venv；beta2 基线 101 cases OK）。
 
-文档门禁（本文件改动前实测）：`verify-product-docs` → exit 0；`verify-upstream` → exit 0（16347 official files / 47 explicit product overrides）。KNOWN-DEVIATION（改动前既有、独立于本次收尾，不改写、不冒充已修复）：全库 `verify-translation-pairing` exit 1（9 处产品新增 zh-only 文档，缺英文对与 `.i18n.yaml`）；`verify-repository-references` exit 1（180 → 206，增量 26 来自本文件按 §10 要求记录的提交身份）；`verify-md-wrap` 报告 `README.md:126` / `README.zh.md:126` 两个既有 HTML 锚点行。索引记录提交号与上游"维护文件禁止记录 commit"规则的冲突需要 Lead/上游策略决定，不能靠删除索引里的提交号绕过。
+文档门禁（本文件改动前实测）：`verify-product-docs` → exit 0；`verify-upstream` → exit 0（16347 official files / 47 explicit product overrides）。KNOWN-DEVIATION（改动前既有、独立于本次收尾，不改写、不冒充已修复）：全库 `verify-translation-pairing` exit 1（9 处产品新增 zh-only 文档，缺英文对与 `.i18n.yaml`）；`verify-repository-references` exit 1（**180 处改动前既有 + 33 处本索引 = 213**；早期 206 是索引上一版测量值。归因与处置方案见私密 `round2/GATE-DEVIATION-PROPOSAL.md`，A/B/C 均未实施）；`verify-md-wrap` 报告 `README.md:126` / `README.zh.md:126` 两个既有 HTML 锚点行。索引记录提交号与上游"维护文件禁止记录 commit"规则的冲突需要 Lead/上游策略决定；**不得删除索引里的提交身份来掩盖该偏差**，只能按提案改变身份存放位置/形式或对明确范围做规则适配。
 
 ## 5. 用户需配合事项
 
@@ -115,7 +120,7 @@ E PASS 不等于 U PASS，U PASS 不等于 R PASS。历史 PASS 不是当前 PAS
 | 4 | 真实 Key / 真人语音 / TCC 人工验收 | 用户配合项 1–3 | G2–G5、G9 有绑定同一产物的证据 |
 | 5 | 试用与体验指标 | 用户配合项 8 | G12 与计划书 §6.1 指标有分母与失败定义 |
 | 6 | 旧产物清理执行、路线变更批准 | 用户配合项 5、9 | 清理记录与批准状态可复核 |
-| 7 | 回滚基线定案 | 用户配合项 6 | 正式回滚点写入 §6.3 |
+| 7 | 回滚基线定案 | 用户配合项 6 | 正式回滚点写入 §6.3 与 §8.1（回滚演练结论） |
 
 每一步只更新本文件对应行；其它文档不复制这些数字。
 
@@ -142,7 +147,51 @@ E PASS 不等于 U PASS，U PASS 不等于 R PASS。历史 PASS 不是当前 PAS
 | `nisse/dist/rc3-closure/` 同名 DMG | 未验收，不作为回滚包 | 实测 SHA-256 `6dc0db38…`（不是 `76d13562…`）；来源是 2026-10-25/26 本地构建（`mvp/rc3-closure` @ `8c34e669…`），材料目录中的本地验收报告（`nisse/review/rc3-closure-2026-10-25/LEAD-LOCAL-ACCEPTANCE.zh.md`，非本仓库文件）结论为"不建议按已交付 MVP Candidate 接受"（4 个 High 未解决），仅核心运行链路实测通过 |
 | 回滚链完整性（计划书 §8.3） | **有条件 SATISFIED** | 有可验证的上一已验收候选（`f801a59b`）+ 仅构建可验证的候选（`6a6cdfd8`）；但数据格式 **beta1↔beta2 兼容性未验证**，且正式回滚基线尚未由用户拍板 |
 
-## 7. 取数与复核
+## 7. 本轮 `unknown` 用户可见性修复（结构预留，待 Lead 提供）
+
+> 本节按 Lead 指示预留登记结构；**内容留 TODO**，未获结论前不得填入推断值，也不得据本节修改 §3/§4 的结论。
+
+| 字段 | 要登记的内容 | 状态 |
+|---|---|---|
+| 问题 | 用户可见的 `unknown`（任务/审批结果未知）在主窗口与气泡上的原状与缺口 | TODO：待 Lead 提供 |
+| 修复范围 | 受影响模块/文件（Host 投影、pet/气泡、Desktop），以及是否改变 `snapshot@1`/协议语义 | TODO |
+| 提交 | 本轮最终提交与 tree（与 §1"本轮（第二轮）收尾提交"一致） | TODO |
+| 证据 | 新增/更新的测试名、运行命令、退出码（不得只写"已修复"） | TODO |
+| 用户可见性验收 | 用户实际看到的状态；与"官方结果先到""Host 崩溃 unknown""优雅 cancelled"等既有证据的关系 | TODO |
+| 结论 | `PASS` / `FAIL` / `BLOCKED-*`（含未覆盖边界） | TODO |
+| 关联 | §4 F1 行 `snapshot@1 interactions` 不投影 `unknown` 的既有 `DEFERRED` 是否因此关闭 | TODO |
+
+## 8. 回滚演练结论（结构预留，待 Lead 提供）
+
+> 三个分类互斥：同一产物只能出现在一处；未演练的项写 `TODO` 或 `DEFERRED`，不得预设"可用"。
+
+### 8.1 正式可用回滚基线
+
+| 字段 | 要登记的内容 | 状态 |
+|---|---|---|
+| 产物 | DMG 路径、文件 SHA-256、字节数（产物 SHA-256 不触发提交身份门禁） | TODO |
+| 绑定源码 | commit/tree 与验收记录（acceptance run id） | TODO |
+| 数据格式兼容性 | beta1↔beta2 迁移/回滚是否有实测结论 | TODO |
+| 演练证据 | 安装→启动→执行任务→退出→回滚→数据保留的全过程与退出码 | TODO |
+| 结论 | `可用` / `不可用`（附理由） | TODO |
+
+### 8.2 回滚候选
+
+| 字段 | 要登记的内容 | 状态 |
+|---|---|---|
+| 产物 | DMG 路径、SHA-256、字节数 | TODO |
+| 与基线差距 | 缺哪项证据（绑定源码/验收记录/数据格式兼容性）才不能升级为正式基线 | TODO |
+| 结论 | `候选（待补齐 X）` | TODO |
+
+### 8.3 不可回滚
+
+| 字段 | 要登记的内容 | 状态 |
+|---|---|---|
+| 产物或记录 | 明确不可回滚的对象（例如记录与文件不一致、未验收） | TODO |
+| 理由 | 为何不可回滚（哈希不符/文件缺失/版本不兼容/未验收） | TODO |
+| 处置 | 保留原因、是否需要用户决策 | TODO |
+
+## 9. 取数与复核
 
 第一轮取数与门禁实测在 2026-10-31 09:43–10:06 +08；第二轮（收尾提交后）的权威事实与实测结果由 Lead 整合提供（2026-10-31），命令与结果如下。`<EVID>`、`<CANDIDATES>`、`<NISSE>`、`<NISSE_DSH>` 为私密证据区占位符（本文件不公开本机绝对路径）。
 
@@ -180,13 +229,20 @@ cat <NISSE>/dist/v0.1/SHA256SUMS.txt; shasum -a 256 <NISSE>/dist/v0.1/*.dmg
 # 文档门禁
 node product/tools/verify-product-docs.mjs    # exit 0
 node product/tools/verify-upstream.mjs        # exit 0
+
+# 门禁偏差取数（第二轮）
+pnpm exec tsx scripts/verify-repository-references.ts   # exit 1；当前 213 处（180 既有 + 33 本索引）
+pnpm exec tsx scripts/verify-translation-pairing.ts     # exit 1；9 处既有（英文对缺失）
+pnpm exec tsx scripts/verify-md-wrap.ts                 # exit 1；2 处既有（README 两个 HTML 锚点行）
+# 逐条归因脚本与 26→33 计数脚本见私密提案 GATE-DEVIATION-PROPOSAL.md 附录 A/B
 ```
 
-## 8. 维护规则
+## 10. 维护规则
 
 - 只在打包验收、门禁结论或开发身份变化时改本文件；一行一处事实，不要把证据解释扩写成叙述。
 - 任何重新构建都产生新身份：更新 §1/§2，并把上一候选移入 §6.2；不得只替换文字而保留旧 SHA。
 - 不把历史 PASS 当当前 PASS；不把 fixture/mock 证据当真人或真实 Provider 证据；无法验证时写 `BLOCKED-*` / `DEFERRED`，不写"条件通过"。
 - 改根 `README.md`、`README.zh.md`、`README.i18n.yaml` 后必须同步登记：在 `product/upstream-allowlist.json` 更新对应 blob SHA（`git hash-object <file>`），并用 `pnpm exec tsx scripts/verify-translation-pairing.ts --write README.md` 重录双语配对；否则 `verify-upstream` 或 `verify-translation-pairing` 会失败。
 - 本文件自身的更新提交不改变源码身份（§1 的 `089d598d…`）；不需要因此重建或重新打包验收。
+- 不得为让 `verify-repository-references` 变绿而删除或隐藏本文件中的提交身份；该门禁偏差（180 处改动前既有 + 33 处本索引）按私密提案 `round2/GATE-DEVIATION-PROPOSAL.md` 的评审结论处置，修改上游 `scripts/**` 必须经用户批准。
 - 提交前分别运行 `node product/tools/verify-product-docs.mjs` 与 `node product/tools/verify-upstream.mjs`，两个都要 exit 0。

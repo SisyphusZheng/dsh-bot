@@ -8,6 +8,25 @@
  *   taking the snapshot and subscribing, because all retained events replay;
  * - out-of-window clients are told to resync instead of silently skipping a gap;
  * - duplicate data is bounded by `retention`, never renumbered or rewritten.
+ *
+ * `snapshot@1` additive extension — `interactions.unknown` (R2, 0.0.1 closure):
+ * - `interactions` keeps `focusedId`, `pending`, `drafts`, `recentlyResolved` with
+ *   their exact previous shape and meaning; `unknown` is a new optional array of
+ *   final interactions whose official outcome could not be confirmed (for example
+ *   a crash/restart before the official lifetime settled, reason
+ *   `HOST_RESTARTED`/`INTERACTION_UNKNOWN_AFTER_RESTART`).
+ * - Each entry is `{ id, kind, sessionId, reason, at, action: { id, label } }`:
+ *   `id` is the product interaction id, `kind` is `'approval' | 'question' | null`,
+ *   `reason` is a bounded machine code (never a fabricated outcome), `at` is an ISO
+ *   timestamp or null, and `action` is the only safe recovery entry (`open-main`:
+ *   open the main window and verify the official state). Unknown entries are final:
+ *   clients MUST NOT answer, retry, replay or present them as resolved/cancelled.
+ * - Compatibility: the field is optional and additive, so the schema stays
+ *   `snapshot@1` and it may be absent (older Hosts) or ignored (older clients,
+ *   which keep reading the unchanged legacy fields). New clients must treat an
+ *   absent/empty list as "nothing known to be unconfirmed", never as success.
+ *   A non-empty list sets `presentation.displayMode` to `'unknown'` rather than
+ *   `'idle'`, so the UI does not present an unconfirmed result as ordinary idle.
  */
 import { PROTOCOL_VERSION, SNAPSHOT_SCHEMA, newId, nowIso } from './contracts.mjs'
 

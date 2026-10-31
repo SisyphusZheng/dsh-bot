@@ -63,12 +63,13 @@ type KernelEvent = {
   turnId?: string | null
   data?: Record<string, unknown>
 }
+type KernelUnknownInteraction = { id?: string; kind?: string | null; reason?: string | null }
 type KernelSnapshot = {
   hostEpoch?: string
   snapshotSeq?: number
   identity?: { sessionId?: string | null; hostPid?: number }
   execution?: { state?: string; sessionId?: string | null; turn?: number | null; turnId?: string | null; clientTurnId?: string | null }
-  interactions?: { pending?: PendingInteraction[] }
+  interactions?: { pending?: PendingInteraction[]; unknown?: KernelUnknownInteraction[] }
   presentation?: { bubblePolicy?: { placement?: string; anchorGapPx?: number } }
 }
 type KernelReceipt = { status?: string; result?: Record<string, unknown>; error?: { code?: string; message?: string } | null }
@@ -97,6 +98,27 @@ export function cancelFailureNotice(code: string): { kind: string; text: string 
   if (code === 'CONFIRMATION_REQUIRED') return { kind: 'status', text: '停止任务需要确认：请在桌宠气泡里确认「确认停止任务」。' }
   if (/STALE|CANCEL_TARGET|NO_ACTIVE_TURN/.test(code)) return { kind: 'status', text: '要停止的任务已经结束或不是当前任务；没有执行停止。' }
   return { kind: 'error', text: '停止请求未被确认，任务结果未知；请打开主窗口检查，不会自动重试。' }
+}
+
+/**
+ * One-sentence recovery hint for interactions whose official outcome is unknown.
+ *
+ * The Host already refuses to answer or replay an unconfirmed interaction; this hint
+ * exists only so the user is never told the result succeeded (or shown plain idle),
+ * and it offers the safe entry: open the main window and verify the official state.
+ * @param snapshot - latest `snapshot@1` body, or null before the first snapshot.
+ * @returns the notice to show (with the "open main window" action), or null.
+ */
+export function unknownInteractionNotice(
+  snapshot: { interactions?: { unknown?: readonly unknown[] } } | null | undefined,
+): { kind: string; text: string; secondary: { id: string; label: string }[] } | null {
+  const unknown = Array.isArray(snapshot?.interactions?.unknown) ? snapshot.interactions.unknown : []
+  if (unknown.length === 0) return null
+  return {
+    kind: 'status',
+    text: `上次审批或回答的结果尚未确认（${unknown.length} 项）；请打开主窗口核实，不会自动重试。`,
+    secondary: [{ id: 'open', label: '打开主窗口确认' }],
+  }
 }
 type ProcessType = 'foreground' | 'uielement'
 type WindowPolicyModule = {
@@ -252,6 +274,13 @@ export class ProductPet {
   private async inspectTask(): Promise<void> {
     try {
       if (this.mode === 'v2') {
+        // An unconfirmed interaction outranks an idle/working summary: never imply a
+        // result, offer the safe "open the main window and verify" entry instead.
+        const unknownNotice = unknownInteractionNotice(this.kernelSnapshot)
+        if (unknownNotice) {
+          this.presentation?.notice(unknownNotice.text, unknownNotice.kind, 15_000, '', { secondary: unknownNotice.secondary })
+          return
+        }
         const receipt = await this.sendKernelCommand('task.status', {})
         const execution = (receipt.result?.execution || {}) as { state?: string; lastTurn?: { terminal?: string } }
         const waiting = Boolean(this.kernelSnapshot?.interactions?.pending?.length)
