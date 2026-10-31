@@ -12,7 +12,7 @@
   <sub>演示视频制作中 · 分镜与旁白见 <a href="docs/demo/SCRIPT.zh.txt">docs/demo/SCRIPT.zh.txt</a></sub>
 </p>
 
-当前状态：**`0.0.1-beta2`，macOS Apple Silicon 本地候选**（当前开发分支 `work/0.0.1-closure-final`）。原生打包自动验收的最新结论、真人声学/TCC/真实 Provider/个人记忆库等人工边界，以及收尾新源码尚未重新打包验收这一事实，都以 [product/CURRENT-STATUS.md](product/CURRENT-STATUS.md) 为准；本 README 不复制提交号、产物 SHA 与验收计数。
+当前状态：**`0.0.1-beta2`，macOS Apple Silicon 本地候选**（当前开发分支 `work/0.0.1-closure-final`）。原生打包自动验收的最新结论、真人声学/TCC/真实 Provider/个人记忆库等人工边界，以及**当前候选是否已完成打包验收**，都以 [product/CURRENT-STATUS.md](product/CURRENT-STATUS.md) 为准；本 README 不复制提交号、产物 SHA 与验收计数。
 
 ---
 
@@ -103,7 +103,7 @@ flowchart LR
 
 ## 工程验证
 
-门禁状态、验收计数、产物 SHA 与证据路径统一见 [product/CURRENT-STATUS.md](product/CURRENT-STATUS.md)；本 README 不再复制容易过时的数字。历史候选的原始证据按目录保存在 `review/`，构建与验收脚本在 `product/tools/`。安全默认权限与越界审批（S1–S3）的结论以索引中的对应行为准，未定稿前本 README 不宣称安全门禁 PASS。
+门禁状态、验收计数、产物 SHA 与证据路径统一见 [product/CURRENT-STATUS.md](product/CURRENT-STATUS.md)；本 README 不再复制容易过时的数字。历史候选的原始证据按目录保存在 `review/`，构建与验收脚本在 `product/tools/`。安全默认权限与越界审批（S1–S3）、取消入口与凭据写入的结论、以及各自**未覆盖的入口**，都以索引中的对应章节为准（本 README 不复述边界）。
 
 可复核的入口：
 

@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write README.md
 /nisse-dsh-bot:
-  en: df37434576364b72
-  zh: f35bb8cc05f9e0c2
+  en: 21c5f12ebbb9c0a7
+  zh: 64fe0b572c59dae9
 /nisse-dsh-bot/section:
   en: 99d16c10f091c5b6
   zh: 99d16c10f091c5b6
@@ -30,8 +30,8 @@
   en: a76cfcbfb3e76ef7
   zh: a76cfcbfb3e76ef7
 /nisse-dsh-bot/section~4:
-  en: d9ce7ceffd92e327
-  zh: d9ce7ceffd92e327
+  en: 38bd082a43faabed
+  zh: 38bd082a43faabed
 /nisse-dsh-bot/section/section:
   en: 5808ee537dad4429
   zh: 5808ee537dad4429

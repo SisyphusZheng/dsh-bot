@@ -220,17 +220,17 @@
     "reason": "Reuse official desktop tray for macOS with existing product icon and explicit size"
   },
   "README.md": {
-    "sha": "8ef97bd875937ac2b21480f9d352d19c293bed2a",
+    "sha": "b1973ca5442ed62875ba094ffee8c10e31973499",
     "mode": "100644",
     "reason": "Product README replaces upstream DeepSeek Harness landing page; upstream bilingual record archived in git history"
   },
   "README.zh.md": {
-    "sha": "6d8a373503b538a5b931a34faada04a54f203248",
+    "sha": "f82039eaea7ccc1b5155c3fd1c80a8503b0956ac",
     "mode": "100644",
     "reason": "Product README replaces upstream DeepSeek Harness landing page; upstream bilingual record archived in git history"
   },
   "README.i18n.yaml": {
-    "sha": "09b716959ae107dfaeb1681ec94be50675243e1d",
+    "sha": "188e14dc52c981d9f71b6cbffe7264c39521f3a9",
     "mode": "100644",
     "reason": "Product README replaces upstream DeepSeek Harness landing page; upstream bilingual record archived in git history"
   }
