@@ -182,11 +182,11 @@ E PASS 不等于 U PASS，U PASS 不等于 R PASS。历史 PASS 不是当前 PAS
 | 字段 | 内容 |
 |---|---|
 | 产物 | `0.0.1-beta-f801a59b` DMG：`7acadd6b…`、702,230,791 B（`acceptance-1793287717/RESULTS.json` 15/15 PASS） |
-| 已证明 | 安装到隔离目录 → 用其自己那次验收的旧 user-data 启动 → 召回 `updatedAt=2026-10-29T15:30:52Z` 的原始记忆 → 写入新数据 → 项目自带 web 验收 PASS → 3 次重启连续 → SIGTERM 2s 退出、8 子进程 / 2 descriptor / 端口全清 |
-| 未证明（因此不能升级为正式基线） | beta1↔beta2 `dataFormat` 兼容、降级断言、真实用户库（≈470 MiB）迁移、回滚后凭据可用性、回滚包三轮稳定性 |
-| 关键负向发现 | `BOT_CONFIG_PORT=59100` 硬编码 → **回滚必须先在跑实例退出**（否则 `EADDRINUSE`） |
-| 证据 | 私密 `round2/ROLLBACK-DRILL.md` |
-| 结论 | **回滚候选（数据兼容双向 + 三轮稳定 + 凭据文件完整）** |
+| 已证明 | 安装到隔离目录 → 用其自己那次验收的旧 user-data 启动 → 召回 `updatedAt=2026-10-29T15:30:52Z` 的原始记忆 → 写入新数据 → 项目自带 web 验收 PASS → 3 次重启连续 → SIGTERM 2s 退出、8 子进程 / 2 descriptor / 端口全清；另：beta1↔beta2 **双向**数据兼容、回滚包**三轮**首次就绪 3/3 与跨轮记忆连续 2/2、凭据文件 0600 且未知 ref 未丢 |
+| 未证明（因此不能升级为正式基线） | 真实用户库（≈470 MiB）迁移、真实凭据往返（新包写 → 旧包用）、更老版本组合（且最老包本身不可隔离，见下方负向发现②） |
+| 关键负向发现 | ①`BOT_CONFIG_PORT=59100` 硬编码 → **回滚必须先在跑实例退出**（否则 `EADDRINUSE`）；②**`0.0.1-beta`（`2c74680111`，DMG `76d13562…`）忽略 `--user-data-dir`**，启动即写入真实数据根并会把受管权限块重生成回 `danger-full-access` → **回滚目标限定为 `f801a59b` 或更新**，更老包不能隔离运行 |
+| 证据 | 私密 `round2/ROLLBACK-DRILL.md`、`round2/DATA-COMPAT-DRILL.md`、`round2/ROLLBACK-STABILITY.md`、`round2/ROLLBACK-OLDEST-FINDING.md` |
+| 结论 | **回滚候选（数据兼容双向 + 三轮稳定 + 凭据文件完整；回滚窗口 = f801a59b 及以后）** |
 
 ### 8.3 不可回滚
 
