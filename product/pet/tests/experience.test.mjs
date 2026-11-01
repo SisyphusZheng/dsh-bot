@@ -58,6 +58,15 @@ test('hold/toggle/mouse gestures, hide/wake shortcut and keyword control the own
  experience.update({wakeWordEnabled:true,wakeWordPhrase:'你好小鲸'});experience.wake();assert.equal(events.at(-1).value.source,'wake-word')
 }))
 
+test('changing the talk key while held releases the old capture and admits the new key',()=>fixture(async({experience,events})=>{
+  experience.gesture('down')
+  experience.update({voiceInput:{keyId:'mouse4'}})
+  assert.equal(events.filter(x=>x.channel==='voice-command').at(-1).value.action,'mute')
+  experience.gesture('down')
+  assert.equal(events.filter(x=>x.channel==='voice-command').at(-1).value.action,'enable')
+  experience.gesture('up')
+}))
+
 test('Dock, notifications and speech length are local preferences and never restart the Agent',()=>fixture(async({experience,home})=>{
  assert.equal(experience.state().showDockIcon,true);assert.equal(experience.state().systemNotifications,true)
  experience.menu().find(item=>item.label==='显示 Dock 图标').click()

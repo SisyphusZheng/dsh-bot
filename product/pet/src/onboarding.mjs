@@ -203,7 +203,9 @@ export function normalizeProgress(raw) {
 export function startProgress({ restart = false, previous = null } = {}) {
   const previousState = restart ? null : normalizeProgress(previous)
   if (previousState && !previousState.completed) {
-    return { ...previousState, paused: false }
+    // An in-flight network test cannot survive process restart. Restore an
+    // actionable form instead of an eternal spinner; never retry a paid API silently.
+    return { ...previousState, paused: false, ...(previousState.substate === 'testing' ? { substate: 'idle', lastError: '上次连接测试已中断，请重新测试。' } : {}) }
   }
   return { ...emptyProgress(), paused: false }
 }
@@ -743,7 +745,6 @@ export function reduceOnboarding(progress, action) {
         return finish(goTo(next, 'done'))
       }
       if (state.stepId === 'done') {
-        if (id === 'open-settings') effects.push({ type: 'open-dsh-settings' })
         if (id === 'open-settings' || id === 'complete') {
           if (id === 'open-settings') effects.push({ type: 'open-dsh-settings' })
           effects.push({ type: 'save-config' })

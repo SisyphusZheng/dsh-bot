@@ -28,7 +28,7 @@ export function createPetExperience(options) {
   const state = () => ({ ...preferences, language: effectiveDesktopLanguage(preferences.language, options.systemLanguage || 'zh') === 'en' ? 'en' : 'zh', configuredLanguage: preferences.language, orbSkin: effectiveOrbSkin(preferences.orbSkin, { skinsRoot }), voiceInput: voice, globalOption: native.available, hint: talkKeyHint({ settings: voice, globalOption: native }).text, onboarding: !pending && !!progress && !progress.completed && !progress.paused })
   const publish = () => { if (!stopped) emit('preferences', state()) }, persist = () => { store.save({ localConfig: preferences, voiceInput: voice }); publish() }
   const notify = text => options.notice?.(translate(text)), command = (action, source = 'gesture') => { if (!stopped) emit('voice-command', { action, source }) }
-  const unregister = () => { watcher?.stop(); watcher = undefined; for (const key of registered) shortcuts?.unregister(key); registered.clear() }
+  const unregister = () => { watcher?.stop(); watcher = undefined; clearTimeout(holdTimer); holdTimer = undefined; if (held) { held = false; lastGestureAt = Date.now(); command('mute') }; for (const key of registered) shortcuts?.unregister(key); registered.clear() }
   function register(key, action) { try { if (shortcuts?.register(key, action)) registered.add(key); else if (shortcuts) notify(`快捷键 ${key} 已被占用，请重新选择。`) } catch (error) { notify(error.message) } }
   function rebuildKeys() {
     unregister(); const preset = TALK_KEY_PRESETS.find(item => item.id === voice.keyId)
@@ -92,7 +92,7 @@ export function createPetExperience(options) {
     { label: label('导入旧桌宠偏好…'), click: async () => { const file = await dialogs?.pickPreferences?.(); if (!file) return; try { const old = JSON.parse(readFileSync(file, 'utf8')); progress = old.onboarding || progress; saveProgress(); update({ ...old.localConfig, voiceInput: old.voiceInput }) } catch (error) { notify(error.message) } } },
   ] }
   native = loadGlobalOptionKeyState({ requireImpl: nativeRequire, candidates: ['koffi'] }); rebuildKeys()
-  const interval = setInterval(() => { if (preferences.autoHideSeconds && !pending && !mic && !state().onboarding && idle() >= preferences.autoHideSeconds && presence.state === 'active') { presence.hide(); hide(); emit('lifecycle', { state: 'hidden' }) } }, 1000); interval.unref?.()
+  const interval = setInterval(() => { if (preferences.autoHideSeconds && !pending && !mic && !opening && !held && Date.now() - lastGestureAt >= 3000 && !state().onboarding && idle() >= preferences.autoHideSeconds && presence.state === 'active') { presence.hide(); hide(); emit('lifecycle', { state: 'hidden' }) } }, 1000); interval.unref?.()
   return { state, menu, update, action, gesture, inputActive: () => held || Date.now() - lastGestureAt < 3000,
     start() { publish(); if (!progress || (!progress.completed && !progress.paused)) onboarding(); if (voice.mode === 'always') command('enable', 'restored-preference') },
     sync(snapshot) { const was = pending; pending = !!snapshot.requests?.length; if (was && !pending) render() },
