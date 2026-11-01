@@ -385,7 +385,7 @@ export function createCompanionPresentation({
       if (uxTimer.id !== id || uxTimer.owner !== owner) return
       uxTimer = { id: null, owner: null }
       try { action() } catch { /* a timer must never break presentation */ }
-    })
+    }, duration)
     uxTimer = { id, owner }
   }
   const working = () => ACTIVE_EXECUTION_STATES.has(String(projection.execution?.state || '')) || reply.streaming || (mode !== 'v2' && legacy.working)

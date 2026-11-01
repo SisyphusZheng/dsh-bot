@@ -11,6 +11,33 @@ function fixture(send = async () => {}) {
     setTimer(fn) { timers.set(++seq, fn); return seq }, clearTimer(id) { timers.delete(id) } })
   return { presentation, shown, animations, timers, hidden: () => hidden }
 }
+test('transient error notices remain visible until their actual deadline', () => {
+  let now = 0, sequence = 0, hidden = 0
+  const timers = new Map()
+  const p = createCompanionPresentation({
+    show() {}, hide() { hidden++ }, animate() {}, send: async () => {},
+    setTimer(fn, ms) {
+      assert.ok(Number.isFinite(ms) && ms > 0, 'every display timer must supply its duration')
+      const id = ++sequence
+      timers.set(id, { fn, due: now + ms })
+      return id
+    },
+    clearTimer(id) { timers.delete(id) },
+  })
+  p.sync({ pid: 1, sessionId: 's', requests: [] })
+  const before = hidden
+  p.notice('请配置 API Key', 'error', 15000)
+  const advance = ms => {
+    now += ms
+    for (const [id, timer] of [...timers]) if (timer.due <= now) { timers.delete(id); timer.fn() }
+  }
+  advance(14999)
+  assert.equal(hidden, before, 'error must not disappear on the next tick or before its deadline')
+  advance(1)
+  assert.ok(hidden > before, 'notice expires at the requested deadline')
+  p.stop()
+})
+
 const question = { id:'choose',kind:'question',sessionId:'s',questions:[{id:'drink',question:'喝什么？',options:[{label:'拿铁'},{label:'美式'},{label:'茶'}]}] }
 const snapshot = requests => ({ pid:1,sessionId:'s',requests })
 test('waiting inputs can be reviewed, corrected, confirmed or deleted without touching the active task',async()=>{

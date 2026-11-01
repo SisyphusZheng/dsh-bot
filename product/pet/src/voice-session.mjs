@@ -57,6 +57,13 @@ export function createVoiceSession({ createClient, publish, handshakeTimeoutMs =
         await open()
       })
     },
+    /** Configuration failures are terminal until a new explicit user attempt. */
+    unavailable(message) {
+      wanted = false
+      enabled = false
+      const closing = close()
+      return schedule(async () => { await closing; if (!stopped) report('failed', message) })
+    },
     snapshot: () => ({ phase, enabled, wanted }),
     confirmInput(value) { if (ready && !stopped) return client?.confirmInput?.(value) },
     playbackStyle(value) { if (ready && !stopped) return client?.playbackStyle?.(value) },
