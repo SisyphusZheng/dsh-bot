@@ -13,7 +13,7 @@ const state = vi.hoisted(() => ({
   windowCalls: [] as { method: string; args: unknown[] }[],
 }))
 vi.mock('electron', () => ({
-  app: { dock: { isVisible: () => true } },
+  app: { dock: { isVisible: () => true }, isHidden: () => true, show: () => state.windowCalls.push({ method: 'app.show', args: [] }) },
   BrowserWindow: class {
     constructor() { state.owners.push(this.webContents) }
     webContents = {
@@ -138,7 +138,15 @@ it('reconnects speech without reloading the pet document and authenticates signa
     if (!voice?.offerUrl) throw new Error('No signaling URL')
     const petOwner = state.owners[0]
     if (!petOwner) throw new Error('Missing owned pet')
+    const unhideBefore = state.windowCalls.filter(c => c.method === 'app.show').length
+    state.handlers.get('pet:gesture')?.({ sender: petOwner }, 'down')
+    if (process.platform === 'darwin') expect(state.windowCalls.filter(c => c.method === 'app.show')).toHaveLength(unhideBefore + 1)
+    state.handlers.get('pet:gesture')?.({ sender: petOwner }, 'up')
+    const unhideAfter = state.windowCalls.filter(c => c.method === 'app.show').length
     const status = state.handlers.get('pet:voice-status'), action = state.handlers.get('pet:bubble-action')
+    await status?.({ sender: petOwner }, { kind: 'status', text: 'passive background notice', phase: 'idle', notify: true })
+    expect(state.windowCalls.filter(c => c.method === 'app.show')).toHaveLength(unhideAfter)
+    state.events.length = 0 // isolate the existing capture-cancel assertions from gesture setup
     status?.({ sender:petOwner }, { kind:'capture-start',captureId:'capture-a',text:'正在听…' })
     const bubbleOwner=state.owners[1]
     if (!bubbleOwner) throw new Error('Missing owned bubble')
@@ -248,7 +256,7 @@ it('projects the Host v2 snapshot/events and sends revision-bound commands', asy
     }
     if (url.pathname === '/v2/command') {
       let raw = ''
-      req.on('data', chunk => { raw += String(chunk) })
+      req.on('data', (chunk) => { raw += String(chunk) })
       req.on('end', () => {
         const body = JSON.parse(raw) as Record<string, unknown>
         commands.push({ body })

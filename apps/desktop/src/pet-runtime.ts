@@ -501,7 +501,13 @@ export class ProductPet {
       createPetExperience(options: object): Experience
     }
     this.experience = experienceModule.createPetExperience({
-      home: this.options.home, window, emit: (channel: string, value: object) => window.webContents.send(`pet:${channel}`, value),
+      home: this.options.home, window, emit: (channel: string, value: object) => {
+        // A hidden NSApplication cannot be recovered by showInactive(). Only
+        // deliberate voice input may unhide it; passive notifications must not.
+        const { action, source } = value as { action?: string; source?: string }
+        if (channel === 'voice-command' && source === 'gesture' && ['enable', 'toggle'].includes(action || '') && process.platform === 'darwin' && app.isHidden()) app.show()
+        window.webContents.send(`pet:${channel}`, value)
+      },
       show: (payload: object) => { this.positionBubble(); this.bubble?.show(payload) }, hide: () => this.bubble?.hide(),
       shortcuts: globalShortcut, idle: () => powerMonitor.getSystemIdleTime(), systemLanguage: process.env.LANG,
       notice: (text: string) => this.presentation?.notice(text), openMain: () => this.options.toggleMain(true),
