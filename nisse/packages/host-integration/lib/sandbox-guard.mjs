@@ -131,9 +131,35 @@ export function shellWriteHints(command) {
   const targets = []
   for (const pattern of [SHELL_ABSOLUTE_PATH, SHELL_RELATIVE_PATH]) {
     pattern.lastIndex = 0
-    for (const match of text.matchAll(pattern)) if (match[1]) targets.push(match[1])
+    for (const match of text.matchAll(pattern)) {
+      if (!match[1]) continue
+      if (isUrlPathComponent(text, match)) continue
+      targets.push(match[1])
+    }
   }
   return { mutation: SHELL_MUTATION.test(text), unknownTarget: SHELL_VARIABLE_PATH.test(text), targets }
+}
+
+/** A URL scheme (optionally with its slashes) directly before a path spelling. */
+const URL_SCHEME_BEFORE = /[A-Za-z][A-Za-z0-9+.-]*:\/?$/
+
+/**
+ * True when the matched path spelling is the path part of a URL such as
+ * `https://example.com/search?q=x`. The audit hint must not report a URL as a
+ * filesystem target: `open <url>` is not an outside-workspace write.
+ * @param {string} text - the whole command line.
+ * @param {RegExpMatchArray} match - a path-pattern match; group 1 is the spelling.
+ * @returns {boolean}
+ */
+function isUrlPathComponent(text, match) {
+  const spelling = match[1]
+  const offset = match[0].lastIndexOf(spelling)
+  if (offset < 0) return false
+  const before = text.slice(Math.max(0, match.index + offset - 16), match.index + offset)
+  if (URL_SCHEME_BEFORE.test(before)) return true
+  // A bare `//host/...` may also be the path half of `https://host/...` when
+  // the scheme sits just outside the bounded look-behind window.
+  return before.endsWith(':/') || before.endsWith('://')
 }
 
 /**

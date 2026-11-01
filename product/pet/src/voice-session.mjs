@@ -23,10 +23,10 @@ export function createVoiceSession({ createClient, publish, handshakeTimeoutMs =
             if (client !== own || stopped || wanted !== intent) return
             enabled = intent
             report(intent ? 'listening' : 'muted', intent ? '我在听，你说。' : '')
-          } catch (error) { if (client === own) { wanted = false; enabled = false; report('failed', error.message) } }
+          } catch (error) { if (client === own && !stopped) { wanted = false; enabled = false; report('failed', error.message) } }
         },
-        disconnected() { if (client !== own) return; void close().catch(() => {}); report(wanted ? 'failed' : 'off', wanted ? '语音断开，请重新连接。' : '') },
-        error(error) { if (client !== own) return; void close().catch(() => {}); report('failed', `语音连接失败：${error?.message || error?.error || '请检查权限和配置'}`) },
+        disconnected() { if (client !== own || stopped) return; void close().catch(() => {}); report(wanted ? 'failed' : 'off', wanted ? '语音断开，请重新连接。' : '') },
+        error(error) { if (client !== own || stopped) return; void close().catch(() => {}); report('failed', `语音连接失败：${error?.message || error?.error || '请检查权限和配置'}`) },
       })
       client = own
       const cancelled = new Promise(resolve => { cancelConnect = resolve })
@@ -35,15 +35,15 @@ export function createVoiceSession({ createClient, publish, handshakeTimeoutMs =
         const timeout = new Promise((_, reject) => { deadline = setTimeout(() => reject(new Error('语音连接超时，请检查麦克风权限、网络或服务配置。')), handshakeTimeoutMs) })
         await Promise.race([own.connect(endpoint), cancelled, timeout])
       } finally { clearTimeout(deadline) }
-    } catch (error) { if (!own || client === own) { await close().catch(() => {}); report('failed', `连接失败：${error.message}`) } }
+    } catch (error) { if (!own || client === own) { await close().catch(() => {}); if (!stopped) report('failed', `连接失败：${error.message}`) } }
   }
-  function schedule(operation) { const result = queue.then(operation); queue = result.catch(error => report('failed', error.message)); return result }
+  function schedule(operation) { const result = queue.then(operation); queue = result.catch(error => { if (!stopped) report('failed', error.message) }); return result }
   return {
     update(value) { return schedule(async () => { if (value === endpoint) return; endpoint = value; await close(); if (wanted && endpoint) await open(); else if (!endpoint) report(wanted ? 'preparing' : 'off') }) },
     command(action) {
       if (stopped) return Promise.resolve()
       wanted = action === 'toggle' ? !wanted : action === 'enable'
-      if (!wanted) { Promise.resolve(client?.enableMic(false)).catch(error => report('failed', error.message)); enabled = false }
+      if (!wanted) { Promise.resolve(client?.enableMic(false)).catch(error => { if (!stopped) report('failed', error.message) }); enabled = false }
       if (action === 'disable') { const closing = close(); return schedule(async () => { await closing; report('off', '语音已关闭') }) }
       return schedule(async () => { if (stopped) return; if (wanted) await open(); else report(client ? 'muted' : 'off') })
     },

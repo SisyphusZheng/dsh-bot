@@ -3,9 +3,11 @@
 These tests prove the worker reports capture/ASR facts instead of owning any
 business decision: the payload has no routing, queue, approval or request ids.
 """
+import asyncio
 import re
 import unittest
 from datetime import datetime
+from unittest.mock import AsyncMock, patch
 
 from pipecat.frames.frames import (
     InterimTranscriptionFrame,
@@ -171,3 +173,43 @@ class CaptureIdentityGate(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ShutdownNoise(unittest.IsolatedAsyncioTestCase):
+    """Stopping the app must not surface a "voice connection failed" bubble.
+
+    The Host bridge closes before the worker finishes its teardown, so the
+    persisted SSE stream ends mid-transfer (ClientPayloadError/TransferEncoding
+    Error). That is expected during an intentional stop and must never be
+    reported to the user as a retryable voice failure.
+    """
+
+    async def asyncSetUp(self):
+        self.bridge, self.host = make_bridge()
+
+    async def asyncTearDown(self):
+        await teardown_bridge(self.bridge)
+
+    async def test_host_link_failure_during_shutdown_is_suppressed(self):
+        import dsh_bridge
+        from host_client_v2 import HostUnavailable
+
+        reported = []
+
+        async def record(*args, **kwargs):
+            reported.append((args, kwargs))
+
+        with patch.object(dsh_bridge, "report_voice_error", new=record):
+            self.bridge._closing = True
+            self.bridge._host_error_reported_at = 0.0
+            self.bridge._report_host_error(HostUnavailable("host event stream closed", kind="network"))
+            await asyncio.sleep(0)
+            self.assertEqual(reported, [],
+                             "shutdown-time Host stream truncation must not reach the UI")
+            self.assertEqual(self.bridge._host_error_reported_at, 0.0)
+
+            # After teardown completes the same classified failure is reportable again.
+            self.bridge._closing = False
+            self.bridge._report_host_error(HostUnavailable("host event stream closed", kind="network"))
+            await asyncio.sleep(0)
+            self.assertEqual(len(reported), 1)

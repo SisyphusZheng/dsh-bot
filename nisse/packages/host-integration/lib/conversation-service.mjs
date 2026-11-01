@@ -384,12 +384,54 @@ export function createConversationService({
 
   // ---------------- capture / voice facts ----------------
 
+  /** Capture states that keep the recording bubble on screen. */
+  const RECORDING_CAPTURE_STATES = new Set(['admitting', 'listening', 'closing', 'transcribing'])
+
+  function captureData() {
+    return {
+      state: capture.state, mode: capture.mode, captureId: capture.captureId,
+      preview: capture.preview, connectionId: capture.connectionId,
+    }
+  }
+
+  /**
+   * Project the assembler's capture lifecycle onto the Host capture state.
+   *
+   * The worker reports `finish` as a release fact; the assembler then drains
+   * buffered finals. Nothing else used to move the projection back to `off`,
+   * so the renderer kept an ended recording's bubble (and its "取消录音"
+   * affordance) on screen indefinitely. A released capture with no buffered
+   * utterance is already over; a finished/discarded capture is over even if a
+   * late duplicate final arrives. Returns true when the projection changed.
+   */
+  function syncCaptureState() {
+    const id = capture.captureId
+    if (!id) return false
+    if (!RECORDING_CAPTURE_STATES.has(capture.state)) return false
+    const info = assembler.captureInfo(id)
+    const finished = info.state === 'finished' || info.state === 'discarded'
+    const drained = info.released && info.pendingGroups === 0
+    if (!finished && !drained) return false
+    capture.state = 'off'
+    capture.preview = null
+    capture.updatedAt = nowIso()
+    return true
+  }
+
+  function emitCaptureChanged() {
+    emit('capture.changed', { data: captureData() })
+  }
+
   function applyCaptureFacts(payload) {
     const next = payload?.capture && typeof payload.capture === 'object' ? payload.capture : null
     if (next) {
-      if (next.captureId !== undefined) capture.captureId = next.captureId ? String(next.captureId) : null
+      const incomingId = next.captureId !== undefined ? (next.captureId ? String(next.captureId) : null) : capture.captureId
+      // A duplicate/late fact for a capture the Host already closed must not
+      // resurrect its bubble; a new captureId is a new recording.
+      const reopening = capture.state === 'off' && Boolean(incomingId) && incomingId === capture.captureId
+      if (next.captureId !== undefined) capture.captureId = incomingId
       if (next.mode && ['hold', 'toggle', 'always'].includes(String(next.mode))) capture.mode = String(next.mode)
-      if (next.state && ['off', 'admitting', 'listening', 'transcribing', 'closing'].includes(String(next.state))) capture.state = String(next.state)
+      if (next.state && ['off', 'admitting', 'listening', 'transcribing', 'closing'].includes(String(next.state)) && !reopening) capture.state = String(next.state)
       capture.connectionId = payload?.connectionId ? String(payload.connectionId) : capture.connectionId
       capture.updatedAt = nowIso()
     }
@@ -429,12 +471,8 @@ export function createConversationService({
       if (released && released.drained) capture.state = 'transcribing'
       capture.updatedAt = nowIso()
     }
-    emit('capture.changed', {
-      data: {
-        state: capture.state, mode: capture.mode, captureId: capture.captureId,
-        preview: capture.preview, connectionId: capture.connectionId,
-      },
-    })
+    syncCaptureState()
+    emitCaptureChanged()
   }
 
   function markConsumed(utteranceId, segmentId) {
@@ -473,7 +511,8 @@ export function createConversationService({
         routed.push({ segmentId: segment.segmentId || newId(), path: segment.kind === 'ignore' ? 'ignore' : 'clarify', reason: segment.reason || 'clarify' })
       }
       if (!rawSegments.length) routed.push({ segmentId: 'clarify', path: 'clarify', reason: 'ambiguous' })
-      emit('capture.changed', { data: { state: capture.state, mode: capture.mode, captureId: capture.captureId, preview: capture.preview } })
+      syncCaptureState()
+      emitCaptureChanged()
       return { routed, commands }
     }
     const segments = Array.isArray(decision?.segments) ? decision.segments : []
@@ -505,7 +544,8 @@ export function createConversationService({
         routed.push({ segmentId, path: 'rejected', reason: boundedString(error?.message || error, 300) })
       }
     }
-    emit('capture.changed', { data: { state: capture.state, mode: capture.mode, captureId: capture.captureId, preview: capture.preview } })
+    syncCaptureState()
+    emitCaptureChanged()
     return { routed, commands }
   }
 
@@ -558,14 +598,17 @@ export function createConversationService({
     }
     if (kind === 'cancel-capture') {
       const captureId = String(segment.captureId || context.captureId || capture.captureId || '')
-      if (!captureId) {
+      if (!captureId || !RECORDING_CAPTURE_STATES.has(capture.state) || captureId !== capture.captureId) {
         addNotice({ kind: 'status', severity: 'info', text: '当前没有正在进行的录音。', diagnosticId: 'NO_CAPTURE' })
         return { commands: [], detail: { outcome: 'no-capture' } }
       }
       const commandId = emitCommand('capture.command', { action: 'discard', captureId, reason: 'voice-control' })
-      capture.state = 'closing'
+      try { assembler.release({ captureId, discard: true }) } catch { /* the worker also discards locally */ }
+      capture.state = 'off'
       capture.preview = null
-      emit('capture.changed', { data: { state: capture.state, mode: capture.mode, captureId: capture.captureId } })
+      capture.lastDiscardAt = nowIso()
+      capture.updatedAt = nowIso()
+      emitCaptureChanged()
       addNotice({ kind: 'status', severity: 'info', text: '已取消录音；任务不受影响。', ttlMs: 4000 })
       return { commands: [{ commandId, type: 'capture.command' }], detail: { captureId } }
     }
@@ -849,7 +892,8 @@ export function createConversationService({
     }
     capture.mode = ['hold', 'toggle', 'always'].includes(mode) ? mode : capture.mode
     const result = await routeUtterance(utterance)
-    emit('capture.changed', { data: { state: capture.state, mode: capture.mode, captureId: capture.captureId, preview: capture.preview } })
+    syncCaptureState()
+    emitCaptureChanged()
     return { ...result, utterances: 1 }
   }
 
@@ -1082,6 +1126,14 @@ export function createConversationService({
         workerConnection.state = payload.transport === 'connected' ? 'connected' : 'disconnected'
         workerConnection.lastSeenAt = nowIso()
         emit('connection.changed', { data: { worker: { ...workerConnection } } })
+        // A microphone connection that dropped cannot still be recording. Clear
+        // the projection so no stale "取消录音" bubble survives a transport loss.
+        if (workerConnection.state === 'disconnected' && RECORDING_CAPTURE_STATES.has(capture.state)) {
+          capture.state = 'off'
+          capture.preview = null
+          capture.updatedAt = nowIso()
+          emitCaptureChanged()
+        }
         if (workerConnection.state === 'connected' && previous !== 'connected') sendGreeting(workerConnection.connectionId)
         return { status: 'accepted', result: { connectionId: workerConnection.connectionId } }
       }
@@ -1101,7 +1153,8 @@ export function createConversationService({
           routed.push(...result.routed)
           commands.push(...(result.commands || []))
         }
-        emit('capture.changed', { data: { state: capture.state, mode: capture.mode, captureId: capture.captureId, preview: capture.preview } })
+        syncCaptureState()
+        emitCaptureChanged()
         return { status: 'accepted', result: { routed, commands, utterances: ready.length } }
       }
       case 'interaction.resolve':
@@ -1187,10 +1240,22 @@ export function createConversationService({
       case 'control.cancel-capture': {
         const captureId = String(command.payload.captureId || capture.captureId || '')
         if (!captureId) return { status: 'rejected', error: { code: 'NO_CAPTURE', message: 'no active capture' } }
+        // Older builds left the projection in "closing"/"transcribing" after the
+        // recording ended, so a stale bubble could still send this command. Only
+        // a recording the user can still hear is cancellable; otherwise say so
+        // instead of pretending the cancel worked.
+        const active = RECORDING_CAPTURE_STATES.has(capture.state) && captureId === capture.captureId
+        if (!active) {
+          addNotice({ kind: 'status', severity: 'info', text: '这次录音已经结束，没有需要取消的录音；任务不受影响。', ttlMs: 4000 })
+          return { status: 'rejected', error: { code: 'NO_ACTIVE_CAPTURE', message: 'capture already ended' } }
+        }
         const commandId = emitCommand('capture.command', { action: 'discard', captureId, reason: 'user-cancel' })
-        capture.state = 'closing'
+        try { assembler.release({ captureId, discard: true }) } catch { /* tombstone is best effort; the worker also discards locally */ }
+        capture.state = 'off'
         capture.preview = null
-        emit('capture.changed', { data: { state: capture.state, mode: capture.mode, captureId: capture.captureId } })
+        capture.lastDiscardAt = nowIso()
+        capture.updatedAt = nowIso()
+        emitCaptureChanged()
         addNotice({ kind: 'status', severity: 'info', text: '已取消录音；任务不受影响。', ttlMs: 4000 })
         return { status: 'accepted', result: { commandId, captureId } }
       }
@@ -1340,11 +1405,17 @@ export function createConversationService({
   function tick() {
     if (disposed) return
     maybeSyncUnknownInteractions()
+    if (syncCaptureState()) emitCaptureChanged()
     let ready = []
     try { ready = assembler.tick() } catch (error) { log('utterance tick failed: ' + String(error?.message || error)); return }
     if (!ready.length) return
     for (const utterance of ready) {
-      void routeUtterance(utterance).catch((error) => log('utterance route failed: ' + String(error?.message || error)))
+      void routeUtterance(utterance)
+        .then(() => {
+          if (disposed) return
+          if (syncCaptureState()) emitCaptureChanged()
+        })
+        .catch((error) => log('utterance route failed: ' + String(error?.message || error)))
     }
   }
 

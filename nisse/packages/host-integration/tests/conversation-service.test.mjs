@@ -414,6 +414,130 @@ test('host restart never auto-executes a persisted queue item (confirm required 
   two.service.dispose()
 })
 
+/**
+ * The recording bubble is a projection of the Host capture state. Before this
+ * regression a released hold capture stayed `transcribing` forever, so the pet
+ * kept showing the last transcript with a "取消录音" link while the Agent was
+ * already executing (observed with a real voice session).
+ */
+function voiceFacts(service, { capture, items = [], release = null } = {}) {
+  return service.handleCommand({
+    protocolVersion: PROTOCOL_VERSION,
+    commandId: randomUUIDForTest(),
+    hostEpoch: HOST_EPOCH,
+    sourceConnectionId: 'worker',
+    sessionId: null,
+    type: 'voice.facts',
+    payload: {
+      connectionId: 'w1',
+      capture,
+      ...(items.length ? { items } : {}),
+      ...(release ? { release } : {}),
+    },
+  })
+}
+
+const asrItem = (kind, itemId, text, revision = 0) => ({
+  kind, itemId, utteranceId: 'utt-capture', revision, text, confidence: null,
+})
+
+test('a finished hold capture clears the recording projection; a late duplicate cannot reopen it', async () => {
+  const { runtime, state } = fakeRuntime()
+  const { service } = makeService({ runtime, registry: fakeRegistry() })
+  await voiceFacts(service, {
+    capture: { captureId: 'cap-1', mode: 'hold', state: 'listening' },
+    items: [asrItem('asr.partial', 'p1', '帮我写周报')],
+  })
+  let snapshot = service.snapshotSections()
+  assert.equal(snapshot.capture.state, 'listening')
+  assert.equal(snapshot.capture.preview.text, '帮我写周报')
+
+  await voiceFacts(service, {
+    capture: { captureId: 'cap-1', mode: 'hold', state: 'transcribing' },
+    items: [asrItem('asr.final', 'f1', '帮我写一份周报')],
+  })
+  await voiceFacts(service, {
+    capture: { captureId: 'cap-1', mode: 'hold', state: 'closing' },
+    release: { captureId: 'cap-1', reason: 'release' },
+  })
+  await new Promise((resolve) => setTimeout(resolve, 80))
+  service.tick()
+  await new Promise((resolve) => setTimeout(resolve, 80))
+
+  snapshot = service.snapshotSections()
+  assert.equal(snapshot.capture.state, 'off', 'an ended recording must not keep a bubble')
+  assert.equal(snapshot.capture.preview, null)
+  assert.equal(state.submitted.length, 1)
+
+  // A duplicate provider final arriving after the boundary must not resurrect it.
+  await voiceFacts(service, {
+    capture: { captureId: 'cap-1', mode: 'hold', state: 'transcribing' },
+    items: [asrItem('asr.final', 'f1', '帮我写一份周报')],
+  })
+  snapshot = service.snapshotSections()
+  assert.equal(snapshot.capture.state, 'off')
+  service.dispose()
+})
+
+test('a released capture with no buffered utterance clears immediately', async () => {
+  const { runtime } = fakeRuntime()
+  const { service } = makeService({ runtime, registry: fakeRegistry() })
+  await voiceFacts(service, { capture: { captureId: 'cap-silent', mode: 'hold', state: 'listening' } })
+  await voiceFacts(service, {
+    capture: { captureId: 'cap-silent', mode: 'hold', state: 'closing' },
+    release: { captureId: 'cap-silent', reason: 'release' },
+  })
+  assert.equal(service.snapshotSections().capture.state, 'off')
+  assert.equal(service.snapshotSections().capture.preview, null)
+  service.dispose()
+})
+
+test('cancelling a capture ends the projection once and a second cancel is explicit, not a fake success', async () => {
+  const { runtime, state } = fakeRuntime()
+  const { service } = makeService({ runtime, registry: fakeRegistry() })
+  await voiceFacts(service, {
+    capture: { captureId: 'cap-cancel', mode: 'hold', state: 'listening' },
+    items: [asrItem('asr.partial', 'p1', '这句话我不要了')],
+  })
+  const first = await service.handleCommand({
+    protocolVersion: PROTOCOL_VERSION, commandId: 'cancel-1', hostEpoch: HOST_EPOCH,
+    sourceConnectionId: 'desktop', sessionId: null, type: 'control.cancel-capture',
+    payload: { captureId: 'cap-cancel' },
+  })
+  assert.equal(first.status, 'accepted')
+  assert.equal(service.snapshotSections().capture.state, 'off')
+  assert.equal(service.snapshotSections().capture.preview, null)
+  assert.ok(state.commands.some((command) => command.type === 'capture.command' && command.payload.action === 'discard'))
+
+  const second = await service.handleCommand({
+    protocolVersion: PROTOCOL_VERSION, commandId: 'cancel-2', hostEpoch: HOST_EPOCH,
+    sourceConnectionId: 'desktop', sessionId: null, type: 'control.cancel-capture',
+    payload: { captureId: 'cap-cancel' },
+  })
+  assert.equal(second.status, 'rejected')
+  assert.equal(second.error.code, 'NO_ACTIVE_CAPTURE')
+  assert.equal(service.snapshotSections().capture.state, 'off')
+  assert.ok(service.snapshotSections().notices.some((notice) => /录音已经结束/.test(notice.text)))
+  service.dispose()
+})
+
+test('a transport disconnect ends the recording projection instead of leaving a stale cancel link', async () => {
+  const { runtime } = fakeRuntime()
+  const { service } = makeService({ runtime, registry: fakeRegistry() })
+  await voiceFacts(service, {
+    capture: { captureId: 'cap-drop', mode: 'hold', state: 'listening' },
+    items: [asrItem('asr.partial', 'p1', '断线前的话')],
+  })
+  await service.handleCommand({
+    protocolVersion: PROTOCOL_VERSION, commandId: 'session-drop', hostEpoch: HOST_EPOCH,
+    sourceConnectionId: 'worker', sessionId: null, type: 'voice.session',
+    payload: { connectionId: 'w1', transport: 'disconnected' },
+  })
+  assert.equal(service.snapshotSections().capture.state, 'off')
+  assert.equal(service.snapshotSections().capture.preview, null)
+  service.dispose()
+})
+
 function randomUUIDForTest() {
   return 'cmd-' + Math.random().toString(36).slice(2) + Date.now().toString(36)
 }

@@ -740,6 +740,9 @@ export function createCompanionPresentation({
 
   function activeCapture() {
     if (mode === 'legacy') return null
+    // A failed voice transport leaves the last snapshot stale; a recording
+    // bubble must not shadow the failure notice that explains what happened.
+    if (voiceState === 'failed') return null
     const capture = projection.capture || {}
     if (!ACTIVE_CAPTURE_STATES.has(String(capture.state || ''))) return null
     if (!capture.captureId) return null
@@ -757,6 +760,7 @@ export function createCompanionPresentation({
       visible: true,
       kind: 'input',
       requestId: str(capture.captureId, 200),
+      title: capture.state === 'transcribing' ? '我听到（识别中）' : '我听到',
       text,
       clickThrough: false,
       hint: capture.state === 'admitting' ? '正在准备麦克风…' : '',

@@ -199,11 +199,21 @@ test('stopping playback or discarding a capture never cancels the task', async (
   })
   assert.equal(playback.status, 'accepted')
   assert.equal(service.snapshotSections().execution.state, 'working', 'the task kept running')
+  // A discard only applies to a recording the Host can still see as active.
+  await service.handleCommand({
+    protocolVersion: PROTOCOL_VERSION, commandId: 'facts-active', hostEpoch: HOST_EPOCH,
+    sourceConnectionId: 'worker', sessionId: null, type: 'voice.facts',
+    payload: {
+      connectionId: 'w1', capture: { captureId: 'cap-1', mode: 'hold', state: 'listening' },
+      items: [{ kind: 'asr.partial', itemId: 'p1', utteranceId: 'utt-1', revision: 0, text: '正在说的话' }],
+    },
+  })
   const capture = await service.handleCommand({
     protocolVersion: PROTOCOL_VERSION, commandId: 'cancel-capture', hostEpoch: HOST_EPOCH,
     sourceConnectionId: 'desktop', sessionId: null, type: 'control.cancel-capture', payload: { captureId: 'cap-1' },
   })
   assert.equal(capture.status, 'accepted')
+  assert.equal(service.snapshotSections().capture.state, 'off', 'cancelling ends the recording projection')
   assert.equal(service.snapshotSections().execution.state, 'working', 'the capture discard left the task alone')
   assert.equal(state.cancelled.length, 0, 'neither local stop reached the task owner')
   service.dispose()

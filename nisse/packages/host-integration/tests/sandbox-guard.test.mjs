@@ -219,6 +219,27 @@ test('shell hints recognize interpreter-only and variable-constructed writes the
   assert.equal(hints.mutation, true)
 })
 
+test('a URL argument is never recorded as an outside-workspace path', t => {
+  const f = fixture(t)
+  for (const command of [
+    'open "https://www.bing.com/search?q=Nisse+DSH"',
+    'open http://127.0.0.1:3000/a/../b',
+    'node script.mjs --endpoint https://api.example.com/v1/items?limit=2',
+  ]) {
+    const hints = shellWriteHints(command)
+    assert.equal(hints.targets.length, 0, `URL path parts must be ignored: ${command}`)
+    const intent = classifyWriteIntent({ toolName: 'bash', arguments: { command }, workspace: f.workspace, cwd: f.workspace })
+    assert.equal(intent.outside, false, `URL must not look outside: ${command}`)
+    assert.equal(intent.family, 'shell')
+    // A shell line that names no filesystem path is still audited as "unknown"
+    // under the existing guard contract; that generic ambiguity is not a URL hit.
+    assert.deepEqual(intent.targets, [], `URL must not become a target: ${command}`)
+  }
+  // A real absolute file path in the same command is still reported.
+  const mixed = shellWriteHints('open https://example.com/x && rm /opt/target/y')
+  assert.deepEqual(mixed.targets.map(item => item.replace(f.workspace, '')), ['/opt/target/y'])
+})
+
 test('canonical containment resolves a symlinked ancestor for a not-yet-existing target', async t => {
   const f = fixture(t)
   symlinkSync(f.outside, join(f.workspace, 'link'))

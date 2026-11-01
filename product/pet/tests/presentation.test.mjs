@@ -719,12 +719,28 @@ test('v2 capture preview is a projection: cancel sends control.cancel-capture on
   const payload = f.shown.at(-1)
   assert.equal(payload.kind, 'input')
   assert.equal(payload.text, '正在说的话')
+  assert.equal(payload.title, '我听到', 'the recording bubble must say what it is')
   assert.equal(payload.cancel.id, 'cancel-capture')
   await f.presentation.action({ type: 'cancel', id: 'cancel-capture', requestId: 'stale-capture' })
   assert.equal(f.commands.length, 0)
   await f.presentation.action({ type: 'cancel', id: 'cancel-capture', requestId: 'cap-1' })
   assert.deepEqual(f.commands.pop(), ['control.cancel-capture', { captureId: 'cap-1' }])
   f.presentation.applySnapshot(f.nextSnapshot({ capture: { state: 'off', captureId: null, preview: null } }))
+  assert.ok(f.hidden() > 0)
+  f.presentation.stop()
+})
+
+test('a recording projection is labelled and disappears once the voice transport fails', () => {
+  const f = v2()
+  f.presentation.applySnapshot(f.nextSnapshot({ capture: { state: 'transcribing', mode: 'hold', captureId: 'cap-label', preview: { text: '搜索一下你自己，嗯哼。', revision: 2 } } }))
+  const payload = f.shown.at(-1)
+  assert.equal(payload.kind, 'input')
+  assert.equal(payload.title, '我听到（识别中）')
+  assert.equal(payload.text, '搜索一下你自己，嗯哼。')
+  f.presentation.voice('failed')
+  // Re-render with the last (stale) snapshot: a failed transport must not keep
+  // the "取消录音" bubble over the failure explanation.
+  f.presentation.applySnapshot(f.nextSnapshot({ capture: { state: 'transcribing', mode: 'hold', captureId: 'cap-label', preview: { text: '搜索一下你自己，嗯哼。', revision: 2 } } }))
   assert.ok(f.hidden() > 0)
   f.presentation.stop()
 })

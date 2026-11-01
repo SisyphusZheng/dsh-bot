@@ -840,6 +840,30 @@ export function createUtteranceAssembler({
     }
   }
 
+  /**
+   * Read-only lifecycle of one capture for the ConversationService projection.
+   * `released` distinguishes a boundary the user already gave back (hold key
+   * released) from an open microphone; `pendingGroups` counts buffered
+   * utterances that have not been emitted yet.
+   * @param {string} captureId - the capture identity from the voice facts.
+   * @returns {{ state: 'open'|'closing'|'finished'|'discarded'|'unknown', released: boolean, pendingGroups: number }}
+   */
+  function captureInfo(captureId) {
+    const id = typeof captureId === 'string' ? captureId.trim() : ''
+    if (!id) return { state: 'unknown', released: false, pendingGroups: 0 }
+    if (discardedCaptures.has(id)) return { state: 'discarded', released: true, pendingGroups: 0 }
+    if (finishedCaptures.has(id)) return { state: 'finished', released: true, pendingGroups: 0 }
+    const capture = captures.get(id)
+    if (!capture) return { state: 'unknown', released: false, pendingGroups: 0 }
+    if (capture.state === 'finished') return { state: 'finished', released: true, pendingGroups: 0 }
+    if (capture.state === 'discarded') return { state: 'discarded', released: true, pendingGroups: 0 }
+    return {
+      state: capture.state,
+      released: capture.releasedAt != null,
+      pendingGroups: capture.groups.size,
+    }
+  }
+
   function reset() {
     captures = new Map()
     discardedCaptures = new Map()
@@ -858,6 +882,7 @@ export function createUtteranceAssembler({
     release,
     tick,
     state,
+    captureInfo,
     reset,
     // Read-only helpers used by tests/integration.
     emittedUtterances: () => emitted.map(copy),

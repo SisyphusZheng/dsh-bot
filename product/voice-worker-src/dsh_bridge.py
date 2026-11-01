@@ -229,6 +229,11 @@ class VoiceMediaBridge(FrameProcessor):
 
     def _report_host_error(self, exc: BaseException) -> None:
         """Throttle classified Host failures; never fake a successful link."""
+        # An intentional shutdown closes the Host bridge first; the truncated
+        # event stream is expected then. Never surface it as a user-facing
+        # "voice connection failed / retry" error during teardown.
+        if self._closing:
+            return
         now = time.monotonic()
         if now - self._host_error_reported_at < 10.0:
             return
