@@ -429,8 +429,13 @@ export function createConversationService({
       // A duplicate/late fact for a capture the Host already closed must not
       // resurrect its bubble; a new captureId is a new recording.
       const reopening = capture.state === 'off' && Boolean(incomingId) && incomingId === capture.captureId
+      // The interaction mode is fixed when a capture starts. A release or
+      // transcript fact must never rewrite it (older workers defaulted the
+      // missing release mode to "always", which then needed confirmations and
+      // was persisted as the user's mode).
+      const startsCapture = capture.state === 'off' || !capture.captureId || incomingId !== capture.captureId
       if (next.captureId !== undefined) capture.captureId = incomingId
-      if (next.mode && ['hold', 'toggle', 'always'].includes(String(next.mode))) capture.mode = String(next.mode)
+      if (next.mode && ['hold', 'toggle', 'always'].includes(String(next.mode)) && (startsCapture || capture.state === 'off')) capture.mode = String(next.mode)
       if (next.state && ['off', 'admitting', 'listening', 'transcribing', 'closing'].includes(String(next.state)) && !reopening) capture.state = String(next.state)
       capture.connectionId = payload?.connectionId ? String(payload.connectionId) : capture.connectionId
       capture.updatedAt = nowIso()

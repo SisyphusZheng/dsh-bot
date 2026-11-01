@@ -175,6 +175,43 @@ if __name__ == "__main__":
     unittest.main()
 
 
+class CaptureModeFacts(unittest.IsolatedAsyncioTestCase):
+    """Release/discard facts must keep the mode the user started with.
+
+    The WebRTC release message carries no mode. Defaulting it to "always" used
+    to rewrite the Host projection mid-capture, so a later final looked like an
+    always-listening utterance (confirmation draft) and the wrong mode was
+    persisted for the next launch.
+    """
+
+    async def asyncSetUp(self):
+        self.bridge, self.host = make_bridge(capture=CapturePolicy(required=True))
+
+    async def asyncTearDown(self):
+        await teardown_bridge(self.bridge)
+
+    async def test_finish_without_mode_keeps_the_start_mode(self):
+        await self.bridge.capture_changed("start", "cap-hold", "hold")
+        await self.bridge.capture_changed("finish", "cap-hold")
+        facts = self.host.payloads("voice.facts")
+        self.assertEqual([f["capture"]["mode"] for f in facts], ["hold", "hold"])
+        self.assertEqual(facts[-1]["capture"]["state"], "closing")
+        self.assertEqual(facts[-1]["release"], {"captureId": "cap-hold", "reason": "release"})
+
+    async def test_discard_without_mode_keeps_the_start_mode(self):
+        await self.bridge.capture_changed("start", "cap-toggle", "toggle")
+        await self.bridge.capture_changed("discard", "cap-toggle")
+        facts = self.host.payloads("voice.facts")
+        self.assertEqual([f["capture"]["mode"] for f in facts], ["toggle", "toggle"])
+        self.assertEqual(facts[-1]["release"]["reason"], "discard")
+
+    async def test_an_explicit_valid_mode_still_updates_the_projection(self):
+        await self.bridge.capture_changed("start", "cap-mode", "hold")
+        await self.bridge.capture_changed("start", "cap-mode-2", "always")
+        modes = [f["capture"]["mode"] for f in self.host.payloads("voice.facts")]
+        self.assertEqual(modes, ["hold", "always"])
+
+
 class ShutdownNoise(unittest.IsolatedAsyncioTestCase):
     """Stopping the app must not surface a "voice connection failed" bubble.
 

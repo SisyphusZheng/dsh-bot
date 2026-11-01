@@ -6,7 +6,7 @@ export function createCaptureClient({ send, setMic, configure = async () => {}, 
     wanted = false
     pending?.reject(); pending = undefined
     void setMic(false)
-    if (current) { send('capture-state', { action: discard ? 'discard' : 'finish', captureId: current }); publish({ kind: 'capture-end', captureId: current, text: '' }) }
+    if (current) { send('capture-state', { action: discard ? 'discard' : 'finish', captureId: current, mode: mode() }); publish({ kind: 'capture-end', captureId: current, text: '' }) }
   }
   return {
     async enable(value) {

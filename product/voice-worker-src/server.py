@@ -345,7 +345,12 @@ async def _run_task(transport, task, session_id: str, session_state: dict) -> No
             data = message.data if isinstance(message.data, dict) else {}
             capture = session_state["asr"].capture
             action, capture_id = data.get("action"), data.get("captureId")
-            mode = data.get('mode', 'always')
+            # A release message does not carry a mode; never default it to
+            # 'always', because that would rewrite the running capture's mode
+            # and make a late final look like an always-listening utterance.
+            mode = data.get('mode')
+            if mode not in ('hold', 'toggle', 'always'):
+                mode = None
             if not capture.control(action, capture_id, mode):
                 return
             await session_state['dsh'].capture_changed(action, capture_id, mode)

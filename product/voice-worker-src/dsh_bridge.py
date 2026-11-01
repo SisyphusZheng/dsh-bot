@@ -601,7 +601,11 @@ class VoiceMediaBridge(FrameProcessor):
         if mode in ("hold", "toggle", "always"):
             self._capture_mode = mode
         elif self._capture is not None:
-            self._capture_mode = self._capture.modes.get(capture_id, self._capture_mode)
+            # Release/discard messages carry no mode: keep the mode recorded at
+            # capture start. Only an explicit valid mode may change it.
+            stored = self._capture.modes.get(capture_id)
+            if stored in ("hold", "toggle", "always"):
+                self._capture_mode = stored
         self._capture_id = capture_id
         if action == "start":
             self._capture_state = "listening"

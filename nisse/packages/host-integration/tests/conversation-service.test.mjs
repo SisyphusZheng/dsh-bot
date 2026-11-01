@@ -479,6 +479,32 @@ test('a finished hold capture clears the recording projection; a late duplicate 
   service.dispose()
 })
 
+test('the interaction mode is fixed at capture start; release facts cannot rewrite it', async () => {
+  const { runtime } = fakeRuntime()
+  const { service } = makeService({ runtime, registry: fakeRegistry() })
+  await voiceFacts(service, {
+    capture: { captureId: 'cap-mode', mode: 'hold', state: 'listening' },
+    items: [asrItem('asr.partial', 'p1', '一句话')],
+  })
+  assert.equal(service.snapshotSections().capture.mode, 'hold')
+  // A late/release fact from an older worker that defaulted the missing release
+  // mode to "always" must not turn this hold capture into always-listening.
+  await voiceFacts(service, {
+    capture: { captureId: 'cap-mode', mode: 'always', state: 'closing' },
+    release: { captureId: 'cap-mode', reason: 'release' },
+  })
+  assert.equal(service.snapshotSections().capture.mode, 'hold')
+  await voiceFacts(service, {
+    capture: { captureId: 'cap-mode', mode: 'always', state: 'transcribing' },
+    items: [asrItem('asr.final', 'f1', '一句话')],
+  })
+  assert.equal(service.snapshotSections().capture.mode, 'hold')
+  // A genuinely new capture may choose a new mode.
+  await voiceFacts(service, { capture: { captureId: 'cap-mode-2', mode: 'toggle', state: 'listening' } })
+  assert.equal(service.snapshotSections().capture.mode, 'toggle')
+  service.dispose()
+})
+
 test('a released capture with no buffered utterance clears immediately', async () => {
   const { runtime } = fakeRuntime()
   const { service } = makeService({ runtime, registry: fakeRegistry() })
