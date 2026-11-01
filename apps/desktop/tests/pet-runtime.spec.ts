@@ -39,6 +39,7 @@ vi.mock('electron', () => ({
     setBounds() {}
     setAlwaysOnTop(...args: unknown[]) { state.windowCalls.push({ method: 'setAlwaysOnTop', args }) }
     setFocusable(...args: unknown[]) { state.windowCalls.push({ method: 'setFocusable', args }) }
+    show() { state.windowCalls.push({ method: 'show', args: [] }) }
     showInactive() { state.windowCalls.push({ method: 'showInactive', args: [] }) }
     hide() {}
     on() {}

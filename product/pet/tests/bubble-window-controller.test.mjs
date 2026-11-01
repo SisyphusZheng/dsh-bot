@@ -37,6 +37,17 @@ function fakeWindowClass() {
   return FakeWindow
 }
 
+test('only macOS bubbles use nonactivating panels', () => {
+  for (const platform of ['darwin', 'win32', 'linux']) {
+    const FakeWindow = fakeWindowClass()
+    const controller = createBubbleWindowController({ BrowserWindow: FakeWindow, platform, preloadPath: '/p', pagePath: '/b.html' })
+    controller.show({ text: 'panel construction' })
+    assert.equal(FakeWindow.instances[0].options.type, platform === 'darwin' ? 'panel' : undefined)
+    assert.equal(FakeWindow.instances[0].options.focusable, false)
+    controller.destroy()
+  }
+})
+
 test('bubble window grows up from a fixed bottom anchor and clamps to min/max', () => {
   const FakeWindow = fakeWindowClass()
   const controller = createBubbleWindowController({ BrowserWindow: FakeWindow, preloadPath: '/p', pagePath: '/b.html' })

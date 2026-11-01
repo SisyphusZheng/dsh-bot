@@ -174,6 +174,7 @@ export function createBubbleWindowController({
     if (window && !window.isDestroyed()) return window
     if (typeof BrowserWindow !== 'function') return null
     window = new BrowserWindow({
+      ...(platform === 'darwin' ? { type: 'panel' } : {}),
       width: ORB_BUBBLE_WINDOW_WIDTH,
       height: ORB_BUBBLE_WINDOW_HEIGHT,
       frame: false,

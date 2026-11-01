@@ -423,6 +423,7 @@ export class ProductPet {
     })
     const area = screen.getPrimaryDisplay().workArea
     const window = new BrowserWindow({
+      ...(process.platform === 'darwin' ? { type: 'panel' as const } : {}),
       width: 172,
       height: 204,
       x: area.x + area.width - 196,
@@ -505,7 +506,12 @@ export class ProductPet {
         // A hidden NSApplication cannot be recovered by showInactive(). Only
         // deliberate voice input may unhide it; passive notifications must not.
         const { action, source } = value as { action?: string; source?: string }
-        if (channel === 'voice-command' && source === 'gesture' && ['enable', 'toggle'].includes(action || '') && process.platform === 'darwin' && app.isHidden()) app.show()
+        if (channel === 'voice-command' && source === 'gesture' && ['enable', 'toggle'].includes(action || '') && process.platform === 'darwin') {
+          if (app.isHidden()) app.show()
+          // macOS panels can order above a full-screen Space without activating
+          // the app. Normal windows cannot reliably recover here with showInactive.
+          window.show()
+        }
         window.webContents.send(`pet:${channel}`, value)
       },
       show: (payload: object) => { this.positionBubble(); this.bubble?.show(payload) }, hide: () => this.bubble?.hide(),
