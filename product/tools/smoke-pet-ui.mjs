@@ -41,7 +41,9 @@ try {
  await pet.waitForSelector('canvas')
  await pet.waitForFunction(()=>document.querySelector('canvas')?.getContext('2d').getImageData(0,0,192,208).data.some((value,index)=>index%4===3&&value>0))
  assert.equal(await pet.locator('#microphone').count(),1)
- await page.mouse.move(0,0);assert.equal(await pet.locator('#controls').evaluate(el=>getComputedStyle(el).opacity),'0')
+ // Missing configuration deliberately keeps failure controls visible; isolate hover styling.
+ await pet.evaluate(()=>{delete document.body.dataset.voice;document.activeElement?.blur()})
+ await page.mouse.move(419,fixtureHeight-1);await pet.waitForFunction(()=>getComputedStyle(document.getElementById('controls')).opacity==='0')
  await pet.locator('#pet').hover();await pet.waitForFunction(()=>getComputedStyle(document.getElementById('controls')).opacity==='1')
  assert.ok(await pet.locator('#microphone').isEnabled());await page.mouse.move(0,0)
  await bubble.waitForFunction(()=>getComputedStyle(document.getElementById('bubble')).opacity==='0')
@@ -238,6 +240,14 @@ try {
  await bubble.getByRole('button',{name:'好',exact:true}).click();await renders
  await bubble.getByText('你希望我是什么性格？选一个，或者自己写。',{exact:true}).waitFor()
  await bubble.locator('#bubble-close').click();await renders;assert.equal(experience.state().onboarding,false)
+ // Passive click-through notices must not advertise an unclickable close control.
+ await bubble.evaluate(()=>window.receiveBubble({visible:true,text:'passive notice',clickThrough:true}))
+ assert.equal(await bubble.locator('#bubble-close').isVisible(),false)
+ await bubble.evaluate(()=>window.receiveBubble({visible:true,text:'dismissible notice',clickThrough:false,dismissible:true}))
+ assert.equal(await bubble.locator('#bubble-close').isVisible(),true)
+ await bubble.locator('#bubble-close').click();await renders
+ await bubble.evaluate(()=>window.receiveBubble({visible:true,text:'approval',requestId:'pending-approval',clickThrough:false,dismissible:false}))
+ assert.equal(await bubble.locator('#bubble-close').isVisible(),false)
  assert.deepEqual(errors,[])
  console.log('PASS shipped Chromium sprite/Markdown rendering driven by v2 snapshot@1 + versioned events; complete long text; unclipped question/footer bounds; pressed/selected feedback; multi-select set-selected/custom answer with Host-confirmed selectionRevision; interaction.resolve allowed-once/rejected; persistent-approval adapter; queue.edit/queue.delete by revision; input.edit preserved across an incoming notice; recording cancellation stays media-scope; onboarding. IPC is an explicit fixture, not native macOS acceptance.')
 } finally {

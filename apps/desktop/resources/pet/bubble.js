@@ -234,7 +234,7 @@ function render(payload) {
   actions.classList.toggle('hidden', !approvalId)
 
   dismissible = payload.dismissible === true
-  closeBtn.hidden = Boolean(requestId) && !dismissible
+  closeBtn.hidden = clickThrough || (Boolean(requestId) && !dismissible)
   for (const button of card.querySelectorAll('button')) button.disabled = submitting
   inputEl.disabled = submitting
 
