@@ -1,9 +1,0 @@
-native/system/packages/darwin-arm64      | [WARN] Unsupported platform: wanted: {"cpu":["arm64"],"os":["darwin"],"libc":["any"]} (current: {"os":"linux","cpu":"x64","libc":"glibc"})
-native/system/packages/darwin-x64        | [WARN] Unsupported platform: wanted: {"cpu":["x64"],"os":["darwin"],"libc":["any"]} (current: {"os":"linux","cpu":"x64","libc":"glibc"})
-native/system/packages/linux-arm64       | [WARN] Unsupported platform: wanted: {"cpu":["arm64"],"os":["linux"],"libc":["any"]} (current: {"os":"linux","cpu":"x64","libc":"glibc"})
-Scope: all 367 workspace projects
-Already up to date
-Done in 995ms using pnpm v11.28.5
-Update available! 11.28.5 → 12.15.0.
-Changelog: https://pnpm.io/v/12.15.0
-To update, run: curl -fsSL https://get.pnpm.io/install.sh | sh -

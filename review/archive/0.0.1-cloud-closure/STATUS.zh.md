@@ -29,7 +29,7 @@ Pipecat/WebRTC/SDK 媒体测试通过真实握手、音量指示、ASR 转写、
 
 Playwright 浏览器直下载失败后，使用测试目录内的 Chromium 153 npm 分发。浏览器与字体均不随产品打包。完整 `verify-local.sh` 未在云端作为单条命令运行；上列检查以分项命令执行，Vitest 文件清单直接取自该入口。Mac 上应完整运行该入口。
 
-原 [本机验收记录](../0.0.1-local-acceptance/STATUS.md)、`f3b593b2` 的 DMG、SHA 与证据保持不变，不能用来证明本次新源码已完成 macOS 打包验收。本轮未生成 DMG，未触碰真实用户数据、旧 App 或旧产物，未修改 GitHub、Actions、PR、tag 或 Release。
+原 [本机验收记录](../../0.0.1-local-acceptance/STATUS.md)、`f3b593b2` 的 DMG、SHA 与证据保持不变，不能用来证明本次新源码已完成 macOS 打包验收。本轮未生成 DMG，未触碰真实用户数据、旧 App 或旧产物，未修改 GitHub、Actions、PR、tag 或 Release。
 
 原始终端日志以 `logs/*.log.gz` 保存，解压可逐字查看；压缩保留原始空白和控制字符，避免为通过 Git 空白检查改写日志。先运行本目录 `verify.mjs` 核验冻结源码及证据哈希。
 

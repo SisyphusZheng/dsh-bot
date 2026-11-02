@@ -12,7 +12,7 @@
 | 默认分支 `main` | `f873a44abee0ef084d06ad4e7f981b31529021e0`（公开清理历史上的最新修复；本地开发工作树对应 `5d8acc678e`） |
 | 修复分支 | `work/0.0.1-closure-final`（与 `main` 同一提交）；`work/0.0.1-closure`、`work/0.0.1-beta2` 均已并入 `main` |
 | 公开/本地历史 | 公开前做过路径清理，本次修复以重放提交落在清理后的历史上；旧→新提交 SHA 映射保存在私密发布记录中（不入库） |
-| 安装包与证据 | 本仓库不存放 DMG 等构建产物；库内 `review/`、`product/evidence/` 是历史验收记录，原始证据与候选包在私密备份区 |
+| 安装包与证据 | 本仓库不存放 DMG 等构建产物；库内 `review/`（含 `review/archive/`）保留历史验收记录，原始证据与候选包在私密备份区；生成型 `product/evidence/` 已于 2026-11-02 归档出库 |
 | 本文件其余章节 | §1–§9 是 2026-10-31 发布前的历史快照，绑定 `40be8ef8…`，保留原文不修改；“仅本地、未推送”“私密证据区”等描述属于当时状态，不代表当前发布状态 |
 | 上游与许可 | 上游为 DeepSeek Harness（见 [`UPSTREAM.txt`](../UPSTREAM.txt)：tag `dsh-v0.2.1-rc.3`、commit `1f81c047…`，MIT [`LICENSE`](../LICENSE)）；第三方依赖见 [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md) |
 

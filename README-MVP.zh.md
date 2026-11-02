@@ -48,7 +48,7 @@ bash product/tools/accept-macos.sh /absolute/path/to/new-candidate.dmg
 
 ## 验证范围
 
-本次计算环境为 Linux。`product/evidence/RESULTS.json` 保留上一候选的云端记录；本轮修复与截图见 `product/evidence/companion/RESULTS.json`。Mac 验收会在对应 `acceptance-*` 目录生成绑定候选与 DMG 的独立 `RESULTS.json`；G1/G7 的原生 macOS 构建、DMG、TCC 无法在此验收。真实模型与麦克风需要你的凭据和设备。
+本次计算环境为 Linux。`product/evidence/RESULTS.json` 保留上一候选的云端记录；本轮修复与截图见 `product/evidence/companion/RESULTS.json`。（2026-11-02 公开清理：`product/evidence/` 已归档至私密备份区，不再随仓库发布。）Mac 验收会在对应 `acceptance-*` 目录生成绑定候选与 DMG 的独立 `RESULTS.json`；G1/G7 的原生 macOS 构建、DMG、TCC 无法在此验收。真实模型与麦克风需要你的凭据和设备。
 
 Memory 的 Linux 单元/进程测试使用真实 adapter + 明确的 HTTP backend fixture，不能证明真实 Hindsight 数据库检索。当前源码冻结的 Hindsight 已通过固定 ONNX 模型的离线中文相关性检查。同一 Bot Agent 的语音与 DSH 文字请求都会检索相关记忆；生产 Host 的跨 Session 注入使用明确的 HTTP fixture 验证。当前 Work 的 PostgreSQL Linux 二进制缺少 libicuuc.so.70，进程又以 root 运行且 setuid 返回 EINVAL，G4 的数据库/跨重启检索需运行上述 Mac 验收脚本。没有将它标记为 PASS。
 

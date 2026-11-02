@@ -1,3 +1,0 @@
-PASS production preset tools; real write approval allow/reject/cancel; live model/persona preserves PID, port and Session
-PASS authenticated memory write/recall and cross-Session prompt injection (explicit HTTP fixture, not database qualification)
-PASS real Host startup, custom, voice NDJSON, session completion and graceful exit
