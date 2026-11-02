@@ -745,6 +745,33 @@ test('a recording projection is labelled and disappears once the voice transport
   f.presentation.stop()
 })
 
+test('a resync snapshot with idle execution clears a reply stream whose turn.ended was missed', () => {
+  const f = v2()
+  const first = f.nextSnapshot({ execution: { state: 'working', sessionId: 'session-1', turn: 1, lastTurn: null } })
+  f.presentation.applySnapshot(first)
+  let seq = first.snapshotSeq
+  const ev = (type, data = {}) => {
+    seq += 1
+    return {
+      protocolVersion: 'dsh-bot-v1', eventId: `e${seq}`, hostEpoch: first.hostEpoch, seq,
+      type, source: 'dsh', sessionId: 'session-1', turn: 1, causedByCommandId: null,
+      at: '2026-11-02T00:00:00.000Z', data,
+    }
+  }
+  f.presentation.applyEvent(ev('turn.started'))
+  f.presentation.applyEvent(ev('turn.delta', { text: '我在处理' }))
+  assert.equal(f.animations.at(-1).baseWorking, true)
+  // The Host completed the turn but the pet missed turn.ended; it resyncs from a
+  // snapshot that reports idle execution. The local stream must be cleared.
+  f.presentation.applySnapshot(f.nextSnapshot({ execution: {
+    state: 'idle', sessionId: 'session-1', turn: null,
+    lastTurn: { turn: 1, terminal: 'completed', reason: { kind: 'completed' } },
+  } }))
+  assert.equal(f.animations.at(-1).baseWorking, false, 'idle snapshot must not leave a stuck working animation')
+  assert.equal(f.animations.at(-1).state, 'idle')
+  f.presentation.stop()
+})
+
 test('v2 events drive reply/tool display and request resync on gaps or epoch changes', () => {
   const f = v2()
   f.presentation.applySnapshot(f.nextSnapshot({ snapshotSeq: 10, execution: { state: 'working', inputSource: 'voice', startedAt: '2026-10-30T00:00:00.000Z', lastTurn: null } }))

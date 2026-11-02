@@ -794,6 +794,7 @@ export class ProductPet {
     const response = await this.request(`/v2/events?after=${this.kernel.lastSeq}`)
     if (response.status === 409) {
       // Retention gap or stale epoch: take a new snapshot and continue from its seq.
+      this.log('kernel.resync', 'events-gap')
       this.kernel.needsSnapshot = true
       return
     }
@@ -804,7 +805,7 @@ export class ProductPet {
     for (const event of payload.events || []) {
       if (event.type === 'command') continue
       const result = this.presentation?.applyEvent(event)
-      if (result?.resync) { resync = true; break }
+      if (result?.resync) { this.log('kernel.resync', result.reason || 'gap'); resync = true; break }
       this.window?.webContents.send('pet:agent-event', this.legacyEventOf(event))
     }
     if (Number.isInteger(payload.next)) this.kernel.lastSeq = Math.max(this.kernel.lastSeq, Number(payload.next))

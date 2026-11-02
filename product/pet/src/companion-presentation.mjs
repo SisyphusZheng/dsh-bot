@@ -951,6 +951,13 @@ export function createCompanionPresentation({
     knownEpochs.add(next.hostEpoch)
     projection = next
     if (!isLegacy) lastEventSeq = Math.max(lastEventSeq, next.snapshotSeq)
+    // A snapshot is authoritative for execution. If an event gap dropped the
+    // turn.ended delta, the local reply stream must not pin the pet in
+    // "正在处理任务" forever while the Host reports no active task.
+    if (!ACTIVE_EXECUTION_STATES.has(String(projection.execution?.state || '')) && reply.streaming) {
+      reply = { ...reply, streaming: false, endedAt: reply.endedAt || now() }
+      legacy.working = false
+    }
     if (epochChanged) {
       reply = { text: '', streaming: false, turnId: '', endedAt: 0, failed: false }
       localNotice = null
