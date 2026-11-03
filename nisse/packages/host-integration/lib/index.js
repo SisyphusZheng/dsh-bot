@@ -5,10 +5,12 @@ import { createInteractionMirror, validateAnswer } from './interactions.mjs'
 import { createTaskRecovery } from './task-recovery.mjs'
 import { createApprovalPolicies } from './approval-policies.mjs'
 import { createSandboxGuard } from './sandbox-guard.mjs'
-import { decideProductApproval } from './approval-decision.mjs'
+import { decideProductApproval, effectiveApprovalMode } from './approval-decision.mjs'
 import { createSnapshotStore } from './snapshot.mjs'
 import { createStateStore, createReceiptStore } from './persistence.mjs'
 import { createConversationService } from './conversation-service.mjs'
+import { resolvePermissionPreset } from './permission-preset.mjs'
+import { productIdentity } from './identity.mjs'
 import { createInteractionRegistry } from './interaction-registry.mjs'
 import { createCancelRouter, currentCancelScope, legacyCancelRequest } from './cancel-routing.mjs'
 import { createCredentialWriteChannel } from './credentials-guard.mjs'
@@ -222,9 +224,14 @@ export function apply(ctx, config = {}) {
     const raw = readBotConfig()?.approval
     const stored = String(raw?.mode || '')
     const normalized = stored === 'ask-before' ? 'ask-before-acting' : stored === 'ask-once-minutes' ? 'ask-once' : stored
-    const mode = ['ask-each', 'ask-before-acting', 'ask-once', 'never-ask'].includes(normalized) ? normalized : 'ask-each'
+    const effective = effectiveApprovalMode(normalized)
     const minutes = Number(raw?.onceMinutes)
-    return { mode, onceMinutes: Number.isFinite(minutes) && minutes > 0 ? Math.min(minutes, 24 * 60) : 30 }
+    return {
+      mode: effective.mode,
+      requested: effective.requested,
+      ...(effective.unavailableReason ? { unavailableReason: effective.unavailableReason, unavailable: true } : {}),
+      onceMinutes: Number.isFinite(minutes) && minutes > 0 ? Math.min(minutes, 24 * 60) : 30,
+    }
   }
   /** Behaviour switches from DSH Settings -> Bot -> 权限. */
   function behaviorSettings() {
@@ -241,15 +248,16 @@ export function apply(ctx, config = {}) {
       chmodSync(approvalStateFile, 0o600)
     } catch (error) { log('approval state persist failed: ' + messageOf(error)) }
   }
-  /** Whether an outside-workspace mutation may run without asking right now. */
+  /**
+   * Whether an outside-workspace mutation may run without asking right now.
+   *
+   * Only `never-ask` answers here, and its caller treats that as a rejection. A time window never
+   * counts as consent: `rememberAllowed` still records the last allow for diagnostics, but no code
+   * reads it as authorization.
+   */
   function approvalAutoAllows() {
-    const { mode, onceMinutes } = approvalSettings()
-    if (mode === 'never-ask') return 'never-ask'
-    if (mode === 'ask-once') {
-      const last = Number(readApprovalState().lastAllowAt)
-      if (Number.isFinite(last) && Date.now() - last < onceMinutes * 60_000) return 'ask-once'
-    }
-    return ''
+    const { mode } = approvalSettings()
+    return mode === 'never-ask' ? 'never-ask' : ''
   }
   const voicePersonaModule = String(config.voicePersonaModule || process.env.NISSE_VOICE_PERSONA_MODULE || '').trim()
 
@@ -353,8 +361,9 @@ export function apply(ctx, config = {}) {
     forward: (event, request) => ctx.waterfall(scopeTarget(request.agent, request.agent), event, request, () => Promise.reject(new Error('No DSH answerer'))),
     emit: push,
     userQuestions: () => ctx.get?.('userQuestions'),
-    // The pet bridge is the product UI; SSE subscribers are its connected pages.
-    hasLocalUi: () => sseSubscribers.size > 0,
+    // The pet bridge is the product UI. Legacy SSE pages and the v2 pet both count; the voice
+    // worker's /v2/stream connection does not, so a worker-only Host still fails closed.
+    hasLocalUi: () => sseSubscribers.size > 0 || conversation?.desktopConnected?.() === true,
   })
 
   // ---- beta2 kernel services: registry on top of the official mirror, ConversationService
@@ -387,8 +396,8 @@ export function apply(ctx, config = {}) {
   } catch (error) { log('interaction registry unavailable: ' + messageOf(error)) }
 
   const conversationRuntime = {
-    productVersion: () => String(process.env.NISSE_PRODUCT_VERSION || '0.0.1-beta2'),
-    runtimeVersion: () => String(process.env.NISSE_RUNTIME_VERSION || '0.2.1-rc.3'),
+    productVersion: () => productIdentity().productVersion,
+    runtimeVersion: () => productIdentity().runtimeVersion,
     sessionId: () => sessionId || null,
     agentReady: () => Boolean(agent) && agentTask === null,
     workspace: () => canonicalWorkspaceDir(),
@@ -430,7 +439,7 @@ export function apply(ctx, config = {}) {
       queueTtlMs: (Number(process.env.DSH_PENDING_INPUT_TTL || 0) || 60) * 1000,
       draftTtlMs: (Number(process.env.DSH_INPUT_DRAFT_TTL || 0) || 30) * 1000,
       settleMs: Number(process.env.DSH_INPUT_SETTLE_MS || 0) || 650,
-      drainMs: Number(process.env.DSH_HOLD_DRAIN_MS || 0) || 3000,
+      drainMs: Number(process.env.DSH_HOLD_DRAIN_MS || 0) || 6000,
     },
     log,
   })
@@ -505,10 +514,6 @@ export function apply(ctx, config = {}) {
             kind: 'deny',
             reason: '产品审批模式为“从不询问”，且该工具的文件副作用不受已挂载的 DSH 沙箱约束，因此已拒绝本次调用（fail-closed，未执行任何操作）。可在 DSH 设置 → Bot → 权限中改为询问后重试。',
           }
-        }
-        if (mode === 'ask-once' && approvalAutoAllows() === 'ask-once') {
-          auditEvent('approval.auto_allowed_mode', { tool: facts.toolName, mode, reason: 'unenforced-write-window' })
-          return null
         }
         auditEvent('approval.product_confirmation', { tool: facts.toolName, target })
         return {
@@ -873,7 +878,6 @@ export function apply(ctx, config = {}) {
           operation,
           mode,
           grantMatched: Boolean(policy),
-          askOnceWindowOpen: mode === 'ask-once' && approvalAutoAllows() === 'ask-once',
         })
         if (decision.outcome === 'allowed-once') {
           if (policy) auditEvent('policy.auto_allow', { policyId: policy.id, toolName, reason: preview(reason) })
@@ -1104,22 +1108,29 @@ export function apply(ctx, config = {}) {
     const width = { 'read-only': 0, 'workspace-write': 1, 'danger-full-access': 2 }
     const fallbackBundle = { sandbox: 'workspace-write', approval: 'ask' }
     const presets = ctx.permissionPresets || ctx.get?.('permissionPresets')
+    // `user-default` keeps the user's own DSH selection authoritative: narrowing it on
+    // every cold start is what made the visible chip and the effective sandbox disagree.
+    const effectivePreset = resolvePermissionPreset({ requested: permissionPreset, presets, session })
+    if (effectivePreset !== permissionPreset) {
+      auditEvent('permission.preset_delegated', { requested: permissionPreset, resolved: effectivePreset })
+      log('permission preset delegated to the user selection', { requested: permissionPreset, resolved: effectivePreset })
+    }
     let bundle = fallbackBundle
     if (presets && typeof presets.resolve === 'function') {
-      try { bundle = presets.resolve(permissionPreset) }
+      try { bundle = presets.resolve(effectivePreset) }
       catch (error) {
-        auditEvent('permission.preset_unknown', { preset: permissionPreset, error: messageOf(error) })
+        auditEvent('permission.preset_unknown', { preset: effectivePreset, error: messageOf(error) })
         log('permission preset unknown; falling back to the conservative bundle: ' + messageOf(error))
       }
     } else {
-      auditEvent('permission.preset_unavailable', { preset: permissionPreset })
+      auditEvent('permission.preset_unavailable', { preset: effectivePreset })
       log('permissionPresets service unavailable; verifying the composed permission only')
     }
     const before = effectivePermissionOf(session)
     if (presets && typeof presets.set === 'function') {
-      try { presets.set(session, permissionPreset) }
+      try { presets.set(session, effectivePreset) }
       catch (error) {
-        auditEvent('permission.preset_apply_failed', { preset: permissionPreset, error: messageOf(error) })
+        auditEvent('permission.preset_apply_failed', { preset: effectivePreset, error: messageOf(error) })
         log('permission preset apply failed: ' + messageOf(error))
       }
     }
@@ -1127,33 +1138,33 @@ export function apply(ctx, config = {}) {
     const declaredWidth = width[bundle.sandbox] ?? width['workspace-write']
     const actualWidth = after === null ? declaredWidth : (width[after.sandbox] ?? declaredWidth)
     if (after !== null && actualWidth > declaredWidth) {
-      throw new Error(`SESSION_PERMISSION_UNVERIFIED: session sandbox "${after.sandbox}" is wider than preset "${permissionPreset}" (${bundle.sandbox}); refusing to run the Bot wider than the configured bundle`)
+      throw new Error(`SESSION_PERMISSION_UNVERIFIED: session sandbox "${after.sandbox}" is wider than preset "${effectivePreset}" (${bundle.sandbox}); refusing to run the Bot wider than the configured bundle`)
     }
     if (after === null) {
-      auditEvent('permission.unverified', { preset: permissionPreset })
+      auditEvent('permission.unverified', { preset: effectivePreset })
       log('bot session permission unverified: no sandbox/shell service exposed the effective mode')
     } else if (after.approval === 'never' && bundle.approval === 'ask') {
-      auditEvent('permission.approval_narrowed', { preset: permissionPreset, approval: after.approval })
+      auditEvent('permission.approval_narrowed', { preset: effectivePreset, approval: after.approval })
     }
     permissionState = after === null
-      ? { preset: permissionPreset, sandbox: 'unverified', approval: null, verified: false }
-      : { preset: permissionPreset, sandbox: after.sandbox, approval: after.approval ?? bundle.approval, verified: true }
+      ? { preset: effectivePreset, sandbox: 'unverified', approval: null, verified: false }
+      : { preset: effectivePreset, sandbox: after.sandbox, approval: after.approval ?? bundle.approval, verified: true }
     if (before !== null && after !== null && before.sandbox !== after.sandbox) {
-      auditEvent('permission.mode_changed', { preset: permissionPreset, from: before.sandbox, to: after.sandbox })
-      log('bot session permission changed', { preset: permissionPreset, from: before.sandbox, to: after.sandbox })
+      auditEvent('permission.mode_changed', { preset: effectivePreset, from: before.sandbox, to: after.sandbox })
+      log('bot session permission changed', { preset: effectivePreset, from: before.sandbox, to: after.sandbox })
       if (before.sandbox === 'danger-full-access') {
         push('permission.downgraded', {
           sessionId: String(session.id),
           data: {
             from: before.sandbox,
             to: after.sandbox,
-            preset: permissionPreset,
-            recover: '0.0.1 起默认权限已收紧为工作区写入 + 越界逐次审批。如确需全文访问，请在 DSH 会话中显式执行 /permission danger-full-access（最高风险，仅在你完全信任 Bot 时使用）。',
+            preset: effectivePreset,
+            recover: '当前会话权限比上一状态更窄。Bot 会沿用你在 DSH 权限选择器里选中的档位；如需完全访问，请在 Bot 主窗口左下角选择“完全权限”。',
           },
         })
       }
     }
-    log('permission preset applied', { preset: permissionPreset, sandbox: permissionState.sandbox, approval: permissionState.approval, verified: permissionState.verified })
+    log('permission preset applied', { preset: effectivePreset, sandbox: permissionState.sandbox, approval: permissionState.approval, verified: permissionState.verified })
     return after
   }
 
@@ -1446,7 +1457,8 @@ export function apply(ctx, config = {}) {
   // beta2 kernel startup: record the epoch, restore bounded product state (never auto-execute),
   // and start the settle-drain tick used by Host-owned utterance assembly.
   try {
-    stream.record('host.epoch', { source: 'host', data: { productVersion: '0.0.1-beta2', runtimeVersion: '0.2.1-rc.3', pid: hostPid } })
+    const identity = productIdentity()
+    stream.record('host.epoch', { source: 'host', data: { productVersion: identity.productVersion, runtimeVersion: identity.runtimeVersion, pid: hostPid } })
     conversation.start()
   } catch (error) { log('conversation service start failed: ' + messageOf(error)) }
 
@@ -1474,7 +1486,7 @@ export function apply(ctx, config = {}) {
         return json(res, 200, result)
       }
       if (url.pathname === '/v2/stream' && req.method === 'GET') {
-        try { conversation.noteDesktopSeen() } catch { /* presence is diagnostic */ }
+        // The voice worker holds this long connection; its presence is not a product UI.
         const after = Number(url.searchParams.get('after') || 0)
         const probe = stream.eventsAfter(after, { limit: 0 })
         if (probe.resyncRequired) return json(res, 409, { error: 'resync-required', snapshotSeq: stream.seq(), minRetainedSeq: probe.minRetainedSeq })

@@ -1,6 +1,6 @@
-DeepSeek Harness
-DeepSeek Harness
-Welcome to DeepSeek Harness
+dsh-bot
+dsh-bot
+Welcome to dsh-bot
 Build potential. Explore intelligence.
 Sign in
 Add API Key

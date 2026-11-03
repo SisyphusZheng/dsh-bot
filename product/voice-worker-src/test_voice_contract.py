@@ -92,6 +92,20 @@ class BargeMedia(unittest.IsolatedAsyncioTestCase):
         for command in self.host.commands:
             self.assertIn(command["type"], {"voice.facts", "presentation.ack"})
 
+    async def test_vad_after_playback_end_never_starts_a_barge(self):
+        """Speech after the bot finished is a new utterance, not an interruption.
+
+        The old playback-tail candidate confirmed on the first two words, ducked the
+        volume and closed the capture early; the rest of the sentence then became a
+        "late" draft instead of a submitted turn.
+        """
+        await self.start_playback()
+        self.bridge._playback["open"] = False
+        await self.vad_start()
+        self.assertIsNone(self.bridge._barge_candidate)
+        self.assertEqual(rtvi(self.bridge, "duck-playback"), [])
+        self.assertEqual(self.bridge.metrics["barge_candidates"], 0)
+
     async def test_host_stop_command_cancels_duck_and_stops_named_playback(self):
         await self.start_playback()
         await self.vad_start()

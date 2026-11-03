@@ -1,0 +1,19 @@
+# Bilingual-pair consistency record for 2026-11-03-voice-capture-and-tts-boundaries.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/product/agent-notes/implemented/bug-fix/2026-11-03-voice-capture-and-tts-boundaries.md
+/agent-note-voice-capture-boundaries-and-tts-fragment-safety:
+  en: 748243f435c51acc
+  zh: c29aab715ea6e00a
+/agent-note-voice-capture-boundaries-and-tts-fragment-safety/problem:
+  en: dc68eba47dab34dc
+  zh: 637e2a25f796e401
+/agent-note-voice-capture-boundaries-and-tts-fragment-safety/decision:
+  en: af810394f3f42ff7
+  zh: 64bf024fd141a895
+/agent-note-voice-capture-boundaries-and-tts-fragment-safety/alternatives-considered:
+  en: eb9d1719529b75e6
+  zh: 7a9f5c929a4c09e1
+/agent-note-voice-capture-boundaries-and-tts-fragment-safety/consequences:
+  en: b9c203d0c6b27709
+  zh: d1e8be2ce9ba01b0

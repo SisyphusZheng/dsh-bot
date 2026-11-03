@@ -109,7 +109,7 @@ export const DEFAULT_BOT_CONFIG: BotConfig = {
     instructions: '事实与执行结果必须来自 DSH；不编造执行结果。',
     promptOverride: '',
   },
-  app: { autoStart: true, keepRunning: true, responseStyle: 'concise' },
+  app: { autoStart: false, keepRunning: true, responseStyle: 'concise' },
   memory: { enabled: true },
   approval: { mode: DEFAULT_APPROVAL_MODE, onceMinutes: DEFAULT_APPROVAL_ONCE_MINUTES },
   behavior: { pauseOnInput: true, allowScreenView: false },
@@ -195,7 +195,7 @@ export function normalizeBotConfig(input: unknown): BotConfig {
       promptOverride: clampText(persona.promptOverride),
     },
     app: {
-      autoStart: appSection.autoStart !== false,
+      autoStart: appSection.autoStart === true,
       keepRunning: appSection.keepRunning !== false,
       responseStyle: appSection.responseStyle === 'detailed' ? 'detailed' : 'concise',
     },

@@ -29,6 +29,8 @@ export interface BotRuntimeConfig {
   memory?: { enabled?: boolean }
   approval?: { mode?: string; onceMinutes?: number }
   behavior?: { pauseOnInput?: boolean; allowScreenView?: boolean }
+  app?: { autoStart?: boolean; keepRunning?: boolean; responseStyle?: 'concise' | 'detailed' }
+  agent?: { mode?: string; workspace?: string; session?: string; permissionPreset?: string }
   persona?: {
     name?: string
     personality?: string
@@ -86,10 +88,9 @@ export function managedProfilePatch(
   const lines = [
     MANAGED_BEGIN,
     '# Regenerated on cold start; live settings use the authenticated bridge. Do not edit by hand.',
-    '# Permission model: the Bot default is workspace-write + per-action approval. Out-of-workspace',
-    '# writes are denied by the DSH sandbox; the model may retry one exact call with',
-    '# sandbox_permissions + justification, which raises a formal approval prompt and applies only',
-    '# to that call. danger-full-access is a deliberate, explicitly selected option, never a default.',
+    '# Permission model: the Bot session follows the permission preset the user selects in the DSH',
+    '# surface (restored on cold start). The safe default stays workspace-write + per-action approval;',
+    '# danger-full-access is only ever effective because the user explicitly selected it.',
     '- id: agent-default-model',
     '  name: "@deepseek-ai/dsh-agent-default-model"',
     '  config:',
@@ -120,7 +121,7 @@ export function managedProfilePatch(
     '  config:',
     `    ipcDir: ${JSON.stringify(join(dshHome, 'bot'))}`,
     `    workspaceDir: ${JSON.stringify(workspace)}`,
-    '    permissionPreset: bot-outside-write',
+    `    permissionPreset: ${String(config.agent?.permissionPreset || 'user-default')}`,
     ...(memory === null ? [] : [
       `    memoryUrl: ${JSON.stringify(memory.url)}`,
       `    memoryToken: ${JSON.stringify(memory.token)}`,

@@ -1,2 +1,0 @@
-PASS authenticated memory write/recall and cross-Session prompt injection (explicit HTTP fixture, not database qualification)
-PASS real Host startup, opencode-go, voice NDJSON, session completion and graceful exit

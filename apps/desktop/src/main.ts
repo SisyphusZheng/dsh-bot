@@ -58,6 +58,8 @@ import { desktopErrorState } from './startup-error.ts'
 import { readDesktopLoginShellEnvironment, resolveDesktopLoginShellConfig } from './login-shell-environment.ts'
 import { DesktopMandatoryUpdatePolicy, resolveDesktopPolicyConfig, type DesktopPolicyState } from './mandatory-update-policy.ts'
 import { desktopClientMetadata, desktopClientVersion } from './client-metadata.ts'
+import { hostProductIdentity } from './product-identity.ts'
+import { applyLaunchAtLogin, closeKeepsRunning } from './launch-settings.ts'
 import { DesktopMandatoryUpdateWindow } from './mandatory-update-window.ts'
 import { DesktopPolicyTestAuth } from './policy-test-auth.ts'
 import { readDesktopSettings } from './settings.ts'
@@ -370,6 +372,9 @@ async function main(): Promise<void> {
   // The Bot can run without memory while initialization is pending.
   const memoryRuntime = new MemoryRuntime(resolveDshHome(), process.resourcesPath, app.getAppPath(), development)
   const startupConfig = botRuntime.readConfig()
+  // Reconcile the operating-system login item with the persisted choice; the setting is opt-in,
+  // so an absent value removes any entry instead of re-registering the application.
+  applyLaunchAtLogin(startupConfig.app?.autoStart === true)
   // Memory starts asynchronously and must never block the voice/chat path. The Host
   // profile is composed without memory first; when Hindsight becomes ready the
   // adapter is attached through the authenticated bridge (see the background start
@@ -432,6 +437,9 @@ async function main(): Promise<void> {
     },
     onConfigSaved: (config, previous) => {
       const update = async (): Promise<void> => {
+        if ((previous.app?.autoStart === true) !== (config.app?.autoStart === true)) {
+          applyLaunchAtLogin(config.app?.autoStart === true)
+        }
         const memoryChanged = previous.memory.enabled !== config.memory.enabled
         if (memoryChanged) await memoryRuntime.restart(config)
         const d = await readyBridge()
@@ -654,7 +662,11 @@ async function main(): Promise<void> {
   const backend = new DesktopBackendController((onFailure) => {
     const hostInspectPort = developmentHostInspectPort(development)
     const host = new DesktopHostProcess(resources.node, resources.dsh, activeProject,
-      hostInspectPort, { ...botHostEnvironment(hostEnvironment, process.env), DSH_CLIENT_VERSION: desktopClientVersion() }, onFailure,
+      hostInspectPort, {
+        ...botHostEnvironment(hostEnvironment, process.env),
+        DSH_CLIENT_VERSION: desktopClientVersion(),
+        ...hostProductIdentity(app.getVersion(), resources.dsh),
+      }, onFailure,
       primaryRuntime,
       resources, (next) => { platformView.setSession(next) })
     return {
@@ -1285,9 +1297,10 @@ async function main(): Promise<void> {
     browserGuests.bind(window, (guest, name) => shortcuts.attachGuest(window, guest, name))
     shortcuts.attach(window)
     window.on('focus', automaticCheck)
-    // Closing hides: the page and the Host keep running, and the next show resumes the same document.
+    // Closing hides while the setting keeps the application running; an explicit opt-out ends it.
     window.on('close', (event) => {
       if (quitting || shellInstallerOwnsQuit || sessionEnding) return
+      if (!closeKeepsRunning(botRuntime.readConfig().app?.keepRunning)) { app.quit(); return }
       event.preventDefault()
       if (updateDialog.isOpen) { updateDialog.focus(); return }
       const hide = (): void => {

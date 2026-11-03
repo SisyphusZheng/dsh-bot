@@ -1,6 +1,6 @@
 # dsh-bot 0.0.1-beta — 版本计划与本地验收
 
-> **历史文档（beta1 时代，2026-10-27 冻结）。** 本文记录当时的版本计划与本地验收口径，保持原样不改写；当前版本为 `0.0.1-beta2`，提交、产物 SHA、E/U/R 状态与门禁缺口只维护在 [product/CURRENT-STATUS.md](product/CURRENT-STATUS.md)。
+> **历史文档（beta1 时代，2026-10-27 冻结）。** 本文记录当时的版本计划与本地验收口径，保持原样不改写；当前版本、提交、产物 SHA、E/U/R 状态与门禁缺口只维护在 [product/CURRENT-STATUS.md](product/CURRENT-STATUS.md)。
 
 当前仍为 beta。已批准的 0.0.1—0.0.4 范围见 [版本任务书](docs/roadmap/README.zh.md)，本地修复与发布步骤见 [0.0.1 执行计划](docs/roadmap/LOCAL-0.0.1.zh.md)。本次整合保留当前修复分支的完整代码与历史，新增任务书并关闭真实 API E2E 的自动触发；没有在云端重新构建或验收 Mac 安装包，也没有宣布稳定版。此前用户报告的本机结果与仓库历史证据分别记录在 [基线](docs/roadmap/baseline.json)。
 
@@ -54,4 +54,4 @@ Memory 的 Linux 单元/进程测试使用真实 adapter + 明确的 HTTP backen
 
 所有验证在 Work 本地运行；未调用 GitHub Actions。仅新建无 PR 的 MVP 分支，避免仓库的 PR 工作流。不要为验收本候选版本随意创建 PR，否则已有工作流会运行。
 
-本轮恢复范围、测试证据与原生限制见 [恢复交付记录](review/pet-restoration-2026-10-27/RESULTS.json)。Mac 构建命令保持 `bash product/tools/build-macos.sh`。
+本轮恢复范围、测试证据与原生限制保存在交付包与内部归档中（不随公开仓库发布）。Mac 构建命令保持 `bash product/tools/build-macos.sh`。

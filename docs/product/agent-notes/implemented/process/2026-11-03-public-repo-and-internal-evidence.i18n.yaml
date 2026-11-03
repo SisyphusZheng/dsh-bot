@@ -1,0 +1,19 @@
+# Bilingual-pair consistency record for 2026-11-03-public-repo-and-internal-evidence.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/product/agent-notes/implemented/process/2026-11-03-public-repo-and-internal-evidence.md
+/agent-note-public-repository-keeps-decisions-not-audit-evidence:
+  en: 8b22169c67ef591f
+  zh: fe4b0b3391a1b610
+/agent-note-public-repository-keeps-decisions-not-audit-evidence/problem:
+  en: 4a1c4a1ab84f021a
+  zh: 3702b3139c6bd7cb
+/agent-note-public-repository-keeps-decisions-not-audit-evidence/decision:
+  en: e84adf57cfbf5913
+  zh: a5ec2299cf81da6d
+/agent-note-public-repository-keeps-decisions-not-audit-evidence/alternatives-considered:
+  en: 867cddf6b08a3443
+  zh: fc914c90160ff833
+/agent-note-public-repository-keeps-decisions-not-audit-evidence/consequences:
+  en: c66e06b46fc6dc5f
+  zh: 648320af1b756b13

@@ -2,23 +2,87 @@
 
 **本文件是唯一当前事实入口；SHA/日期只在本文件维护。** 其它文档（[根 README](../README.md)、[README-MVP.zh.md](../README-MVP.zh.md)、[product/versions.json](versions.json)、[已批准版本计划](../docs/roadmap/README.zh.md)）只链接本文件，不再复制易过时的提交号、产物 SHA 与验收计数。
 
-本文件是状态索引，不是发布声明，也不替代原始证据；结论升级必须来自新的命令输出或新证据文件，不能只改本文件的文字。状态词表：`PASS` / `FAIL` / `BLOCKED-ENVIRONMENT` / `BLOCKED-EXTERNAL` / `DEFERRED`；实现进度另用 `IMPLEMENTED` / `VERIFIED`；本文件不含待确认占位（§7/§8 已于 2026-10-31 登记结论）。历史文档、`review/` 目录与既有证据保持原样，本文件只在"历史索引"给日期、提交与位置。
+本文件是状态索引，不是发布声明，也不替代原始证据；结论升级必须来自新的命令输出或新证据文件，不能只改本文件的文字。状态词表：`PASS` / `FAIL` / `BLOCKED-ENVIRONMENT` / `BLOCKED-EXTERNAL` / `DEFERRED`；实现进度另用 `IMPLEMENTED` / `VERIFIED`；本文件不含待确认占位（§7/§8 已于 2026-10-31 登记结论）。历史文档与内部归档保持原样（不随公开仓库发布），本文件只在"历史索引"给日期、提交与位置。
 
-## 0. 公开发布状态（2026-11-02）
+## 0. 0.0.1 收尾状态（2026-11-02）
+
+### 0.1 结论
+
+| 项 | 结论 |
+|---|---|
+| 产品版本 | `0.0.1`（`product/versions.json` 与 `apps/desktop/package.json` 一致；本轮由 `0.0.1-beta2` 升版，Runtime 不升级） |
+| Runtime | DeepSeek Harness `0.2.1-rc.3`（tag `dsh-v0.2.1-rc.3`，commit `1f81c047…`），未改动 |
+| E：工程完成 | **PASS**（本树实测，`verify-local` / 生产构建 / 原生 base 15 阶段 / B2 原生 9 项 / 三轮稳定 / 18/18 门禁，全部绑定同一源码与同一 DMG；产物绑定构建提交 `625416e3`，其后只有文档提交，见 §0.2–§0.3） |
+| U：内测可用 | **部分通过，整体未 PASS**：真实 Provider、真实工具执行、审批允许/拒绝、真实个人 Hindsight 写入与重启+新会话召回已实测 PASS；按真实会话日志修复了丢弃输入循环、尾音 barge、慢 ASR 迟到草稿、退出误报、TTS 空片段与权限前后台不一致（见 RUNTIME-FIXES.md）；仍缺真人语音十轮与打断、TCC 授权、物理桌面交互、30 分钟连续使用与故障注入（`BLOCKED-EXTERNAL`/`NOT-TESTED`）。见 UAT-RESULTS.md 与 FINAL-RELEASE-DECISION.md |
+| R：公开发行 | **NOT-STARTED**：仅 ad-hoc 内部签名，无 Developer ID、无公证、无更新源；按计划 DEFERRED 至 0.1.0 |
+| 关键 FAIL | 无（`18/18` 门禁 PASS；边界 16×`BLOCKED-ENVIRONMENT`、8×`BLOCKED-EXTERNAL`、1×`DEFERRED`）；审批专项无 P0（含独立红队复核对账） |
+| 是否可称"0.0.1 正式稳定版" | **不能**。按任务书 §10 的发布条件，E 层与安全层已成立，但 U 层仍缺真人语音/TCC/物理交互/长时间使用。当前决策为 **RESULT B：0.0.1 ENGINEERING-COMPLETE / UAT-INCOMPLETE**，保留 0.0.1 候选身份 |
+
+### 0.2 产物身份（源码与安装包同源）
 
 | 项 | 值 |
 |---|---|
-| 仓库 | <https://github.com/SisyphusZheng/dsh-bot>，可见性 **PUBLIC**（2026-11-02 起） |
-| 默认分支 `main` | `f873a44abee0ef084d06ad4e7f981b31529021e0`（公开清理历史上的最新修复；本地开发工作树对应 `5d8acc678e`） |
-| 修复分支 | `work/0.0.1-closure-final`（与 `main` 同一提交）；`work/0.0.1-closure`、`work/0.0.1-beta2` 均已并入 `main` |
-| 公开/本地历史 | 公开前做过路径清理，本次修复以重放提交落在清理后的历史上；旧→新提交 SHA 映射保存在私密发布记录中（不入库） |
-| 安装包与证据 | 本仓库不存放 DMG 等构建产物；库内 `review/`（含 `review/archive/`）保留历史验收记录，原始证据与候选包在私密备份区；生成型 `product/evidence/` 已于 2026-11-02 归档出库 |
-| 本文件其余章节 | §1–§9 是 2026-10-31 发布前的历史快照，绑定 `40be8ef8…`，保留原文不修改；“仅本地、未推送”“私密证据区”等描述属于当时状态，不代表当前发布状态 |
-| 上游与许可 | 上游为 DeepSeek Harness（见 [`UPSTREAM.txt`](../UPSTREAM.txt)：tag `dsh-v0.2.1-rc.3`、commit `1f81c047…`，MIT [`LICENSE`](../LICENSE)）；第三方依赖见 [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md) |
+| 构建源码 | `625416e3f7cba1817bcd4d9900852780c542cd86`（= 产物构建提交；`PASS packaged source identity`；`dshBuildDirty=false`） |
+| DMG 文件名 | `dsh-bot-0.0.1-625416e3-mac-arm64-unsigned.dmg` |
+| DMG 路径（构建输出） | `apps/desktop/.desktop-build/targets/mac-arm64/unsigned-artifacts/dsh-bot-0.0.1-625416e3-mac-arm64-unsigned.dmg` |
+| DMG 交付副本 | `~/Documents/projects/dsh-bot-candidates/0.0.1-stable-625416e3/`（含本表全部证据文件）；旧候选已按“只保留最新”清理，旧版回滚镜像为 `~/Documents/projects/nisse/dist/rc3-closure/dsh-bot-0.0.1-beta-mac-arm64-unsigned.dmg` |
+| DMG SHA-256 | `2cd451e6f99ded685ea1d25c3feedc47f5a12c5bb9a207fdd335e69b5158c54d` |
+| DMG 大小 | `702,198,085 B`（`stat -f %z`，交付副本复算一致） |
+| app.asar SHA-256 | `d72c32e71e5d87cc9aaa18f5e27175a22f3db5d00da80c4b560f540502818937` |
+| 签名 | ad-hoc 内部签名，`codesign` 校验 `PASS`（660 native files）；Gatekeeper 首次打开 `BLOCKED-EXTERNAL`（未公证，符合预期，不要求用户关闭 Gatekeeper） |
+| 构建清单 | `.mvv-build/evidence/macos-build.json`：`sourceCommit` = `625416e3…`、`createdAt` `2026-11-03T11:37:40.304Z`、`artifact.sha256` 同上 |
+| 构建后源码差异 | **仅文档**：`git diff --name-only 625416e3 HEAD` 只列 `product/CURRENT-STATUS.md` 与内部验收记录（不随公开仓库发布），不含 `apps/`、`packages/`、`nisse/`、`product/` 源码路径；验收、稳定与门禁均在该产物上重跑 |
 
-本次公开发布包含的产品侧修复：气泡通知计时、配置缺失下的 Option 行为、macOS 隐藏/全屏恢复、鼠标穿透气泡的无效关闭按钮、录音气泡生命周期与取消语义、录音模式固定、退出语音噪声、事件缺口导致的“正在处理任务”卡住。
+### 0.3 本轮实测（命令与输出）
 
-验证边界：工程测试与打包专项已通过（见私密交付记录）；**实体键盘/TCC/真实麦克风与付费语音端到端仍未验证**，仓库内不含 DMG。已知文档偏差：部分产品文档缺英文对、`verify-repository-references` 既有偏差，均未在本轮修复。
+| 检查 | 结果 | 证据 |
+|---|---|---|
+| `bash product/tools/verify-local.sh` | **exit 0** | Node `416/416`；Vitest `612 passed` + 2 个显式 `describe.skipIf`；Python `107/107`；typecheck `5/5`；build `9/9`；`dev-doctor` PASS |
+| `bash product/tools/build-macos.sh` | **exit 0** | `PASS packaged source identity: 625416e3…`、`dshBuildDirty=false`；构建内测试与门禁全 PASS |
+| `bash product/tools/accept-beta2-macos.sh <DMG>` | **overall exit 0** | base `15/15 PASS`；B2 native **`9/9 PASS`**（含 C5）。在 `/tmp/dsh-accept-wt3`（同一提交、user-data 不在 `~/Documents`）运行，避免 macOS Documents TCC 提示干扰 |
+| `node product/tools/stability-beta2.mjs --rounds 3` | **PASS** | 3/3 轮，`firstAttemptSuccesses=3`，同一 DMG SHA。`native/stability/summary.json` |
+| `node product/tools/gate-map.mjs` | **18/18 PASS，0 FAIL** | `gate-map.json`：`artifactVerified=true`，`workspaceHead == sourceCommit == 625416e3` |
+| 首轮尝试失败（如实记录） | 环境问题 → 已定位 | 在仓库路径（`~/Documents/...`）下验收时应用停在 macOS Documents TCC 提示，bridge 未出现；把 user-data 移出 Documents 后复跑即 `15/15` + `9/9`。属环境，不是产品缺陷；详见 ARTIFACT-IDENTITY §3 |
+
+### 0.4 本轮修复（相对 §1–§9 的历史状态）
+
+- **恢复上游完整性门禁**：公开清理删除了 `product/upstream-integrity.json.gz`，而 `verify-upstream.mjs` 无条件读取它，导致本树无法验证也无法构建；已恢复并补齐 26 条被清理改动但未登记的上游 override。
+- **版本单一来源**：Host Integration 不再硬编码产品版本，Desktop 在唯一 host spawn 点注入 `app.getVersion()` 与运行期 manifest 版本；缺少身份时报 `unknown` 而不是旧版本；守卫测试禁止 bundle 里再出现版本字面量；`dev-doctor` 的版本漂移由 WARN 改为 **FAIL**。
+- **假设置变真**：`app.autoStart`（登录项，默认关闭、仅打包版写入）与 `app.keepRunning`（关闭窗口是否退出）现在都有真实行为。
+- **桌面存在性**：语音 Worker 的 `/v2/stream` 不再把桌面标记为已连接；`hasLocalUi` 同时认可 v2 桌宠。
+- **版本冻结**：产品版本 `0.0.1`；测试/冒烟夹具改读 `product/versions.json`；构建输入按声明版本命名。
+- **测试与门禁**：补齐覆盖产品改过的上游源文件的 spec（tray、locale、directory-picker、preload 系列、welcome renderer），修正仍写 `DeepSeek Harness` 的期望值与启动测试的 Electron mock；`welcome` 快照与 tray 期望改为跟随产品名。
+- **Slop 清理**：删除两个零消费者工具与已完成的 rc.3 演练 workflow；README/roadmap/README-MVP 不再复制当前版本事实。
+- **运行时缺陷修复（2026-11-03）**：丢弃输入循环（终态草稿不再投影）、播放尾音 barge 误判、慢 ASR 迟到草稿（hold drain 6 s）、退出误报语音连接失败、TTS 空片段/“!”朗读、权限前后台不一致（设置页“权限档位”+ Host 解析+托管块）。证据与根因：RUNTIME-FIXES.md。
+- 逐项证据与根因：内部审计报告（不随公开仓库发布）；架构/所有权/Slop/问题矩阵同目录。
+
+### 0.4.1 真实用户验收（2026-11-02 追加；真实 Provider/Hindsight 结论是数据层面的，与构建无关，在最终候选上同样成立）
+
+| 验收 | 结果 | 证据 |
+|---|---|---|
+| 真实 Provider 对话 | **PASS**：6 轮，延迟 3.7–10.9 s，模型 `deepseek-v4.1-flash`（`opencode-go`） | UAT-APPROVAL.md |
+| 真实工具执行 | **PASS**：`bash` 工具创建 `/tmp/uat-approval-probe.txt`（内容 `uat-ok`） | 同上 |
+| 审批允许一次 | **PASS**：真实 sandbox escalation → `interaction.resolve allowed-once` → 副作用生成（`~/uat-approval-probe.txt`，12 B） | 同上 |
+| 审批拒绝 | **PASS**：`rejected` → 副作用未发生 | 同上 |
+| 真实个人 Hindsight | **PASS**：备份 → 真实库写入 → 退出 → 重启 → 新会话 → 正确召回（验收暗号与库内测试事实已按授权删除，记录保存在内部归档） | 内部归档（不随公开仓库发布） |
+| 退出与重启 | **PASS**：退出 2–3 s、descriptor 清理、端口释放、无残留进程 | UAT-STABILITY.md |
+| 真人语音十轮 / TCC / 物理桌面交互 / 30 分钟连续使用 | `BLOCKED-EXTERNAL` / `NOT-TESTED` | UAT-VOICE.md、UAT-DESKTOP.md |
+
+真实配置全程未读取凭据内容；真实 `config.json` 仅临时关闭 `app.autoStart`（阻止 UAT 启动注册登录项）并按原字节还原，登录项前后无变化。详见 ROLLBACK.md。
+
+### 0.5 已知偏差与未完成项（不冒充已修复）
+
+- `verify-translation-pairing` 仍 FAIL：10 篇 zh-only 产品文档缺英文对与 `.i18n.yaml`。
+- `verify-repository-references` 仍 FAIL：产品状态索引要求记录提交身份，与上游"维护文件禁止引用 commit"规则冲突，需要策略裁决。
+- 审批所有权 P0（气泡双写者、`/approval` fallback 绕过 revision 校验、"始终允许"仅存在于 legacy 端点）与 TTS 播报双状态机：需要产品裁决与双窗口真人验收，登记 0.0.2 第一优先。
+- **STT 本地化**：用户已确认 0.0.2 评估改用 DSH 官方本地 SenseVoice 语音插件（`speech-to-text-sensevoice` / `voice-input-bundle`），替代云端 DashScope ASR；0.0.1 保持现有链路。
+- TTS provider 偶发零音频（无重试）与缺 Memory 负向诊断期间不响应 SIGTERM（P3 观察项）登记 0.0.2。
+- `nisse/packages/host-integration/lib/` 源码位于被 `.gitignore` 覆盖的目录（force-add），属布局缺陷，单独一轮处理。
+- U 层与 R 层全部未验证项见 DELIVERY-0.0.1.md；逐项状态见 UAT-RESULTS.md，剩余问题与 0.0.2 交接见 REMAINING-ISSUES.md。
+
+### 0.6 历史章节
+
+§1–§9 是 2026-10-31 发布前的历史快照，绑定 `40be8ef8…`，按"历史证据不得篡改"保留原文。其中"仅本地、未推送""私密证据区""候选包 beta2"等描述属于当时状态，不代表本轮结论；当前结论只看 §0。
 
 ## 1. 当前开发提交与候选版本
 
@@ -147,7 +211,7 @@ E PASS 不等于 U PASS，U PASS 不等于 R PASS。历史 PASS 不是当前 PAS
 |---|---|---|---|---|
 | 2026-10-24 | v0.1 内部 MVP（Runtime rc.2） | 产品 0.1.0；现存 DMG 实测 SHA-256 `2ee96bb2…`（文档记录 `120e7b83…`，重建后未回写，差异如实保留） | INTERNAL MVP — CONDITIONAL，P-M1…P-M7 多为 IN PROGRESS | [.agent/docs/MVP-ACCEPTANCE-0.1.md](../.agent/docs/MVP-ACCEPTANCE-0.1.md)、`nisse/dist/v0.1/` |
 | 2026-10-27 | beta1 线路与已批准 0.0.1–1.0 任务书 | 基线 tag `0.0.1-beta1` = `de5f10dc…` | 计划冻结，不是实现 | [docs/roadmap/README.zh.md](../docs/roadmap/README.zh.md)、[docs/roadmap/baseline.json](../docs/roadmap/baseline.json)、[README-MVP.zh.md](../README-MVP.zh.md) |
-| 2026-10-29 | `0.0.1-beta` 候选系列原生验收 | `f3b593b2…`、`4aa3b8d3…`、`63bb2c43…`、`c2ae35b2…`、`f801a59b…`（各有 review 目录与 DMG SHA） | 各轮自动验收 15/15 PASS；真人声学/Provider 仍阻塞 | [review/](../review/) 各 `STATUS*.md` |
+| 2026-10-29 | `0.0.1-beta` 候选系列原生验收 | `f3b593b2…`、`4aa3b8d3…`、`63bb2c43…`、`c2ae35b2…`、`f801a59b…`（各有内部验收记录与 DMG SHA） | 各轮自动验收 15/15 PASS；真人声学/Provider 仍阻塞 | 内部归档（不随公开仓库发布） |
 | 2026-10-30 | beta2 候选 2 | `6a6cdfd8…`；DMG SHA-256 `377345c6…` | SUPERSEDED（被候选 3 取代：候选 3 之前的 `7d15cb18` 修复了 `/health` 安装路径脱敏与桌面存在性推导后重建） | 私密证据 `dsh-bot-candidates/beta2/6a6cdfd8/` |
 | 2026-10-31 00:55 +08 | beta2 候选 3 | `7d15cb18…`；DMG SHA-256 `dda3e8ec…` | PASS（自动 15/15 + B2 18/18 + 稳定 3/3）；后被本轮候选取代 | 私密证据 `dsh-bot-candidates/beta2/7d15cb18/` |
 | 2026-10-31 | 第一轮收尾提交（源码级 PASS） | `089d598d…`；其后的 `37dc00f30c` 只改本索引 | 源码级 PASS；无打包验收 | 本文件历史（§4.2 旧记录） |
@@ -161,7 +225,7 @@ E PASS 不等于 U PASS，U PASS 不等于 R PASS。历史 PASS 不是当前 PAS
 
 | 项 | 状态 | 证据 |
 |---|---|---|
-| 上一已验收候选（`f801a59b`） | **回滚候选（数据兼容双向 + 三轮稳定 + 凭据文件完整）**；是否定为正式回滚基线需用户拍板（见 §5 第 5 项） | `0.0.1-beta` 构建 `f801a59ba957e01418d70ea8d44f55b965d10117`；DMG 实测 SHA-256 `7acadd6b…`、702,230,791 B；绑 `acceptance-1793287717/RESULTS.json` 15/15 PASS（[验收记录](../review/0.0.1-mac-bubble-level-2026-10-29/STATUS.zh.md) 写 702,229,423 B，与实测不一致，以实测为准）；演练结论见 §8.2 |
+| 上一已验收候选（`f801a59b`） | **回滚候选（数据兼容双向 + 三轮稳定 + 凭据文件完整）**；是否定为正式回滚基线需用户拍板（见 §5 第 5 项） | `0.0.1-beta` 构建 `f801a59ba957e01418d70ea8d44f55b965d10117`；DMG 实测 SHA-256 `7acadd6b…`、702,230,791 B；绑 `acceptance-1793287717/RESULTS.json` 15/15 PASS（验收记录 写 702,229,423 B，与实测不一致，以实测为准）；演练结论见 §8.2 |
 | 仅构建可验证的回滚点 | 构建可验证，验收记录未绑定 | beta2 候选 2 `6a6cdfd8…`，DMG 实测 SHA-256 `377345c6…`、702,479,827 B |
 | 记录中的回滚包（`76d13562…`） | ROLLBACK-RECORD-DRIFT + VERIFIED-AT-ALTERNATE-PATH | 记录路径失效（`nisse/dist/v0.0.1-beta/` 现只剩 `SHA256SUMS.txt`，记录路径 `$HOME/projects/dsh-bot-workspace/dist/…` 本机不存在），但 DMG 在本机替代路径存在且可验证：`nisse-dsh/apps/desktop/.desktop-build/targets/mac-arm64/unsigned-artifacts/dsh-bot-0.0.1-beta-mac-arm64-unsigned.dmg`，实测 **SHA-256 `76d13562…`、779,421,007 B**（与记录值及 `nisse/versions.json.sizeBytes` 一致）。**不是"文件缺失/不可验证"** |
 | `nisse/dist/rc3-closure/` 同名 DMG | 未验收，不作为回滚包 | 实测 SHA-256 `6dc0db38…`（不是 `76d13562…`）；来源是 2026-10-25/26 本地构建（`mvp/rc3-closure` @ `8c34e669…`），材料目录中的本地验收报告（`nisse/review/rc3-closure-2026-10-25/LEAD-LOCAL-ACCEPTANCE.zh.md`，非本仓库文件）结论为"不建议按已交付 MVP Candidate 接受"（4 个 High 未解决），仅核心运行链路实测通过 |

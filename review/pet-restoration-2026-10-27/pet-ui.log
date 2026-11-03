@@ -1,1 +1,0 @@
-PASS actual Chromium sprite rendering; silent idle; 5 dynamic choices; bound answer and approval clicks; hidden settled bubble; real pet welcome/name/persona flow and pause. IPC is an explicit fixture, not native macOS acceptance.

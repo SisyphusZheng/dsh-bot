@@ -177,7 +177,7 @@ async def main():
             'hostEpoch': HOST_EPOCH,
             'snapshotSeq': host_state['seq'],
             'generatedAt': iso_now(),
-            'identity': {'product': 'dsh-bot', 'productVersion': '0.0.1-beta2-fixture',
+            'identity': {'product': 'dsh-bot', 'productVersion': '0.0.0-fixture',
                          'sessionId': 'media-session', 'botSessionReady': True,
                          'workspace': '/fixture/workspace'},
             'connection': {'worker': {'state': 'connected'},

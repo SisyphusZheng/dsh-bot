@@ -52,11 +52,12 @@ try {
  presentation=createCompanionPresentation({show:payload=>{renders=renders.then(()=>bubble.evaluate(p=>window.receiveBubble(p),payload))},hide:()=>{renders=renders.then(()=>bubble.evaluate(()=>window.receiveBubble({visible:false})))},animate:payload=>{renders=renders.then(()=>pet.evaluate(p=>window.receivePresentation(p),payload))},send:async(...args)=>{calls.push(args);if(args[0]==='/task/recovery'&&!args[1])return{token:'ui-recovery',originalText:'整理报告并核对已完成步骤',warning:'原操作可能已执行，请先检查副作用。'};if(args[0]==='/task/recovery')return{ok:true};if(args[0]==='/approval')return{ok:true};return{status:'accepted',commandId:`ui-${calls.length}`}}})
  // One monotonic counter feeds snapshotSeq and event seq: a snapshot installs
  // lastEventSeq = snapshotSeq, so the next event must be snapshotSeq + 1.
+ const PRODUCT_VERSION = JSON.parse(readFileSync(resolve(import.meta.dirname, '../../product/versions.json'), 'utf8')).product.version
  let lastSeq = 500
  const nextSeq = () => ++lastSeq
  const baseSnapshot = extra => ({
   protocolVersion:'dsh-bot-v1', schema:'snapshot@1', hostEpoch:HOST_EPOCH, snapshotSeq:nextSeq(), generatedAt:iso(),
-  identity:{product:'dsh-bot',productVersion:'0.0.1-beta2',runtimeVersion:'0.2.1-rc.3',sessionId:'ui-session',botSessionReady:true,workspace:'/tmp/ui',conversationIndex:1,hostPid:123},
+  identity:{product:'dsh-bot',productVersion:PRODUCT_VERSION,runtimeVersion:'0.2.1-rc.3',sessionId:'ui-session',botSessionReady:true,workspace:'/tmp/ui',conversationIndex:1,hostPid:123},
   connection:{worker:{state:'disconnected',connectionId:null,lastSeenAt:null},desktop:{connected:true,lastEventSeq:0,lastSeenAt:iso()}},
   capture:{state:'off',mode:'hold',captureId:null,connectionId:null,preview:null},
   playback:{state:'idle',playbackId:null,sourceTurnId:null,style:'full'},

@@ -338,7 +338,7 @@ test('draft confirm is single-use and bound to the exact revision', () => {
   assert.equal(confirmed.item.id, offered.id)
   assert.throws(() => draft.confirm(offered.id, offered.revision), /已确认或已失效/)
   assert.throws(() => draft.reject(offered.id, offered.revision), /已确认或已失效/)
-  assert.equal(draft.snapshot().status, 'confirmed')
+  assert.equal(draft.snapshot(), null, 'a confirmed draft must not keep the bubble alive')
 })
 
 test('draft edit bumps the revision and renews the confirmation window', () => {
@@ -362,11 +362,44 @@ test('draft reject and clear never execute anything', () => {
   const first = draft.offer({ text: '不要执行' })
   const rejected = draft.reject(first.id, first.revision)
   assert.equal(rejected.ok, true)
-  assert.equal(draft.snapshot().status, 'rejected')
+  assert.equal(draft.snapshot(), null, 'a rejected draft must not keep the bubble alive')
   assert.throws(() => draft.confirm(first.id, first.revision), /已确认或已失效/)
   assert.equal(draft.clear(), true)
   assert.equal(draft.snapshot(), null)
   assert.deepEqual(draft.history().map((record) => record.status), ['rejected'])
+})
+
+test('discarding a draft clears the projection so the confirmation bubble closes', () => {
+  const clock = fakeClock(100)
+  const draft = createDraftModel({ now: clock.now })
+  const offered = draft.offer({ text: '呃，我说', source: 'voice', captureId: 'c9', metadata: { late: true } })
+  assert.equal(draft.snapshot().id, offered.id)
+  draft.reject(offered.id, offered.revision)
+  // The pet renders from this projection; a surviving draft would keep the bubble and trap
+  // the user in the discard action until the next offer replaces it.
+  assert.equal(draft.snapshot(), null)
+  assert.throws(() => draft.reject(offered.id, offered.revision), /已确认或已失效/)
+  assert.equal(draft.snapshot(), null)
+  const next = draft.offer({ text: '对', source: 'voice', captureId: 'c10', metadata: { late: true } })
+  assert.equal(draft.snapshot().id, next.id)
+  assert.deepEqual(draft.history().map((record) => [record.text, record.status]), [['呃，我说', 'rejected']])
+})
+
+test('a discarded capture is not offered again for a later late revision', () => {
+  const clock = fakeClock(100)
+  const draft = createDraftModel({ now: clock.now })
+  const offered = draft.offer({ text: '呃，我说', source: 'voice', captureId: 'cap-late', metadata: { late: true } })
+  draft.reject(offered.id, offered.revision)
+  assert.equal(draft.snapshot(), null)
+  // The voice worker can emit another revision for the same capture; it must not resurrect the
+  // bubble the user just dismissed.
+  assert.throws(() => draft.offer({ text: '呃，我说……', source: 'voice', captureId: 'cap-late', metadata: { late: true } }), (error) => {
+    assert.equal(error.code, 'DRAFT_DISMISSED')
+    return true
+  })
+  assert.equal(draft.snapshot(), null)
+  const other = draft.offer({ text: '打开浏览器', source: 'voice', captureId: 'cap-other', metadata: { late: true } })
+  assert.ok(other.id)
 })
 
 test('draft TTL expires inspectable and requires a new draft', () => {
@@ -374,7 +407,7 @@ test('draft TTL expires inspectable and requires a new draft', () => {
   const draft = createDraftModel({ now: clock.now, ttlMs: 1000 })
   const offered = draft.offer({ text: '过期前' })
   clock.set(1000)
-  assert.equal(draft.snapshot().status, 'expired')
+  assert.equal(draft.snapshot(), null, 'an expired draft must not keep the bubble alive')
   assert.throws(() => draft.confirm(offered.id, offered.revision), /已过期/)
   assert.deepEqual(draft.expire(), [])
   clock.set(2000)

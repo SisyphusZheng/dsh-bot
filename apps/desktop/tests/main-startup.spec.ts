@@ -167,6 +167,7 @@ const harness = await vi.hoisted(async () => {
     setAboutPanelOptions: vi.fn<(options: Electron.AboutPanelOptionsOptions) => void>(),
     requestSingleInstanceLock: () => true,
     setAsDefaultProtocolClient: vi.fn(),
+    setLoginItemSettings: vi.fn<(settings: Electron.LoginItemSettings) => void>(),
     exit: vi.fn(),
     relaunch: vi.fn(),
     focus: vi.fn(),

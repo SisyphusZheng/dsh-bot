@@ -7,6 +7,7 @@ import { randomUUID } from 'node:crypto'
 import { pathToFileURL } from 'node:url'
 import { createRequire } from 'node:module'
 import { resolvePetVoiceRoute } from './pet-voice-route.ts'
+import { onboardingOwnsBubble, presentationMayHideBubble } from './bubble-visibility.ts'
 import type { BotRuntimeConfig } from './bot-runtime.ts'
 type VoiceState = { phase: string; error?: string; offerUrl?: string; notice?: string }
 type Worker = { start(): Promise<{ state: string; lastError?: string }>; stop(): Promise<unknown> }
@@ -205,6 +206,8 @@ export class ProductPet {
   private bubble: BubbleController | null = null
   private bubbleModule: PetModules | null = null
   private presentation: Presentation | null = null
+  /** Whether the bubble currently shows an approval or question rather than overlay content. */
+  private bubbleShowsInteraction = false
   private pause: { start(): void; stop(): void } | null = null
   private config: BotRuntimeConfig = {}
   private attention: { sync(snapshot: object): void;stop(): void } | null = null
@@ -492,9 +495,20 @@ export class ProductPet {
       }): Presentation
     }
     this.presentation = presenter.createCompanionPresentation({
-      show: (payload) => { if (this.experience?.state().onboarding) return; this.positionBubble(); this.bubble?.show(payload) },
+      show: (payload) => {
+        // The overlay must not swallow an approval or question: the presentation's own waiting flag
+        // already reflects the snapshot being applied, while the overlay learns about it afterwards.
+        const waiting = this.presentation?.state?.().waiting === true
+        if (onboardingOwnsBubble(this.experience?.state().onboarding === true, waiting)) return
+        this.bubbleShowsInteraction = waiting
+        this.positionBubble(); this.bubble?.show(payload)
+      },
       publishQuestion: view => window.webContents.send('pet:voice-command', { action:'question-view',view }),
-      hide: () => { if (!this.experience?.state().onboarding) this.bubble?.hide() },
+      hide: () => {
+        if (!presentationMayHideBubble(this.experience?.state().onboarding === true, this.bubbleShowsInteraction)) return
+        this.bubbleShowsInteraction = false
+        this.bubble?.hide()
+      },
       animate: payload => this.window?.webContents.send('pet:presentation', payload),
       send: async (path: string, body?: object) => this.dispatchPresentationCall(path, body),
     })

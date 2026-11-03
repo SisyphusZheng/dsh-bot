@@ -1,0 +1,19 @@
+# Bilingual-pair consistency record for 2026-11-03-product-version-single-source.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/product/agent-notes/implemented/architecture/2026-11-03-product-version-single-source.md
+/agent-note-one-product-and-runtime-version-identity:
+  en: 6c9628bedb509939
+  zh: c6ea406aff933202
+/agent-note-one-product-and-runtime-version-identity/problem:
+  en: 0baceb48d188d60e
+  zh: 2cebbd9ecb4fbbd4
+/agent-note-one-product-and-runtime-version-identity/decision:
+  en: f06ff7dd68a11a52
+  zh: 6b71f26166b0d16e
+/agent-note-one-product-and-runtime-version-identity/alternatives-considered:
+  en: f02aa1936c16387c
+  zh: caa333ad88a81e63
+/agent-note-one-product-and-runtime-version-identity/consequences:
+  en: 01804aac1bd2d018
+  zh: a3f8956df6e962c0

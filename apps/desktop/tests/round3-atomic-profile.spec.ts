@@ -83,7 +83,7 @@ const OLD_MANAGED_BLOCK = `# >>> whalegirl-bot: managed profile layer >>>
 - id: nisse-host-integration
   name: "nisse-host-integration"
   config:
-    permissionPreset: bot-outside-write
+    permissionPreset: user-default
 # <<< whalegirl-bot: managed profile layer <<<`
 
 describe('profile manifest write protocol (real child processes)', () => {

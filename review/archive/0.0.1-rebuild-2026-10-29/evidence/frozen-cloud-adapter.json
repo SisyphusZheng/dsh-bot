@@ -1,6 +1,0 @@
-{
-  "applied": true,
-  "reason": "Cloud Python SSL policy asset is not collected by PyInstaller by default; preserve the unchanged policy rather than weakening TLS.",
-  "sha256": "8eff8829fead3440b04ad306d16ab7de76b1b11046e8a33fdcb50170db938d57",
-  "bytes": 891
-}

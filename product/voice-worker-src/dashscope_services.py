@@ -71,6 +71,37 @@ class SpeechTextFilter(MarkdownTextFilter):
         spoken = re.sub(r"[ \t]{2,}", " ", spoken)
         return spoken
 
+_TTS_EDGE_PUNCT = "，、。！？!?：:；;…—–-·・ "
+_TTS_INLINE_MARKDOWN = (
+    (re.compile(r"!\[([^\]]*)\]\([^)]*\)"), r"\1"),
+    (re.compile(r"\[([^\]]*)\]\([^)]*\)"), r"\1"),
+)
+
+
+def tts_safe_text(text: str) -> str:
+    """Return text the speech provider can actually synthesize, or ``""``.
+
+    Streaming sentence splitting can hand the TTS one punctuation-only fragment
+    (a Markdown image turns into "!") or a fragment that merely starts with a
+    comma. The provider answers those with a ``response.done`` carrying no audio,
+    which used to leave a silent hole in the reply. Strip remaining inline markup
+    and leading/trailing punctuation; return "" when nothing speakable remains.
+    """
+    spoken = str(text or "")
+    for pattern, replacement in _TTS_INLINE_MARKDOWN:
+        spoken = pattern.sub(replacement, spoken)
+    spoken = re.sub(r"[`*>#]+", "", spoken)
+    spoken = re.sub(r"\s+", " ", spoken).strip()
+    # Provider returns audio for sentences that start like a sentence; a leading comma
+    # (streaming split artifact) or markdown residue is what produced empty replies.
+    spoken = spoken.lstrip(_TTS_EDGE_PUNCT)
+    spoken = spoken.rstrip("，、, ")
+    spoken = re.sub(r"\s+", " ", spoken).strip()
+    if not re.search(r"[0-9A-Za-z\u4e00-\u9fff]", spoken):
+        return ""
+    return spoken
+
+
 def probe_log(message):
     if os.environ.get("DSH_VOICE_DEBUG_PROBES") == "1":
         logger.info(message)
@@ -551,6 +582,10 @@ class DashScopeTTSService(WebsocketTTSService):
                 return
 
     async def run_tts(self, text: str, context_id: str) -> AsyncGenerator[Frame | None, None]:
+        text = tts_safe_text(text)
+        if not text:
+            logger.debug("[dashscope-tts] skipping punctuation-only fragment")
+            return
         try:
             await asyncio.wait_for(self._socket_ready.wait(), timeout=10)
         except asyncio.TimeoutError:

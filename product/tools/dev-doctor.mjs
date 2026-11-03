@@ -443,7 +443,7 @@ export async function runDevDoctor(options = {}) {
     if (typeof desktopVersion === 'string' && typeof productVersion === 'string' && desktopVersion !== productVersion) problems.push(`apps/desktop version ${desktopVersion} != product ${productVersion}`)
     if (typeof cliVersion === 'string' && typeof runtimeVersion === 'string' && cliVersion !== runtimeVersion) problems.push(`apps/cli version ${cliVersion} != runtime ${runtimeVersion}`)
     if (problems.length > 0) {
-      checks.push(warn('identity.product', 'product versions', `Version identity needs review: ${problems.join('; ')}.`, { evidence: identity, remediation: 'Freeze step: align product/versions.json, apps/desktop and apps/cli metadata before packaging.' }))
+      checks.push(fail('identity.product', 'product versions', `Version identity is inconsistent: ${problems.join('; ')}.`, { evidence: identity, remediation: 'Align product/versions.json, apps/desktop and apps/cli metadata; a released product must not report a version that differs from the version it was built as.' }))
     } else {
       checks.push(pass('identity.product', 'product versions', `Product ${productVersion}; Runtime ${runtimeVersion}; apps/desktop ${desktopVersion}; apps/cli ${cliVersion}.`, { evidence: identity }))
     }

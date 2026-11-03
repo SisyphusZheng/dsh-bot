@@ -19,6 +19,18 @@ class SpeechText(unittest.IsolatedAsyncioTestCase):
             for word in words:
                 self.assertIn(word, spoken)
 
+    def test_tts_safe_text_drops_fragments_the_provider_cannot_speak(self):
+        from dashscope_services import tts_safe_text
+        # Markdown image split into a lone "!" / punctuation-only fragments: skip them
+        # instead of sending empty audio requests that leave a silent hole in a reply.
+        for source in ("!", "**", "…", "，", " ", ""):
+            self.assertEqual(tts_safe_text(source), "", source)
+        # A leading comma made the provider return response.done without audio.
+        self.assertEqual(tts_safe_text("，标题：什么是鱼灾？，"), "标题：什么是鱼灾？")
+        self.assertEqual(tts_safe_text("**更新完成**"), "更新完成")
+        self.assertEqual(tts_safe_text("[查看报告](https://example.com)"), "查看报告")
+        self.assertEqual(tts_safe_text("发布：2026-10-23 19:01"), "发布：2026-10-23 19:01")
+
     async def test_sentence_aggregation_fragments_keep_spoken_content(self):
         tts = DashScopeTTSService(api_key='fixture')
         chunks = ['**优点：速度快。', '** 缺点：价格高。']

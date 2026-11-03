@@ -74,7 +74,7 @@ describe('managed profile patch', () => {
     expect(botBundle.some(line => /danger-full-access/.test(line))).toBe(false)
     expect(patch).not.toContain('整个电脑')
     expect(patch).not.toContain('Bot 可操作整个电脑')
-    expect(patch).toContain('permissionPreset: bot-outside-write')
+    expect(patch).toContain('permissionPreset: user-default')
   })
 
   it('keeps danger-full-access as an explicitly labelled, non-default option', () => {
@@ -87,7 +87,7 @@ describe('managed profile patch', () => {
     expect(full.some(line => /仅在你完全信任 Bot/.test(line))).toBe(true)
     // No composition default points at the full-access preset.
     expect(patch).not.toMatch(/defaultPreset:\s*danger-full-access/)
-    expect(patch).toMatch(/permissionPreset:\s*bot-outside-write/)
+    expect(patch).toMatch(/permissionPreset:\s*user-default/)
   })
 
   it('generates valid, JSON-quoted presentation strings for the preset table', () => {
@@ -162,4 +162,10 @@ describe('legacy full-access managed profile migration', () => {
     expect(runtime.status().permissionNotice).toBe('')
     expect(readFileSync(migrationFile, 'utf8')).toContain('workspace-write')
   })
+  it('applies the explicit Bot permission tier instead of the delegated default', () => {
+    const patch = managedProfilePatch({ agent: { permissionPreset: 'danger-full-access' } }, '/home/bot-home', false, null)
+    expect(patch).toContain('permissionPreset: danger-full-access')
+    expect(patch).not.toContain('permissionPreset: user-default')
+  })
+
 })

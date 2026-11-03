@@ -1,4 +1,0 @@
-{
-  "auditCancelBefore": 1,
-  "error": "Error: timeout\n    at waitFor (file:///private/tmp/ui-bubble.mjs:7:182)\n    at async file:///private/tmp/ui-bubble.mjs:15:3"
-}

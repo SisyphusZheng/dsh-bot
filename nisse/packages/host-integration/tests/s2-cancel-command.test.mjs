@@ -12,13 +12,14 @@ import { createConversationService } from '../lib/conversation-service.mjs'
 import { createSnapshotStore } from '../lib/snapshot.mjs'
 import { PROTOCOL_VERSION } from '../lib/contracts.mjs'
 import { CANCEL_KINDS, captureCancelTarget } from '../lib/cancel-routing.mjs'
+import {PRODUCT_VERSION} from './product-version.mjs'
 
 const HOST_EPOCH = 'epoch-cancel-command'
 
 function fakeRuntime() {
   const state = { cancelled: [], commands: [], sessionId: 'session-1' }
   const runtime = {
-    productVersion: () => '0.0.1-beta2',
+    productVersion: () => PRODUCT_VERSION,
     runtimeVersion: () => '0.2.1-rc.3',
     sessionId: () => state.sessionId,
     agentReady: () => true,

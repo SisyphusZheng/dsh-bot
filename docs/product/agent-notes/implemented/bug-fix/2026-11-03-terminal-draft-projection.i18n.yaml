@@ -1,0 +1,19 @@
+# Bilingual-pair consistency record for 2026-11-03-terminal-draft-projection.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/product/agent-notes/implemented/bug-fix/2026-11-03-terminal-draft-projection.md
+/agent-note-terminal-drafts-leave-the-confirmation-projection:
+  en: 3b18dcabd6cb2e66
+  zh: f4611109c3e6c00d
+/agent-note-terminal-drafts-leave-the-confirmation-projection/problem:
+  en: 599c8398eb57f223
+  zh: 3a3c1bbeb09b3723
+/agent-note-terminal-drafts-leave-the-confirmation-projection/decision:
+  en: edf3c42723a8d1a0
+  zh: fbf12927929ab045
+/agent-note-terminal-drafts-leave-the-confirmation-projection/alternatives-considered:
+  en: 9bf8eab5facdcb80
+  zh: 43340bc82c0133f5
+/agent-note-terminal-drafts-leave-the-confirmation-projection/consequences:
+  en: 9e706f94f3e1d97f
+  zh: 5f287d33a72804f5

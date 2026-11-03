@@ -1,1 +1,0 @@
-PASS shipped SDK + real Pipecat/WebRTC handshake, microphone meter, ASR text, one welcome, Bridge reply, audio-track playback, AEC constraints, capture discard during an active task (zero cancel/disconnect), mute/resume/disconnect. Provider/Bridge fixtures; not macOS or real-provider acceptance.

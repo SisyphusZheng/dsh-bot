@@ -10,7 +10,7 @@
     "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
   },
   "apps/desktop/package.json": {
-    "sha": "46c59b0b204bcf1adb99fa8cc456145c03b17330",
+    "sha": "a6a0ec39d03ef7491989b51723e28d7a140103d7",
     "mode": "100644",
     "reason": "Product beta2 version metadata (0.0.1-beta2); desktop integration otherwise unchanged"
   },
@@ -65,7 +65,7 @@
     "reason": "dsh-bot desktop product integration; branding, package inputs and lifecycle"
   },
   "apps/desktop/src/main.ts": {
-    "sha": "b05b1e1f929c20618873e89c4f43752a20220beb",
+    "sha": "7b1200c604d213fad7afcfad1d5ca524b416055f",
     "mode": "100644",
     "reason": "Product integration: macOS regular Dock entry, optional pet-only mode and menu bar access; main-window avoidance callback"
   },
@@ -140,7 +140,7 @@
     "reason": "Expose validated DSH runtime identity to product dev launcher"
   },
   "apps/desktop/tests/development-project.spec.ts": {
-    "sha": "66ac9ac809cafdd13d3aa04e1eeb8ea9d31783d1",
+    "sha": "790adbad0eaa5b7fedf80f918223e7f48e89da9f",
     "mode": "100644",
     "reason": "beta2 product version contract 0.0.1-beta2 (test expectation follows product metadata)"
   },
@@ -155,7 +155,7 @@
     "reason": "0.0.1 freeze: pause Dependabot version-update PRs with open-pull-requests-limit 0"
   },
   "apps/desktop/tests/main-startup.spec.ts": {
-    "sha": "30b477043e908694118175a8b284981ca9f33e06",
+    "sha": "c6b4105c4743824d6a227017181229d014ab8a2f",
     "mode": "100644",
     "reason": "Test macOS Dock and menu bar entry alongside official startup and quit behavior"
   },
@@ -195,7 +195,7 @@
     "reason": "Product packaging regression: explicit isolated inputs, independent product/runtime versions, branding and commit-qualified unsigned artifacts; retain production checks."
   },
   "apps/desktop/tests/packaged-runtime-verification.spec.ts": {
-    "sha": "b616758e8f14ba2b109e59fb0cd9350f81bc2bcb",
+    "sha": "bdffdc5c073805dea6fed4ed7d64f09e96b80f12",
     "mode": "100644",
     "reason": "Product packaging regression: explicit isolated inputs, independent product/runtime versions, branding and commit-qualified unsigned artifacts; retain production checks."
   },
@@ -220,18 +220,193 @@
     "reason": "Reuse official desktop tray for macOS with existing product icon and explicit size"
   },
   "README.md": {
-    "sha": "b1973ca5442ed62875ba094ffee8c10e31973499",
+    "sha": "018bac25ca959f1802649f2b8eefaee6b5a679e0",
     "mode": "100644",
-    "reason": "Product README replaces upstream DeepSeek Harness landing page; upstream bilingual record archived in git history"
+    "reason": "Product README replaces upstream DeepSeek Harness landing page; demo video linked and review/ evidence removed from the public tree; upstream bilingual record archived in git history"
   },
   "README.zh.md": {
-    "sha": "f82039eaea7ccc1b5155c3fd1c80a8503b0956ac",
+    "sha": "fe64e676ad5c40b21b3be9ce374f4bb477e56c00",
     "mode": "100644",
-    "reason": "Product README replaces upstream DeepSeek Harness landing page; upstream bilingual record archived in git history"
+    "reason": "Product README replaces upstream DeepSeek Harness landing page; demo video linked and review/ evidence removed from the public tree; upstream bilingual record archived in git history"
   },
   "README.i18n.yaml": {
-    "sha": "188e14dc52c981d9f71b6cbffe7264c39521f3a9",
+    "sha": "dad81275bc65a15102ff713fb1cc053f64ccd0d1",
     "mode": "100644",
-    "reason": "Product README replaces upstream DeepSeek Harness landing page; upstream bilingual record archived in git history"
+    "reason": "Product README replaces upstream DeepSeek Harness landing page; demo video linked and review/ evidence removed from the public tree; upstream bilingual record archived in git history"
+  },
+  "apps/cli/tests/web-browser-open.expected.e2e.ts": {
+    "sha": "3e69bceec54894111e34aa160dbc6b17db26ab3f",
+    "mode": "100644",
+    "reason": "Public-release redaction of private addresses; behaviour unchanged, replaced only literal example addresses"
+  },
+  "apps/web/tests/document-preview.e2e.ts": {
+    "sha": "5ab8d5cb55f251eb2f59d9745710a4a7d664b40c",
+    "mode": "100644",
+    "reason": "Public-release redaction of private addresses; behaviour unchanged, replaced only literal example addresses"
+  },
+  "apps/web/tests/open-in-app-ssh.e2e.ts": {
+    "sha": "74428053c939be0ec8cd6f79531a97c7f78a2bbe",
+    "mode": "100644",
+    "reason": "Public-release redaction of private addresses; behaviour unchanged, replaced only literal example addresses"
+  },
+  "apps/web/tests/present.e2e.ts": {
+    "sha": "fbfb51e78c9e48647bfb35502d264b4ec382f4ad",
+    "mode": "100644",
+    "reason": "Public-release redaction of private addresses; behaviour unchanged, replaced only literal example addresses"
+  },
+  "apps/web/tests/seeded-history.e2e.ts": {
+    "sha": "53751ea7bf0b425e5256b59ba9b044c66b846c45",
+    "mode": "100644",
+    "reason": "Public-release redaction of private addresses; behaviour unchanged, replaced only literal example addresses"
+  },
+  "docs/cli-help.md": {
+    "sha": "6941baffd756fe7eee5e439ee716133181aa4f83",
+    "mode": "100644",
+    "reason": "Public-release redaction of private addresses; behaviour unchanged, replaced only literal example addresses"
+  },
+  "docs/cli-help.zh.md": {
+    "sha": "40ff642c4d3cc7d9be5af6cd4bf77f2e550ed828",
+    "mode": "100644",
+    "reason": "Public-release redaction of private addresses; behaviour unchanged, replaced only literal example addresses"
+  },
+  "docs/user/guide/network-proxy.i18n.yaml": {
+    "sha": "1d7e093c72aeb4993fbc5798e1beefb37432f892",
+    "mode": "100644",
+    "reason": "Bilingual pairing record re-recorded after the public-release redaction; verify-translation-pairing confirms both sides changed together"
+  },
+  "docs/user/guide/network-proxy.md": {
+    "sha": "2e4bafd9b17742f9e983d5713151c78341efa252",
+    "mode": "100644",
+    "reason": "Public-release redaction of private addresses; behaviour unchanged, replaced only literal example addresses"
+  },
+  "docs/user/guide/network-proxy.zh.md": {
+    "sha": "950df518ccbf414f196fb3fd041b00dd7d5d2367",
+    "mode": "100644",
+    "reason": "Public-release redaction of private addresses; behaviour unchanged, replaced only literal example addresses"
+  },
+  "packages/bundle/web-app/src/startup.ts": {
+    "sha": "a80541ae1c8996b6a21fb20e3e86683db405bdd6",
+    "mode": "100644",
+    "reason": "Public-release redaction of private addresses; behaviour unchanged, replaced only literal example addresses"
+  },
+  "packages/bundle/web-app/tests/startup.spec.ts": {
+    "sha": "65cc41e0b73cb33853f0fc86157a5133c6e0e86c",
+    "mode": "100644",
+    "reason": "Public-release redaction of private addresses; behaviour unchanged, replaced only literal example addresses"
+  },
+  "packages/bundle/web-app/tests/web-app.spec.ts": {
+    "sha": "be7eec79a11c31cccff67cda5ad1ef431ed45c8c",
+    "mode": "100644",
+    "reason": "Public-release redaction of private addresses; behaviour unchanged, replaced only literal example addresses"
+  },
+  "packages/client/connection/tests/api-request-trust.host.spec.ts": {
+    "sha": "3150ec1f0700a3e597c6d2d4ccf33d893a18e6b0",
+    "mode": "100644",
+    "reason": "Public-release redaction of private addresses; behaviour unchanged, replaced only literal example addresses"
+  },
+  "packages/client/connection/tests/node-half.host.spec.ts": {
+    "sha": "1c7cc218af68794bc3d990849dfde77a2e69005b",
+    "mode": "100644",
+    "reason": "Public-release redaction of private addresses; behaviour unchanged, replaced only literal example addresses"
+  },
+  "packages/host/directory-picker-auto/tests/loader-composition.spec.ts": {
+    "sha": "f1f99383f9f878d60706aba2c523780ea9039abd",
+    "mode": "100644",
+    "reason": "Public-release redaction of private addresses; behaviour unchanged, replaced only literal example addresses"
+  },
+  "packages/host/directory-picker-auto/tests/resolve.spec.ts": {
+    "sha": "1af492d2d07f6f6d0e9bfdff6d8becea87198f2a",
+    "mode": "100644",
+    "reason": "Public-release redaction of private addresses; behaviour unchanged, replaced only literal example addresses"
+  },
+  "packages/host/open-in-app/tests/host-routes.spec.ts": {
+    "sha": "1afa46575c3ae8e017433d7dc828534e55e747d7",
+    "mode": "100644",
+    "reason": "Public-release redaction of private addresses; behaviour unchanged, replaced only literal example addresses"
+  },
+  "packages/host/webserver/tests/webserver.spec.ts": {
+    "sha": "b65d9aaf73a2ccc435e059cc4d5b23428bcb808e",
+    "mode": "100644",
+    "reason": "Public-release redaction of private addresses; behaviour unchanged, replaced only literal example addresses"
+  },
+  "packages/util/http-proxy/README.i18n.yaml": {
+    "sha": "56a3bc2c478c8b7f099f2fae8fc1c555ea5f1ea6",
+    "mode": "100644",
+    "reason": "Bilingual pairing record re-recorded after the public-release redaction; verify-translation-pairing confirms both sides changed together"
+  },
+  "packages/util/http-proxy/README.md": {
+    "sha": "dc08c4e124f07e06080884811da4525f7e1145ef",
+    "mode": "100644",
+    "reason": "Public-release redaction of private addresses; behaviour unchanged, replaced only literal example addresses"
+  },
+  "packages/util/http-proxy/README.zh.md": {
+    "sha": "3bdea11368cdfd71bb18af23df6132cbe2fea717",
+    "mode": "100644",
+    "reason": "Public-release redaction of private addresses; behaviour unchanged, replaced only literal example addresses"
+  },
+  "packages/util/http-proxy/src/policy.ts": {
+    "sha": "bcdef3b05bd4793fd79c4a7c65cdcd10d943e44e",
+    "mode": "100644",
+    "reason": "Public-release redaction of private addresses; behaviour unchanged, replaced only literal example addresses"
+  },
+  "packages/util/http-proxy/tests/policy.spec.ts": {
+    "sha": "9d53fc3e7239dd4f00569527b4377d31b3b56d45",
+    "mode": "100644",
+    "reason": "Public-release redaction of private addresses; behaviour unchanged, replaced only literal example addresses"
+  },
+  "packages/web/web-fetch-http/tests/fetch-http.spec.ts": {
+    "sha": "5fceb930756471402655d1473930e3773a94af88",
+    "mode": "100644",
+    "reason": "Public-release redaction of private addresses; behaviour unchanged, replaced only literal example addresses"
+  },
+  "packages/web/web-fetch-http/tests/proxy.spec.ts": {
+    "sha": "bed09b255e8ae9d95cf64882288471423b1b08b7",
+    "mode": "100644",
+    "reason": "Public-release redaction of private addresses; behaviour unchanged, replaced only literal example addresses"
+  },
+  "apps/desktop/tests/expected/welcome/en-api-key.expected.txt": {
+    "sha": "aa81bb72d69e8a2021109e49bd8745fbfb07e21e",
+    "mode": "100644",
+    "reason": "Welcome page expectation follows the product application name (dsh-bot)"
+  },
+  "apps/desktop/tests/expected/welcome/en-timeout.expected.txt": {
+    "sha": "b5b43cf9ba9bfb77eb3b2acf1363d6463c10e01e",
+    "mode": "100644",
+    "reason": "Welcome page expectation follows the product application name (dsh-bot)"
+  },
+  "apps/desktop/tests/expected/welcome/en-waiting.expected.txt": {
+    "sha": "80bedf81760743d21394ea73fcb81cdf62b94c44",
+    "mode": "100644",
+    "reason": "Welcome page expectation follows the product application name (dsh-bot)"
+  },
+  "apps/desktop/tests/expected/welcome/en.expected.txt": {
+    "sha": "48d675c61b23afe327a924ac621f60e11f9a0558",
+    "mode": "100644",
+    "reason": "Welcome page expectation follows the product application name (dsh-bot)"
+  },
+  "apps/desktop/tests/expected/welcome/zh-CN-api-key.expected.txt": {
+    "sha": "e0244c3c972016fd838a4832e7a41206cb42a268",
+    "mode": "100644",
+    "reason": "Welcome page expectation follows the product application name (dsh-bot)"
+  },
+  "apps/desktop/tests/expected/welcome/zh-CN-timeout.expected.txt": {
+    "sha": "89db5194f25c84c912fe37839e17d2869fb5f310",
+    "mode": "100644",
+    "reason": "Welcome page expectation follows the product application name (dsh-bot)"
+  },
+  "apps/desktop/tests/expected/welcome/zh-CN-waiting.expected.txt": {
+    "sha": "5c4c5774d46e51b6dcf5baead60f9b1b87163c54",
+    "mode": "100644",
+    "reason": "Welcome page expectation follows the product application name (dsh-bot)"
+  },
+  "apps/desktop/tests/expected/welcome/zh-CN.expected.txt": {
+    "sha": "09fb0e5c073f18f64c821d8049917dcccfda3a10",
+    "mode": "100644",
+    "reason": "Welcome page expectation follows the product application name (dsh-bot)"
+  },
+  "apps/desktop/tests/tray.spec.ts": {
+    "sha": "3258d3fa5f016598f8bef8712cffbb8d188c8bd9",
+    "mode": "100644",
+    "reason": "Test expectation follows the product application name (dsh-bot); the tray source is an allowlisted product override"
   }
 }

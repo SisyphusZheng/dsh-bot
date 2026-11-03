@@ -18,6 +18,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createConversationService } from '../lib/conversation-service.mjs'
 import { createSnapshotStore } from '../lib/snapshot.mjs'
+import {PRODUCT_VERSION} from './product-version.mjs'
 
 const HOST_EPOCH = 'epoch-r2-unknown'
 const UNKNOWN_AT = '2026-10-31T03:00:00.000Z'
@@ -25,7 +26,7 @@ const UNKNOWN_AT = '2026-10-31T03:00:00.000Z'
 function fakeRuntime() {
   const state = { submitted: [], commands: [], cancelled: [], turn: 0, sessionId: 'session-1' }
   const runtime = {
-    productVersion: () => '0.0.1-beta2',
+    productVersion: () => PRODUCT_VERSION,
     runtimeVersion: () => '0.2.1-rc.3',
     sessionId: () => state.sessionId,
     agentReady: () => true,

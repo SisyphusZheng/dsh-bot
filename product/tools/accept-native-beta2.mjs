@@ -1115,13 +1115,16 @@ async function snapshotChecks(run) {
     }
     const s = snapshot.snapshot
     const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    // The installed app must report the version this source tree declares; the literal that
+    // stood here had to be edited at every release, so a stale harness could pass a wrong build.
+    const declaredProductVersion = String(JSON.parse(readFileSync(resolve(import.meta.dirname, '../../product/versions.json'), 'utf8')).product.version)
     const contractChecks = {
       'protocolVersion=dsh-bot-v1': s.protocolVersion === 'dsh-bot-v1',
       'schema=snapshot@1': s.schema === 'snapshot@1',
       'hostEpoch-is-uuid': uuid.test(String(s.hostEpoch)),
       'snapshotSeq-integer': Number.isInteger(s.snapshotSeq) && s.snapshotSeq >= 0,
       'identity-product': s.identity?.product === 'dsh-bot',
-      'identity-productVersion-beta2': /^0\.0\.1-beta2$/.test(String(s.identity?.productVersion)),
+      'identity-productVersion-declared': String(s.identity?.productVersion) === declaredProductVersion,
       'sections-present': ['identity', 'connection', 'capture', 'playback', 'execution', 'interactions', 'queue', 'notices', 'presentation'].every(key => key in s),
       // Shape contract: desktop.connected is a boolean. The Host marks it true only after a
       // desktop-source command; pet snapshot polling alone is not a desktop command, so the

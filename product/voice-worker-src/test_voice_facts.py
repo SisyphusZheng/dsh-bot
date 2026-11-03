@@ -245,8 +245,14 @@ class ShutdownNoise(unittest.IsolatedAsyncioTestCase):
                              "shutdown-time Host stream truncation must not reach the UI")
             self.assertEqual(self.bridge._host_error_reported_at, 0.0)
 
-            # After teardown completes the same classified failure is reportable again.
+            # A single transient drop is retried silently; only a repeatedly failing
+            # link is user-actionable.
             self.bridge._closing = False
-            self.bridge._report_host_error(HostUnavailable("host event stream closed", kind="network"))
+            self.bridge._report_host_error(HostUnavailable("host event stream closed", kind="network"), consecutive=1)
+            await asyncio.sleep(0)
+            self.assertEqual(reported, [], "one transient drop must stay silent")
+
+            # After teardown completes a repeated classified failure is reportable again.
+            self.bridge._report_host_error(HostUnavailable("host event stream closed", kind="network"), consecutive=2)
             await asyncio.sleep(0)
             self.assertEqual(len(reported), 1)

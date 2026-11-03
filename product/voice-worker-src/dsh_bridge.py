@@ -75,6 +75,10 @@ class VoiceMediaBridge(FrameProcessor):
     # a bare length threshold is not an acoustic oracle. Short valid replies such
     # as 你好 / 我在 / 想聊什么 / 是 / 否 must always be admissible.
     ECHO_MIN_CHARS = 6
+    # Post-playback echo window for the noise filter. Barge candidates are no longer
+    # created from this window: speech after the bot stopped is a new utterance, not
+    # an interruption of a finished playback.
+    ECHO_TAIL_SECONDS = float(os.environ.get('DSH_ECHO_TAIL_SECONDS', '6'))
 
     def __init__(self, descriptor_path: str = "", capture=None, host=None):
         super().__init__(name="VoiceMediaBridge")
@@ -189,9 +193,11 @@ class VoiceMediaBridge(FrameProcessor):
     # ---- Host link -----------------------------------------------------
     async def _run_host_link(self) -> None:
         backoff = 0.5
+        failures = 0
         while not self._closing:
             try:
                 await self._handshake_and_stream()
+                failures = 0
                 raise HostUnavailable("host event stream closed", kind="network")
             except asyncio.CancelledError:
                 raise
@@ -201,13 +207,15 @@ class VoiceMediaBridge(FrameProcessor):
                 backoff = 0.5
             except HostError as exc:
                 self.metrics["host_errors"] += 1
-                self._report_host_error(exc)
+                failures += 1
+                self._report_host_error(exc, consecutive=failures)
                 await asyncio.sleep(backoff)
                 backoff = min(backoff * 2, 5.0)
             except Exception as exc:  # never let the link task die silently
                 self.metrics["host_errors"] += 1
                 self.metrics["errors"] += 1
-                self._report_host_error(exc)
+                failures += 1
+                self._report_host_error(exc, consecutive=failures)
                 await asyncio.sleep(backoff)
                 backoff = min(backoff * 2, 5.0)
 
@@ -227,12 +235,20 @@ class VoiceMediaBridge(FrameProcessor):
                 return
             await self._handle_host_event(event)
 
-    def _report_host_error(self, exc: BaseException) -> None:
-        """Throttle classified Host failures; never fake a successful link."""
+    def _report_host_error(self, exc: BaseException, consecutive: int = 2) -> None:
+        """Throttle classified Host failures; never fake a successful link.
+
+        A single truncated stream during teardown (or a one-off reconnect) is not a
+        user-actionable failure: surfacing it produced a "voice connection failed"
+        bubble on every quit. Only a repeatedly failing link is reported.
+        """
         # An intentional shutdown closes the Host bridge first; the truncated
         # event stream is expected then. Never surface it as a user-facing
         # "voice connection failed / retry" error during teardown.
         if self._closing:
+            return
+        if consecutive < 2:
+            logger.debug(f"[host-v2] transient link drop ({type(exc).__name__}); retrying silently")
             return
         now = time.monotonic()
         if now - self._host_error_reported_at < 10.0:
@@ -642,7 +658,7 @@ class VoiceMediaBridge(FrameProcessor):
         recent = "".join(
             event.get("text", "") for event in ctx.get("text_events", [])
             if time.monotonic() - event.get("at_mono", 0) <= 6.0)
-        if ctx is self._last_barge_context and time.monotonic() - ctx.get("ended_mono", 0) > 30:
+        if ctx is self._last_barge_context and time.monotonic() - ctx.get("ended_mono", 0) > self.ECHO_TAIL_SECONDS:
             return False
         spoken = recent or ctx.get("reply_text", "")
         return self._echo_like(heard, spoken)
@@ -766,6 +782,13 @@ class VoiceMediaBridge(FrameProcessor):
     # ---- media barge-in / duck -----------------------------------------
     async def _start_barge_candidate(self) -> None:
         current = self._playback
+        if current is None or not current.get("open"):
+            # The bot already finished speaking. Treating this speech as a barge of the
+            # finished playback made the first two words confirm an interruption, ducked
+            # volume, and closed the capture early; the rest of the sentence then arrived
+            # as "late". A new utterance starts a normal capture instead.
+            self._barge_candidate = None
+            return
         probe_log(
             f"[g3-probe] vad_started_bridge playback={current.get('playback_id') if current else None} "
             f"epoch_ms={round(time.time() * 1000)} mono={time.monotonic():.3f}"

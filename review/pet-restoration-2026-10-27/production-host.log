@@ -1,6 +1,0 @@
-PASS complete production Web UI and official same-Bot Session navigation
-PASS full production Web boot and official Bot Session selection in Chromium; previous raw ESM fails the same real loader (Electron callback fixture only)
-PASS official ask_user_question single/multi-select, invalid answer, duplicate answer and cancellation through real production Host
-PASS production preset tools; real write approval allow/reject/cancel; live model/persona preserves PID, port and Session
-PASS authenticated memory write/recall and cross-Session prompt injection (explicit HTTP fixture, not database qualification)
-PASS real Host startup, custom, voice NDJSON, session completion and graceful exit

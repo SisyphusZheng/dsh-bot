@@ -1,1 +1,0 @@
-PASS bundled native KWS worker/model readiness, PCM acceptance and termination; no spoken wake/TCC acceptance.

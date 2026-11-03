@@ -17,6 +17,7 @@ import {
 } from '../lib/contracts.mjs'
 import { createStateStore, createReceiptStore, STATE_SCHEMA_VERSION } from '../lib/persistence.mjs'
 import { createSnapshotStore } from '../lib/snapshot.mjs'
+import {PRODUCT_VERSION} from './product-version.mjs'
 
 const HOST_EPOCH = 'epoch-fixture'
 
@@ -160,7 +161,7 @@ test('receipt store is bounded and survives restart as read-only history', () =>
 test('snapshot + replay handshake never loses the events recorded after the snapshot', () => {
   const store = createSnapshotStore({ hostEpoch: HOST_EPOCH })
   assert.equal(store.seq(), 0)
-  store.record('host.epoch', { data: { productVersion: '0.0.1-beta2' } })
+  store.record('host.epoch', { data: { productVersion: PRODUCT_VERSION } })
   const snapshot = store.snapshot(() => ({ identity: { sessionId: 's' } }))
   assert.equal(snapshot.protocolVersion, PROTOCOL_VERSION)
   assert.equal(snapshot.schema, SNAPSHOT_SCHEMA)

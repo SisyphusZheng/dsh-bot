@@ -7,12 +7,12 @@
 > 不是“聊天框里多了一个模型”，而是把 Agent 放进真实桌面：桌宠是入口，DSH 是唯一 Agent Runtime，Pipecat 负责实时语音，Hindsight 负责长期记忆。
 
 <p align="center">
-  <img src="docs/assets/demo-cover.png" alt="Nisse：桌面上的语音 Agent" width="860">
+  <a href="docs/demo/dsh-bot-0.0.1-demo.mp4"><img src="docs/assets/demo-preview.gif" alt="Nisse：桌面上的语音 Agent 演示（动图预览）" width="860"></a>
   <br>
-  <sub>演示视频制作中 · 分镜与旁白见 <a href="docs/demo/SCRIPT.zh.txt">docs/demo/SCRIPT.zh.txt</a></sub>
+  <sub>动图预览（20 秒）· <a href="docs/demo/dsh-bot-0.0.1-demo.mp4">完整演示视频（2 分 31 秒，1080p MP4）</a>（GitHub 网页不能直接播放仓库内 MP4 时，点开后用 Download）· 分镜与旁白见 <a href="docs/demo/SCRIPT.zh.txt">docs/demo/SCRIPT.zh.txt</a></sub>
 </p>
 
-当前状态：**`0.0.1-beta2`，macOS Apple Silicon 本地候选**（当前开发分支 `work/0.0.1-closure-final`）。原生打包自动验收的最新结论、真人声学/TCC/真实 Provider/个人记忆库等人工边界，以及**当前候选是否已完成打包验收**，都以 [product/CURRENT-STATUS.md](product/CURRENT-STATUS.md) 为准；本 README 不复制提交号、产物 SHA 与验收计数。
+当前状态只看 [product/CURRENT-STATUS.md](product/CURRENT-STATUS.md)：产品版本、开发分支、候选包身份、原生打包自动验收的结论，以及真人声学/TCC/真实 Provider/个人记忆库等人工边界都在那里维护；本 README 不复制版本、提交号、产物 SHA 与验收计数。
 
 ---
 
@@ -103,12 +103,11 @@ flowchart LR
 
 ## 工程验证
 
-门禁状态、验收计数、产物 SHA 与证据路径统一见 [product/CURRENT-STATUS.md](product/CURRENT-STATUS.md)；本 README 不再复制容易过时的数字。历史候选的原始证据按目录保存在 `review/`，构建与验收脚本在 `product/tools/`。安全默认权限与越界审批（S1–S3）、取消入口与凭据写入的结论、以及各自**未覆盖的入口**，都以索引中的对应章节为准（本 README 不复述边界）。
+门禁状态、验收计数、产物 SHA 与证据路径统一见 [product/CURRENT-STATUS.md](product/CURRENT-STATUS.md)；本 README 不再复制容易过时的数字。历史候选的验收记录保存在交付包与内部归档中（不随公开仓库发布），构建与验收脚本在 `product/tools/`。安全默认权限与越界审批（S1–S3）、取消入口与凭据写入的结论、以及各自**未覆盖的入口**，都以索引中的对应章节为准（本 README 不复述边界）。
 
 可复核的入口：
 
-- 打包验收：[`review/0.0.1-mac-voice-approval-2026-10-29/STATUS.zh.md`](review/0.0.1-mac-voice-approval-2026-10-29/STATUS.zh.md)
-- 气泡层级修复：[`review/0.0.1-mac-bubble-level-2026-10-29/STATUS.zh.md`](review/0.0.1-mac-bubble-level-2026-10-29/STATUS.zh.md)
+- 打包验收与气泡层级修复记录：保存在交付包与内部归档中，不随公开仓库发布
 - 构建/验收脚本：[`product/tools/build-macos.sh`](product/tools/build-macos.sh)、[`product/tools/accept-macos.sh`](product/tools/accept-macos.sh)
 
 ### 还没验证的
@@ -159,7 +158,6 @@ product/voice-worker-src/  Pipecat VoiceWorker、ASR/TTS、语音控制
 nisse/packages/host-integration/  Host/Bridge 与 DSH 集成
 product/tools/         构建、验收、安装、测量工具
 product/CURRENT-STATUS.md  当前事实入口（提交、产物 SHA、E/U/R、门禁缺口）
-review/                每个候选的验收证据（绑定源码 SHA）
 docs/                  产品、架构、路线图与演示脚本
 ```
 

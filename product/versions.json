@@ -1,7 +1,7 @@
 {
   "product": {
     "name": "dsh-bot",
-    "version": "0.0.1-beta2"
+    "version": "0.0.1"
   },
   "runtime": {
     "name": "DeepSeek Harness",

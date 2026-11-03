@@ -29,6 +29,7 @@ import { ContractError, newId, nowIso, boundedString, stableOptionId, isIsoDate 
 import { assertTaskCancelTarget, commandCancelTarget, currentCancelScope } from './cancel-routing.mjs'
 import { createQueueModel, createDraftModel, createTurnModel } from './conversation-model.mjs'
 import { createUtteranceAssembler, createSegmenter, SETTLE_MS_DEFAULT } from './utterance.mjs'
+import { productIdentity } from './identity.mjs'
 
 export const CONTROL_KINDS = new Set([
   'playback-stop', 'playback-brief', 'playback-full', 'task-stop', 'task-status', 'approval-allow', 'approval-reject', 'cancel-capture',
@@ -1325,8 +1326,8 @@ export function createConversationService({
     const execution = turn.snapshot()
     const identity = {
       product: 'dsh-bot',
-      productVersion: String(runtime.productVersion?.() || '0.0.1-beta2'),
-      runtimeVersion: String(runtime.runtimeVersion?.() || '0.2.1-rc.3'),
+      productVersion: String(runtime.productVersion?.() || productIdentity().productVersion),
+      runtimeVersion: String(runtime.runtimeVersion?.() || productIdentity().runtimeVersion),
       sessionId: currentSession(),
       botSessionReady: runtime.agentReady?.() === true,
       workspace: runtime.workspace?.() || '',
@@ -1452,6 +1453,8 @@ export function createConversationService({
     snapshotSections,
     onTurnStarted, onTurnEnded, onAssistantDelta, onAssistantEnded, onAgentStatus,
     onConversationRotated, noteDesktopSeen,
+    // Presence is the product UI's own signal: the pet polls the v2 snapshot, the voice worker does not.
+    desktopConnected: desktopConnectedNow,
     addNotice, listInteractions,
     // test/inspection helpers (not used as authority by clients)
     inspect: () => ({ queue: queue.snapshot(), draft: draft.snapshot(), turn: turn.snapshot(), capture: { ...capture }, playback: { ...playback }, pendingCancel }),

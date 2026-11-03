@@ -1,0 +1,19 @@
+# Bilingual-pair consistency record for 2026-11-03-user-authoritative-permission.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/product/agent-notes/implemented/architecture/2026-11-03-user-authoritative-permission.md
+/agent-note-user-authoritative-bot-permission-preset:
+  en: 7ff71216e1b7eab8
+  zh: 1304cf72dd3351d1
+/agent-note-user-authoritative-bot-permission-preset/problem:
+  en: 9e622579dc360e3c
+  zh: 905a07153d791ad4
+/agent-note-user-authoritative-bot-permission-preset/decision:
+  en: 3e4dddac56716dae
+  zh: f743b6f2ff992ba7
+/agent-note-user-authoritative-bot-permission-preset/alternatives-considered:
+  en: 0fec8a36e281312c
+  zh: 0ea7f0474f620c2e
+/agent-note-user-authoritative-bot-permission-preset/consequences:
+  en: 08ef83df465d9975
+  zh: d8319da72513586b

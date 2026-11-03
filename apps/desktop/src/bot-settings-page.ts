@@ -356,21 +356,58 @@ function renderPermissionsPanel(panel){
     panel.appendChild(noticeBox);
     panel.appendChild(el('div', 'divider'));
   }
+  panel.appendChild(el('div', 'panel-title', '权限档位'));
+  panel.appendChild(hint('Bot 冷启动按这个档位应用，和 Bot 主窗口左下角显示的权限保持一致；默认跟随你在 DSH 里选的档位。'));
+  var presetRow = el('div', 'row');
+  presetRow.appendChild(el('div', 'label', '权限档位'));
+  var presetWrap = el('div', 'field');
+  var presetSelect = document.createElement('select');
+  var presetOptions = [
+    ['user-default', '跟随 DSH 会话（推荐）'],
+    ['workspace-write', '工作区写入（默认安全）'],
+    ['danger-full-access', '完全权限（高风险：越界写入不再逐次审批）'],
+  ];
+  for (var pi = 0; pi < presetOptions.length; pi++){ var po = document.createElement('option'); po.value = presetOptions[pi][0]; po.textContent = presetOptions[pi][1]; presetSelect.appendChild(po); }
+  var storedPreset = (config.agent && config.agent.permissionPreset) || 'user-default';
+  if (!presetOptions.some(function(item){ return item[0] === storedPreset; })){ storedPreset = 'user-default'; }
+  presetSelect.value = storedPreset;
+  presetSelect.onchange = function(ev){
+    if (!config.agent) config.agent = { mode: 'dsh', workspace: '', session: '' };
+    config.agent.permissionPreset = ev.target.value;
+    markDirty();
+    render();
+  };
+  presetWrap.appendChild(presetSelect);
+  presetWrap.appendChild(hint('选择“完全权限”后越界写入不再弹审批气泡；请只在完全信任 Bot 时使用。改完保存并重启 Bot 生效。'));
+  presetRow.appendChild(presetWrap);
+  panel.appendChild(presetRow);
+  panel.appendChild(el('div', 'divider'));
   panel.appendChild(el('div', 'panel-title', '审批粒度'));
   panel.appendChild(hint('Bot 代替你操作电脑时，什么时候需要你确认。保存后由桌宠与 DSH 按此执行。'));
+  // 0.0.1 disables the timed window: one confirmation opened it for ANY later sandbox escalation,
+  // which is wider than the button that created it. Precise per-operation grants still work.
+  var askOnceUnavailable = '0.0.1 暂不可用：该窗口会对之后任意提权放行，比确认按钮承诺的范围更宽。需要免重复确认时请用气泡里的「始终允许此操作」（精确到同一工具、目录与参数，可在右键菜单撤销）。';
   var modes = [
     ['ask-each', '每次操作都问', '每个工具调用前都弹出审批气泡（最谨慎，默认）。'],
     ['ask-before-acting', '操作前批一次', '执行一组操作前确认一次，组内自动继续。'],
-    ['ask-once', '一次授权 N 分钟', '确认一次后在 N 分钟内不再询问。'],
+    ['ask-once', '一次授权 N 分钟（0.0.1 暂不可用）', askOnceUnavailable],
     ['never-ask', '从不询问（需要审批的操作直接拒绝）', '不弹出任何审批气泡；需要审批的工作区外写入/提权会被直接拒绝（fail-closed），Bot 只能在工作区与平台临时目录内操作。'],
   ];
+  // The stored value is preserved; behavior follows the effective mode, so the page must show it too.
+  var effectiveApprovalMode = approval.mode === 'ask-once' ? 'ask-each' : approval.mode;
   for (var i = 0; i < modes.length; i++){
     (function(mode, label, description){
       var row = el('label', 'radio-row');
       var radio = document.createElement('input');
       radio.type = 'radio'; radio.name = 'approvalMode'; radio.value = mode;
-      radio.checked = approval.mode === mode;
+      radio.checked = effectiveApprovalMode === mode;
+      if (mode === 'ask-once') {
+        // Fail-closed: the option stays visible with its reason but cannot be selected.
+        radio.disabled = true;
+        radio.title = askOnceUnavailable;
+      }
       radio.onchange = function(){
+        if (mode === 'ask-once') return;
         if (!config.approval) config.approval = {mode:mode, onceMinutes:10};
         config.approval.mode = mode;
         markDirty();
@@ -390,14 +427,14 @@ function renderPermissionsPanel(panel){
   var minutes = document.createElement('input');
   minutes.type = 'number'; minutes.min = '1'; minutes.max = '240'; minutes.step = '1';
   minutes.value = String(approval.onceMinutes || 10);
-  minutes.disabled = approval.mode !== 'ask-once';
+  minutes.disabled = true;
   minutes.oninput = function(ev){
-    if (!config.approval) config.approval = {mode:'ask-once', onceMinutes:10};
+    if (!config.approval) config.approval = {mode:'ask-each', onceMinutes:10};
     config.approval.onceMinutes = Number(ev.target.value);
     markDirty();
   };
   minutesWrap.appendChild(minutes);
-  minutesWrap.appendChild(hint('仅在「一次授权 N 分钟」模式下生效（1–240 分钟）。'));
+  minutesWrap.appendChild(hint('「一次授权 N 分钟」在 0.0.1 暂不可用，因此该时长当前不生效（1–240 分钟）。'));
   minutesRow.appendChild(minutesWrap);
   panel.appendChild(minutesRow);
   panel.appendChild(el('div', 'divider'));
@@ -406,7 +443,7 @@ function renderPermissionsPanel(panel){
   panel.appendChild(buildCheckboxRow('操作键鼠时停止桌面任务', '键鼠接管会停止当前桌面任务；语音发起的任务、说话键操作和等待审批不触发自动停止。', 'pauseOnInput', behavior.pauseOnInput !== false));
   var inputNote=document.createElement('p');inputNote.textContent='右键桌宠可开启语音或停止任务。离线唤醒在本机检测；开启语音后，收音期间音频发送给语音供应商。按住说话松键即结束收音；气泡取消只取消录音，停止任务请用任务卡或菜单。';panel.appendChild(inputNote);
   panel.appendChild(buildCheckboxRow('允许屏幕查看类工具（尽力而为，不是能力隔离）', '只是对名称/描述看起来像截图、屏幕查看、电脑操作的工具做尽力关闭；不保证拦住任意第三方工具。Bot 默认配置没有挂载任何截图/桌面控制能力，真实屏幕访问还受 macOS 屏幕录制权限约束。', 'allowScreenView', behavior.allowScreenView === true));
-  panel.appendChild(hint('默认工作区写入：Bot 默认只能在 Bot 工作区与平台临时目录（/tmp、系统用户临时目录）内写入；其他位置的写入会被 DSH 沙箱拒绝，之后由 Bot 发起单次提权，并在桌宠气泡里逐次审批。'));
+  panel.appendChild(hint('权限档位以你在这里或 Bot 主窗口左下角选择的权限为准：Bot 冷启动沿用你最后选择的档位，不再强制收窄，前台显示与实际执行一致。选择“完全权限”时越界写入不再逐次审批（高风险，请只在信任时使用）；默认的“工作区写入”仍会在越界时弹出审批。'));
   panel.appendChild(hint('审批模式与行为开关保存在 Bot 配置（config.json，权限 0600）里，实际执行由 main.ts / host-integration / 桌宠接线后生效。'));
 }
 function memoryItemNode(item){

@@ -7,13 +7,14 @@ import { createConversationService, needsConfirmation } from '../lib/conversatio
 import { createSnapshotStore } from '../lib/snapshot.mjs'
 import { createStateStore } from '../lib/persistence.mjs'
 import { PROTOCOL_VERSION, canonicalJson } from '../lib/contracts.mjs'
+import {PRODUCT_VERSION} from './product-version.mjs'
 
 const HOST_EPOCH = 'epoch-service-test'
 
 function fakeRuntime(overrides = {}) {
   const state = { submitted: [], commands: [], cancelled: [], turn: 0, status: 'idle', working: false, sessionId: 'session-1' }
   const runtime = {
-    productVersion: () => '0.0.1-beta2',
+    productVersion: () => PRODUCT_VERSION,
     runtimeVersion: () => '0.2.1-rc.3',
     sessionId: () => state.sessionId,
     agentReady: () => true,
@@ -195,6 +196,29 @@ test('always mode ordinary input offers a confirmation draft and only submit aft
   })
   assert.equal(receipt.status, 'accepted')
   assert.equal(state.submitted.length, 1)
+  service.dispose()
+})
+
+test('discarding a confirmation draft clears it from the projection (no permanent bubble)', async () => {
+  const { runtime } = fakeRuntime()
+  const { service } = makeService({ runtime, registry: fakeRegistry() })
+  await service.handleFinalUtterance(utterance('帮我整理桌面文件', { mode: 'always' }))
+  const draft = service.inspect().draft
+  assert.ok(draft, 'draft offered')
+  assert.ok(service.snapshotSections().inputDraft, 'draft is projected while pending')
+  const reject = {
+    protocolVersion: PROTOCOL_VERSION, commandId: 'reject-1', hostEpoch: HOST_EPOCH,
+    sourceConnectionId: 'desktop', sessionId: null, type: 'input.reject',
+    payload: { id: draft.id, revision: draft.revision },
+  }
+  const receipt = await service.handleCommand(reject)
+  assert.equal(receipt.status, 'accepted')
+  // The pet renders its bubble from this projection: keeping a rejected draft here is what
+  // trapped the user in the discard action, because every snapshot re-opened the bubble.
+  assert.equal(service.snapshotSections().inputDraft, null)
+  const again = await service.handleCommand({ ...reject, commandId: 'reject-2' })
+  assert.equal(again.status, 'rejected')
+  assert.equal(service.snapshotSections().inputDraft, null, 'a repeated discard must not resurrect the bubble')
   service.dispose()
 })
 

@@ -1,6 +1,0 @@
-{
-  "scope": "Linux cloud frozen-worker environment adapter, not macOS input",
-  "reason": "Cloud Python ssl.py loads an adjacent certificate-policy file; PyInstaller does not collect that external file automatically. Copy the unmodified file beside frozen ssl. TLS checking remains enabled.",
-  "file": "codex-rejected-cas.pem",
-  "sha256": "8eff8829fead3440b04ad306d16ab7de76b1b11046e8a33fdcb50170db938d57"
-}

@@ -470,6 +470,11 @@ export function createDraftModel({
     if (draft && DRAFT_ACTIVE_STATUSES.has(draft.status) && t < draft.expiresAt) {
       throw modelError('DRAFT_PENDING', '已有待确认的输入，请先确认或取消后再试。', 409)
     }
+    // The same capture must not be offered again after the user discarded it: a late ASR
+    // revision for that capture would otherwise recreate the bubble they just dismissed.
+    if (typeof captureId === 'string' && captureId && history.some((record) => record.captureId === captureId && record.status === 'rejected')) {
+      throw modelError('DRAFT_DISMISSED', '这条输入已被丢弃，不会再提示。', 409)
+    }
     archive(draft, effectiveStatus(draft, t), t)
     draft = {
       id: newId(),
@@ -487,7 +492,13 @@ export function createDraftModel({
   }
 
   function snapshot() {
-    return view(draft, clock())
+    const t = clock()
+    // Terminal drafts are history, not pending confirmation. Projecting them would keep the
+    // pet's confirmation bubble alive after reject/confirm/expiry and make "discard" look like
+    // a no-op loop, so the projection only carries a live confirmation window.
+    if (draft && !DRAFT_ACTIVE_STATUSES.has(draft.status)) return null
+    if (draft && t >= draft.expiresAt) return null
+    return view(draft, t)
   }
 
   function requireCurrent(id, expectedRevision, action) {

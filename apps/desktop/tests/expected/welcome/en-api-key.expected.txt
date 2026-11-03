@@ -1,5 +1,5 @@
-DeepSeek Harness
-DeepSeek Harness
+dsh-bot
+dsh-bot
 Add an API key to get started
 Configure official DeepSeek models to start using Harness
 Enter API key [password]
