@@ -220,19 +220,19 @@
     "reason": "Reuse official desktop tray for macOS with existing product icon and explicit size"
   },
   "README.md": {
-    "sha": "018bac25ca959f1802649f2b8eefaee6b5a679e0",
+    "sha": "688e0381068dcdceab55ee050935782afe594f9d",
     "mode": "100644",
-    "reason": "Product README replaces upstream DeepSeek Harness landing page; demo video linked and review/ evidence removed from the public tree; upstream bilingual record archived in git history"
+    "reason": "Product README replaces the upstream DeepSeek Harness landing page; the demo video is embedded through a GitHub user attachment and the review/ evidence is absent from the public tree; the upstream bilingual record is archived in git history"
   },
   "README.zh.md": {
-    "sha": "fe64e676ad5c40b21b3be9ce374f4bb477e56c00",
+    "sha": "0fcd277005ab88fa8898d0e862ae0004c6525e71",
     "mode": "100644",
-    "reason": "Product README replaces upstream DeepSeek Harness landing page; demo video linked and review/ evidence removed from the public tree; upstream bilingual record archived in git history"
+    "reason": "Product README replaces the upstream DeepSeek Harness landing page; the demo video is embedded through a GitHub user attachment and the review/ evidence is absent from the public tree; the upstream bilingual record is archived in git history"
   },
   "README.i18n.yaml": {
-    "sha": "dad81275bc65a15102ff713fb1cc053f64ccd0d1",
+    "sha": "f1fe888468d7816569d80c1b63a1cd2df46677bf",
     "mode": "100644",
-    "reason": "Product README replaces upstream DeepSeek Harness landing page; demo video linked and review/ evidence removed from the public tree; upstream bilingual record archived in git history"
+    "reason": "Product README replaces the upstream DeepSeek Harness landing page; the demo video is embedded through a GitHub user attachment and the review/ evidence is absent from the public tree; the upstream bilingual record is archived in git history"
   },
   "apps/cli/tests/web-browser-open.expected.e2e.ts": {
     "sha": "3e69bceec54894111e34aa160dbc6b17db26ab3f",

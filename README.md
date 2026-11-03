@@ -7,9 +7,9 @@ English | [中文](README.zh.md)
 > 不是“聊天框里多了一个模型”，而是把 Agent 放进真实桌面：桌宠是入口，DSH 是唯一 Agent Runtime，Pipecat 负责实时语音，Hindsight 负责长期记忆。
 
 <p align="center">
-  <a href="docs/demo/dsh-bot-0.0.1-demo.mp4"><img src="docs/assets/demo-preview.gif" alt="Nisse：桌面上的语音 Agent 演示（动图预览）" width="860"></a>
+  <video src="https://github.com/user-attachments/assets/2c0160ec-7c47-4528-9941-7f6445abbf5d" controls width="860"></video>
   <br>
-  <sub>动图预览（20 秒）· <a href="docs/demo/dsh-bot-0.0.1-demo.mp4">完整演示视频（2 分 31 秒，1080p MP4）</a>（GitHub 网页不能直接播放仓库内 MP4 时，点开后用 Download）· 分镜与旁白见 <a href="docs/demo/SCRIPT.zh.txt">docs/demo/SCRIPT.zh.txt</a></sub>
+  <sub>完整演示视频（2 分 31 秒，720p）· <a href="docs/demo/dsh-bot-0.0.1-demo.mp4">1080p MP4 原文件</a> · 分镜与旁白见 <a href="docs/demo/SCRIPT.zh.txt">docs/demo/SCRIPT.zh.txt</a></sub>
 </p>
 
 当前状态只看 [product/CURRENT-STATUS.md](product/CURRENT-STATUS.md)：产品版本、开发分支、候选包身份、原生打包自动验收的结论，以及真人声学/TCC/真实 Provider/个人记忆库等人工边界都在那里维护；本 README 不复制版本、提交号、产物 SHA 与验收计数。
