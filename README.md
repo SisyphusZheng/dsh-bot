@@ -2,179 +2,89 @@
 
 English | [中文](README.zh.md)
 
-> **一个住在桌面上的语音 Agent：能听、能做、有记忆，也有边界。**
->
-> 不是“聊天框里多了一个模型”，而是把 Agent 放进真实桌面：桌宠是入口，DSH 是唯一 Agent Runtime，Pipecat 负责实时语音，Hindsight 负责长期记忆。
+![platform](https://img.shields.io/badge/platform-macOS%2014%2B%20%C2%B7%20Apple%20Silicon-blue) ![electron](https://img.shields.io/badge/Electron-44-47848F?logo=electron&logoColor=white) ![runtime](https://img.shields.io/badge/runtime-DeepSeek%20Harness%200.2.1--rc.3-4B32C3) ![status](https://img.shields.io/badge/status-0.0.1%20%C2%B7%20UAT%20incomplete-orange)
+
+> **A voice agent that lives on your desktop** — it listens while you speak, acts through real tools, remembers across sessions, and stops to ask before side effects.
 
 <p align="center">
   <video src="https://github.com/user-attachments/assets/2c0160ec-7c47-4528-9941-7f6445abbf5d" controls width="860"></video>
   <br>
-  <sub>完整演示视频（2 分 31 秒，720p）· <a href="docs/demo/dsh-bot-0.0.1-demo.mp4">1080p MP4 原文件</a> · 分镜与旁白见 <a href="docs/demo/SCRIPT.zh.txt">docs/demo/SCRIPT.zh.txt</a></sub>
+  <sub>Full demo (2:31, 720p) · Storyboard and narration: <a href="docs/demo/SCRIPT.zh.txt">docs/demo/SCRIPT.zh.txt</a></sub>
 </p>
 
-当前状态只看 [product/CURRENT-STATUS.md](product/CURRENT-STATUS.md)：产品版本、开发分支、候选包身份、原生打包自动验收的结论，以及真人声学/TCC/真实 Provider/个人记忆库等人工边界都在那里维护；本 README 不复制版本、提交号、产物 SHA 与验收计数。
+Nisse (dsh-bot) is a macOS desktop pet that turns a conversation model into an agent living on your desktop. The pet is the entry point, DSH is the only agent runtime, Pipecat handles realtime voice, and Hindsight provides long-term memory. File, terminal, and browser actions run through the DSH toolchain instead of being described in text.
 
----
+## Core features
 
-## 这是什么
+- **Voice first** — push-to-talk, switch-to-talk, and always-listening confirmation, with replies in a bubble next to the pet.
+- **Real actions** — files, terminals, and browsers are executed through the DSH agent toolchain.
+- **Approval before side effects** — write actions ask first, with allow once, deny, and always allow matched on tool, working directory, and arguments.
+- **Long-term memory** — Hindsight remembers preferences, names, and ongoing work across sessions and restarts.
+- **Interruptible** — saying "stop" during playback stops speech only; stopping a task is a separate action with its own receipt.
+- **Native desktop presence** — draggable pet, main window, Dock and menu bar entry, system notifications, and a clean quit.
 
-一个 macOS 桌面宠物形态的个人 Agent：
-
-- **语音优先**：按住说话、切换说话、常听确认三种输入方式；桌面宠物旁边直接出气泡。
-- **真的能做事**：文件、终端、浏览器等操作走 DSH Agent 的工具链，不是只回一段文字。
-- **有安全边界**：有副作用的操作先审批；支持“允许一次 / 拒绝 / 始终允许”，语音与气泡共享同一份状态。
-- **有长期记忆**：跨会话记住你的偏好、称呼和正在做的事。
-- **打断和安全停止**：播报中可以“停一下”；停止播报和停止任务是两件事，回执分开。
-- **住在桌面里**：桌宠拖动、双击打开主窗口、Dock/菜单栏入口、系统通知、可退出。
-
-一句话：**把“能对话的模型”变成“住在你桌面上的 Agent”，并且让它在真实操作前停下来问你。**
-
----
-
-## 为什么不是又一个 Chatbot
-
-| 常见聊天框 | Nisse / dsh-bot |
-|---|---|
-| 你打开网页，输入文字 | 桌宠常驻桌面，语音直接说 |
-| 回答完就结束 | 任务、审批、队列、恢复是完整生命周期 |
-| “我正在帮你做” | 真实执行，副作用前必须审批 |
-| 换个会话就失忆 | Hindsight 跨会话长期记忆 |
-| 打断 = 关页面 | 语音打断、停止播报、停止任务分别处理 |
-| 只在一个标签页里 | Electron 原生窗口、Dock、通知、快捷键、桌宠 |
-
-**独特定位：桌面上的语音 Agent，不是聊天框里的 Agent。**
-
----
-
-## 90 秒能看到的流程
-
-1. **语音下达任务**：说一句要做的事，桌宠显示识别与执行状态。
-2. **中途打断**：播报中说“停一下”，只停播报，任务继续；再说“继续”。
-3. **副作用审批**：写工作区外文件前弹审批，说“我允许一次”，只执行一次。
-4. **记忆召回**：问“还记得我上次说的偏好吗？”，从 Hindsight 取回。
-5. **桌面交互**：拖动桌宠、双击主窗口、Dock 图标、退出。
-
-> 演示重点是“语音 Agent 的完整闭环”，不是功能清单。
-
----
-
-## 架构
+## Architecture
 
 ```mermaid
 flowchart LR
-  U[用户] -->|按住/切换/常听| P[Electron 桌宠]
-  P -->|WebRTC 音频| V[Pipecat VoiceWorker]
-  V -->|鉴权 NDJSON /voice/turn| D[DSH Agent Runtime]
-  P -->|同一 Session / 工具 / 审批| D
-  D --> T[文件 · 终端 · 浏览器]
-  D --> M[Hindsight 长期记忆]
-  P --> B[气泡 · 审批 · 结构化提问]
-  D -->|事件流| P
+  U[User] -->|push / switch / always-on| P[Electron pet]
+  P -->|WebRTC audio| V[Pipecat VoiceWorker]
+  V -->|authenticated NDJSON /voice/turn| D[DSH Agent Runtime]
+  P -->|same Session / tools / approvals| D
+  D --> T[Files · terminal · browser]
+  D --> M[Hindsight memory]
+  P --> B[Bubbles · approvals · structured questions]
+  D -->|event stream| P
 ```
 
-- **DSH** 是唯一 Agent Runtime（固定 `0.2.1-rc.3`），语音不另起一套 Agent。
-- **Pipecat** 负责实时 ASR/TTS、VAD、打断与媒体生命周期。
-- **Hindsight** 负责跨会话记忆；Memory 服务是本地 sidecar。
-- **Electron** 负责桌宠、气泡、主窗口、Dock/菜单栏、系统集成。
+- **DSH** is the only agent runtime, pinned to `0.2.1-rc.3`; voice does not start a second agent.
+- **Pipecat** owns realtime ASR/TTS, VAD, barge-in, and the media lifecycle.
+- **Hindsight** owns cross-session memory through a local sidecar.
+- **Electron** owns the pet, bubbles, main window, Dock and menu bar, and macOS integration.
 
----
+## Quick start <a id="run"></a> <a id="run-from-source"></a>
 
-## 三个真正难的地方
-
-### 1. 实时语音不是“把 ASR 接上”就完了
-
-- 半双工会显得迟钝，全双工又会被回声/环境声误触发；
-- 做的是：VAD + 回声候选过滤 + 打断确认 + 控制词消费 + 停止回执；
-- 常听模式的普通输入先确认，避免“环境声直接变成任务”。
-
-### 2. 审批是产品边界，不是弹窗
-
-- 审批必须把**工具、工作目录、参数**展示清楚；
-- “允许一次”只对本次生效；“始终允许”只匹配同一工具+目录+完全相同的参数；
-- 语音说“我允许一次”和点击气泡必须走同一条状态机，不能一边批准、一边又生成新任务。
-
-### 3. 桌面窗口是另一个操作系统
-
-- 桌宠/气泡要浮在普通窗口、全屏窗口和 DSH 主窗口之上；
-- 打包时 Electron 的 ASAR 完整性、ad-hoc 签名顺序、Frameworks 签名、LaunchServices 启动互相影响；
-- 这些不是“UI 细节”，是 Mac 上能不能正常打开的问题。
-
----
-
-## 工程验证
-
-门禁状态、验收计数、产物 SHA 与证据路径统一见 [product/CURRENT-STATUS.md](product/CURRENT-STATUS.md)；本 README 不再复制容易过时的数字。历史候选的验收记录保存在交付包与内部归档中（不随公开仓库发布），构建与验收脚本在 `product/tools/`。安全默认权限与越界审批（S1–S3）、取消入口与凭据写入的结论、以及各自**未覆盖的入口**，都以索引中的对应章节为准（本 README 不复述边界）。
-
-可复核的入口：
-
-- 打包验收与气泡层级修复记录：保存在交付包与内部归档中，不随公开仓库发布
-- 构建/验收脚本：[`product/tools/build-macos.sh`](product/tools/build-macos.sh)、[`product/tools/accept-macos.sh`](product/tools/accept-macos.sh)
-
-### 还没验证的
-
-- 真人麦克风/外放回声/蓝牙耳机/十轮连续对话/抢话；
-- TCC、鼠标穿透、Spaces、多屏缩放、物理拖动；
-- 真实 Provider（ASR/TTS/LLM）完整长对话与首次配置；
-- 真实个人 Hindsight 库的查看/纠正/删除/导出与跨重启召回；
-- Developer ID 签名与公证、更新源、体积/冷启动优化。
-
-**不把“代码写完了”说成“已经验收通过”。**
-
----
-
-<a id="run"></a>
-<a id="run-from-source"></a>
-
-## 快速开始（macOS）
-
-要求：Apple Silicon、macOS 14+、Node 24+、uv、Xcode Command Line Tools。
+Requirements: Apple Silicon Mac, macOS 14+, Node.js 22.19+ or 24+, `uv`, Xcode Command Line Tools, and 8 GiB of free disk space.
 
 ```bash
 git clone https://github.com/SisyphusZheng/dsh-bot.git
 cd dsh-bot
-git switch work/0.0.1-closure-final
-
 bash product/tools/build-macos.sh
-bash product/tools/verify-local.sh
-bash product/tools/accept-macos.sh "$(node -p "require('./.mvv-build/evidence/macos-build.json').artifact.path")"
+bash product/tools/install-macos.sh "$(node -p "require('./.mvv-build/evidence/macos-build.json').artifact.path")"
 ```
 
-安装：
+After the first launch, open DSH settings → Bot and add your LLM and DashScope keys. The build is ad-hoc signed and not notarized, so macOS Gatekeeper blocks the first open; this build is for local evaluation only.
 
-```bash
-bash product/tools/install-macos.sh /path/to/dsh-bot.app
-```
+## Status
 
-首次启动后在 DSH 设置 → Bot 中填写 LLM 与 DashScope Key；语音即可使用。
+0.0.1 is engineering-complete and UAT-incomplete (RESULT B). Automated gates pass and real-provider voice, tool, and approval flows have been exercised, but human-voice ten-turn conversation and barge-in, TCC permissions, physical desktop interaction, a 30-minute soak, and fault injection are still unverified. Developer ID signing, notarization, and auto-update are out of scope for 0.0.1.
 
----
+Current version, artifact hashes, gate results, and remaining checks live in [product/CURRENT-STATUS.md](product/CURRENT-STATUS.md); this README does not duplicate them.
 
-## 目录速览
+## Repository layout
 
 ```text
-apps/desktop/          Electron 桌面壳、主窗口、桌宠运行时
-product/pet/           桌宠页面、气泡、语音交互、引导、皮肤
-product/voice-worker-src/  Pipecat VoiceWorker、ASR/TTS、语音控制
-nisse/packages/host-integration/  Host/Bridge 与 DSH 集成
-product/tools/         构建、验收、安装、测量工具
-product/CURRENT-STATUS.md  当前事实入口（提交、产物 SHA、E/U/R、门禁缺口）
-docs/                  产品、架构、路线图与演示脚本
+apps/desktop/                    Electron shell, main window, pet runtime
+product/pet/                     Pet UI, bubbles, voice interaction, onboarding, skins
+product/voice-worker-src/        Pipecat VoiceWorker, ASR/TTS, voice control
+nisse/packages/host-integration/ Host/Bridge integration with DSH
+product/tools/                   Build, acceptance, install, and measurement tools
+product/CURRENT-STATUS.md        Single source of current facts
+docs/                            Product, architecture, roadmap, and demo script
 ```
-
----
 
 ## Roadmap
 
-- **0.0.1**：稳定语音、审批、桌面体验与 Mac 打包链路
-- **0.0.2**：CUA/桌面操作与 DS-Bot 适配
-- **0.0.3**：本地 TTS、动作协调、首启简化
-- **0.0.4**：完整 App + DSH 插件/伴随程序双交付
-- **1.0**：云端持续执行、多 Bot 协作、统一记忆与双交付
+- **0.0.1** — stable voice, approvals, desktop experience, and macOS packaging.
+- **0.0.2** — CUA and desktop operation, DS-Bot adaptation.
+- **0.0.3** — local TTS, motion coordination, simpler first run.
+- **0.0.4** — full app plus DSH plugin and companion dual delivery.
+- **1.0** — cloud execution, multi-bot collaboration, unified memory, dual delivery.
 
-路线图是计划，不是已完成功能；已批准顺序与任务书在 docs/roadmap/（中文），当前版本事实、验收结论与证据入口以 [product/CURRENT-STATUS.md](product/CURRENT-STATUS.md) 为准。
+The roadmap is a plan, not shipped behavior; approved ordering and task books live under `docs/roadmap/` (Chinese).
 
----
+## Contributing and safety
 
-## License / 边界
-
-本仓库保留 DSH 上游代码与许可声明；产品集成部分见 `product/` 与各 review 记录。内部候选使用 ad-hoc 签名，未做 Developer ID/公证，仅用于本地验收，不构成生产发布。
+- [CONTRIBUTING.md](CONTRIBUTING.md) — build, test, and submission workflow.
+- [SAFETY.md](SAFETY.md) — security model, approval boundaries, and reporting.
+- [LICENSE](LICENSE) — MIT, with third-party notices in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
